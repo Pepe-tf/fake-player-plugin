@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────
+#  FPP  ·  Language File  ·  English (en)
+# ─────────────────────────────────────────────
+
+# Unicode small-caps font is applied automatically by the plugin.
+# Hex colour #0079FF is the main accent colour.
+# Use {0}, {1}, … as positional placeholders where needed.
+
+prefix: "&f[&x&0&0&7&9&F&Fꜰᴘᴘ&f] "
+
+# ── Generic ──────────────────────────────────
+no-permission:    "{prefix}&cYou do not have permission to use this command."
+unknown-command:  "{prefix}&cUnknown command. Use &x&0&0&7&9&F&F/{0} help &cfor a list of commands."
+player-only:      "{prefix}&cThis command can only be run by a player."
+
+# ── Help ─────────────────────────────────────
+help-header:     "&8&m          &r &x&0&0&7&9&F&Fꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ &7· &fʜᴇʟᴘ &8&m          "
+help-title:      " &7ᴜꜱᴇ &x&0&0&7&9&F&F/ꜰᴘᴘ ʜᴇʟᴘ <ᴘᴀɢᴇ> &7ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ"
+help-entry:      " &x&0&0&7&9&F&F/{cmd}&7{args} &8» &f{desc}"
+help-footer:     "&8&m                                              "
+
+# ── Reload ───────────────────────────────────
+reload-success:  "{prefix}&fᴄᴏɴꜰɪɢ ʀᴇʟᴏᴀᴅᴇᴅ &7ɪɴ &x&0&0&7&9&F&F{ms}ᴍs&7."
+
+# ── Spawn ─────────────────────────────────────
+spawn-success:        "{prefix}&f{count} ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) &7ʜᴀᴠᴇ ᴊᴏɪɴᴇᴅ ᴛʜᴇ ꜱᴇʀᴠᴇʀ."
+spawn-invalid-amount: "{prefix}&cInvalid amount. Please enter a positive number."
+

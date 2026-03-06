@@ -1,0 +1,11 @@
+# ─────────────────────────────────────────────
+#  FPP  ·  Main Configuration
+# ─────────────────────────────────────────────
+
+# Language file to use (must exist in the language/ folder)
+language: en
+
+# ── Debug ─────────────────────────────────────
+debug:
+  # Print extra information to the console for development purposes
+  enabled: true

@@ -1,0 +1,21 @@
+name: FakePlayerPlugin
+version: '0.0.1'
+main: me.bill.fakePlayerPlugin.FakePlayerPlugin
+api-version: '1.21'
+authors: [ El_Pepes ]
+description: Advanced Fake Player Spoofer
+
+commands:
+  fpp:
+    description: Fake Player Plugin main command
+    usage: /fpp [sub-command]
+    aliases: [ fakeplayer, fp ]
+
+permissions:
+  fpp.reload:
+    description: Allows reloading the FPP plugin configuration.
+    default: op
+  fpp.spawn:
+    description: Allows spawning fake players.
+    default: op
+
