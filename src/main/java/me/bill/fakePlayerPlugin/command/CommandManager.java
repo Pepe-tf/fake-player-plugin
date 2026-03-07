@@ -103,6 +103,18 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                     .filter(name -> name.startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
         }
+
+        // Forward to the matched sub-command for argument-level tab completion
+        if (args.length >= 2) {
+            FppCommand sub = byName.get(args[0].toLowerCase());
+            if (sub != null) {
+                String perm = sub.getPermission();
+                if (perm == null || sender.hasPermission(perm)) {
+                    return sub.tabComplete(sender, Arrays.copyOfRange(args, 1, args.length));
+                }
+            }
+        }
+
         return Collections.emptyList();
     }
 }

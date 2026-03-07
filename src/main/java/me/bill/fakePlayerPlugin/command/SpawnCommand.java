@@ -1,5 +1,6 @@
 package me.bill.fakePlayerPlugin.command;
 
+import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import org.bukkit.command.CommandSender;
@@ -33,17 +34,27 @@ public class SpawnCommand implements FppCommand {
         if (args.length > 0) {
             try {
                 amount = Integer.parseInt(args[0]);
-                if (amount < 1) amount = 1;
+                if (amount < 1) {
+                    sender.sendMessage(Lang.get("spawn-invalid"));
+                    return true;
+                }
             } catch (NumberFormatException e) {
-                sender.sendMessage(Lang.get("spawn-invalid-amount"));
+                sender.sendMessage(Lang.get("spawn-invalid"));
                 return true;
             }
         }
 
         int spawned = manager.spawn(player.getLocation(), amount);
+
+        if (spawned == -1) {
+            sender.sendMessage(Lang.get("spawn-max-reached",
+                    "max", String.valueOf(Config.maxBots())));
+            return true;
+        }
+
         sender.sendMessage(Lang.get("spawn-success",
-                "count", String.valueOf(spawned)));
+                "count", String.valueOf(spawned),
+                "total", String.valueOf(manager.getCount())));
         return true;
     }
 }
-

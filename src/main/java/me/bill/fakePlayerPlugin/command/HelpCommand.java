@@ -59,6 +59,9 @@ public class HelpCommand implements FppCommand {
         // ── Header ──────────────────────────────────────────────────────────
         sender.sendMessage(Lang.get("help-header"));
         sender.sendMessage(Lang.get("help-title"));
+
+        // ── Clickable pagination bar ─────────────────────────────────────────
+        sender.sendMessage(buildPaginationBar(page, totalPages));
         sender.sendMessage(Component.empty());
 
         // ── Entries ─────────────────────────────────────────────────────────
@@ -74,9 +77,8 @@ public class HelpCommand implements FppCommand {
             sender.sendMessage(TextUtil.colorize(raw));
         }
 
-        // ── Clickable pagination bar (below entries) ─────────────────────────
+        // ── Footer ──────────────────────────────────────────────────────────
         sender.sendMessage(Component.empty());
-        sender.sendMessage(buildPaginationBar(page, totalPages));
         sender.sendMessage(Lang.get("help-footer"));
         return true;
     }

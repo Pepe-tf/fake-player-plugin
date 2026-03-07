@@ -1,11 +1,88 @@
-# ─────────────────────────────────────────────
-#  FPP  ·  Main Configuration
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml
+#  Main configuration file — edit and run /fpp reload to apply changes.
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Language file to use (must exist in the language/ folder)
+# Language file to use (filename without .yml, must exist in the language/ folder)
 language: en
 
-# ── Debug ─────────────────────────────────────
+# ── Debug ─────────────────────────────────────────────────────────────────────
 debug:
-  # Print extra information to the console for development purposes
-  enabled: true
+  # Print verbose information to the console (useful for development / bug reports)
+  enabled: false
+
+# ── Fake Player — General ─────────────────────────────────────────────────────
+fake-player:
+
+  # Maximum number of fake players allowed on the server at once (0 = unlimited)
+  max-bots: 1000
+
+  # Skin fetching — bots load the real skin of a Mojang account matching their name.
+  # Requires an internet connection and adds ~0.2s per bot (Mojang API call).
+  # Set to false for instant spawning with the default Steve/Alex skin.
+  fetch-skin: false
+
+  # Show bot skin to all players (requires fetch-skin: true to have any effect).
+  # If false, bots appear with the default Steve/Alex skin regardless.
+  show-skin: false
+
+  # Bot names are stored in bot-names.yml — edit that file to change the name pool.
+
+  # Spawn a physical body (zombie entity) for each bot.
+  # true  → bot has a visible, pushable entity in the world
+  # false → bot only appears in the tab list and triggers join/leave messages (no entity)
+  spawn-body: true
+
+  # Join delay — when spawning multiple bots each one waits a random delay
+  # between min and max ticks before appearing (20 ticks = 1 second).
+  # Set both to 0 to disable staggering (all join instantly).
+  join-delay:
+    min: 0    # minimum ticks before a bot joins  (0 = instant)
+    max: 5   # maximum ticks before a bot joins  (0.25 second)
+
+  # Leave delay — when deleting multiple bots (/fpp delete all) each one
+  # waits a random delay before disconnecting, just like real players timing out.
+  leave-delay:
+    min: 0    # minimum ticks before a bot leaves (0 = instant)
+    max: 5   # maximum ticks before a bot leaves (0.25 second)
+
+# ── Fake Player — Combat ──────────────────────────────────────────────────────
+  combat:
+    # Health bots spawn with (default player health = 20.0)
+    max-health: 20.0
+
+    # Play the player hurt sound when a bot takes damage
+    hurt-sound: true
+
+# ── Fake Player — Death & Respawn ─────────────────────────────────────────────
+  death:
+    # true  → bot respawns at its original summon location after dying
+    # false → bot leaves the server permanently on death
+    respawn-on-death: true
+
+    # Delay in ticks before the bot respawns (20 ticks = 1 second)
+    respawn-delay: 60
+
+    # Suppress default mob drops when a bot dies (recommended: true)
+    suppress-drops: true
+
+# ── Fake Player — Join / Leave Messages ───────────────────────────────────────
+  messages:
+    # Broadcast a vanilla-style join message when a bot is first spawned
+    join-message: true
+
+    # Broadcast a vanilla-style leave message when a bot is deleted or dies permanently
+    leave-message: true
+
+    # Broadcast a kill message when a player kills a bot (e.g. "El_Pepes slain Steve")
+    kill-message: true
+
+# ── Fake Player — Chunk Loading ───────────────────────────────────────────────
+  chunk-loading:
+    # Keep chunks loaded around each bot, just like a real player does.
+    enabled: true
+
+    # Chunk radius to keep loaded around each bot (vanilla player default = 10).
+    # Higher values use more server memory. Keep at or below your server's view-distance.
+    radius: 6
+

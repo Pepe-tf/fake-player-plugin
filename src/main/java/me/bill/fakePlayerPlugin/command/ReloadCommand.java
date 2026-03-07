@@ -1,6 +1,7 @@
 package me.bill.fakePlayerPlugin.command;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.config.BotNameConfig;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.util.FppLogger;
@@ -28,6 +29,8 @@ public class ReloadCommand implements FppCommand {
         Config.debug("Config reloaded.");
         Lang.reload();
         Config.debug("Language file reloaded.");
+        BotNameConfig.reload();
+        Config.debug("Bot name pool reloaded (" + BotNameConfig.getNames().size() + " names).");
 
         long ms = System.currentTimeMillis() - start;
         Config.debug("Reload finished in " + ms + "ms.");

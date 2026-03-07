@@ -1,28 +1,48 @@
-# ─────────────────────────────────────────────
-#  FPP  ·  Language File  ·  English (en)
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  language/en.yml
+#  English language file — edit and run /fpp reload to apply changes.
+#
+#  Colour codes : use & followed by a colour code (e.g. &a = green, &c = red)
+#  Hex colours  : &x&R&R&G&G&B&B  (e.g. &x&0&0&7&9&F&F = #0079FF accent)
+#  Placeholders : {placeholder} — see each entry for available ones
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Unicode small-caps font is applied automatically by the plugin.
-# Hex colour #0079FF is the main accent colour.
-# Use {0}, {1}, … as positional placeholders where needed.
+# Plugin prefix prepended to all messages that include {prefix}
+prefix: "&8[&x&0&0&7&9&F&Fꜰᴘᴘ&8] &r"
 
-prefix: "&f[&x&0&0&7&9&F&Fꜰᴘᴘ&f] "
+# ── Generic errors ────────────────────────────────────────────────────────────
+no-permission:    "{prefix}&cYou don't have permission to do that."
+unknown-command:  "{prefix}&cUnknown sub-command. &7Try &x&0&0&7&9&F&F/{0} ʜᴇʟᴘ &7for a list."
+player-only:      "{prefix}&cOnly a player can run this command."
+invalid-number:   "{prefix}&cInvalid number. Please enter a positive integer."
 
-# ── Generic ──────────────────────────────────
-no-permission:    "{prefix}&cYou do not have permission to use this command."
-unknown-command:  "{prefix}&cUnknown command. Use &x&0&0&7&9&F&F/{0} help &cfor a list of commands."
-player-only:      "{prefix}&cThis command can only be run by a player."
+# ── Help menu ─────────────────────────────────────────────────────────────────
+help-header: "&8&m━━━━━━━━━━━━━━━━&r &x&0&0&7&9&F&Fꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ &8&m━━━━━━━━━━━━━━━━"
+help-entry:  "  &x&0&0&7&9&F&F{cmd} &7{args} &8— &f{desc}"
+help-footer: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# ── Help ─────────────────────────────────────
-help-header:     "&8&m          &r &x&0&0&7&9&F&Fꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ &7· &fʜᴇʟᴘ &8&m          "
-help-title:      " &7ᴜꜱᴇ &x&0&0&7&9&F&F/ꜰᴘᴘ ʜᴇʟᴘ <ᴘᴀɢᴇ> &7ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ"
-help-entry:      " &x&0&0&7&9&F&F/{cmd}&7{args} &8» &f{desc}"
-help-footer:     "&8&m                                              "
+# ── Reload ────────────────────────────────────────────────────────────────────
+# {ms} — milliseconds the reload took
+reload-success: "{prefix}&x&0&0&7&9&F&Fᴄᴏɴꜰɪɢ &7ʀᴇʟᴏᴀᴅᴇᴅ &fꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ &8(&x&0&0&7&9&F&F{ms}ᴍꜱ&8)&7."
 
-# ── Reload ───────────────────────────────────
-reload-success:  "{prefix}&fᴄᴏɴꜰɪɢ ʀᴇʟᴏᴀᴅᴇᴅ &7ɪɴ &x&0&0&7&9&F&F{ms}ᴍs&7."
+# ── Spawn ─────────────────────────────────────────────────────────────────────
+# {count}   — number of bots spawned
+# {total}   — total bots now active
+spawn-success:     "{prefix}&x&0&0&7&9&F&F{count} &7ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) &fꜱᴜᴍᴍᴏɴᴇᴅ&7. &8(&x&0&0&7&9&F&F{total} &7ᴀᴄᴛɪᴠᴇ&8)"
+spawn-max-reached: "{prefix}&cMax bot limit reached &8(&x&0&0&7&9&F&F{max} &7ʙᴏᴛꜱ&8)&c. Delete some first."
+spawn-invalid:     "{prefix}&cInvalid amount. Please enter a positive number."
 
-# ── Spawn ─────────────────────────────────────
-spawn-success:        "{prefix}&f{count} ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) &7ʜᴀᴠᴇ ᴊᴏɪɴᴇᴅ ᴛʜᴇ ꜱᴇʀᴠᴇʀ."
-spawn-invalid-amount: "{prefix}&cInvalid amount. Please enter a positive number."
+# ── Delete ────────────────────────────────────────────────────────────────────
+# {name}  — bot name
+# {count} — number of bots deleted (delete all)
+delete-success:    "{prefix}&x&0&0&7&9&F&F{name} &7ʜᴀꜱ ʙᴇᴇɴ &fᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ&7."
+delete-all:        "{prefix}&x&0&0&7&9&F&F{count} &7ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) &fᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ&7."
+delete-none:       "{prefix}&cNo bots are currently active."
+delete-not-found:  "{prefix}&cNo active bot named &f{name}&c was found."
 
+# ── Bot join / leave broadcast (vanilla-style) ────────────────────────────────
+# {name}   — bot name
+# {killer} — name of the player who killed the bot (bot-kill only)
+bot-join:  "&e{name} &ejoined the game"
+bot-leave: "&e{name} &eleft the game"
+bot-kill:  "&e{killer} &fslain &e{name}"
