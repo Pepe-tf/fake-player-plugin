@@ -2,47 +2,88 @@
 #  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  language/en.yml
 #  English language file — edit and run /fpp reload to apply changes.
 #
-#  Colour codes : use & followed by a colour code (e.g. &a = green, &c = red)
-#  Hex colours  : &x&R&R&G&G&B&B  (e.g. &x&0&0&7&9&F&F = #0079FF accent)
+#  Colour format : MiniMessage tags
+#    Named colours  : <red>, <gray>, <white>, <dark_gray>, <yellow> …
+#    Hex colours    : <#0079FF>text</#0079FF>
+#    Decorations    : <bold>, <italic>, <underlined>, <strikethrough>
+#    Reset          : <reset>
 #  Placeholders : {placeholder} — see each entry for available ones
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Plugin prefix prepended to all messages that include {prefix}
-prefix: "&8[&x&0&0&7&9&F&Fꜰᴘᴘ&8] &r"
+prefix: "<dark_gray>[<#0079FF>ꜰᴘᴘ</#0079FF><dark_gray>] "
 
 # ── Generic errors ────────────────────────────────────────────────────────────
-no-permission:    "{prefix}&cYou don't have permission to do that."
-unknown-command:  "{prefix}&cUnknown sub-command. &7Try &x&0&0&7&9&F&F/{0} ʜᴇʟᴘ &7for a list."
-player-only:      "{prefix}&cOnly a player can run this command."
-invalid-number:   "{prefix}&cInvalid number. Please enter a positive integer."
+no-permission:    "{prefix}<red>You don't have permission to do that."
+unknown-command:  "{prefix}<red>Unknown sub-command. <gray>Try <#0079FF>/{0} ʜᴇʟᴘ</#0079FF><gray> for a list."
+player-only:      "{prefix}<red>Only a player can run this command."
+invalid-number:   "{prefix}<red>Invalid number. Please enter a positive integer."
 
 # ── Help menu ─────────────────────────────────────────────────────────────────
-help-header: "&8&m━━━━━━━━━━━━━━━━&r &x&0&0&7&9&F&Fꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ &8&m━━━━━━━━━━━━━━━━"
-help-entry:  "  &x&0&0&7&9&F&F{cmd} &7{args} &8— &f{desc}"
-help-footer: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+help-header: "<dark_gray><st>━━━━━━━━━━━━</st> <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</bold></#0079FF> <dark_gray><st>━━━━━━━━━━━━</st>"
+help-entry:  "  <#0079FF>/{cmd}</#0079FF><gray> {args} <dark_gray>— <white>{desc}"
+help-footer: "<dark_gray><st>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</st>"
 
 # ── Reload ────────────────────────────────────────────────────────────────────
 # {ms} — milliseconds the reload took
-reload-success: "{prefix}&x&0&0&7&9&F&Fᴄᴏɴꜰɪɢ &7ʀᴇʟᴏᴀᴅᴇᴅ &fꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ &8(&x&0&0&7&9&F&F{ms}ᴍꜱ&8)&7."
+reload-success: "{prefix}<#0079FF>ᴄᴏɴꜰɪɢ</#0079FF> <gray>ʀᴇʟᴏᴀᴅᴇᴅ <white>ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ <dark_gray>(<#0079FF>{ms}ᴍꜱ</#0079FF><dark_gray>)<gray>."
 
 # ── Spawn ─────────────────────────────────────────────────────────────────────
 # {count}   — number of bots spawned
 # {total}   — total bots now active
-spawn-success:     "{prefix}&x&0&0&7&9&F&F{count} &7ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) &fꜱᴜᴍᴍᴏɴᴇᴅ&7. &8(&x&0&0&7&9&F&F{total} &7ᴀᴄᴛɪᴠᴇ&8)"
-spawn-max-reached: "{prefix}&cMax bot limit reached &8(&x&0&0&7&9&F&F{max} &7ʙᴏᴛꜱ&8)&c. Delete some first."
-spawn-invalid:     "{prefix}&cInvalid amount. Please enter a positive number."
+# {name}    — custom bot name (name-taken error)
+# {max}     — max bot limit (max-reached error)
+spawn-success:      "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ꜱᴜᴍᴍᴏɴᴇᴅ<gray>. <dark_gray>(<#0079FF>{total}</#0079FF> <gray>ᴀᴄᴛɪᴠᴇ<dark_gray>)"
+spawn-max-reached:       "{prefix}<red>Max bot limit reached <dark_gray>(<#0079FF>{max}</#0079FF> <gray>ʙᴏᴛꜱ<dark_gray>)<red>. Delete some first."
+spawn-user-limit-reached: "{prefix}<red>You've reached your personal bot limit <dark_gray>(<#0079FF>{limit}</#0079FF> <gray>ʙᴏᴛ(ꜱ)<dark_gray>)<red>."
+spawn-invalid:      "{prefix}<red>Invalid usage. <gray>Try <#0079FF>/fpp spawn [amount] [--name <name>]</#0079FF><gray>."
+spawn-invalid-name: "{prefix}<red>Invalid bot name. <gray>Use 1–16 characters: letters, digits, or underscores only."
+spawn-name-taken:   "{prefix}<red>A bot named <white>{name} <red>is already active."
 
 # ── Delete ────────────────────────────────────────────────────────────────────
 # {name}  — bot name
 # {count} — number of bots deleted (delete all)
-delete-success:    "{prefix}&x&0&0&7&9&F&F{name} &7ʜᴀꜱ ʙᴇᴇɴ &fᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ&7."
-delete-all:        "{prefix}&x&0&0&7&9&F&F{count} &7ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) &fᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ&7."
-delete-none:       "{prefix}&cNo bots are currently active."
-delete-not-found:  "{prefix}&cNo active bot named &f{name}&c was found."
+delete-success:    "{prefix}<#0079FF>{name}</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
+delete-all:        "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
+delete-none:       "{prefix}<red>No bots are currently active."
+delete-not-found:  "{prefix}<red>No active bot named <white>{name}<red> was found."
+
+# ── List ──────────────────────────────────────────────────────────────────────
+list-none: "  <gray>No bots are currently active."
 
 # ── Bot join / leave broadcast (vanilla-style) ────────────────────────────────
 # {name}   — bot name
 # {killer} — name of the player who killed the bot (bot-kill only)
-bot-join:  "&e{name} &ejoined the game"
-bot-leave: "&e{name} &eleft the game"
-bot-kill:  "&e{killer} &fslain &e{name}"
+bot-join:  "<yellow>{name} joined the game"
+bot-leave: "<yellow>{name} left the game"
+bot-kill:  "<yellow>{killer} <white>slain <yellow>{name}"
+
+# ── Chat toggle ───────────────────────────────────────────────────────────────
+chat-enabled:    "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
+chat-disabled:   "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
+chat-status-on:  "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ᴄʜᴀᴛ ᴏꜰꜰ</#0079FF> <dark_gray>ᴛᴏ ᴅɪꜱᴀʙʟᴇ<dark_gray>)"
+chat-status-off: "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ᴄʜᴀᴛ ᴏɴ</#0079FF> <dark_gray>ᴛᴏ ᴇɴᴀʙʟᴇ<dark_gray>)"
+chat-invalid:    "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/ꜰᴘᴘ ᴄʜᴀᴛ <on|off|status></#0079FF><gray>."
+
+# ── Swap toggle ───────────────────────────────────────────────────────────────
+swap-enabled:    "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
+swap-disabled:   "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
+swap-status-on:  "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ꜱᴡᴀᴘ ᴏꜰꜰ</#0079FF> <dark_gray>ᴛᴏ ᴅɪꜱᴀʙʟᴇ<dark_gray>)"
+swap-status-off: "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ꜱᴡᴀᴘ ᴏɴ</#0079FF> <dark_gray>ᴛᴏ ᴇɴᴀʙʟᴇ<dark_gray>)"
+swap-invalid:    "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/ꜰᴘᴘ ꜱᴡᴀᴘ <on|off|status></#0079FF><gray>."
+
+# ── Info / database ───────────────────────────────────────────────────────────
+# {name} — bot or spawner name queried
+info-no-records:      "{prefix}<red>No records found for <white>{name}<red>."
+info-db-unavailable:  "{prefix}<red>Database is not available. Check your config and server logs."
+
+# ── Teleport commands ─────────────────────────────────────────────────────────
+# {name}  — bot name
+# {limit} — user's personal bot limit
+tph-no-bots:      "{prefix}<red>You don't have any active bots."
+tph-specify-name: "{prefix}<red>You have multiple bots. <gray>Specify one: <#0079FF>/fpp tph <botname></#0079FF>"
+tph-not-yours:    "{prefix}<red>You don't own a bot named <white>{name}<red>."
+tph-not-found:    "{prefix}<red>No active bot named <white>{name}<red>."
+tph-failed:       "{prefix}<red>Could not teleport <white>{name}<red> — entity may be invalid."
+tp-specify-name:  "{prefix}<red>Multiple bots are active. <gray>Specify one: <#0079FF>/fpp tp <botname></#0079FF>"
+

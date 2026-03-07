@@ -1,9 +1,9 @@
 name: FakePlayerPlugin
-version: '0.1.5'
+version: '1.0.0'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
-description: Advanced Fake Player Spoofer
+description: Advanced Fake Player Spoofer for Paper 1.21+
 
 commands:
   fpp:
@@ -12,10 +12,179 @@ commands:
     aliases: [ fakeplayer, fp ]
 
 permissions:
-  fpp.reload:
-    description: Allows reloading the FPP plugin configuration.
+
+  # ── Admin wildcard ─────────────────────────────────────────────────────────
+  # Grants EVERYTHING — assign to owner / admin groups only.
+  fpp.*:
+    description: Grants access to all FPP commands and features (admin).
     default: op
+    children:
+      fpp.help:             true
+      fpp.spawn:            true
+      fpp.spawn.multiple:   true
+      fpp.spawn.name:       true
+      fpp.delete:           true
+      fpp.delete.all:       true
+      fpp.list:             true
+      fpp.chat:             true
+      fpp.swap:             true
+      fpp.reload:           true
+      fpp.info:             true
+      fpp.tp:               true
+      fpp.bypass.maxbots:   true
+      fpp.user.*:           true
+
+  # ── User wildcard ──────────────────────────────────────────────────────────
+  # default: true  →  ALL players get user-tier access out of the box.
+  # Use LuckPerms to negate it for specific groups if needed:
+  #   /lp group guest permission set fpp.user.* false
+  fpp.user.*:
+    description: >
+      Grants all user-facing FPP commands to regular players (default: everyone).
+      Includes: spawn (1-bot limit), /fpp tph, /fpp info (own bots only).
+      Does NOT include admin commands (delete, reload, swap, chat, list, full-info, tp).
+    default: true
+    children:
+      fpp.user.spawn: true
+      fpp.user.tph:   true
+      fpp.user.info:  true
+      fpp.bot.1:      true   # default personal limit — 1 bot per player
+
+  # ── User commands ──────────────────────────────────────────────────────────
+
+  fpp.user.spawn:
+    description: >
+      Spawn bots up to the player's personal bot limit.
+      Limit is resolved from fpp.bot.<num> nodes (highest wins).
+      Falls back to fake-player.user-bot-limit in config.yml (default: 1).
+      Cannot use --name or spawn multiple bots (admin-only features).
+    default: true
+
+  fpp.user.tph:
+    description: >
+      Teleport your own bot(s) to you with /fpp tph [botname].
+      Players can only tph bots they personally spawned.
+      If you have 1 bot, botname is optional.
+      If you have multiple bots, you must specify one by name.
+    default: true
+
+  fpp.user.info:
+    description: >
+      View limited bot info with /fpp info [botname] — own bots only.
+      Shows: world, coordinates, uptime.
+      Does NOT show session history, database records, or other players' bots.
+    default: true
+
+  # ── Bot limit nodes ────────────────────────────────────────────────────────
+  # Assign the highest node the player should be allowed.
+  # The plugin scans fpp.bot.1 → fpp.bot.100 and picks the highest match.
+  # fpp.bot.1 is already included in fpp.user.* (1-bot default for all players).
+  fpp.bot.1:
+    description: Personal bot limit — 1 active bot at a time. Included in fpp.user.*.
+    default: false   # granted automatically via fpp.user.* (default: true)
+  fpp.bot.2:
+    description: Personal bot limit — 2 active bots at a time.
+    default: false
+  fpp.bot.3:
+    description: Personal bot limit — 3 active bots at a time.
+    default: false
+  fpp.bot.5:
+    description: Personal bot limit — 5 active bots at a time.
+    default: false
+  fpp.bot.10:
+    description: Personal bot limit — 10 active bots at a time.
+    default: false
+  fpp.bot.15:
+    description: Personal bot limit — 15 active bots at a time.
+    default: false
+  fpp.bot.20:
+    description: Personal bot limit — 20 active bots at a time.
+    default: false
+  fpp.bot.50:
+    description: Personal bot limit — 50 active bots at a time.
+    default: false
+  fpp.bot.100:
+    description: Personal bot limit — 100 active bots at a time.
+    default: false
+
+  # ── Help ──────────────────────────────────────────────────────────────────
+  fpp.help:
+    description: View the /fpp help menu. Granted to everyone by default.
+    default: true
+
+  # ── Spawn (admin) ─────────────────────────────────────────────────────────
+  # Admin spawn ignores personal bot limits entirely.
   fpp.spawn:
-    description: Allows spawning fake players.
+    description: >
+      Admin spawn — /fpp spawn [amount] [--name <name>].
+      No personal bot limit. Automatically grants fpp.spawn.multiple and fpp.spawn.name.
+    default: op
+    children:
+      fpp.spawn.multiple: true
+      fpp.spawn.name:     true
+
+  fpp.spawn.multiple:
+    description: >
+      Spawn more than one bot at a time (/fpp spawn <amount>).
+      Negate to restrict a group to single-bot spawning even with fpp.spawn.
     default: op
 
+  fpp.spawn.name:
+    description: >
+      Use the --name flag to spawn a bot with a custom name.
+      User-tier (fpp.user.spawn) cannot use this — admin only.
+    default: op
+
+  # ── Delete ────────────────────────────────────────────────────────────────
+  fpp.delete:
+    description: Delete a fake player by name with /fpp delete <name>.
+    default: op
+    children:
+      fpp.delete.all: true
+
+  fpp.delete.all:
+    description: >
+      Delete ALL bots at once with /fpp delete all.
+      Negate to allow individual deletions without mass-wipe access.
+    default: op
+
+  # ── List ──────────────────────────────────────────────────────────────────
+  fpp.list:
+    description: List all active bots (name, uptime, location, spawner) with /fpp list.
+    default: op
+
+  # ── Chat ──────────────────────────────────────────────────────────────────
+  fpp.chat:
+    description: Toggle bot fake-chat on/off with /fpp chat [on|off|status].
+    default: op
+
+  # ── Swap ──────────────────────────────────────────────────────────────────
+  fpp.swap:
+    description: Toggle the bot swap/rotation system with /fpp swap [on|off|status].
+    default: op
+
+  # ── Reload ────────────────────────────────────────────────────────────────
+  fpp.reload:
+    description: Hot-reload all plugin config with /fpp reload. Restrict to trusted admins.
+    default: op
+
+  # ── Info (admin) ──────────────────────────────────────────────────────────
+  fpp.info:
+    description: >
+      Full admin database query via /fpp info / /fpp info bot <name> / /fpp info spawner <name>.
+      Shows session history, timestamps, locations, and removal reasons for ALL bots.
+    default: op
+
+  # ── Teleport ──────────────────────────────────────────────────────────────
+  fpp.tp:
+    description: >
+      Teleport yourself to any active bot with /fpp tp [botname].
+      Admin-only. User-tier players cannot use this — grant explicitly if needed.
+    default: op
+
+  # ── Bypass ────────────────────────────────────────────────────────────────
+  fpp.bypass.maxbots:
+    description: >
+      Bypass the global max-bots cap in config.yml during /fpp spawn.
+      Grant with care — no upper bound when active.
+    default: op

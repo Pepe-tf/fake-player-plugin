@@ -1,94 +1,206 @@
 package me.bill.fakePlayerPlugin.fakeplayer;
 
+import com.destroystokyo.paper.profile.ProfileProperty;
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
+import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Zombie;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
+import org.bukkit.entity.Mannequin;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.Plugin;
 
 /**
- * Spawns and configures a real Bukkit {@link Zombie} as the sole entity for a
- * fake player. Its entity ID and UUID are reused in the player-skin packet so
- * interacting with the visual directly affects this entity.
+ * Two-entity stack per fake player:
  *
- * <p>Movement is suppressed by setting MOVEMENT_SPEED to 0 — the zombie keeps
- * full physics simulation (gravity, knockback, collisions) but cannot self-propel.
- * This avoids all fragile NMS goal-selector reflection that caused chicken spawns
- * and frozen bots on Paper 1.21.
+ * <pre>
+ *   ArmorStand  (nametag — invisible marker, rides Mannequin)
+ *       ↓ rides
+ *   Mannequin   (physics body + skin)
+ *               setImmovable(false) → vanilla entity-separation push/knockback
+ *               setGravity(true)    → falls naturally
+ * </pre>
+ *
+ * <h3>Skin modes (config: {@code fake-player.skin.mode})</h3>
+ * <dl>
+ *   <dt>{@code auto} <i>(default)</i></dt>
+ *   <dd>{@code ResolvableProfile.resolvableProfile().name(name).build()} — no UUID,
+ *       no properties → Paper creates a Dynamic profile and resolves the UUID + skin
+ *       texture from Mojang automatically. Requires online-mode server.</dd>
+ *
+ *   <dt>{@code fetch}</dt>
+ *   <dd>Uses {@link SkinFetcher} to pull texture value+signature from Mojang,
+ *       then builds a {@code ResolvableProfile} with the texture property injected.
+ *       Works on offline-mode servers. Results are cached per session.</dd>
+ *
+ *   <dt>{@code disabled}</dt>
+ *   <dd>No skin — bots display the default Steve/Alex skin.</dd>
+ * </dl>
  */
+@SuppressWarnings("UnstableApiUsage")
 public final class FakePlayerBody {
+
+    public static final String NAMETAG_PDC_VALUE = "fpp_nametag";
+    public static final String VISUAL_PDC_VALUE  = "fpp_visual"; // compat shim
 
     private FakePlayerBody() {}
 
+    // ── Spawn ─────────────────────────────────────────────────────────────────
+
     public static Entity spawn(FakePlayer fp, Location loc) {
         try {
-            Entity entity = loc.getWorld().spawn(loc, Zombie.class, zombie -> {
-                zombie.setInvisible(true);
-                zombie.setSilent(true);
-                zombie.setCustomNameVisible(false);
+            return loc.getWorld().spawn(loc, Mannequin.class, m -> {
+                m.setGravity(true);
+                m.setInvulnerable(false);
+                m.setImmovable(false);
+                m.setCollidable(true);
+                m.setRemoveWhenFarAway(false);
+                m.setSilent(true);
+                m.setCustomNameVisible(false);
+                m.customName(null);
 
-                // Keep AI enabled — physics (gravity, knockback, collisions) requires it.
-                // Movement is blocked by zeroing MOVEMENT_SPEED instead of NMS goal hacks.
-                zombie.setAI(true);
-                zombie.setGravity(true);
-                zombie.setInvulnerable(false);
-                zombie.setShouldBurnInDay(false);
-                zombie.setRemoveWhenFarAway(false);
-                zombie.setAdult();
+                var maxHp = m.getAttribute(Attribute.MAX_HEALTH);
+                if (maxHp != null) maxHp.setBaseValue(Config.maxHealth());
+                m.setHealth(Config.maxHealth());
 
-                // Disable drowned conversion — -1 means "never convert"
-                zombie.setConversionTime(-1);
-
-                // Zero movement speed → bot stands still but is still physically simulated.
-                // External velocity (knockback, explosions, pushes) still applies normally.
-                var speed = zombie.getAttribute(Attribute.MOVEMENT_SPEED);
-                if (speed != null) speed.setBaseValue(0.0);
-
-                // Zero attack damage → bot can never hurt anyone even if AI tries
-                var attack = zombie.getAttribute(Attribute.ATTACK_DAMAGE);
-                if (attack != null) attack.setBaseValue(0.0);
-
-                // Zero follow range → bot won't detect or chase any target
-                var followRange = zombie.getAttribute(Attribute.FOLLOW_RANGE);
-                if (followRange != null) followRange.setBaseValue(0.0);
-
-                // Health
-                var maxHp = zombie.getAttribute(Attribute.MAX_HEALTH);
-                double hp = me.bill.fakePlayerPlugin.config.Config.maxHealth();
-                if (maxHp != null) maxHp.setBaseValue(hp);
-                zombie.setHealth(hp);
-
-                // Permanent fire resistance
-                zombie.addPotionEffect(new PotionEffect(
-                        PotionEffectType.FIRE_RESISTANCE,
-                        PotionEffect.INFINITE_DURATION,
-                        0, false, false, false));
-
-                // Permanent water breathing
-                zombie.addPotionEffect(new PotionEffect(
-                        PotionEffectType.WATER_BREATHING,
-                        PotionEffect.INFINITE_DURATION,
-                        0, false, false, false));
-
-                // Tag as fake player body
-                zombie.getPersistentDataContainer().set(
+                m.getPersistentDataContainer().set(
                         FakePlayerManager.FAKE_PLAYER_KEY,
-                        org.bukkit.persistence.PersistentDataType.STRING,
+                        PersistentDataType.STRING,
                         fp.getName()
                 );
             });
-
-
-            me.bill.fakePlayerPlugin.config.Config.debug("Spawned body for " + fp.getName()
-                    + " entityId=" + entity.getEntityId()
-                    + " uuid=" + entity.getUniqueId());
-            return entity;
-
         } catch (Exception e) {
             FppLogger.warn("FakePlayerBody.spawn failed for " + fp.getName() + ": " + e.getMessage());
             return null;
         }
+    }
+
+    // ── Skin ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Applies the skin to {@code body} according to the configured skin mode.
+     * Must be called at least 1 tick after {@link #spawn}.
+     */
+    public static void applySkin(Plugin plugin, Entity body, String name) {
+        switch (Config.skinMode()) {
+            case "auto"     -> applyAuto(body, name);
+            case "fetch"    -> applyFetch(plugin, body, name);
+            case "disabled" -> FppLogger.debug("Skin disabled for " + name + ".");
+            default -> {
+                FppLogger.warn("Unknown skin.mode '" + Config.skinMode() + "' — using auto.");
+                applyAuto(body, name);
+            }
+        }
+    }
+
+    // ── auto ──────────────────────────────────────────────────────────────────
+
+    /**
+     * name-only ResolvableProfile (no UUID, no properties) →
+     * Paper treats this as Dynamic and resolves UUID + skin from Mojang.
+     */
+    private static void applyAuto(Entity body, String name) {
+        if (!(body instanceof Mannequin m) || !m.isValid()) return;
+        try {
+            m.setProfile(ResolvableProfile.resolvableProfile()
+                    .name(name)
+                    .build());
+            FppLogger.debug("Skin(auto) queued for " + name + ".");
+        } catch (Exception e) {
+            FppLogger.warn("Skin(auto) failed for " + name + ": " + e.getMessage());
+        }
+    }
+
+    // ── fetch ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Fetches texture value+signature from Mojang via {@link SkinFetcher},
+     * then builds a ResolvableProfile with the texture property injected and
+     * calls {@code Mannequin.setProfile()} on the main thread.
+     */
+    private static void applyFetch(Plugin plugin, Entity body, String name) {
+        if (!(body instanceof Mannequin m) || !m.isValid()) return;
+
+        SkinFetcher.fetchAsync(name, (value, signature) ->
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!m.isValid()) return;
+                if (value == null) {
+                    FppLogger.debug("Skin(fetch): no Mojang skin for '" + name + "' — falling back to auto.");
+                    applyAuto(m, name);
+                    return;
+                }
+                try {
+                    m.setProfile(ResolvableProfile.resolvableProfile()
+                            .name(name)
+                            .addProperty(new ProfileProperty("textures", value,
+                                    (signature != null && !signature.isBlank()) ? signature : null))
+                            .build());
+                    FppLogger.debug("Skin(fetch) applied for " + name + ".");
+                } catch (Exception e) {
+                    FppLogger.warn("Skin(fetch) inject failed for '" + name + "': " + e.getMessage());
+                    applyAuto(m, name);
+                }
+            })
+        );
+    }
+
+    // ── Nametag ───────────────────────────────────────────────────────────────
+
+    /**
+     * Spawns an invisible marker ArmorStand that rides the Mannequin.
+     * Riding keeps the nametag always above the body without any tick-sync code.
+     * The name is rendered in white to match vanilla player nametag style.
+     */
+    public static ArmorStand spawnNametag(FakePlayer fp, Entity body) {
+        if (body == null || !body.isValid()) return null;
+        try {
+            ArmorStand as = body.getWorld().spawn(body.getLocation(), ArmorStand.class, stand -> {
+                stand.setVisible(false);
+                stand.setGravity(false);
+                stand.setSmall(false);
+                stand.setMarker(true);
+                stand.setInvulnerable(true);
+                stand.setRemoveWhenFarAway(false);
+                stand.setSilent(true);
+                stand.setCollidable(false);
+
+                // White text — matches vanilla player nametag appearance
+                stand.customName(Component.text(fp.getDisplayName(), NamedTextColor.WHITE));
+                stand.setCustomNameVisible(true);
+
+                stand.getPersistentDataContainer().set(
+                        FakePlayerManager.FAKE_PLAYER_KEY,
+                        PersistentDataType.STRING,
+                        NAMETAG_PDC_VALUE + ":" + fp.getName()
+                );
+            });
+            body.addPassenger(as);
+            return as;
+        } catch (Exception e) {
+            FppLogger.warn("FakePlayerBody.spawnNametag failed for " + fp.getName() + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+
+    public static void removeNametag(FakePlayer fp) {
+        ArmorStand as = fp.getNametagEntity();
+        if (as != null && as.isValid()) { as.eject(); as.remove(); }
+        fp.setNametagEntity(null);
+    }
+
+
+    public static void removeAll(FakePlayer fp) {
+        removeNametag(fp);
+        Entity body = fp.getPhysicsEntity();
+        if (body != null && body.isValid()) body.remove();
+        fp.setPhysicsEntity(null);
     }
 }

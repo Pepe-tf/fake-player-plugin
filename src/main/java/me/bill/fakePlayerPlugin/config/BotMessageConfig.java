@@ -12,16 +12,16 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Loads and exposes the bot name pool from {@code bot-names.yml}.
- * Kept separate from {@link Config} so users can edit names without
+ * Loads and exposes the bot chat message pool from {@code bot-messages.yml}.
+ * Kept separate from {@link Config} so users can edit messages without
  * touching the main configuration file.
  */
-public final class BotNameConfig {
+public final class BotMessageConfig {
 
-    private static FakePlayerPlugin plugin;
+    private static FakePlayerPlugin  plugin;
     private static FileConfiguration cfg;
 
-    private BotNameConfig() {}
+    private BotMessageConfig() {}
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -31,15 +31,15 @@ public final class BotNameConfig {
     }
 
     public static void reload() {
-        File file = new File(plugin.getDataFolder(), "bot-names.yml");
+        File file = new File(plugin.getDataFolder(), "bot-messages.yml");
         if (!file.exists()) {
-            plugin.saveResource("bot-names.yml", false);
+            plugin.saveResource("bot-messages.yml", false);
         }
 
         FileConfiguration disk = YamlConfiguration.loadConfiguration(file);
         disk.options().copyDefaults(true);
 
-        InputStream jarStream = plugin.getResource("bot-names.yml");
+        InputStream jarStream = plugin.getResource("bot-messages.yml");
         if (jarStream != null) {
             YamlConfiguration jarDefaults = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(jarStream, StandardCharsets.UTF_8));
@@ -47,21 +47,24 @@ public final class BotNameConfig {
         }
 
         cfg = disk;
-        Config.debug("BotNameConfig loaded: " + file.getPath());
+        Config.debug("BotMessageConfig loaded: " + file.getPath()
+                + " (" + getMessages().size() + " messages)");
     }
 
     // ── Accessor ─────────────────────────────────────────────────────────────
 
     /**
-     * Returns the list of bot names from {@code bot-names.yml}.
+     * Returns the full list of chat messages from {@code bot-messages.yml}.
      * Falls back to a small built-in list if the file is empty or missing.
      */
-    public static List<String> getNames() {
-        List<String> names = cfg.getStringList("names");
-        if (names.isEmpty()) {
-            return Arrays.asList("Alex", "Steve", "Notch", "Herobrine", "Jeb_");
-        }
-        return names;
+    public static List<String> getMessages() {
+        if (cfg == null) return fallback();
+        List<String> msgs = cfg.getStringList("messages");
+        return msgs.isEmpty() ? fallback() : msgs;
+    }
+
+    private static List<String> fallback() {
+        return Arrays.asList("gg", "let's go!", "hey everyone", "what's up", "nice server");
     }
 }
 

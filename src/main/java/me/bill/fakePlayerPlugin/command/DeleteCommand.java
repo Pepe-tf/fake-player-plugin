@@ -2,11 +2,11 @@ package me.bill.fakePlayerPlugin.command;
 
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.lang.Lang;
+import me.bill.fakePlayerPlugin.permission.Perm;
 import org.bukkit.command.CommandSender;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DeleteCommand implements FppCommand {
 
@@ -17,7 +17,7 @@ public class DeleteCommand implements FppCommand {
     @Override public String getName()        { return "delete"; }
     @Override public String getDescription() { return "Deletes a fake player bot by name."; }
     @Override public String getUsage()       { return "<name|all>"; }
-    @Override public String getPermission()  { return "fpp.delete"; }
+    @Override public String getPermission()  { return Perm.DELETE; }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
@@ -27,6 +27,11 @@ public class DeleteCommand implements FppCommand {
         }
 
         if (args[0].equalsIgnoreCase("all")) {
+            // Requires fpp.delete.all (child of fpp.delete, but can be negated separately)
+            if (Perm.missing(sender, Perm.DELETE_ALL)) {
+                sender.sendMessage(Lang.get("no-permission"));
+                return true;
+            }
             int count = manager.getCount();
             if (count == 0) {
                 sender.sendMessage(Lang.get("delete-none"));
@@ -38,13 +43,21 @@ public class DeleteCommand implements FppCommand {
         }
 
         String targetName = args[0];
-        if (manager.getActiveNames().stream().noneMatch(n -> n.equalsIgnoreCase(targetName))) {
+
+        // Resolve the FakePlayer to get its display name for the success message
+        me.bill.fakePlayerPlugin.fakeplayer.FakePlayer fp = manager.getActivePlayers().stream()
+                .filter(p -> p.getName().equalsIgnoreCase(targetName)
+                        || p.getDisplayName().equalsIgnoreCase(targetName))
+                .findFirst().orElse(null);
+
+        if (fp == null) {
             sender.sendMessage(Lang.get("delete-not-found", "name", targetName));
             return true;
         }
 
-        manager.delete(targetName);
-        sender.sendMessage(Lang.get("delete-success", "name", targetName));
+        String shown = fp.getDisplayName();
+        manager.delete(fp.getName());
+        sender.sendMessage(Lang.get("delete-success", "name", shown));
         return true;
     }
 
@@ -52,9 +65,15 @@ public class DeleteCommand implements FppCommand {
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 1) {
             List<String> suggestions = new java.util.ArrayList<>();
-            suggestions.add("all");
-            manager.getActiveNames().stream()
-                    .filter(n -> n.toLowerCase().startsWith(args[0].toLowerCase()))
+            // Only suggest "all" if sender has fpp.delete.all
+            if (Perm.has(sender, Perm.DELETE_ALL)) {
+                suggestions.add("all");
+            }
+            // Suggest display names so admins see "[bot] PlayerName" not "b_PlayerName"
+            manager.getActivePlayers().stream()
+                    .filter(p -> p.getDisplayName().toLowerCase().startsWith(args[0].toLowerCase())
+                            || p.getName().toLowerCase().startsWith(args[0].toLowerCase()))
+                    .map(p -> p.getDisplayName())
                     .forEach(suggestions::add);
             return suggestions;
         }

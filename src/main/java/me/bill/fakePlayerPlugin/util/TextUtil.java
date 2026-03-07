@@ -1,21 +1,26 @@
 package me.bill.fakePlayerPlugin.util;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 /**
  * Utility class for text formatting.
  * <p>
- * • Converts legacy {@code &} colour codes (including {@code &x} hex codes) to Adventure Components.<br>
- * • Provides the small-caps Unicode font mapper used throughout FPP.
+ * Supports MiniMessage tags (e.g. {@code <#0079FF>text</#0079FF>},
+ * {@code <bold>}, {@code <gray>}) as well as legacy {@code &} colour codes
+ * via the MiniMessage {@code <legacy:&...>} passthrough.
  */
 public final class TextUtil {
 
     private TextUtil() {}
 
+    private static final MiniMessage MM = MiniMessage.miniMessage();
+
     // ── Small-caps Unicode mapping ───────────────────────────────────────────
 
-    private static final String NORMAL  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final String NORMAL =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final String SMALL_CAPS =
             "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘQʀꜱᴛᴜᴠᴡxʏᴢ" +   // lower  (a-z)
             "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘQʀꜱᴛᴜᴠᴡxʏᴢ";  // upper  (A-Z)
@@ -37,24 +42,40 @@ public final class TextUtil {
     // ── Colour parsing ───────────────────────────────────────────────────────
 
     /**
-     * Parses a string that may contain:
+     * Parses a string using MiniMessage.
+     * Supports:
      * <ul>
-     *   <li>Legacy {@code &} colour codes (e.g. {@code &a}, {@code &l})</li>
-     *   <li>Hex colour codes in the {@code &x&R&R&G&G&B&B} format used by Spigot/Paper</li>
+     *   <li>Hex colour tags: {@code <#0079FF>text</#0079FF>}</li>
+     *   <li>Named colours: {@code <red>}, {@code <gray>}, {@code <white>} …</li>
+     *   <li>Decorations: {@code <bold>}, {@code <italic>}, {@code <strikethrough>} …</li>
+     *   <li>Legacy {@code &} codes via {@code <legacy_char>} or pre-converted below</li>
      * </ul>
-     * and returns an Adventure {@link Component}.
      */
     public static Component colorize(String text) {
         if (text == null) return Component.empty();
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(text);
+        // Convert legacy & codes first so existing lang keys keep working
+        // during any transition period, then parse with MiniMessage.
+        String converted = legacyToMiniMessage(text);
+        return MM.deserialize(converted);
     }
 
-    /**
-     * Shorthand: applies {@link #toSmallCaps(String)} then {@link #colorize(String)}.
-     */
+    /** Shorthand: applies {@link #toSmallCaps(String)} then {@link #colorize(String)}. */
     public static Component format(String text) {
         return colorize(toSmallCaps(text));
     }
+
+    // ── Legacy → MiniMessage bridge ──────────────────────────────────────────
+
+    /**
+     * Converts legacy {@code &} colour/format codes to their MiniMessage equivalents
+     * so that any remaining {@code &} codes in lang files still render correctly.
+     */
+    private static String legacyToMiniMessage(String s) {
+        if (s == null || s.isEmpty()) return s;
+        // Use the legacy serialiser → Component → MiniMessage serialiser round-trip
+        // only for strings that still contain legacy codes.
+        if (s.indexOf('&') < 0) return s;
+        Component legacy = LegacyComponentSerializer.legacyAmpersand().deserialize(s);
+        return MM.serialize(legacy);
+    }
 }
-
-

@@ -4,7 +4,7 @@
   <groupId>me.bill</groupId>
   <artifactId>fpp</artifactId>
   <name>fpp</name>
-  <version>0.0.1</version>
+  <version>0.1.5</version>
   <build>
     <defaultGoal>clean package</defaultGoal>
     <resources>
@@ -18,8 +18,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.13.0</version>
         <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
+          <release>21</release>
         </configuration>
       </plugin>
       <plugin>
@@ -34,16 +33,7 @@
           </execution>
         </executions>
         <configuration>
-          <relocations>
-            <relocation>
-              <pattern>com.github.retrooper.packetevents</pattern>
-              <shadedPattern>me.bill.fakePlayerPlugin.libs.packetevents</shadedPattern>
-            </relocation>
-            <relocation>
-              <pattern>io.github.retrooper.packetevents</pattern>
-              <shadedPattern>me.bill.fakePlayerPlugin.libs.packetevents.impl</shadedPattern>
-            </relocation>
-          </relocations>
+          <minimizeJar>false</minimizeJar>
         </configuration>
       </plugin>
     </plugins>
@@ -52,6 +42,10 @@
     <repository>
       <id>papermc-repo</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
+    </repository>
+    <repository>
+      <id>central</id>
+      <url>https://repo.maven.apache.org/maven2</url>
     </repository>
   </repositories>
   <dependencies>

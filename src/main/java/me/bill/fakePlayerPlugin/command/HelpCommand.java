@@ -1,6 +1,7 @@
 package me.bill.fakePlayerPlugin.command;
 
 import me.bill.fakePlayerPlugin.lang.Lang;
+import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.TextUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -34,34 +35,26 @@ public class HelpCommand implements FppCommand {
 
     @Override public String getName()        { return "help"; }
     @Override public String getUsage()       { return "[page]"; }
-    @Override public String getDescription() { return "Shows this help menu."; }
+    @Override public String getDescription() { return "Shows the command help menu."; }
+    @Override public String getPermission()  { return Perm.HELP; }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        // Collect only commands this sender is allowed to see
+        // Collect only commands this sender is allowed to use (canUse handles dual-tier)
         List<FppCommand> visible = manager.getCommands().stream()
-                .filter(cmd -> {
-                    String perm = cmd.getPermission();
-                    return perm == null || sender.hasPermission(perm);
-                })
+                .filter(cmd -> cmd.canUse(sender))
                 .toList();
 
         int totalPages = Math.max(1, (int) Math.ceil(visible.size() / (double) PAGE_SIZE));
 
         int page = 1;
         if (args.length > 0) {
-            try {
-                page = Integer.parseInt(args[0]);
-            } catch (NumberFormatException ignored) {}
+            try { page = Integer.parseInt(args[0]); } catch (NumberFormatException ignored) {}
         }
         page = Math.min(Math.max(page, 1), totalPages);
 
         // ── Header ──────────────────────────────────────────────────────────
         sender.sendMessage(Lang.get("help-header"));
-        sender.sendMessage(Lang.get("help-title"));
-
-        // ── Clickable pagination bar ─────────────────────────────────────────
-        sender.sendMessage(buildPaginationBar(page, totalPages));
         sender.sendMessage(Component.empty());
 
         // ── Entries ─────────────────────────────────────────────────────────
@@ -77,8 +70,9 @@ public class HelpCommand implements FppCommand {
             sender.sendMessage(TextUtil.colorize(raw));
         }
 
-        // ── Footer ──────────────────────────────────────────────────────────
+        // ── Clickable pagination bar (below entries) ─────────────────────────
         sender.sendMessage(Component.empty());
+        sender.sendMessage(buildPaginationBar(page, totalPages));
         sender.sendMessage(Lang.get("help-footer"));
         return true;
     }

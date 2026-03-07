@@ -16,16 +16,18 @@ import java.util.regex.Pattern;
 /**
  * Fetches Mojang skin textures for a given player name asynchronously.
  *
+ * <p>Used when {@code fake-player.skin.mode: fetch} is set in config.yml.
+ * In {@code auto} mode, Paper's Mannequin.setProfile() handles resolution
+ * internally and this class is not used.
+ *
  * <p>Features:
  * <ul>
- *   <li><b>Per-name cache</b> — a name is only fetched from Mojang once per
- *       server session; subsequent requests get the cached result instantly.</li>
- *   <li><b>Pending-callback deduplication</b> — if two bots with the same name
- *       are spawned simultaneously, only one HTTP request is made; both callbacks
- *       are queued and fired together when the response arrives.</li>
- *   <li><b>Serial request queue</b> — requests are processed one at a time with
- *       a 600 ms gap between them, keeping well inside Mojang's rate limit
- *       (~1 req/600 ms per IP).</li>
+ *   <li><b>Per-name cache</b> — fetched once per session; subsequent calls
+ *       return instantly from cache.</li>
+ *   <li><b>Callback deduplication</b> — simultaneous requests for the same
+ *       name share one HTTP call.</li>
+ *   <li><b>Rate-limited queue</b> — 200 ms between requests, well inside
+ *       Mojang's limit (~1 req/600 ms per IP).</li>
  * </ul>
  */
 public final class SkinFetcher {
@@ -43,20 +45,13 @@ public final class SkinFetcher {
 
     // ── Cache & queue ─────────────────────────────────────────────────────────
 
-    /** Completed skin results: name → [value, signature] (null values = no skin). */
+    /** name → [value, signature] (null values = no skin / not found). */
     private static final Map<String, String[]> cache = new ConcurrentHashMap<>();
 
-    /**
-     * Pending callbacks for names currently being fetched.
-     * name → list of callbacks waiting for the result.
-     */
+    /** name → callbacks waiting for the in-flight fetch. */
     private static final Map<String, List<BiConsumer<String, String>>> pending =
             new ConcurrentHashMap<>();
 
-    /**
-     * Single-threaded executor with a 600 ms delay between jobs so we stay
-     * well inside Mojang's per-IP rate limit.
-     */
     private static final ScheduledExecutorService executor =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "FPP-SkinFetcher");
@@ -64,53 +59,63 @@ public final class SkinFetcher {
                 return t;
             });
 
-    /** Delay between consecutive Mojang API requests (milliseconds). */
-    private static final long REQUEST_GAP_MS = 650;
-
-    /** Tracks when the next request slot is available. */
+    /** Gap between consecutive Mojang API requests (ms). */
+    private static final long REQUEST_GAP_MS = 200;
     private static long nextSlotMs = 0;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**
      * Fetches skin data for {@code playerName} and calls
-     * {@code callback(value, signature)} when done.
-     * Both args are {@code null} if no skin exists for that name.
-     *
-     * <p>This method is safe to call from any thread, including the main thread.
+     * {@code callback(value, signature)} on the FPP-SkinFetcher thread.
+     * Both args are {@code null} if no skin exists (name not on Mojang).
+     * Safe to call from any thread.
      */
     public static synchronized void fetchAsync(String playerName,
                                                BiConsumer<String, String> callback) {
-        // 1. Already cached — fire immediately on the calling thread
+        // 1. Cached — fire immediately
         if (cache.containsKey(playerName)) {
-            String[] result = cache.get(playerName);
-            callback.accept(result[0], result[1]);
+            String[] r = cache.get(playerName);
+            callback.accept(r[0], r[1]);
             return;
         }
-
-        // 2. Already in-flight — queue callback to be fired with the result
+        // 2. Already in-flight — queue callback
         if (pending.containsKey(playerName)) {
             pending.get(playerName).add(callback);
             return;
         }
+        // 3. New fetch
+        List<BiConsumer<String, String>> cbs = new CopyOnWriteArrayList<>();
+        cbs.add(callback);
+        pending.put(playerName, cbs);
 
-        // 3. New name — create pending list, schedule the fetch
-        List<BiConsumer<String, String>> callbacks = new CopyOnWriteArrayList<>();
-        callbacks.add(callback);
-        pending.put(playerName, callbacks);
-
-        // Calculate when to run: now or after the next available slot
         long now   = System.currentTimeMillis();
         long delay = Math.max(0, nextSlotMs - now);
         nextSlotMs = Math.max(now, nextSlotMs) + REQUEST_GAP_MS;
-
         executor.schedule(() -> doFetch(playerName), delay, TimeUnit.MILLISECONDS);
     }
 
-    /** Clears the skin cache (e.g. on plugin reload so fresh skins are fetched). */
+    /** Returns cached skin data immediately, or {@code null} if not yet cached. */
+    public static synchronized String[] getCached(String playerName) {
+        return cache.get(playerName);
+    }
+
+    /** Returns {@code true} if this name has already been resolved. */
+    public static synchronized boolean isCached(String playerName) {
+        return cache.containsKey(playerName);
+    }
+
+    /**
+     * Clears the entire skin cache — call on /fpp reload so bots
+     * get fresh skins after a name-pool change.
+     */
     public static synchronized void clearCache() {
         cache.clear();
+        FppLogger.debug("SkinFetcher: cache cleared.");
     }
+
+    /** Returns the number of names currently in the cache. */
+    public static int cacheSize() { return cache.size(); }
 
     // ── Internal fetch ────────────────────────────────────────────────────────
 
@@ -122,19 +127,21 @@ public final class SkinFetcher {
                 String[] tex = fetchTextures(uuid);
                 if (tex != null) { value = tex[0]; signature = tex[1]; }
             }
+            if (value != null)
+                FppLogger.debug("SkinFetcher: fetched skin for '" + playerName + "'.");
+            else
+                FppLogger.debug("SkinFetcher: no skin found for '" + playerName + "'.");
         } catch (Exception e) {
             FppLogger.warn("SkinFetcher error for '" + playerName + "': " + e.getMessage());
         }
 
-        // Store in cache
-        String[] result = new String[]{value, signature};
+        String[] result = {value, signature};
         cache.put(playerName, result);
 
-        // Fire all waiting callbacks
-        List<BiConsumer<String, String>> callbacks = pending.remove(playerName);
-        if (callbacks != null) {
+        List<BiConsumer<String, String>> cbs = pending.remove(playerName);
+        if (cbs != null) {
             final String v = value, s = signature;
-            for (BiConsumer<String, String> cb : callbacks) {
+            for (BiConsumer<String, String> cb : cbs) {
                 try { cb.accept(v, s); }
                 catch (Exception e) {
                     FppLogger.warn("SkinFetcher callback error for '" + playerName + "': " + e.getMessage());
@@ -143,33 +150,27 @@ public final class SkinFetcher {
         }
     }
 
-    // ── Mojang API calls ──────────────────────────────────────────────────────
+    // ── Mojang API ────────────────────────────────────────────────────────────
 
     private static String fetchUuid(String name) {
         try {
             String json = get("https://api.mojang.com/users/profiles/minecraft/" + name);
-            if (json == null || json.isEmpty()) return null;
+            if (json == null || json.isBlank()) return null;
             Matcher m = UUID_PATTERN.matcher(json);
             return m.find() ? m.group(1) : null;
-        } catch (Exception e) {
-            return null;
-        }
+        } catch (Exception e) { return null; }
     }
 
     private static String[] fetchTextures(String rawUuid) {
         try {
             String json = get("https://sessionserver.mojang.com/session/minecraft/profile/"
                     + rawUuid + "?unsigned=false");
-            if (json == null || json.isEmpty()) return null;
+            if (json == null || json.isBlank()) return null;
             Matcher vm = VALUE_PATTERN.matcher(json);
             Matcher sm = SIG_PATTERN.matcher(json);
             if (!vm.find()) return null;
-            String value = vm.group(1);
-            String sig   = sm.find() ? sm.group(1) : null;
-            return new String[]{value, sig};
-        } catch (Exception e) {
-            return null;
-        }
+            return new String[]{vm.group(1), sm.find() ? sm.group(1) : null};
+        } catch (Exception e) { return null; }
     }
 
     private static String get(String urlStr) throws Exception {
@@ -187,8 +188,6 @@ public final class SkinFetcher {
             String line;
             while ((line = br.readLine()) != null) sb.append(line);
             return sb.toString();
-        } finally {
-            conn.disconnect();
-        }
+        } finally { conn.disconnect(); }
     }
 }

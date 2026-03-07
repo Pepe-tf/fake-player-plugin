@@ -20,15 +20,36 @@ public interface FppCommand {
     /** One-line description shown next to the command in the help list. */
     String getDescription();
 
-    /** Permission node required to use this command; {@code null} → no permission needed. */
+    /**
+     * Primary permission node for this command; {@code null} → no single
+     * permission (override {@link #canUse} for multi-tier commands).
+     */
     default String getPermission() { return null; }
+
+    /**
+     * Returns {@code true} if {@code sender} is allowed to use this command
+     * and should see it in tab-complete and the help menu.
+     *
+     * <p>The default implementation checks {@link #getPermission()}:
+     * <ul>
+     *   <li>If the permission is {@code null}, everyone can use it.</li>
+     *   <li>Otherwise the sender must have the node.</li>
+     * </ul>
+     *
+     * <p>Override this for dual-tier commands (e.g. spawn accepts both
+     * {@code fpp.spawn} and {@code fpp.user.spawn}).
+     */
+    default boolean canUse(CommandSender sender) {
+        String perm = getPermission();
+        return perm == null || sender.hasPermission(perm);
+    }
 
     /**
      * Execute the command.
      *
      * @param sender the command sender
      * @param args   arguments that follow the sub-command name
-     * @return {@code true} if the command was handled; {@code false} sends usage to the sender.
+     * @return {@code true} if the command was handled.
      */
     boolean execute(CommandSender sender, String[] args);
 
@@ -43,5 +64,3 @@ public interface FppCommand {
         return Collections.emptyList();
     }
 }
-
-

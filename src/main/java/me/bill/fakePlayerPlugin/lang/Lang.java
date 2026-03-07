@@ -1,6 +1,7 @@
 package me.bill.fakePlayerPlugin.lang;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.util.TextUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -49,6 +50,7 @@ public final class Lang {
         }
 
         cfg = disk;
+        Config.debug("Lang loaded from: " + file.getPath());
     }
 
     // ── Accessor ─────────────────────────────────────────────────────────────
