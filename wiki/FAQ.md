@@ -89,7 +89,7 @@ Check the following:
 
 This is intentional. FPP bots are **static Mannequin entities** with:
 - Head tracking toward nearby players (see `head-ai` config)
-- Physics / pushback from player and entity collisions
+- Physics / pushback from player and entity collisions.
 
 They do not pathfind, walk around, or have mob AI — this is by design.
 
