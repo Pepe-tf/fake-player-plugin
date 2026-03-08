@@ -1,3 +1,7 @@
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · **Database** · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # Database
 
 FPP logs every bot session to a database for auditing, analytics, and the `/fpp info` command.
@@ -134,3 +138,7 @@ For MySQL, use standard `mysqldump`:
 mysqldump -u fpp_user -p fpp > fpp_backup.sql
 ```
 
+---
+
+| [◀ Bot Messages](Bot-Messages.md) | [🏠 Home](Home.md) | [Skin System ▶](Skin-System.md) |
+|:---|:---:|---:|

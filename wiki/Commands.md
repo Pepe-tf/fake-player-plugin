@@ -1,3 +1,7 @@
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · **Commands** · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # Commands
 
 All FPP commands go through the root command `/fpp` (aliases: `/fakeplayer`, `/fp`).  
@@ -286,3 +290,7 @@ The skin cache is cleared if `skin.clear-cache-on-reload: true` in config.
 | `/fakeplayer` | `/fpp` |
 | `/fp` | `/fpp` |
 
+---
+
+| [◀ Getting Started](Getting-Started.md) | [🏠 Home](Home.md) | [Permissions ▶](Permissions.md) |
+|:---|:---:|---:|

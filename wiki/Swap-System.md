@@ -1,3 +1,7 @@
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · **Swap System** · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # Swap System
 
 The swap system automatically rotates bots — they periodically leave the server and rejoin with a new name, simulating organic player activity without any manual intervention.
@@ -183,3 +187,7 @@ fake-chat:
     max: 120
 ```
 
+---
+
+| [◀ Bot Behaviour](Bot-Behaviour.md) | [🏠 Home](Home.md) | [Fake Chat ▶](Fake-Chat.md) |
+|:---|:---:|---:|

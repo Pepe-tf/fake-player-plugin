@@ -1,3 +1,7 @@
+> **🏠 Home** · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ — Wiki
 
 > **Version:** 1.0.0 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
@@ -65,3 +69,7 @@ To request usage permissions or report issues, contact the owner on Discord: **B
 
 > See [LICENSE](../LICENSE) for the full terms.
 
+---
+
+| ◀ *(first page)* | [🏠 Home](Home.md) | [Getting Started ▶](Getting-Started.md) |
+|:---|:---:|---:|

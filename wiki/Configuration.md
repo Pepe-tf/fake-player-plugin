@@ -1,3 +1,7 @@
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · **Configuration** · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # Configuration
 
 FPP is configured through `plugins/FakePlayerPlugin/config.yml`.  
@@ -348,3 +352,7 @@ When MySQL is disabled or unreachable, FPP automatically uses a local **SQLite**
 
 > See [Database](Database.md) for schema details and how to query records.
 
+---
+
+| [◀ Permissions](Permissions.md) | [🏠 Home](Home.md) | [Language ▶](Language.md) |
+|:---|:---:|---:|

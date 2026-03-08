@@ -1,3 +1,7 @@
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · **Language** · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # Language & Messages
 
 FPP uses **MiniMessage** formatting for all in-game text.  
@@ -212,3 +216,7 @@ spawn-success: "{prefix}🤖 <#0079FF>{count}</#0079FF> <gray>bot(s) summoned. <
 4. Set `language: de` in `config.yml`  
 5. Run `/fpp reload`
 
+---
+
+| [◀ Configuration](Configuration.md) | [🏠 Home](Home.md) | [Bot Names ▶](Bot-Names.md) |
+|:---|:---:|---:|

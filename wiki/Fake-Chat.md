@@ -1,3 +1,7 @@
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · **Fake Chat** · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # Fake Chat
 
 FPP bots can send random chat messages to make the server feel lively and populated.
@@ -135,3 +139,7 @@ fake-chat:
 - **Longer intervals feel more natural** — 30–120 seconds is a realistic human chat pace
 - Set `require-player-online: true` if you don't want bots chatting into an empty server
 
+---
+
+| [◀ Swap System](Swap-System.md) | [🏠 Home](Home.md) | [FAQ & Troubleshooting ▶](FAQ.md) |
+|:---|:---:|---:|

@@ -1,3 +1,7 @@
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · **Bot Behaviour** · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+
+---
+
 # Bot Behaviour
 
 This page covers all the ways fake player bots behave in the world — their physical body, AI, combat, death, and interaction with chunks.
@@ -171,3 +175,7 @@ When `spawn-body: true`, bots are counted in the server list player count, makin
 
 This is handled automatically via a packet-level hook — no extra configuration needed.
 
+---
+
+| [◀ Skin System](Skin-System.md) | [🏠 Home](Home.md) | [Swap System ▶](Swap-System.md) |
+|:---|:---:|---:|
