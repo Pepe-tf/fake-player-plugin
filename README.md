@@ -2,7 +2,7 @@
 
 > Spawn realistic fake players on your Paper server — complete with tab list, server list count, join/leave/kill messages, staggered join/leave delays, in-world physics bodies, skin support, bot swap/rotation, fake chat, session database tracking, LuckPerms integration, and full hot-reload configuration.
 
-![Version](https://img.shields.io/badge/version-1.0.0-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.15-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
@@ -395,9 +395,6 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 ## ✦ Changelog
 
 ### v1.0.15 *(2026-03-11)*
-- Version bump
-
-### v1.0.0 *(2026-03-11)*
 - **Join/leave messages** now broadcast to all online players and console via direct delivery, matching vanilla Paper join/leave message behaviour
 - `BotBroadcast` utility safely handles display names containing LuckPerms `§`-codes alongside MiniMessage tags — no more parse failures or blank messages
 - Fully updated `config.yml` — clean flat structure, removed `admin-prefix`/`user-prefix`, added `luckperms.use-prefix` toggle, added MySQL `pool-size` and `connection-timeout`
