@@ -4,7 +4,7 @@
 
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ — Wiki
 
-> **Version:** 1.0.0 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
+> **Version:** 1.0.15 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
 
 ---
 

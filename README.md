@@ -394,6 +394,9 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 
 ## ✦ Changelog
 
+### v1.0.15 *(2026-03-11)*
+- Version bump
+
 ### v1.0.0 *(2026-03-11)*
 - **Join/leave messages** now broadcast to all online players and console via direct delivery, matching vanilla Paper join/leave message behaviour
 - `BotBroadcast` utility safely handles display names containing LuckPerms `§`-codes alongside MiniMessage tags — no more parse failures or blank messages
@@ -433,4 +436,4 @@ Contact: Discord `Bill_Hub`
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.0.0*
+*Built for Paper 1.21.x · Java 21 · FPP v1.0.15*
