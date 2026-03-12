@@ -8,82 +8,126 @@
 #    Decorations    : <bold>, <italic>, <underlined>, <strikethrough>
 #    Reset          : <reset>
 #  Placeholders : {placeholder} — see each entry for available ones
+#
+#  ⚠  Keys marked "INTERNAL — do not edit" are used by the plugin's layout
+#     engine. Changing them will break formatting.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Plugin prefix prepended to all messages that include {prefix}
-prefix: "<dark_gray>[<#0079FF>ꜰᴘᴘ</#0079FF><dark_gray>] "
+# ── Plugin prefix — prepended to all [FPP] messages ──────────────────────────
+#  Feel free to change the colour/text, but keep it short.
+prefix: "<dark_gray>[<#0079FF>ꜰᴘᴘ</#0079FF><dark_gray>]<reset> "
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  INTERNAL LAYOUT STRINGS — do not remove or rename these keys.
+#  You may adjust colours/characters but keep the structure intact.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Horizontal rule used in headers and footers
+divider: "<dark_gray><st>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</st>"
+
+# Help menu — INTERNAL (placeholders {cmd}, {args}, {desc} required)
+help-header: "<dark_gray><st>━━━━━━━━━</st> <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</bold></#0079FF> <dark_gray><st>━━━━━━━━━</st>"
+help-entry:  "  <#0079FF>/{cmd}</#0079FF><gray> {args} <dark_gray>— <white>{desc}"
+help-footer: "<dark_gray><st>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</st>"
+
+# Plugin info screen (/fpp bare) — INTERNAL header line
+info-screen-header: "  <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</#0079FF></bold> <dark_gray>· <gray>ꜰᴘᴘ"
+
+# Modrinth page — URL is hardcoded in the plugin; only the label is shown to players
+modrinth-label: "ᴍᴏᴅʀɪɴᴛʜ"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  PLAYER-FACING MESSAGES — safe to edit freely
+# ─────────────────────────────────────────────────────────────────────────────
 
 # ── Generic errors ────────────────────────────────────────────────────────────
-no-permission:    "{prefix}<red>You don't have permission to do that."
-unknown-command:  "{prefix}<red>Unknown sub-command. <gray>Try <#0079FF>/{0} ʜᴇʟᴘ</#0079FF><gray> for a list."
-player-only:      "{prefix}<red>Only a player can run this command."
-invalid-number:   "{prefix}<red>Invalid number. Please enter a positive integer."
-
-# ── Help menu ─────────────────────────────────────────────────────────────────
-help-header: "<dark_gray><st>━━━━━━━━━━━━</st> <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</bold></#0079FF> <dark_gray><st>━━━━━━━━━━━━</st>"
-help-entry:  "  <#0079FF>/{cmd}</#0079FF><gray> {args} <dark_gray>— <white>{desc}"
-help-footer: "<dark_gray><st>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</st>"
+no-permission:  "{prefix}<red>ʏᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴘᴇʀᴍɪꜱꜱɪᴏɴ ᴛᴏ ᴅᴏ ᴛʜɪꜱ."
+unknown-command: "{prefix}<red>ᴜɴᴋɴᴏᴡɴ ꜱᴜʙ-ᴄᴏᴍᴍᴀɴᴅ. <gray>ᴛʀʏ <#0079FF>/{0} ʜᴇʟᴘ</#0079FF><gray> ꜰᴏʀ ᴀ ʟɪꜱᴛ."
+player-only:    "{prefix}<red>ᴏɴʟʏ ᴀ ᴘʟᴀʏᴇʀ ᴄᴀɴ ʀᴜɴ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ."
+invalid-number: "{prefix}<red>ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ. ᴘʟᴇᴀꜱᴇ ᴇɴᴛᴇʀ ᴀ ᴘᴏꜱɪᴛɪᴠᴇ ɪɴᴛᴇɢᴇʀ."
+console-only:   "{prefix}<red>ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ʀᴜɴ ꜰʀᴏᴍ ᴛʜᴇ ᴄᴏɴꜱᴏʟᴇ."
 
 # ── Reload ────────────────────────────────────────────────────────────────────
 # {ms} — milliseconds the reload took
-reload-success: "{prefix}<#0079FF>ᴄᴏɴꜰɪɢ</#0079FF> <gray>ʀᴇʟᴏᴀᴅᴇᴅ <white>ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ <dark_gray>(<#0079FF>{ms}ᴍꜱ</#0079FF><dark_gray>)<gray>."
+reload-success: "{prefix}<#0079FF>ᴄᴏɴꜰɪɡ</#0079FF> <gray>ʀᴇʟᴏᴀᴅᴇᴅ <white>ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ <dark_gray>(<#0079FF>{ms}ᴍꜱ</#0079FF><dark_gray>)<gray>."
+reload-failed:  "{prefix}<red>ʀᴇʟᴏᴀᴅ ꜰᴀɪʟᴇᴅ. <gray>ᴄʜᴇᴄᴋ ᴛʜᴇ ꜱᴇʀᴠᴇʀ ʟᴏɡꜱ ꜰᴏʀ ᴅᴇᴛᴀɪʟꜱ."
 
 # ── Spawn ─────────────────────────────────────────────────────────────────────
-# {count}   — number of bots spawned
-# {total}   — total bots now active
-# {name}    — custom bot name (name-taken error)
-# {max}     — max bot limit (max-reached error)
-spawn-success:      "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ꜱᴜᴍᴍᴏɴᴇᴅ<gray>. <dark_gray>(<#0079FF>{total}</#0079FF> <gray>ᴀᴄᴛɪᴠᴇ<dark_gray>)"
-spawn-max-reached:       "{prefix}<red>Max bot limit reached <dark_gray>(<#0079FF>{max}</#0079FF> <gray>ʙᴏᴛꜱ<dark_gray>)<red>. Delete some first."
-spawn-user-limit-reached: "{prefix}<red>You've reached your personal bot limit <dark_gray>(<#0079FF>{limit}</#0079FF> <gray>ʙᴏᴛ(ꜱ)<dark_gray>)<red>."
-spawn-invalid:      "{prefix}<red>Invalid usage. <gray>Try <#0079FF>/fpp spawn [amount] [--name <name>]</#0079FF><gray>."
-spawn-invalid-name: "{prefix}<red>Invalid bot name. <gray>Use 1–16 characters: letters, digits, or underscores only."
-spawn-name-taken:   "{prefix}<red>A bot named <white>{name} <red>is already active."
+# {count}  — number of bots spawned
+# {total}  — total bots now active
+# {name}   — custom bot name (name-taken / invalid-name errors)
+# {max}    — max bot limit   (max-reached error)
+# {limit}  — personal limit  (user-limit-reached error)
+spawn-success:            "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ꜱᴜᴍᴍᴏɴᴇᴅ<gray>. <dark_gray>(<#0079FF>{total}</#0079FF> <gray>ᴀᴄᴛɪᴠᴇ<dark_gray>)"
+spawn-max-reached:        "{prefix}<red>ᴍᴀx ʙᴏᴛ ʟɪᴍɪᴛ ʀᴇᴀᴄʜᴇᴅ <dark_gray>(<#0079FF>{max}</#0079FF> <gray>ʙᴏᴛꜱ<dark_gray>)<red>. ᴅᴇʟᴇᴛᴇ ꜱᴏᴍᴇ ꜰɪʀꜱᴛ."
+spawn-user-limit-reached: "{prefix}<red>ʏᴏᴜ'ᴠᴇ ʀᴇᴀᴄʜᴇᴅ ʏᴏᴜʀ ᴘᴇʀꜱᴏɴᴀʟ ʙᴏᴛ ʟɪᴍɪᴛ <dark_gray>(<#0079FF>{limit}</#0079FF> <gray>ʙᴏᴛ(ꜱ)<dark_gray>)<red>."
+spawn-invalid:            "{prefix}<red>ɪɴᴠᴀʟɪᴅ ᴜꜱᴀɢᴇ. <gray>ᴛʀʏ <#0079FF>/fpp spawn [amount] [--name <name>]</#0079FF><gray>."
+spawn-invalid-name:       "{prefix}<red>ɪɴᴠᴀʟɪᴅ ʙᴏᴛ ɴᴀᴍᴇ. <gray>ᴜꜱᴇ <white>1–16 <gray>ᴄʜᴀʀꜱ <dark_gray>(<white>ʟᴇᴛᴛᴇʀꜱ<gray>, <white>ᴅɪɡɪᴛꜱ<gray>, <white>_<dark_gray>)<gray>."
+spawn-name-taken:         "{prefix}<red>ᴀ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name} <red>ɪꜱ ᴀʟʀᴇᴀᴅʏ ᴀᴄᴛɪᴠᴇ."
+spawn-no-names-left:      "{prefix}<red>ᴀʟʟ ɴᴀᴍᴇꜱ ɪɴ ᴛʜᴇ ᴘᴏᴏʟ ᴀʀᴇ ɪɴ ᴜꜱᴇ. <gray>ʀᴇᴅᴜᴄᴇ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ ᴏʀ ᴀᴅᴅ ᴍᴏʀᴇ ɴᴀᴍᴇꜱ."
 
 # ── Delete ────────────────────────────────────────────────────────────────────
 # {name}  — bot name
-# {count} — number of bots deleted (delete all)
-delete-success:    "{prefix}<#0079FF>{name}</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
-delete-all:        "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
-delete-none:       "{prefix}<red>No bots are currently active."
-delete-not-found:  "{prefix}<red>No active bot named <white>{name}<red> was found."
+# {count} — bots deleted (delete all)
+delete-success:       "{prefix}<#0079FF>{name}</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
+delete-all:           "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
+delete-none:          "{prefix}<red>ɴᴏ ʙᴏᴛꜱ ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ."
+delete-not-found:     "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red> ᴡᴀꜱ ꜰᴏᴜɴᴅ."
+delete-no-perm-other: "{prefix}<red>ʏᴏᴜ ᴄᴀɴ ᴏɴʟʏ ᴅᴇʟᴇᴛᴇ <white>ʏᴏᴜʀ ᴏᴡɴ<red> ʙᴏᴛꜱ."
 
 # ── List ──────────────────────────────────────────────────────────────────────
-list-none: "  <gray>No bots are currently active."
+# {count} — active bot count  |  {max} — max bot limit
+# {name}, {world}, {x}, {y}, {z} — per-bot placeholders
+list-header: "{prefix}<gray>ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ <dark_gray>(<#0079FF>{count}</#0079FF><dark_gray>/<#0079FF>{max}</#0079FF><dark_gray>)"
+list-entry:  "  <#0079FF>•</#0079FF> <white>{name} <dark_gray>— <gray>{world} <dark_gray>@ <gray>{x}, {y}, {z}"
+list-none:   "  <gray>ɴᴏ ʙᴏᴛꜱ ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ."
 
-# ── Bot join / leave broadcast (vanilla-style) ────────────────────────────────
-# {name}   — bot name
-# {killer} — name of the player who killed the bot (bot-kill only)
+# ── Bot broadcast messages ────────────────────────────────────────────────────
+# {name}   — bot display name
+# {killer} — killer player name  (bot-kill only)
 bot-join:  "<yellow>{name} joined the game"
 bot-leave: "<yellow>{name} left the game"
-bot-kill:  "<yellow>{killer} <white>slain <yellow>{name}"
+bot-kill:  "<gray>{killer} <white>slain <gray>{name}"
 
-# ── Chat toggle ───────────────────────────────────────────────────────────────
-chat-enabled:    "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
-chat-disabled:   "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
-chat-status-on:  "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ᴄʜᴀᴛ ᴏꜰꜰ</#0079FF> <dark_gray>ᴛᴏ ᴅɪꜱᴀʙʟᴇ<dark_gray>)"
-chat-status-off: "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ᴄʜᴀᴛ ᴏɴ</#0079FF> <dark_gray>ᴛᴏ ᴇɴᴀʙʟᴇ<dark_gray>)"
-chat-invalid:    "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/ꜰᴘᴘ ᴄʜᴀᴛ <on|off|status></#0079FF><gray>."
+# ── Respawn broadcast ─────────────────────────────────────────────────────────
+# {name} — bot display name
+bot-respawn: "{prefix}<gray>ʙᴏᴛ <#0079FF>{name}</#0079FF> <gray>ᴡɪʟʟ ʀᴇꜱᴘᴀᴡɴ ꜱʜᴏʀᴛʟʏ."
 
-# ── Swap toggle ───────────────────────────────────────────────────────────────
+# ── Swap ──────────────────────────────────────────────────────────────────────
 swap-enabled:    "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
 swap-disabled:   "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
-swap-status-on:  "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ꜱᴡᴀᴘ ᴏꜰꜰ</#0079FF> <dark_gray>ᴛᴏ ᴅɪꜱᴀʙʟᴇ<dark_gray>)"
-swap-status-off: "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>. <dark_gray>(<#0079FF>/ꜰᴘᴘ ꜱᴡᴀᴘ ᴏɴ</#0079FF> <dark_gray>ᴛᴏ ᴇɴᴀʙʟᴇ<dark_gray>)"
-swap-invalid:    "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/ꜰᴘᴘ ꜱᴡᴀᴘ <on|off|status></#0079FF><gray>."
+swap-status-on:  "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
+swap-status-off: "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
+swap-invalid:    "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp swap <on|off|status></#0079FF><gray>."
+
+# ── Fake chat ─────────────────────────────────────────────────────────────────
+chat-enabled:    "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
+chat-disabled:   "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
+chat-status-on:  "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
+chat-status-off: "{prefix}<#0079FF>ꜰᴀᴋᴇ ᴄʜᴀᴛ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
+chat-invalid:    "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp chat <on|off|status></#0079FF><gray>."
 
 # ── Info / database ───────────────────────────────────────────────────────────
 # {name} — bot or spawner name queried
-info-no-records:      "{prefix}<red>No records found for <white>{name}<red>."
-info-db-unavailable:  "{prefix}<red>Database is not available. Check your config and server logs."
+info-no-records:     "{prefix}<red>ɴᴏ ʀᴇᴄᴏʀᴅꜱ ꜰᴏᴜɴᴅ ꜰᴏʀ <white>{name}<red>."
+info-db-unavailable: "{prefix}<red>ᴅᴀᴛᴀʙᴀꜱᴇ ᴜɴᴀᴠᴀɪʟᴀʙʟᴇ. ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴄᴏɴꜰɪɡ ᴀɴᴅ ꜱᴇʀᴠᴇʀ ʟᴏɡꜱ."
+info-no-bots:        "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ."
 
-# ── Teleport commands ─────────────────────────────────────────────────────────
-# {name}  — bot name
-# {limit} — user's personal bot limit
-tph-no-bots:      "{prefix}<red>You don't have any active bots."
-tph-specify-name: "{prefix}<red>You have multiple bots. <gray>Specify one: <#0079FF>/fpp tph <botname></#0079FF>"
-tph-not-yours:    "{prefix}<red>You don't own a bot named <white>{name}<red>."
-tph-not-found:    "{prefix}<red>No active bot named <white>{name}<red>."
-tph-failed:       "{prefix}<red>Could not teleport <white>{name}<red> — entity may be invalid."
-tp-specify-name:  "{prefix}<red>Multiple bots are active. <gray>Specify one: <#0079FF>/fpp tp <botname></#0079FF>"
+# ── Teleport ──────────────────────────────────────────────────────────────────
+# {name} — bot name
+tph-success:      "{prefix}<gray>ᴛᴇʟᴇᴘᴏʀᴛᴇᴅ <#0079FF>{name}</#0079FF> <gray>ᴛᴏ ʏᴏᴜ."
+tph-no-bots:      "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ."
+tph-specify-name: "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ᴍᴜʟᴛɪᴘʟᴇ ʙᴏᴛꜱ. <gray>ꜱᴘᴇᴄɪꜰʏ ᴏɴᴇ: <#0079FF>/fpp tph <botname></#0079FF>"
+tph-not-yours:    "{prefix}<red>ʏᴏᴜ ᴅᴏɴ'ᴛ ᴏᴡɴ ᴀ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
+tph-not-found:    "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
+tph-failed:       "{prefix}<red>ᴄᴏᴜʟᴅ ɴᴏᴛ ᴛᴇʟᴇᴘᴏʀᴛ <white>{name}<red> — ᴇɴᴛɪᴛʏ ɪɴᴠᴀʟɪᴅ."
+tp-success:       "{prefix}<gray>ᴛᴇʟᴇᴘᴏʀᴛᴇᴅ ᴛᴏ <#0079FF>{name}</#0079FF><gray>."
+tp-specify-name:  "{prefix}<red>ᴍᴜʟᴛɪᴘʟᴇ ʙᴏᴛꜱ ᴀᴄᴛɪᴠᴇ. <gray>ꜱᴘᴇᴄɪ꜕ʏ ᴏɴᴇ: <#0079FF>/fpp tp <botname></#0079FF>"
+tp-not-found:     "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
+tp-failed:        "{prefix}<red>ᴄᴏᴜʟᴅ ɴᴏᴛ ᴛᴇʟᴇᴘᴏʀᴛ ᴛᴏ <white>{name}<red> — ᴇɴᴛɪᴛʏ ɪɴᴠᴀʟɪᴅ."
 
+# ── Update checker ────────────────────────────────────────────────────────────
+# {current} — installed version  |  {latest} — latest version
+update-available:  "{prefix}<#0079FF>ᴜᴘᴅᴀᴛᴇ ᴀᴠᴀɪʟᴀʙʟᴇ</#0079FF><gray>: <white>v{current} <gray>→ <white>v{latest}<gray>."
+update-up-to-date: "{prefix}<gray>ᴘʟᴜɢɪɴ ɪꜱ ᴜᴘ ᴛᴏ ᴅᴀᴛᴇ <dark_gray>(<#0079FF>v{current}</#0079FF><dark_gray>)<gray>."
+update-failed:     "{prefix}<gray>ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʜᴇᴄᴋ ꜰᴏʀ ᴜᴘᴅᴀᴛᴇꜱ."

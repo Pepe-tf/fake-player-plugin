@@ -6,6 +6,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -14,20 +16,23 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Fetches Mojang skin textures for a given player name asynchronously.
+ * Fetches Mojang skin textures for a given player name or URL asynchronously.
  *
- * <p>Used when {@code fake-player.skin.mode: fetch} is set in config.yml.
- * In {@code auto} mode, Paper's Mannequin.setProfile() handles resolution
- * internally and this class is not used.
- *
- * <p>Features:
+ * <h3>Capabilities</h3>
  * <ul>
- *   <li><b>Per-name cache</b> — fetched once per session; subsequent calls
- *       return instantly from cache.</li>
- *   <li><b>Callback deduplication</b> — simultaneous requests for the same
- *       name share one HTTP call.</li>
- *   <li><b>Rate-limited queue</b> — 200 ms between requests, well inside
- *       Mojang's limit (~1 req/600 ms per IP).</li>
+ *   <li>{@link #fetchAsync(String, BiConsumer)} — resolve skin by Minecraft player name.</li>
+ *   <li>{@link #fetchByUrl(String, BiConsumer)} — build a skin profile from a raw
+ *       Mojang CDN URL (e.g. {@code https://textures.minecraft.net/texture/…}).</li>
+ * </ul>
+ *
+ * <h3>Reliability features</h3>
+ * <ul>
+ *   <li><b>Per-name cache</b> — fetched once per session; subsequent calls return
+ *       instantly from cache.</li>
+ *   <li><b>Callback deduplication</b> — simultaneous requests for the same name
+ *       share one HTTP call.</li>
+ *   <li><b>Rate-limited queue</b> — 200 ms between requests, well inside Mojang's
+ *       limit (~1 req / 600 ms per IP).</li>
  * </ul>
  */
 public final class SkinFetcher {
@@ -96,11 +101,13 @@ public final class SkinFetcher {
     }
 
     /** Returns cached skin data immediately, or {@code null} if not yet cached. */
+    @SuppressWarnings("unused")
     public static synchronized String[] getCached(String playerName) {
         return cache.get(playerName);
     }
 
     /** Returns {@code true} if this name has already been resolved. */
+    @SuppressWarnings("unused")
     public static synchronized boolean isCached(String playerName) {
         return cache.containsKey(playerName);
     }
@@ -115,7 +122,93 @@ public final class SkinFetcher {
     }
 
     /** Returns the number of names currently in the cache. */
+    @SuppressWarnings("unused")
     public static int cacheSize() { return cache.size(); }
+
+    // ── URL-based fetching ────────────────────────────────────────────────────
+
+    /**
+     * Builds a skin profile from a raw Mojang CDN texture URL such as
+     * {@code https://textures.minecraft.net/texture/<hash>}.
+     *
+     * <p>Constructs the base64 texture-payload JSON locally — no extra HTTP
+     * call needed. The resulting profile has no RSA signature ({@code null})
+     * which is fine for display purposes on Paper servers.
+     *
+     * <p>If the URL is a full player profile URL that returns JSON containing
+     * a {@code "value"} field, that field is used directly (signed).
+     *
+     * @param url      texture URL
+     * @param callback receives (value, signature) — both non-null on success
+     */
+    public static void fetchByUrl(String url, BiConsumer<String, String> callback) {
+        if (url == null || url.isBlank()) {
+            callback.accept(null, null);
+            return;
+        }
+
+        // Cache key based on URL
+        String cacheKey = "url:" + url;
+        synchronized (SkinFetcher.class) {
+            if (cache.containsKey(cacheKey)) {
+                String[] r = cache.get(cacheKey);
+                callback.accept(r[0], r[1]);
+                return;
+            }
+            if (pending.containsKey(cacheKey)) {
+                pending.get(cacheKey).add(callback);
+                return;
+            }
+            List<BiConsumer<String, String>> cbs = new CopyOnWriteArrayList<>();
+            cbs.add(callback);
+            pending.put(cacheKey, cbs);
+
+            long now   = System.currentTimeMillis();
+            long delay = Math.max(0, nextSlotMs - now);
+            nextSlotMs = Math.max(now, nextSlotMs) + REQUEST_GAP_MS;
+            executor.schedule(() -> doFetchByUrl(cacheKey, url), delay, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private static void doFetchByUrl(String cacheKey, String url) {
+        String value = null, signature = null;
+        try {
+            // Strategy 1: if it's a textures.minecraft.net URL, wrap it in JSON directly
+            if (url.contains("textures.minecraft.net")) {
+                String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
+                value = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+                // No signature available without Mojang signing it
+                FppLogger.debug("SkinFetcher: built texture payload from CDN URL.");
+            } else {
+                // Strategy 2: try fetching it as a JSON endpoint (Mineskin API or similar)
+                String response = get(url);
+                if (response != null && !response.isBlank()) {
+                    Matcher vm = VALUE_PATTERN.matcher(response);
+                    Matcher sm = SIG_PATTERN.matcher(response);
+                    if (vm.find()) {
+                        value = vm.group(1);
+                        if (sm.find()) signature = sm.group(1);
+                        FppLogger.debug("SkinFetcher: extracted value+sig from URL response.");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            FppLogger.warn("SkinFetcher URL error for '" + url + "': " + e.getMessage());
+        }
+
+        String[] result = {value, signature};
+        cache.put(cacheKey, result);
+
+        List<BiConsumer<String, String>> cbs = pending.remove(cacheKey);
+        if (cbs != null) {
+            for (BiConsumer<String, String> cb : cbs) {
+                try { cb.accept(value, signature); }
+                catch (Exception e) {
+                    FppLogger.warn("SkinFetcher URL callback error: " + e.getMessage());
+                }
+            }
+        }
+    }
 
     // ── Internal fetch ────────────────────────────────────────────────────────
 
@@ -140,9 +233,8 @@ public final class SkinFetcher {
 
         List<BiConsumer<String, String>> cbs = pending.remove(playerName);
         if (cbs != null) {
-            final String v = value, s = signature;
             for (BiConsumer<String, String> cb : cbs) {
-                try { cb.accept(v, s); }
+                try { cb.accept(value, signature); }
                 catch (Exception e) {
                     FppLogger.warn("SkinFetcher callback error for '" + playerName + "': " + e.getMessage());
                 }

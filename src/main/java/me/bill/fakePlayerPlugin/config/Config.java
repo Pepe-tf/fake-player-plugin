@@ -2,9 +2,11 @@ package me.bill.fakePlayerPlugin.config;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Central accessor for {@code config.yml}.
@@ -46,6 +48,11 @@ public final class Config {
     /** Whether verbose debug logging is enabled. Maps to {@code debug}. */
     public static boolean isDebug() {
         return cfg.getBoolean("debug", false);
+    }
+
+    /** Whether the startup update checker is enabled. Maps to {@code update-checker.enabled}. */
+    public static boolean updateCheckerEnabled() {
+        return cfg.getBoolean("update-checker.enabled", true);
     }
 
     // ── Bot Limits  (limits.*) ────────────────────────────────────────────────
@@ -91,15 +98,65 @@ public final class Config {
     // ── Skin  (skin.*) ────────────────────────────────────────────────────────
 
     /**
-     * Skin rendering mode: {@code "auto"}, {@code "fetch"}, or {@code "disabled"}.
+     * Skin rendering mode:
+     * <ul>
+     *   <li>{@code "auto"}   — Paper resolves skin from Mojang automatically (recommended).</li>
+     *   <li>{@code "custom"} — Plugin manages skin resolution via SkinRepository
+     *                          (name-overrides, skin folder, config pool, Mojang fallback).</li>
+     *   <li>{@code "off"}    — No skin; bots display the default Steve / Alex appearance.</li>
+     * </ul>
      */
     public static String skinMode() {
         return cfg.getString("skin.mode", "auto").toLowerCase();
     }
 
-    /** Clear the skin-fetch cache on {@code /fpp reload} (fetch mode only). */
+    /** Clear the skin cache when {@code /fpp reload} is run. */
     public static boolean skinClearCacheOnReload() {
         return cfg.getBoolean("skin.clear-cache-on-reload", true);
+    }
+
+    /**
+     * Pool of Minecraft player names whose skins will be randomly assigned
+     * to bots in {@code custom} mode.
+     * Config path: {@code skin.pool}
+     */
+    public static List<String> skinCustomPool() {
+        // new key: skin.pool — fallback to old skin.custom.pool for compatibility
+        Object raw = cfg.get("skin.pool");
+        if (raw == null) raw = cfg.get("skin.custom.pool");
+        if (raw instanceof List<?> list) {
+            return list.stream()
+                    .filter(o -> o instanceof String)
+                    .map(o -> (String) o)
+                    .filter(s -> !s.isBlank())
+                    .toList();
+        }
+        return List.of();
+    }
+
+    /**
+     * Exact-name overrides: bot-name → Minecraft-player-name.
+     * Config path: {@code skin.overrides}
+     */
+    public static Map<String, String> skinCustomByName() {
+        // new key: skin.overrides — fallback to old skin.custom.by-name
+        Object section = cfg.get("skin.overrides");
+        if (section == null) section = cfg.get("skin.custom.by-name");
+        if (section instanceof Map<?, ?> raw) {
+            Map<String, String> result = new java.util.LinkedHashMap<>();
+            for (Map.Entry<?, ?> e : raw.entrySet()) {
+                if (e.getKey() instanceof String k && e.getValue() instanceof String v) {
+                    result.put(k.toLowerCase(), v);
+                }
+            }
+            return result;
+        }
+        return Map.of();
+    }
+
+    /** Whether to scan the skins/ folder for PNG files. Config path: {@code skin.use-skin-folder}. */
+    public static boolean skinUseSkinFolder() {
+        return cfg.getBoolean("skin.use-skin-folder", true);
     }
 
     // ── Body  (body.*) ────────────────────────────────────────────────────────
@@ -172,8 +229,22 @@ public final class Config {
     /** Whether bots keep chunks loaded around them. */
     public static boolean chunkLoadingEnabled() { return cfg.getBoolean("chunk-loading.enabled", true); }
 
-    /** Chunk radius kept loaded around each bot. */
-    public static int chunkLoadingRadius()      { return cfg.getInt("chunk-loading.radius", 6); }
+    /** Chunk radius kept loaded around each bot (mirrors server view-distance if set to 0). */
+    public static int chunkLoadingRadius() {
+        int r = cfg.getInt("chunk-loading.radius", 6);
+        if (r <= 0) {
+            // Use the server's actual simulation-distance as a sensible default
+            r = Bukkit.getSimulationDistance();
+        }
+        return Math.max(1, r);
+    }
+
+    /**
+     * How often (in ticks) the chunk-loader refreshes tickets.
+     * Default 20 (once per second) — lower = more responsive to bot movement,
+     * higher = less overhead for static bots.
+     */
+    public static int chunkLoadingUpdateInterval() { return cfg.getInt("chunk-loading.update-interval", 20); }
 
     // ── Head AI  (head-ai.*) ──────────────────────────────────────────────────
 
@@ -229,6 +300,12 @@ public final class Config {
     public static boolean mysqlUseSSL()       { return cfg.getBoolean("database.mysql.use-ssl", false); }
     public static int     mysqlPoolSize()     { return cfg.getInt("database.mysql.pool-size", 5); }
     public static int     mysqlConnTimeout()  { return cfg.getInt("database.mysql.connection-timeout", 30000); }
+
+    /** Seconds between batch location flushes to DB. */
+    public static int dbLocationFlushInterval() { return cfg.getInt("database.location-flush-interval", 30); }
+
+    /** Max rows returned per DB history query. */
+    public static int dbMaxHistoryRows() { return cfg.getInt("database.session-history.max-rows", 20); }
 
     // ── Utility ───────────────────────────────────────────────────────────────
 

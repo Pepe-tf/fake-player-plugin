@@ -47,7 +47,8 @@ public final class BotNameConfig {
         }
 
         cfg = disk;
-        Config.debug("BotNameConfig loaded: " + file.getPath());
+        int count = cfg.getStringList("name").size();
+        Config.debug("BotNameConfig loaded: " + count + " name(s) from " + file.getPath());
     }
 
     // ── Accessor ─────────────────────────────────────────────────────────────
@@ -57,7 +58,13 @@ public final class BotNameConfig {
      * Falls back to a small built-in list if the file is empty or missing.
      */
     public static List<String> getNames() {
-        List<String> names = cfg.getStringList("names");
+        if (cfg == null) return Arrays.asList("Alex", "Steve", "Notch");
+        // YAML key is "name" (singular) — not "names"
+        List<String> names = cfg.getStringList("name");
+        if (names.isEmpty()) {
+            // fallback: try "names" in case user renamed the key
+            names = cfg.getStringList("names");
+        }
         if (names.isEmpty()) {
             return Arrays.asList("Alex", "Steve", "Notch", "Herobrine", "Jeb_");
         }

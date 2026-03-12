@@ -1,8 +1,11 @@
 package me.bill.fakePlayerPlugin.command;
 
+import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 
 import java.util.Collections;
@@ -42,20 +45,30 @@ public class DeleteCommand implements FppCommand {
             return true;
         }
 
-        String targetName = args[0];
+        String input = args[0];
 
-        // Resolve the FakePlayer to get its display name for the success message
-        me.bill.fakePlayerPlugin.fakeplayer.FakePlayer fp = manager.getActivePlayers().stream()
-                .filter(p -> p.getName().equalsIgnoreCase(targetName)
-                        || p.getDisplayName().equalsIgnoreCase(targetName))
-                .findFirst().orElse(null);
+        // Match by internal name first (exact, case-insensitive) — this always works
+        // regardless of colour tags or LuckPerms prefixes in the display name.
+        FakePlayer fp = manager.getActivePlayers().stream()
+                .filter(p -> p.getName().equalsIgnoreCase(input))
+                .findFirst()
+                .orElse(null);
+
+        // Fallback: match by plain-text display name (colour tags stripped)
+        if (fp == null) {
+            String inputLower = input.toLowerCase();
+            fp = manager.getActivePlayers().stream()
+                    .filter(p -> plainOf(p.getDisplayName()).toLowerCase().contains(inputLower))
+                    .findFirst()
+                    .orElse(null);
+        }
 
         if (fp == null) {
-            sender.sendMessage(Lang.get("delete-not-found", "name", targetName));
+            sender.sendMessage(Lang.get("delete-not-found", "name", input));
             return true;
         }
 
-        String shown = fp.getDisplayName();
+        String shown = plainOf(fp.getDisplayName());
         manager.delete(fp.getName());
         sender.sendMessage(Lang.get("delete-success", "name", shown));
         return true;
@@ -69,14 +82,25 @@ public class DeleteCommand implements FppCommand {
             if (Perm.has(sender, Perm.DELETE_ALL)) {
                 suggestions.add("all");
             }
-            // Suggest display names so admins see "[bot] PlayerName" not "b_PlayerName"
+
+            String typed = args[0].toLowerCase();
+            // Suggest internal names — these are always safe to type in the terminal
             manager.getActivePlayers().stream()
-                    .filter(p -> p.getDisplayName().toLowerCase().startsWith(args[0].toLowerCase())
-                            || p.getName().toLowerCase().startsWith(args[0].toLowerCase()))
-                    .map(p -> p.getDisplayName())
+                    .map(FakePlayer::getName)
+                    .filter(n -> n.toLowerCase().startsWith(typed))
                     .forEach(suggestions::add);
             return suggestions;
         }
         return Collections.emptyList();
+    }
+
+    /** Strips MiniMessage colour tags and returns plain text. */
+    private static String plainOf(String miniMessage) {
+        try {
+            return PlainTextComponentSerializer.plainText()
+                    .serialize(MiniMessage.miniMessage().deserialize(miniMessage));
+        } catch (Exception e) {
+            return miniMessage;
+        }
     }
 }

@@ -1,11 +1,12 @@
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)
 
-> Spawn realistic fake players on your Paper server — complete with tab list, server list count, join/leave/kill messages, staggered join/leave delays, in-world physics bodies, skin support, bot swap/rotation, fake chat, session database tracking, LuckPerms integration, and full hot-reload configuration.
+> Spawn realistic fake players on your Paper server — complete with tab list, server list count, join/leave/kill messages, staggered join/leave delays, in-world physics bodies, real-player-equivalent chunk loading, skin support, bot swap/rotation, fake chat, session database tracking, LuckPerms integration, and full hot-reload configuration.
 
-![Version](https://img.shields.io/badge/version-1.0.15-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.1.4-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
+[![Modrinth](https://img.shields.io/badge/Modrinth-FPP-00AF5C?style=flat-square&logo=modrinth)](https://modrinth.com/plugin/fake-player-plugin-(fpp))
 
 ---
 
@@ -25,17 +26,19 @@
 | **Default skin** | When skins are disabled, bots use the default Steve/Alex appearance |
 | **Death & respawn** | Bots can respawn at their last known location, or leave the server permanently |
 | **Combat** | Bots take damage and play player hurt sounds; they cannot target or attack |
-| **Chunk loading** | Bots keep chunks loaded around them like a real player (toggleable) |
+| **Real-player chunk loading** | Bots load chunks in spiral order exactly like a real player — mobs spawn, redstone ticks, farms run; world-border clamped; movement-delta detection skips redundant updates |
+| **Session stats** | Each bot tracks damage taken, death count, uptime, and last chunk position internally |
 | **Bot swap / rotation** | Bots automatically leave and rejoin with new names — with personality archetypes, time-of-day bias, farewell/greeting chat, and AFK-kick simulation |
 | **Fake chat** | Bots send random chat messages from `bot-messages.yml` (toggleable, hot-reloadable) |
 | **LuckPerms integration** | Detects installed LuckPerms and prepends the default-group prefix to every bot display name (toggleable) |
-| **Uptime tracking** | `/fpp list` shows each bot's name, uptime, location, and who spawned it |
+| **Uptime tracking** | `/fpp list` shows each bot's name, formatted uptime, location, and who spawned it |
 | **Database** | All bot sessions (who spawned, where, when, removal reason, last position) stored in SQLite or MySQL |
 | **Persistence** | Active bots survive server restarts — they leave on shutdown and rejoin on startup at their last position |
 | **Dynamic help** | Help command auto-discovers all registered sub-commands — no manual update needed when adding commands |
 | **Clickable pagination** | Help pages have clickable ← prev / next → buttons |
+| **Plugin info screen** | Bare `/fpp` shows version, author, active bot count, and a clickable Modrinth link |
 | **Hex colour + small-caps** | Styled with `#0079FF` accent and Unicode small-caps throughout |
-| **Fully translatable** | All player-facing text in `language/en.yml` |
+| **Fully translatable** | All player-facing text in `language/en.yml`; internal layout strings clearly marked |
 | **Hot reload** | `/fpp reload` reloads config, language, name pool, and message pool instantly |
 | **Bot name pool** | Names loaded from `bot-names.yml` — falls back to `Bot<number>` when the pool is exhausted |
 | **User-tier commands** | Non-admins can spawn their own limited bots and teleport them with `fpp.user.*` |
@@ -59,7 +62,7 @@
 
 ## ✦ Installation
 
-1. Download `fpp.jar` from the releases page.
+1. Download `fpp-1.1.4.jar` from [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)).
 2. Place it in your server's `plugins/` folder.
 3. Restart the server — default config files are generated automatically.
 4. Edit `plugins/FakePlayerPlugin/config.yml`, `language/en.yml`, `bot-names.yml`, and `bot-messages.yml` as desired.
@@ -70,6 +73,8 @@
 ## ✦ Commands
 
 All sub-commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
+
+> Type bare `/fpp` to see plugin info — version, active bots, and a Modrinth link.
 
 ### Admin Commands
 
@@ -98,6 +103,7 @@ All sub-commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 ### Examples
 
 ```
+/fpp                        — plugin info screen (version, bots, Modrinth link)
 /fpp spawn                  — spawn 1 fake player at your position
 /fpp spawn 10               — spawn 10 fake players with staggered join delays
 /fpp spawn --name Steve     — spawn 1 bot named "Steve"
@@ -105,20 +111,16 @@ All sub-commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 /fpp delete Steve           — remove the bot named Steve with a leave message
 /fpp delete all             — remove all bots with staggered leave messages
 /fpp list                   — show all active bots with uptime and location
-/fpp chat                   — show current fake-chat status
-/fpp chat on                — enable fake chat
-/fpp chat off               — disable fake chat
-/fpp swap on                — enable the bot swap/rotation system
-/fpp swap off               — disable the bot swap/rotation system
-/fpp help                   — show page 1 of the help menu
-/fpp help 2                 — show page 2
+/fpp chat on / off / status — toggle or check fake chat
+/fpp swap on / off / status — toggle or check bot swap system
+/fpp help [page]            — paginated help with clickable navigation
 /fpp reload                 — hot-reload all configuration
-/fpp info                   — show database stats (total sessions, active bots)
-/fpp info bot Steve         — show live info + spawn history of the bot "Steve"
-/fpp info spawner El_Pepes  — show all bots spawned by El_Pepes
-/fpp tp Steve               — teleport yourself to the bot named Steve
+/fpp info                   — database stats (total sessions, active bots)
+/fpp info bot Steve         — live info + spawn history of bot "Steve"
+/fpp info spawner El_Pepes  — all bots spawned by El_Pepes
+/fpp tp Steve               — teleport yourself to bot "Steve"
 /fpp tph                    — teleport your bot to you (if you own exactly one)
-/fpp tph Steve              — teleport your bot named Steve to you
+/fpp tph Steve              — teleport your bot named "Steve" to you
 ```
 
 ---
@@ -169,9 +171,11 @@ Assign the highest node the player should receive. FPP picks the highest matchin
 | `fpp.bot.50` | 50 bots |
 | `fpp.bot.100` | 100 bots |
 
-> **LuckPerms example** — give a VIP group 5 bots:  
-> `lp group vip permission set fpp.user.spawn true`  
-> `lp group vip permission set fpp.bot.5 true`
+> **LuckPerms example** — give a VIP group 5 bots:
+> ```
+> /lp group vip permission set fpp.user.spawn true
+> /lp group vip permission set fpp.bot.5 true
+> ```
 
 ---
 
@@ -181,241 +185,100 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` to apply cha
 
 ```yaml
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.0.15
-#  Run /fpp reload to apply changes without restarting the server.
-#  Colors use MiniMessage syntax: <#0079FF>text</#0079FF>  <gray>text</gray>
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.1.4
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ── Language ──────────────────────────────────────────────────────────────────
-# Language file to load from plugins/FakePlayerPlugin/language/<lang>.yml
 language: en
-
-# ── Debug ─────────────────────────────────────────────────────────────────────
-# Print verbose diagnostics to console. Useful for troubleshooting.
 debug: false
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT LIMITS
-# ─────────────────────────────────────────────────────────────────────────────
+update-checker:
+  enabled: true
+
 limits:
-  # Maximum number of fake players allowed on the server at once. 0 = unlimited.
   max-bots: 1000
-
-  # Default personal bot limit for players with fpp.user.spawn permission.
-  # Override per-player/group via fpp.bot.<num> (e.g. fpp.bot.5 = 5 bots).
   user-bot-limit: 1
-
-  # Count presets shown in tab-complete for the admin spawn command.
   spawn-presets: [1, 5, 10, 15, 20]
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT NAMES
-#  Placeholders:  {bot_name} = bot's Minecraft name
-#                 {spawner}  = player who spawned the bot  (user bots only)
-#                 {num}      = bot number for that player  (user bots only)
-#  Colors: full MiniMessage tags — <#RRGGBB>  <gray>  <bold>  etc.
-# ─────────────────────────────────────────────────────────────────────────────
 bot-name:
-  # Display name shown in tab list and nametag for admin-spawned bots.
   admin-format: '{bot_name}'
-
-  # Display name for bots spawned by normal users (fpp.user.spawn).
   user-format: 'bot-{spawner}-{num}'
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  LUCKPERMS INTEGRATION
-# ─────────────────────────────────────────────────────────────────────────────
 luckperms:
-  # Prepend the LuckPerms default-group prefix to every bot display name
-  # Example with use-prefix: true  →  §7[bot-Steve]
-  # Example with use-prefix: false →  [bot-Steve]   (colors from format only)
   use-prefix: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  SKIN SYSTEM
-# ─────────────────────────────────────────────────────────────────────────────
 skin:
-  # auto     — Paper resolves the skin from Mojang automatically (recommended).
-  # fetch    — Plugin manually fetches texture data from Mojang API.
-  # disabled — No skin; bots use the default Steve / Alex appearance.
-  mode: auto
-
-  # Clear the skin fetch cache when /fpp reload is run (fetch mode only).
+  mode: auto            # auto | fetch | disabled
   clear-cache-on-reload: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT BODY
-# ─────────────────────────────────────────────────────────────────────────────
 body:
-  # Spawn a visible Mannequin entity as the bot's physical body.
-  # false = bot exists only in the tab list and join/leave messages.
   enabled: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  PERSISTENCE
-# ─────────────────────────────────────────────────────────────────────────────
 persistence:
-  # Save active bots on shutdown and restore them when the server restarts.
-  # Bots rejoin at the location they were at when the server stopped.
   enabled: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  JOIN / LEAVE TIMING  (values are in ticks, 20 ticks = 1 second)
-#  A random delay between min and max is chosen independently for each bot,
-#  making multiple simultaneous spawns look like staggered real player joins.
-# ─────────────────────────────────────────────────────────────────────────────
 join-delay:
-  min: 0    # Minimum ticks before a bot appears after being queued
-  max: 40   # Maximum ticks  (set both to 0 for instant)
+  min: 0
+  max: 5
 
 leave-delay:
-  min: 0    # Minimum ticks before a bot disappears after being removed
-  max: 40   # Maximum ticks
+  min: 0
+  max: 5
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  MESSAGES
-# ─────────────────────────────────────────────────────────────────────────────
 messages:
-  # Broadcast a vanilla-style "X joined the game" when a bot is spawned.
   join-message: true
-
-  # Broadcast a vanilla-style "X left the game" when a bot is removed.
   leave-message: true
-
-  # Broadcast "<player> was slain by <bot>" when a player kills a bot.
   kill-message: false
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  COMBAT
-# ─────────────────────────────────────────────────────────────────────────────
 combat:
-  # Base health points for bots (20.0 = default player health).
   max-health: 20.0
-
-  # Play the vanilla player hurt sound when a bot takes damage.
   hurt-sound: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  DEATH & RESPAWN
-# ─────────────────────────────────────────────────────────────────────────────
 death:
-  # true  — bot respawns at its last known location after dying.
-  # false — bot leaves the server permanently on death.
   respawn-on-death: false
-
-  # Ticks to wait before a dead bot respawns (20 ticks = 1 second).
   respawn-delay: 60
-
-  # Prevent bots from dropping items when they die.
   suppress-drops: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  CHUNK LOADING
-#  Bots keep chunks loaded around them the same way a real player would,
-#  preventing mobs from despawning and farms from stopping near bots.
-# ─────────────────────────────────────────────────────────────────────────────
+# Bots load chunks in spiral order like a real player.
 chunk-loading:
   enabled: true
+  radius: 6             # 0 = auto (matches server simulation-distance)
+  update-interval: 20   # ticks between chunk-ticket refreshes
 
-  # Chunk radius kept loaded around each bot (vanilla player default ≈ 10).
-  radius: 6
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  HEAD AI
-#  Bots rotate their head to look at the nearest real player within range.
-# ─────────────────────────────────────────────────────────────────────────────
 head-ai:
-  # Distance in blocks. Set to 0 to disable head tracking entirely.
   look-range: 8.0
-
-  # Rotation interpolation speed (0.0 = frozen, 1.0 = instant snap).
   turn-speed: 0.3
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  COLLISION & PUSH
-#  Controls physical interaction between bots, players, and each other.
-# ─────────────────────────────────────────────────────────────────────────────
 collision:
-  # Radius (blocks) at which walking into a bot triggers a push impulse.
   walk-radius: 0.85
-
-  # Impulse strength when a player walks into a bot.
   walk-strength: 0.22
-
-  # Maximum horizontal speed any push can impart on a bot.
   max-horizontal-speed: 0.30
-
-  # Knockback impulse when a player punches a bot.
   hit-strength: 0.45
-
-  # Radius at which two bots push each other apart (prevents stacking).
   bot-radius: 0.90
-
-  # Impulse strength for bot-vs-bot separation.
   bot-strength: 0.14
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT SWAP / ROTATION
-#  Simulates realistic session turnover — bots leave and rejoin with new
-#  names after a configurable session length, mimicking real player activity.
-# ─────────────────────────────────────────────────────────────────────────────
 swap:
   enabled: false
-
-  # Session duration range in seconds before a bot swaps out.
   session-min: 120
   session-max: 600
-
-  # Gap between a bot leaving and its replacement joining (seconds).
   rejoin-delay-min: 5
   rejoin-delay-max: 45
-
-  # Random ±jitter added to each bot's session timer (seconds).
   jitter: 30
-
-  # Chance (0.0–1.0) that a rejoining bot reconnects with the same name.
   reconnect-chance: 0.15
-
-  # Percent chance (0–100) a rejoin gap is extended 1–3 min (AFK-kick sim).
   afk-kick-chance: 5
-
-  # Bot sends a farewell chat message before leaving.
   farewell-chat: true
-
-  # Replacement bot sends a greeting chat message after joining.
   greeting-chat: true
-
-  # Bias session lengths by server time-of-day (longer during peak hours).
   time-of-day-bias: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  FAKE CHAT
-#  Bots occasionally send random messages from bot-messages.yml.
-# ─────────────────────────────────────────────────────────────────────────────
 fake-chat:
   enabled: false
-
-  # Only send messages when at least one real player is online.
   require-player-online: true
-
-  # Probability (0.0–1.0) that a scheduled interval actually fires a message.
   chance: 0.75
-
-  # Seconds between each bot's chat attempts (chosen randomly per bot).
   interval:
     min: 5
     max: 10
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  DATABASE
-#  Stores bot spawn history, last locations, and session data.
-#  Default: SQLite — no setup required, stored in plugins/FakePlayerPlugin/data/
-#  Optional: switch to MySQL for multi-server setups or external dashboards.
-# ─────────────────────────────────────────────────────────────────────────────
 database:
-  # Set to true to use MySQL instead of the built-in SQLite.
   mysql-enabled: false
-
   mysql:
     host: "localhost"
     port: 3306
@@ -423,13 +286,45 @@ database:
     username: "root"
     password: ""
     use-ssl: false
-    # Maximum number of pooled connections (HikariCP).
     pool-size: 5
-    # Connection timeout in milliseconds.
     connection-timeout: 30000
+  location-flush-interval: 30
+  session-history:
+    max-rows: 20
 ```
 
-> **SQLite fallback:** When MySQL is disabled or unreachable, FPP automatically uses SQLite stored at `plugins/FakePlayerPlugin/data/fpp.db` — no setup required.
+---
+
+## ✦ Chunk Loading (v1.1.4)
+
+Bots load chunks **exactly like a real player** does in vanilla Minecraft:
+
+| Behaviour | How it works |
+|---|---|
+| **Spiral order** | Chunks are ticketed closest-first (spiral from bot centre outward), matching Paper's chunk-send priority queue |
+| **Player-equivalent tickets** | Uses `World.addPluginChunkTicket()` — Paper counts these as real player-level load sources (mobs spawn, redstone ticks, crops grow) |
+| **Movement-delta detection** | Ticket set is only recomputed when the bot crosses into a new chunk — zero wasted work for stationary bots |
+| **World-border clamping** | Chunks outside the world border are automatically excluded |
+| **Configurable radius** | `chunk-loading.radius` (default `6`). Set to `0` to auto-match the server's simulation-distance |
+| **Configurable interval** | `chunk-loading.update-interval` (default `20` ticks = 1 s). Lower = more responsive to knockback; higher = less CPU overhead |
+| **Instant release** | Tickets are released immediately when a bot is deleted, dies, or the plugin is disabled — no orphaned loaded chunks |
+| **Live position** | Uses the live `Mannequin` entity position first; falls back to last recorded `spawnLocation` when the body is absent |
+
+---
+
+## ✦ Bot Session Stats (v1.1.4)
+
+Each `FakePlayer` object now tracks rich session metadata internally:
+
+| Field | Description |
+|---|---|
+| `getUptime()` | `java.time.Duration` since spawn |
+| `getUptimeFormatted()` | Human-readable string: `1h 23m 45s` |
+| `getLiveLocation()` | Most accurate current position (prefers live Mannequin body) |
+| `getTotalDamageTaken()` | Cumulative damage received this session |
+| `getDeathCount()` | Deaths during this session |
+| `isAlive()` | `false` while dead (between death and respawn) |
+| `hasMovedChunk(cx, cz)` | Fast O(1) movement check used by ChunkLoader |
 
 ---
 
@@ -437,28 +332,30 @@ database:
 
 | File | Purpose |
 |---|---|
-| `bot-names.yml` | Pool of names randomly assigned to bots. Edit freely and run `/fpp reload`. |
+| `bot-names.yml` | Pool of names randomly assigned to bots. Edit freely and run `/fpp reload`. Names must be 1–16 characters, letters/digits/underscore only. |
 | `bot-messages.yml` | Pool of chat messages bots randomly send. Supports `{name}` and `{random_player}` placeholders. |
 
-When the name pool is exhausted, FPP generates names automatically (`Bot1234`).
+When the name pool is exhausted, FPP generates names automatically (`Bot1234`).  
+Names longer than 16 characters in the pool are automatically skipped — the server will never crash from a bad name.
 
 ---
 
 ## ✦ Bot Display Names
 
-Bot display names (shown in the tab list, nametag, and join/leave messages) are fully configurable in `config.yml`:
+Bot display names (tab list, nametag, join/leave messages) are fully configurable in `config.yml`:
 
-- **Admin bots** — use `bot-name.admin-format` with `{bot_name}` placeholder
-- **User bots** — use `bot-name.user-format` with `{spawner}` and `{num}` placeholders
+- **Admin bots** — `bot-name.admin-format` with `{bot_name}` placeholder
+- **User bots** — `bot-name.user-format` with `{spawner}` and `{num}` placeholders
 - **LuckPerms prefix** — when `luckperms.use-prefix: true` and LuckPerms is installed, the default-group prefix is automatically prepended to every bot display name
 
 ### Examples
 
-| Config | Ingame result (tab list / nametag) |
+| Config value | In-game result |
 |---|---|
+| `{bot_name}` | `Steve` |
 | `<#0079FF>[bot-{bot_name}]</#0079FF>` | `[bot-Steve]` in blue |
 | `<gray>[bot-{spawner}-{num}]</gray>` | `[bot-El_Pepes-1]` in gray |
-| LuckPerms prefix `§7` + admin format | `§7[bot-Steve]` |
+| LuckPerms `§7` prefix + `{bot_name}` | `§7Steve` |
 
 ---
 
@@ -496,14 +393,14 @@ FPP records every bot session for auditing and analytics:
 | `spawned_by` | Player who ran `/fpp spawn` |
 | `world_name` | World where the bot was spawned |
 | `spawn_x/Y/Z` | Spawn coordinates |
-| `last_x/Y/Z` | Last known position (updated periodically) |
+| `last_x/Y/Z` | Last known position (updated every `location-flush-interval` seconds) |
 | `spawned_at` | Timestamp of spawn |
 | `removed_at` | Timestamp of removal |
 | `remove_reason` | `DELETED`, `DIED`, `SHUTDOWN`, or `SWAP` |
 
 Use `/fpp info` to query the database in-game.
 
-**Backends (priority order):**
+**Backends:**
 1. **MySQL** — set `database.mysql-enabled: true` and fill in connection details
 2. **SQLite** — automatic local fallback; stored at `plugins/FakePlayerPlugin/data/fpp.db`
 
@@ -513,18 +410,14 @@ Use `/fpp info` to query the database in-game.
 
 All player-facing text lives in `plugins/FakePlayerPlugin/language/en.yml`.  
 Edit and run `/fpp reload` — no restart required.  
-Colours use **MiniMessage** format: `<#0079FF>text</#0079FF>`, `<gray>text</gray>`, `<bold>`, etc.
+Colours use **MiniMessage** format: `<#0079FF>text</#0079FF>`, `<gray>`, `<bold>`, etc.
 
-Key entries:
+The file is split into two sections:
 
-| Key | Description |
+| Section | Notes |
 |---|---|
-| `prefix` | Plugin prefix prepended to command feedback messages |
-| `bot-join` | Join broadcast template — `{name}` = bot display name |
-| `bot-leave` | Leave broadcast template — `{name}` = bot display name |
-| `bot-kill` | Kill broadcast template — `{killer}`, `{name}` |
-| `spawn-success` | Feedback to the player who ran `/fpp spawn` |
-| `delete-success` | Feedback to the player who ran `/fpp delete` |
+| **INTERNAL LAYOUT STRINGS** | Structural keys (`divider`, `help-entry`, `info-screen-header`, `modrinth-label`). Safe to restyle; do not rename or remove. |
+| **PLAYER-FACING MESSAGES** | All error, command feedback, broadcast, and status messages. Safe to edit freely. |
 
 ---
 
@@ -533,28 +426,47 @@ Key entries:
 FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix: true`:
 
 - The **default group's prefix** (e.g. `§7`) is prepended to every bot's display name in the tab list, nametag, and join/leave messages
-- This makes bots blend in naturally with real players who share the same prefix
+- Makes bots blend in naturally with real players who share the same prefix
 - Disable with `luckperms.use-prefix: false` to use only the `bot-name.*` format colours
 
 ---
 
 ## ✦ Changelog
 
+### v1.1.4 *(2026-03-12)*
+
+#### Chunk Loading — Complete Rewrite
+- **Spiral ticket order** — chunks are added from centre outward, matching Paper's chunk-send priority queue so nearby chunks are always loaded first
+- **Movement-delta detection** — ChunkLoader tracks each bot's last chunk position; the full spiral recomputation is skipped entirely when the bot hasn't crossed a chunk boundary — zero CPU waste for stationary bots
+- **World-border clamping** — chunks outside the configured world border are automatically excluded from ticket sets in both the spiral builder and the boundary checker
+- **`update-interval` config** — new `chunk-loading.update-interval` key (default `20` ticks) controls how often the loader polls bot positions; tune lower for heavily knocked-around bots, higher for static lobby bots
+- **Auto-radius** — setting `chunk-loading.radius: 0` now reads the server's live `Bukkit.getSimulationDistance()` and uses that as the radius
+- **Instant release on removal** — `releaseForBot()` removes all tickets immediately when a bot is deleted, killed, or the plugin disables; no orphaned loaded chunks
+- **`totalTickets()` diagnostic** — new public method returns total plugin chunk tickets held across all bots for `/fpp info` display
+
+#### FakePlayer Model Enhancements
+- **`getLiveLocation()`** — returns Mannequin body position when alive, falls back to `spawnLocation`; used by DB flush and ChunkLoader for maximum accuracy
+- **`getUptime()` / `getUptimeFormatted()`** — `Duration`-based uptime, formatted as `1h 23m 45s`
+- **Session stats** — `totalDamageTaken`, `deathCount`, `isAlive()`, `tabRefreshCount` tracked per session
+- **Chunk tracking helpers** — `hasMovedChunk(cx, cz)`, `setLastChunk(cx, cz)` for O(1) movement detection without Location allocation
+
+#### Config & DB
+- DB location flush uses `getLiveLocation()` instead of raw body reference — handles body-less bots (tab-only mode) correctly
+- `Config.chunkLoadingUpdateInterval()` accessor added
+
 ### v1.0.15 *(2026-03-11)*
-- **Join/leave messages** now broadcast to all online players and console via direct delivery, matching vanilla Paper join/leave message behaviour
-- `BotBroadcast` utility safely handles display names containing LuckPerms `§`-codes alongside MiniMessage tags — no more parse failures or blank messages
-- Fully updated `config.yml` — clean flat structure, removed `admin-prefix`/`user-prefix`, added `luckperms.use-prefix` toggle, added MySQL `pool-size` and `connection-timeout`
-- `Config.java` rewritten to match all new config key paths exactly
-- Bot display name formatting cleaned up — internal names use `bot_<name>` / `ubot_<spawner>_<num>` prefix pattern (not configurable, keeps Minecraft name valid)
-- `BotSwapAI` leave messages migrated to `BotBroadcast`
-- All entity-death and manual delete paths unified through `BotBroadcast`
+- Join/leave messages broadcast correctly to all players
+- LuckPerms prefix pipeline fixed — no more legacy `§`-code parse failures
+- Config cleaned up — removed `admin-prefix`/`user-prefix`, added `luckperms.use-prefix` toggle
+- Modrinth plugin page link replaces GitHub link in `/fpp` info screen (clickable, label only — no raw URL shown)
+- `en.yml` reorganised into INTERNAL / PLAYER-FACING sections with per-entry placeholder docs
 
 ### v1.0.0-rc1 *(2026-03-08)*
 - First stable release candidate
-- Full permission system with `fpp.user.*`, `fpp.bot.<num>` limit nodes, and LuckPerms display name support
+- Full permission system with `fpp.user.*`, `fpp.bot.<num>` limit nodes, LuckPerms display name support
 - User-tier commands: `/fpp spawn`, `/fpp tph`, `/fpp info` (own bots only)
 - Bot persistence across server restarts (leave on shutdown, rejoin at last position on startup)
-- O(1) entity lookup via entity-id index
+- O(1) entity lookup via entity-id index in `FakePlayerManager`
 - Reflection hot-path caching in `PacketHelper`
 - Reservoir-sampling name picker — no full candidate list allocation per spawn
 
@@ -564,7 +476,6 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 - `/fpp info` database query command
 - `bot-messages.yml` fake-chat message pool (1 000 messages)
 - Staggered join/leave delays for realistic server activity
-- Chunk loading around bots like a real player
 
 ### v0.1.0
 - Initial release: tab list, join/leave messages, Mannequin body, head AI, collision/push system
@@ -579,4 +490,4 @@ Contact: Discord `Bill_Hub`
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.0.15*
+*Built for Paper 1.21.x · Java 21 · FPP v1.1.4 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp))*

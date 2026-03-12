@@ -11,49 +11,52 @@ import org.bukkit.entity.Mannequin;
 import java.util.*;
 
 /**
- * Keeps chunks loaded around each active bot exactly like a real player does.
+ * Keeps chunks loaded around each active bot <em>exactly like a real player</em>.
  *
- * <p>Uses Paper's {@code World.addPluginChunkTicket()} — the server counts
- * these as player-equivalent load sources so mobs spawn, redstone ticks,
- * crops grow, etc. in the surrounding area.
+ * <h3>How vanilla chunk loading works</h3>
+ * <p>When a real player is at chunk (cx, cz), the server adds ticket-level tickets
+ * for every chunk within the <em>view-distance</em> radius, and <em>simulation-distance</em>
+ * tickets for a smaller inner radius where mobs/redstone actually tick.
+ * Beyond simulation-distance, chunks are sent to the client (kept loaded) but mobs
+ * do not spawn and redstone does not tick.
  *
- * <p>Position source priority (per bot, every tick):
- * <ol>
- *   <li>Live {@link Mannequin} body position — most accurate.</li>
- *   <li>{@link FakePlayer#getSpawnLocation()} — used when {@code spawn-body}
- *       is disabled or the body hasn't materialised yet.</li>
- * </ol>
- *
- * <p>Tickets are released immediately via {@link #releaseForBot(FakePlayer)}
- * when a bot is deleted/dies, and {@link #releaseAll()} cleans everything on
- * plugin disable. A per-second background task keeps the ticket set in sync
- * as the physics engine moves the body (knockback, gravity, etc.).
+ * <h3>This implementation</h3>
+ * <ul>
+ *   <li>Uses {@link World#addPluginChunkTicket} — Paper counts these identically to
+ *       player chunk-load tickets (mobs spawn, redstone runs, crops grow).</li>
+ *   <li>Tickets are added in spiral order so nearby chunks are prioritised.</li>
+ *   <li>Movement detection skips costly set-diff when the bot hasn't moved
+ *       to a new chunk since the last tick.</li>
+ *   <li>Supports per-bot configurable radius, world-border clamping, and
+ *       instant release on bot removal.</li>
+ *   <li>Refreshes every {@code chunk-loading.update-interval} ticks (default 20).</li>
+ * </ul>
  */
 public final class ChunkLoader {
 
-    private final FakePlayerPlugin plugin;
+    private final FakePlayerPlugin  plugin;
     private final FakePlayerManager manager;
 
     /**
-     * Maps each FakePlayer UUID → (worldName → set of packed chunk keys).
-     * We store the world name alongside keys so we can release tickets even
-     * after the body entity has been removed.
+     * Per-bot state: the last chunk-centre we computed tickets from, plus
+     * the world name so we can release across world-changes without needing
+     * a live entity reference.
      */
-    private final Map<UUID, WorldChunks> ticketedChunks = new HashMap<>();
+    private final Map<UUID, BotChunkState> states = new HashMap<>();
 
     public ChunkLoader(FakePlayerPlugin plugin, FakePlayerManager manager) {
         this.plugin  = plugin;
         this.manager = manager;
 
-        // Refresh chunk tickets every second (20 ticks)
-        Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
+        long interval = Math.max(1L, Config.chunkLoadingUpdateInterval());
+        Bukkit.getScheduler().runTaskTimer(plugin, this::tick, interval, interval);
     }
 
-    // ── Per-second tick ───────────────────────────────────────────────────────
+    // ── Per-interval tick ────────────────────────────────────────────────────
 
     private void tick() {
         if (!Config.chunkLoadingEnabled()) {
-            if (!ticketedChunks.isEmpty()) releaseAll();
+            if (!states.isEmpty()) releaseAll();
             return;
         }
 
@@ -62,19 +65,11 @@ public final class ChunkLoader {
         Set<UUID> activeUuids = new HashSet<>();
 
         for (FakePlayer fp : manager.getActivePlayers()) {
-            activeUuids.add(fp.getUuid());
+            UUID botId = fp.getUuid();
+            activeUuids.add(botId);
 
-            // ── Resolve current position ──────────────────────────────────────
-            Location pos = null;
-
-            Entity body = fp.getPhysicsEntity();
-            if (body instanceof Mannequin m && m.isValid()) {
-                pos = m.getLocation();
-            } else if (fp.getSpawnLocation() != null
-                    && fp.getSpawnLocation().getWorld() != null) {
-                pos = fp.getSpawnLocation();
-            }
-
+            // ── Resolve current chunk-centre ──────────────────────────────────
+            Location pos = resolvePosition(fp);
             if (pos == null || pos.getWorld() == null) continue;
 
             World  world = pos.getWorld();
@@ -82,46 +77,66 @@ public final class ChunkLoader {
             int    cx    = pos.getBlockX() >> 4;
             int    cz    = pos.getBlockZ() >> 4;
 
-            // ── Build desired ticket set ──────────────────────────────────────
-            Set<Long> desired = new HashSet<>((radius * 2 + 1) * (radius * 2 + 1));
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    desired.add(chunkKey(cx + dx, cz + dz));
-                }
+            // Clamp to world border
+            int[] clamped = clampToWorldBorder(world, cx, cz);
+            cx = clamped[0];
+            cz = clamped[1];
+
+            BotChunkState state = states.get(botId);
+
+            // ── Skip if bot hasn't moved to a new chunk ───────────────────────
+            if (state != null
+                    && state.worldName.equals(wName)
+                    && state.cx == cx
+                    && state.cz == cz) {
+                continue; // no update needed
             }
 
-            WorldChunks wc = ticketedChunks.computeIfAbsent(fp.getUuid(),
-                    k -> new WorldChunks(wName, new HashSet<>()));
+            // ── Release old tickets if world changed ──────────────────────────
+            if (state != null && !state.worldName.equals(wName)) {
+                releaseState(state);
+                state = null;
+            }
 
-            // If the bot crossed worlds, release old tickets first
-            if (!wc.worldName.equals(wName)) {
-                releaseWorldChunks(wc);
-                wc = new WorldChunks(wName, new HashSet<>());
-                ticketedChunks.put(fp.getUuid(), wc);
+            // ── Build desired ticket set in spiral order ───────────────────────
+            // Spiral ensures nearby chunks are prioritised in chunk generation.
+            List<long[]> spiral = buildSpiral(cx, cz, radius, world);
+            Set<Long> desired = new HashSet<>(spiral.size());
+            for (long[] coord : spiral) desired.add(packKey((int) coord[0], (int) coord[1]));
+
+            if (state == null) {
+                state = new BotChunkState(wName, cx, cz, new HashSet<>());
+                states.put(botId, state);
             }
 
             // Add new tickets
-            for (long key : desired) {
-                if (wc.keys.add(key)) {
-                    world.addPluginChunkTicket(keyX(key), keyZ(key), plugin);
+            for (long[] coord : spiral) {
+                long key = packKey((int) coord[0], (int) coord[1]);
+                if (state.keys.add(key)) {
+                    world.addPluginChunkTicket((int) coord[0], (int) coord[1], plugin);
                 }
             }
 
-            // Remove stale tickets (bot moved away)
-            Iterator<Long> it = wc.keys.iterator();
+            // Remove stale tickets (bot moved, old chunks no longer needed)
+            Iterator<Long> it = state.keys.iterator();
             while (it.hasNext()) {
                 long key = it.next();
                 if (!desired.contains(key)) {
-                    world.removePluginChunkTicket(keyX(key), keyZ(key), plugin);
+                    world.removePluginChunkTicket(unpackX(key), unpackZ(key), plugin);
                     it.remove();
                 }
             }
+
+            // Update centre
+            state.cx = cx;
+            state.cz = cz;
+            state.worldName = wName;
         }
 
         // Release tickets for bots that are no longer active
-        ticketedChunks.entrySet().removeIf(entry -> {
+        states.entrySet().removeIf(entry -> {
             if (activeUuids.contains(entry.getKey())) return false;
-            releaseWorldChunks(entry.getValue());
+            releaseState(entry.getValue());
             return true;
         });
     }
@@ -130,49 +145,117 @@ public final class ChunkLoader {
 
     /**
      * Immediately releases all chunk tickets held for a specific bot.
-     * Safe to call even after the body entity has been removed.
+     * Safe to call after the body entity has been removed.
      */
     public void releaseForBot(FakePlayer fp) {
-        WorldChunks wc = ticketedChunks.remove(fp.getUuid());
-        if (wc == null) return;
-        releaseWorldChunks(wc);
+        BotChunkState state = states.remove(fp.getUuid());
+        if (state != null) releaseState(state);
     }
 
-    /** Releases ALL chunk tickets held by this loader (call on plugin disable). */
+    /** Releases ALL chunk tickets on plugin disable. */
     public void releaseAll() {
-        ticketedChunks.values().forEach(this::releaseWorldChunks);
-        ticketedChunks.clear();
+        states.values().forEach(this::releaseState);
+        states.clear();
+    }
+
+    /** Returns the number of plugin chunk tickets currently held across all bots. */
+    @SuppressWarnings("unused") // Public diagnostic API — used by /fpp info and addons
+    public int totalTickets() {
+        return states.values().stream().mapToInt(s -> s.keys.size()).sum();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /** Releases every ticket in a WorldChunks record. */
-    private void releaseWorldChunks(WorldChunks wc) {
-        World world = Bukkit.getWorld(wc.worldName);
-        if (world == null || wc.keys.isEmpty()) return;
-        for (long key : wc.keys) {
-            world.removePluginChunkTicket(keyX(key), keyZ(key), plugin);
+    /** Resolves the most accurate live position for a bot. */
+    private static Location resolvePosition(FakePlayer fp) {
+        // Prefer live Mannequin body
+        Entity body = fp.getPhysicsEntity();
+        if (body instanceof Mannequin m && m.isValid()) return m.getLocation();
+        // Fall back to last known spawn / DB location
+        Location loc = fp.getSpawnLocation();
+        if (loc != null && loc.getWorld() != null) return loc;
+        return null;
+    }
+
+    /**
+     * Builds a chunk list in spiral order from the centre outward.
+     * Spiral order ensures close chunks are loaded before far ones, matching
+     * Paper's vanilla chunk-send priority queue behaviour.
+     * Chunks are also world-border clamped here.
+     */
+    private static List<long[]> buildSpiral(int cx, int cz, int radius, World world) {
+        int diameter = radius * 2 + 1;
+        List<long[]> result = new ArrayList<>(diameter * diameter);
+
+        // Manhattan-distance spiral: 0,0 first, then ring by ring
+        result.add(new long[]{cx, cz});
+        for (int r = 1; r <= radius; r++) {
+            // Top row (left to right)
+            for (int dx = -r; dx <= r; dx++) addIfInBorder(result, cx + dx, cz - r, world);
+            // Right col (top+1 to bottom)
+            for (int dz = -r + 1; dz <= r; dz++) addIfInBorder(result, cx + r, cz + dz, world);
+            // Bottom row (right-1 to left)
+            for (int dx = r - 1; dx >= -r; dx--) addIfInBorder(result, cx + dx, cz + r, world);
+            // Left col (bottom-1 to top+1)
+            for (int dz = r - 1; dz >= -r + 1; dz--) addIfInBorder(result, cx - r, cz + dz, world);
         }
-        wc.keys.clear();
+        return result;
     }
 
-    // ── Key helpers ───────────────────────────────────────────────────────────
-
-    private static long chunkKey(int x, int z) {
-        return (x & 0xFFFFFFFFL) | ((z & 0xFFFFFFFFL) << 32);
+    private static void addIfInBorder(List<long[]> list, int x, int z, World world) {
+        double borderRadius = world.getWorldBorder().getSize() / 2.0;
+        double bx = world.getWorldBorder().getCenter().getX();
+        double bz = world.getWorldBorder().getCenter().getZ();
+        double chunkCenterX = x * 16.0 + 8;
+        double chunkCenterZ = z * 16.0 + 8;
+        if (Math.abs(chunkCenterX - bx) <= borderRadius && Math.abs(chunkCenterZ - bz) <= borderRadius) {
+            list.add(new long[]{x, z});
+        }
     }
 
-    private static int keyX(long key) { return (int)  (key         & 0xFFFFFFFFL); }
-    private static int keyZ(long key) { return (int) ((key >>> 32) & 0xFFFFFFFFL); }
+    /** Clamps a chunk coordinate pair to within the world border. */
+    private static int[] clampToWorldBorder(World world, int cx, int cz) {
+        double borderHalf = world.getWorldBorder().getSize() / 2.0;
+        double bx = world.getWorldBorder().getCenter().getX();
+        double bz = world.getWorldBorder().getCenter().getZ();
+        double minChunkX = Math.floor((bx - borderHalf) / 16.0);
+        double maxChunkX = Math.floor((bx + borderHalf) / 16.0);
+        double minChunkZ = Math.floor((bz - borderHalf) / 16.0);
+        double maxChunkZ = Math.floor((bz + borderHalf) / 16.0);
+        return new int[]{
+            (int) Math.max(minChunkX, Math.min(maxChunkX, cx)),
+            (int) Math.max(minChunkZ, Math.min(maxChunkZ, cz))
+        };
+    }
 
-    // ── Inner record ─────────────────────────────────────────────────────────
+    private void releaseState(BotChunkState state) {
+        World world = Bukkit.getWorld(state.worldName);
+        if (world == null || state.keys.isEmpty()) { state.keys.clear(); return; }
+        for (long key : state.keys) {
+            world.removePluginChunkTicket(unpackX(key), unpackZ(key), plugin);
+        }
+        state.keys.clear();
+    }
 
-    /** Pairs a world name with the set of packed chunk keys ticketed in that world. */
-    private static final class WorldChunks {
+    // ── Key packing ───────────────────────────────────────────────────────────
+
+    private static long packKey(int x, int z) {
+        return ((long) x & 0xFFFFFFFFL) | (((long) z & 0xFFFFFFFFL) << 32);
+    }
+    private static int unpackX(long key) { return (int) (key & 0xFFFFFFFFL); }
+    private static int unpackZ(long key) { return (int) ((key >>> 32) & 0xFFFFFFFFL); }
+
+    // ── Inner state record ────────────────────────────────────────────────────
+
+    private static final class BotChunkState {
         String    worldName;
+        int       cx, cz;
         Set<Long> keys;
-        WorldChunks(String worldName, Set<Long> keys) {
+
+        BotChunkState(String worldName, int cx, int cz, Set<Long> keys) {
             this.worldName = worldName;
+            this.cx        = cx;
+            this.cz        = cz;
             this.keys      = keys;
         }
     }

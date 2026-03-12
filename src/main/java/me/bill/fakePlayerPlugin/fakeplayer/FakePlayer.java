@@ -7,6 +7,7 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mannequin;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -29,8 +30,8 @@ public final class FakePlayer {
 
     private final String        name;
     private final PlayerProfile profile;
+    private final UUID          uuid;
 
-    private final UUID       uuid;
     private Location   spawnLocation;
 
     /** The Mannequin — physics body AND visual skin. */
@@ -48,10 +49,42 @@ public final class FakePlayer {
     /**
      * Optional display name shown in the nametag and tab list.
      * When {@code null}, {@link #getName()} is used for display.
-     * User-tier bots set this to "[bot] PlayerName" / "[bot] PlayerName #N"
-     * while keeping {@link #name} as a valid Minecraft identifier.
      */
-    private String    displayName   = null;
+    private String displayName = null;
+
+    /**
+     * The Minecraft username used for skin resolution.
+     * Admin bots: same as {@link #name}.
+     * User bots: a random pool name (their internal name has no Mojang skin).
+     */
+    private String skinName = null;
+
+    /**
+     * The resolved skin texture (value + signature) for this bot.
+     * Populated after async skin resolution. {@code null} if skin mode is "off".
+     */
+    private SkinProfile resolvedSkin = null;
+
+    // ── Session stats ─────────────────────────────────────────────────────────
+
+    /** Total damage this bot has received during its current session. */
+    private double totalDamageTaken = 0.0;
+
+    /** Number of times this bot has been killed. */
+    private int    deathCount       = 0;
+
+    /**
+     * Last chunk X and Z this bot was in — used by ChunkLoader to
+     * detect cross-chunk movement without a Location allocation.
+     */
+    private int lastChunkX = Integer.MIN_VALUE;
+    private int lastChunkZ = Integer.MIN_VALUE;
+
+    /** Whether the bot is currently alive (false after death, until respawn). */
+    private boolean alive = true;
+
+    /** How many times this bot has been "tag list refreshed" (diagnostic). */
+    private int tabRefreshCount = 0;
 
     public FakePlayer(UUID uuid, String name, PlayerProfile profile) {
         this.uuid    = uuid;
@@ -59,36 +92,95 @@ public final class FakePlayer {
         this.profile = profile;
     }
 
-    // ── Getters ───────────────────────────────────────────────────────────────
-    public UUID          getUuid()           { return uuid; }
-    public String        getName()           { return name; }
-    public PlayerProfile getProfile()        { return profile; }
-    public Location      getSpawnLocation()  { return spawnLocation; }
-    public Entity        getPhysicsEntity()  { return physicsEntity; }
-    public ArmorStand    getNametagEntity()  { return nametagEntity; }
+    // ── Core getters ──────────────────────────────────────────────────────────
+    public UUID          getUuid()          { return uuid; }
+    public String        getName()          { return name; }
+    public PlayerProfile getProfile()       { return profile; }
+    public Location      getSpawnLocation() { return spawnLocation; }
+    public Entity        getPhysicsEntity() { return physicsEntity; }
+    public ArmorStand    getNametagEntity() { return nametagEntity; }
 
     /**
      * The text shown in the nametag and tab list.
      * Falls back to {@link #getName()} when no display name is set.
-     * User-tier bots return {@code "[bot] PlayerName"} or {@code "[bot] PlayerName #N"}.
      */
-    public String        getDisplayName()    { return displayName != null ? displayName : name; }
+    public String getDisplayName() { return displayName != null ? displayName : name; }
 
-    /** Convenience cast — physicsEntity is always a Mannequin. */
+    /**
+     * The Minecraft username used for skin lookup.
+     * Falls back to {@link #getName()} if not explicitly set.
+     */
+    public String getSkinName() { return skinName != null ? skinName : name; }
+
+    /** Convenience cast — physicsEntity is always a Mannequin when body is enabled. */
     public Mannequin getMannequin() {
         return (physicsEntity instanceof Mannequin m) ? m : null;
     }
 
-    /** Entity ID of the Mannequin (used in tab-list packets). */
+    /** Entity ID of the Mannequin body, or {@code -1} if no body. */
     public int getEntityId() {
         return physicsEntity != null ? physicsEntity.getEntityId() : -1;
     }
 
-    // ── Setters ───────────────────────────────────────────────────────────────
-    public void setSpawnLocation(Location loc)   { this.spawnLocation  = loc; }
-    public void setPhysicsEntity(Entity e)        { this.physicsEntity  = e; }
-    public void setNametagEntity(ArmorStand as)   { this.nametagEntity  = as; }
-    public void setDisplayName(String name)       { this.displayName    = name; }
+    // ── Live position ─────────────────────────────────────────────────────────
+
+    /**
+     * Returns the most accurate current location for this bot:
+     * the live Mannequin body position if available, otherwise the last
+     * recorded spawn location.
+     */
+    public Location getLiveLocation() {
+        Entity body = physicsEntity;
+        if (body instanceof Mannequin m && m.isValid()) return m.getLocation();
+        return spawnLocation;
+    }
+
+    /**
+     * Returns the bot's uptime as a {@link Duration}.
+     * Accurate to the second.
+     */
+    public Duration getUptime() {
+        return Duration.between(spawnTime, Instant.now());
+    }
+
+    /** Uptime formatted as {@code Xh Ym Zs} for display in /fpp list and /fpp info. */
+    public String getUptimeFormatted() {
+        Duration d = getUptime();
+        long h = d.toHours();
+        long m = d.toMinutesPart();
+        long s = d.toSecondsPart();
+        if (h > 0)  return h + "h " + m + "m " + s + "s";
+        if (m > 0)  return m + "m " + s + "s";
+        return s + "s";
+    }
+
+    // ── Session stats ─────────────────────────────────────────────────────────
+    public double getTotalDamageTaken()          { return totalDamageTaken; }
+    public int    getDeathCount()                { return deathCount; }
+    public boolean isAlive()                     { return alive; }
+    public int    getTabRefreshCount()           { return tabRefreshCount; }
+
+    public void addDamageTaken(double amount)    { totalDamageTaken += amount; }
+    public void incrementDeathCount()            { deathCount++; }
+    public void setAlive(boolean alive)          { this.alive = alive; }
+    public void incrementTabRefresh()            { tabRefreshCount++; }
+
+    // ── Chunk tracking (for ChunkLoader fast-path) ────────────────────────────
+    public int getLastChunkX()                   { return lastChunkX; }
+    public int getLastChunkZ()                   { return lastChunkZ; }
+    public void setLastChunk(int cx, int cz)     { lastChunkX = cx; lastChunkZ = cz; }
+    public boolean hasMovedChunk(int cx, int cz) { return cx != lastChunkX || cz != lastChunkZ; }
+
+    // ── Core setters ──────────────────────────────────────────────────────────
+    public void setSpawnLocation(Location loc)    { this.spawnLocation = loc; }
+    public void setPhysicsEntity(Entity e)        { this.physicsEntity = e; }
+    public void setNametagEntity(ArmorStand as)   { this.nametagEntity = as; }
+    public void setDisplayName(String name)       { this.displayName   = name; }
+    public void setSkinName(String name)          { this.skinName      = name; }
+    public void setResolvedSkin(SkinProfile skin) { this.resolvedSkin  = skin; }
+
+    /** The resolved skin for this bot, or {@code null} if not yet resolved or skin is off. */
+    public SkinProfile getResolvedSkin()          { return resolvedSkin; }
 
     // ── Metadata ──────────────────────────────────────────────────────────────
     public String    getSpawnedBy()              { return spawnedBy; }

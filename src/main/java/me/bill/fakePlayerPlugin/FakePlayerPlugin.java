@@ -20,17 +20,20 @@ import me.bill.fakePlayerPlugin.fakeplayer.BotPersistence;
 import me.bill.fakePlayerPlugin.fakeplayer.BotSwapAI;
 import me.bill.fakePlayerPlugin.fakeplayer.ChunkLoader;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
+import me.bill.fakePlayerPlugin.fakeplayer.SkinRepository;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.listener.BotCollisionListener;
 import me.bill.fakePlayerPlugin.listener.FakePlayerEntityListener;
 import me.bill.fakePlayerPlugin.listener.ServerListListener;
 import me.bill.fakePlayerPlugin.listener.PlayerJoinListener;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import me.bill.fakePlayerPlugin.util.UpdateChecker;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class FakePlayerPlugin extends JavaPlugin {
 
     private static FakePlayerPlugin instance;
+    @SuppressWarnings("unused")
     public static FakePlayerPlugin getInstance() { return instance; }
 
     private CommandManager    commandManager;
@@ -55,6 +58,13 @@ public final class FakePlayerPlugin extends JavaPlugin {
         BotMessageConfig.init(this);
         Config.debug("Bot message pool loaded (" + BotMessageConfig.getMessages().size() + " messages).");
 
+        // Ensure plugin data directories exist regardless of config settings
+        ensureDataDirectories();
+
+        // Skin repository — must be init'd after Config so skin.mode is readable
+        SkinRepository.get().init(this);
+        Config.debug("Skin repository initialised (mode=" + Config.skinMode() + ").");
+
         // Database
         databaseManager = new DatabaseManager();
         boolean dbOk = databaseManager.init(getDataFolder());
@@ -78,7 +88,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         fakePlayerManager.setSwapAI(botSwapAI);
 
         // Register commands — help is always first so the help menu lists it first
-        commandManager = new CommandManager();
+        commandManager = new CommandManager(this);
         commandManager.register(new SpawnCommand(fakePlayerManager));
         commandManager.register(new DeleteCommand(fakePlayerManager));
         commandManager.register(new ListCommand(fakePlayerManager));
@@ -112,6 +122,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
         FppLogger.info("  Author: " + String.join(", ", getPluginMeta().getAuthors()));
         FppLogger.success("  Plugin enabled successfully!");
         FppLogger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        // Check for updates (async, non-blocking)
+        UpdateChecker.check(this);
 
         // Restore bots from previous session (deferred — worlds must be loaded first).
         // First purge any orphaned Mannequin bodies left by a crash, then restore.
@@ -164,4 +177,49 @@ public final class FakePlayerPlugin extends JavaPlugin {
     @SuppressWarnings("unused")
     public FakePlayerManager getFakePlayerManager()    { return fakePlayerManager; }
     public DatabaseManager   getDatabaseManager()      { return databaseManager; }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Creates all plugin data sub-directories on first run (or after deletion).
+     * Called before any subsystem reads from these folders so they always exist.
+     *
+     * <ul>
+     *   <li>{@code plugins/FakePlayerPlugin/}          — plugin root</li>
+     *   <li>{@code plugins/FakePlayerPlugin/skins/}    — PNG skin files</li>
+     *   <li>{@code plugins/FakePlayerPlugin/data/}     — SQLite database</li>
+     *   <li>{@code plugins/FakePlayerPlugin/language/} — lang files</li>
+     * </ul>
+     */
+    private void ensureDataDirectories() {
+        java.io.File root = getDataFolder();
+        String[] dirs = { "skins", "data", "language" };
+        for (String dir : dirs) {
+            java.io.File d = new java.io.File(root, dir);
+            if (!d.exists()) {
+                boolean ok = d.mkdirs();
+                FppLogger.debug("Created directory: " + d.getPath() + (ok ? " ✓" : " (already exists or failed)"));
+            }
+        }
+
+        // Drop a README inside skins/ so admins know what to put there
+        java.io.File skinsReadme = new java.io.File(root, "skins/README.txt");
+        if (!skinsReadme.exists()) {
+            try (java.io.PrintWriter w = new java.io.PrintWriter(skinsReadme)) {
+                w.println("# FakePlayerPlugin — Skin Folder");
+                w.println("#");
+                w.println("# Place PNG skin files here to use them for bots.");
+                w.println("# Requires: skin.mode = custom  in config.yml");
+                w.println("#");
+                w.println("# Naming rules:");
+                w.println("#   <botname>.png  — assigned exclusively to the bot with that name");
+                w.println("#   anything.png   — added to the random skin pool");
+                w.println("#");
+                w.println("# Skin files must be standard 64x64 or 64x32 Minecraft skin PNGs.");
+                w.println("# Run /fpp reload after adding or removing skin files.");
+            } catch (java.io.IOException e) {
+                FppLogger.debug("Could not write skins/README.txt: " + e.getMessage());
+            }
+        }
+    }
 }

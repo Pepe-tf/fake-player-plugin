@@ -4,102 +4,202 @@
 
 # Skin System
 
-FPP supports three skin modes, configurable in `config.yml`:
+FPP v1.1.0 ships a fully reworked skin pipeline with three modes and multiple
+skin sources — from automatic Mojang resolution to custom PNG files on disk.
+
+---
+
+## Quick Setup
 
 ```yaml
-fake-player:
-  skin:
-    mode: auto          # auto | fetch | disabled
-    clear-cache-on-reload: true
+# config.yml
+skin:
+  mode: auto          # auto | custom | off
+  clear-cache-on-reload: true
 ```
+
+Run `/fpp reload` to apply changes without restarting.
 
 ---
 
 ## Modes
 
-### `auto` *(Recommended)*
+### `auto` *(Recommended — online-mode servers)*
 
-FPP calls `Mannequin.setProfile(botName)` on the Mannequin entity.  
-Paper and the Minecraft client then resolve the correct Mojang skin automatically — the same way a real player's skin loads.
+Paper calls `Mannequin.setProfile(botName)` internally and the Minecraft client
+resolves the skin from Mojang automatically — exactly like a real player joining.
 
-**Pros:**
-- Zero HTTP requests from the plugin
-- Instantly correct skins — no delays
-- No caching needed
+| Feature | Detail |
+|---------|--------|
+| HTTP requests | **Zero** — the plugin does nothing |
+| Skin accuracy | Perfect — matches the Minecraft account of that name |
+| Works offline | ❌ Requires `online-mode=true` |
+| Delay | None |
 
-**Requirements:**
-- Online-mode server (`online-mode=true` in `server.properties`)
-- The bot name must match an existing Mojang account for a skin to appear
-  - If the bot name doesn't match any account, the default Steve/Alex skin is used
-
-**How it works:**  
-When a player's client receives the tab-list entry for the bot, it requests the skin from Mojang's session servers just like any other player. The Mannequin's profile is pre-populated with the bot's name, so the client knows which skin to fetch.
+> **Tip:** If a bot name doesn't match any Mojang account the client falls back
+> to the default Steve / Alex skin. This is expected behaviour.
 
 ---
 
-### `fetch`
+### `custom` *(Full control — works online & offline)*
 
-FPP fetches the skin texture value and signature from the **Mojang API** in the background (async) and injects it directly into the Mannequin's `GameProfile`.
+FPP runs a **5-step resolution pipeline** to find the best skin for each bot:
 
-**Pros:**
-- Works on offline-mode servers
-- Skin is embedded in the packet — no client-side lookup needed
+```
+1. Exact-name override  (skin.custom.by-name)
+2. File named <botname>.png  (plugins/FakePlayerPlugin/skins/)
+3. Random PNG file from the skins/ folder
+4. Random entry from skin.custom.pool  (player names or URLs)
+5. Mojang API fallback  (fetched by bot's own Minecraft name)
+```
 
-**Cons:**
-- One HTTP request per unique bot name (Mojang API: `api.mojang.com`)
-- Rate-limited by Mojang (600 requests per 10 minutes per IP)
-- Adds a short delay (typically < 1 second) before the skin appears
+The first step that finds a valid skin wins. All Mojang fetches are cached
+in-memory for the session and can be cleared with `/fpp reload`.
 
-**Cache:**  
-Fetched skin data is cached in memory for the session. Running `/fpp reload` clears the cache if `clear-cache-on-reload: true`.
+#### Config pool
 
----
-
-### `disabled`
-
-No skin is applied. All bots display the default Steve or Alex skin (determined by UUID, as per vanilla Minecraft).
-
-Use this mode if:
-- You don't care about skins
-- You're running an offline-mode server and don't want Mojang API calls
-- You're hitting Mojang rate limits with `fetch` mode
-
----
-
-## Skin Troubleshooting
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| Bot has Steve/Alex skin | Bot name doesn't match a Mojang account | Use real player names, or switch to `fetch` mode |
-| Skin takes a few seconds to appear | Normal in `fetch` mode | Expected — HTTP request takes time |
-| All bots have the same skin | `fetch` mode rate-limited or cache issue | Use `auto` mode, or run `/fpp reload` to clear cache |
-| No skin despite `mode: auto` | Offline-mode server | Switch to `fetch` or `disabled` mode |
-| `attachSkin failed` in console | Reflection API changed in new Paper version | Switch to `auto` mode — it uses the native Paper API |
-
----
-
-## Online vs Offline Mode
-
-| Server Mode | Recommended Skin Mode |
-|------------|----------------------|
-| Online mode (`online-mode=true`) | `auto` |
-| Offline mode (`online-mode=false`) | `fetch` or `disabled` |
-
----
-
-## Config Reference
+Add Minecraft player names or Mojang CDN URLs to the pool:
 
 ```yaml
-fake-player:
-  skin:
-    # Skin resolution mode: auto | fetch | disabled
-    mode: auto
+skin:
+  mode: custom
+  custom:
+    pool:
+      - Notch
+      - Technoblade
+      - Dream
+      - https://textures.minecraft.net/texture/abc123def456...
+```
 
-    # (fetch mode only) Clear the in-memory skin cache on /fpp reload
-    clear-cache-on-reload: true
+Bots without an exact-name match randomly pick from this list.
+
+#### Per-bot name overrides
+
+Force a specific bot name to always use a particular player's skin (or a URL):
+
+```yaml
+skin:
+  mode: custom
+  custom:
+    by-name:
+      Herobrine: Notch          # bot "Herobrine" gets Notch's skin
+      CoolBot: Technoblade      # bot "CoolBot" gets Technoblade's skin
+      RedBot: "https://textures.minecraft.net/texture/abc..."
+```
+
+Keys are matched **case-insensitively** against the bot's internal Minecraft name.
+
+#### Skin folder
+
+Place standard Minecraft PNG skin files in:
+
+```
+plugins/FakePlayerPlugin/skins/
+```
+
+**Naming rules:**
+
+| File name | Behaviour |
+|-----------|-----------|
+| `anything.png` | Added to the random pool — any bot without a better match can use it |
+| `<botname>.png` | Used **exclusively** for the bot named `<botname>` (exact, case-insensitive) |
+
+Supported formats: `64×64` (modern slim/wide) and `64×32` (legacy classic) PNG files.
+
+> **Note:** Folder skins have **no RSA signature**. They display correctly on Paper
+> servers but may produce a `"profile not signed"` debug message — this is harmless.
+
+The folder is scanned on startup and on `/fpp reload`.
+
+---
+
+### `off`
+
+No skin is applied. Bots display the default Steve or Alex appearance
+(determined by UUID per vanilla Minecraft rules).
+
+---
+
+## Full Config Reference
+
+```yaml
+skin:
+  # Skin mode: auto | custom | off
+  mode: auto
+
+  # Clear resolved skin cache on /fpp reload
+  clear-cache-on-reload: true
+
+  # ── Custom mode ──────────────────────────────────────────────────────────
+  custom:
+    # Random pool — Minecraft names or Mojang CDN URLs
+    pool:
+    #  - Notch
+    #  - Technoblade
+    #  - https://textures.minecraft.net/texture/<hash>
+
+    # Exact-name overrides: botname → player-name or URL
+    by-name: {}
+    #  Herobrine: Notch
+    #  CoolBot: https://textures.minecraft.net/texture/<hash>
+
+  # ── Skin folder ──────────────────────────────────────────────────────────
+  # Place .png files in: plugins/FakePlayerPlugin/skins/
+  # <botname>.png → exact match for that bot
+  # anything.png  → random pool fallback
 ```
 
 ---
 
-| [◀ Database](Database.md) | [🏠 Home](Home.md) | [Bot Behaviour ▶](Bot-Behaviour.md) |
-|:---|:---:|---:|
+## How Skins Are Resolved (custom mode flow)
+
+```
+Bot "Herobrine" spawns
+       │
+       ▼
+[1] by-name override?  ──YES──► Use "Notch" skin (fetched via Mojang API)
+       │NO
+       ▼
+[2] skins/Herobrine.png exists?  ──YES──► Use that file
+       │NO
+       ▼
+[3] Any PNG in skins/ folder?  ──YES──► Pick random file
+       │NO
+       ▼
+[4] Any entries in pool?  ──YES──► Pick random entry
+       │NO
+       ▼
+[5] Fetch "Herobrine" from Mojang API  ──OK──► Use fetched skin
+                                        │FAIL
+                                        ▼
+                                 Fall back to auto mode
+                                 (Mannequin.setProfile(name))
+```
+
+---
+
+## Rate Limiting
+
+When `mode: custom` is active and the plugin fetches skins from Mojang:
+
+- Requests are queued with a **200 ms gap** between each call
+- Results are **cached per session** — each name is fetched at most once
+- Mojang's documented limit is ~600 requests / 10 minutes per IP
+- `/fpp reload` clears the cache (if `clear-cache-on-reload: true`)
+
+---
+
+## Choosing a Mode
+
+| Scenario | Recommended mode |
+|----------|-----------------|
+| Online-mode server, bot names match Mojang accounts | `auto` |
+| Online-mode server, custom/random bot names | `custom` with pool |
+| Offline-mode server | `custom` with pool or folder |
+| You have a set of specific skin PNGs you want to use | `custom` with skins folder |
+| You want a specific bot to always wear a specific skin | `custom` + `by-name` |
+| Performance-critical, skins don't matter | `off` |
+
+---
+
+← [Database](Database.md) · [Bot Behaviour](Bot-Behaviour.md) →

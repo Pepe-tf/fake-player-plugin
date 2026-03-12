@@ -115,7 +115,7 @@ public class FakePlayerEntityListener implements Listener {
                     fp.setPhysicsEntity(newBody);
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (!newBody.isValid()) return;
-                        FakePlayerBody.applySkin(plugin, newBody, fp.getName());
+                        FakePlayerBody.applySkin(plugin, fp, newBody);
                         fp.setNametagEntity(FakePlayerBody.spawnNametag(fp, newBody));
                         Bukkit.getScheduler().runTaskLater(plugin, () -> {
                             for (Player p : Bukkit.getOnlinePlayers())

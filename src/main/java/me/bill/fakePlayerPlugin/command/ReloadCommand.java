@@ -5,15 +5,18 @@ import me.bill.fakePlayerPlugin.config.BotMessageConfig;
 import me.bill.fakePlayerPlugin.config.BotNameConfig;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.SkinFetcher;
+import me.bill.fakePlayerPlugin.fakeplayer.SkinRepository;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import me.bill.fakePlayerPlugin.util.UpdateChecker;
 import org.bukkit.command.CommandSender;
 
 public class ReloadCommand implements FppCommand {
 
-    @SuppressWarnings("unused") // plugin kept for API / future use
-    public ReloadCommand(FakePlayerPlugin plugin) {}
+    private final FakePlayerPlugin plugin;
+
+    public ReloadCommand(FakePlayerPlugin plugin) { this.plugin = plugin; }
 
     @Override public String getName()        { return "reload"; }
     @Override public String getUsage()       { return ""; }
@@ -39,11 +42,18 @@ public class ReloadCommand implements FppCommand {
             SkinFetcher.clearCache();
             Config.debug("Skin cache cleared (" + Config.skinMode() + " mode).");
         }
+        // Reinitialise the skin repository (picks up new folder files + config pool)
+        SkinRepository.get().reload();
+        Config.debug("Skin repository reloaded (mode=" + Config.skinMode()
+                + ", folder=" + SkinRepository.get().getFolderSkinCount()
+                + ", pool=" + SkinRepository.get().getPoolSkinCount() + ").");
 
         long ms = System.currentTimeMillis() - start;
         Config.debug("Reload finished in " + ms + "ms.");
         FppLogger.success("Plugin reloaded by " + sender.getName() + " in " + ms + "ms.");
         sender.sendMessage(Lang.get("reload-success", "ms", String.valueOf(ms)));
+        // Re-run update check after reload (async, non-blocking)
+        UpdateChecker.check(plugin);
         return true;
     }
 }

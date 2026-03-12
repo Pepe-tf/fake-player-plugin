@@ -9,7 +9,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -71,8 +70,7 @@ public class TpCommand implements FppCommand {
             // Match by display name first, then internal name
             String name = args[0];
             target = all.stream()
-                    .filter(fp -> fp.getDisplayName().equalsIgnoreCase(name)
-                            || fp.getName().equalsIgnoreCase(name))
+                    .filter(fp -> fp.getName().equalsIgnoreCase(name))
                     .findFirst().orElse(null);
 
             if (target == null) {
@@ -105,7 +103,7 @@ public class TpCommand implements FppCommand {
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length != 1) return List.of();
         return manager.getActivePlayers().stream()
-                .map(FakePlayer::getDisplayName)
+                .map(FakePlayer::getName)
                 .filter(n -> n.toLowerCase().startsWith(args[0].toLowerCase()))
                 .toList();
     }

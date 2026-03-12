@@ -46,15 +46,16 @@ public class FakePlayerManager {
         this.plugin = plugin;
         FAKE_PLAYER_KEY = new NamespacedKey(plugin, "fake_player_name");
 
-        // Every 30 s, flush each bot's current position to the DB
+        // Flush each bot's current position to the DB on the configured interval
+        long flushTicks = Math.max(20L, Config.dbLocationFlushInterval() * 20L);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (activePlayers.isEmpty()) return;
             for (FakePlayer fp : activePlayers.values()) {
-                org.bukkit.entity.Entity body = fp.getPhysicsEntity();
-                if (body == null || !body.isValid()) continue;
-                org.bukkit.Location loc = body.getLocation();
-                if (loc.getWorld() == null) continue;
+                // Use getLiveLocation() — prefers Mannequin body over stored spawn pos
+                org.bukkit.Location loc = fp.getLiveLocation();
+                if (loc == null || loc.getWorld() == null) continue;
                 String world = loc.getWorld().getName();
+                // Update FakePlayer's stored position so ChunkLoader also has fresh data
                 fp.setSpawnLocation(loc.clone());
                 if (db != null) {
                     db.updateLastLocation(fp.getUuid(), world,
@@ -63,7 +64,7 @@ public class FakePlayerManager {
                 }
             }
             if (db != null) db.flushPendingLocations();
-        }, 600L, 600L); // every 30 s
+        }, flushTicks, flushTicks);
 
         // Every 40 ticks (2 s) re-send display names for all bots to all players.
         // Uses the lighter UPDATE_DISPLAY_NAME-only packet to override TAB plugin resets.
@@ -134,6 +135,9 @@ public class FakePlayerManager {
             UUID uuid = UUID.randomUUID();
             PlayerProfile profile = Bukkit.createProfile(uuid, ubn.internalName());
             FakePlayer fp = new FakePlayer(uuid, ubn.internalName(), profile);
+            // For user bots the internal name (ubot_*) has no Mojang skin —
+            // pick a random name from the pool to use for skin lookup instead.
+            fp.setSkinName(pickRandomSkinName());
             // Store display name as MiniMessage string — NEVER convert to legacy
             fp.setDisplayName(ubn.displayName());
             fp.setSpawnLocation(location);
@@ -151,7 +155,8 @@ public class FakePlayerManager {
                         Instant.now(), null, null
                 );
                 fp.setDbRecord(record);
-                db.recordSpawn(record);
+                db.recordSpawn(record, net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                        .serialize(me.bill.fakePlayerPlugin.util.TextUtil.colorize(ubn.displayName())));
             }
         }
         if (batch.isEmpty()) return 0;
@@ -195,6 +200,8 @@ public class FakePlayerManager {
             UUID uuid = UUID.randomUUID();
             PlayerProfile profile = Bukkit.createProfile(uuid, name);
             FakePlayer fp = new FakePlayer(uuid, name, profile);
+            // For admin bots the internal name IS the skin name (e.g. "Notch", "Dream")
+            fp.setSkinName(name);
             // Set display name using admin bot name format + LuckPerms prefix
             String lpPrefix = getLuckPermsPrefix();
             String displayName = lpPrefix + Config.adminBotNameFormat().replace("{bot_name}", name);
@@ -215,7 +222,8 @@ public class FakePlayerManager {
                         Instant.now(), null, null
                 );
                 fp.setDbRecord(record);
-                db.recordSpawn(record);
+                db.recordSpawn(record, net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                        .serialize(me.bill.fakePlayerPlugin.util.TextUtil.colorize(displayName)));
             }
         }
         if (batch.isEmpty()) return 0;
@@ -261,45 +269,49 @@ public class FakePlayerManager {
 
     private void finishSpawn(FakePlayer fp, Location spawnLoc) {
         fp.setSpawnTime(java.time.Instant.now());
-        if (Config.spawnBody()) {
-            Entity body = FakePlayerBody.spawn(fp, spawnLoc);
-            if (body != null) {
-                fp.setPhysicsEntity(body);
-                entityIdIndex.put(body.getEntityId(), fp);
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (!body.isValid()) return;
-                    FakePlayerBody.applySkin(plugin, body, fp.getName());
-                    fp.setNametagEntity(FakePlayerBody.spawnNametag(fp, body));
-                    // Re-send tab after skin loads (~1 s later)
+
+        // ── Skin-first pipeline ───────────────────────────────────────────────
+        // We resolve the skin BEFORE sending the tab-list packet so the client
+        // never sees a "default Steve" flash.  Everything downstream fires from
+        // the skin callback — guaranteed to run on the main thread.
+        FakePlayerBody.resolveAndFinish(plugin, fp, spawnLoc, () -> {
+            // At this point fp.getResolvedSkin() is populated (or null for off/auto).
+
+            // 1. Spawn body (Mannequin) — profile already has texture data
+            if (Config.spawnBody()) {
+                Entity body = FakePlayerBody.spawn(fp, spawnLoc);
+                if (body != null) {
+                    fp.setPhysicsEntity(body);
+                    entityIdIndex.put(body.getEntityId(), fp);
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
-                        for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
-                    }, 20L);
-                }, 1L);
+                        if (!body.isValid()) return;
+                        FakePlayerBody.applyResolvedSkin(plugin, fp, body);
+                        fp.setNametagEntity(FakePlayerBody.spawnNametag(fp, body));
+                    }, 1L);
+                }
             }
-        }
 
-        // Send tab list immediately
-        List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
-        for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
+            // 2. Send tab list — now carries the correct skin texture
+            List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+            for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
 
-        // Re-send after 5 ticks to override TAB plugin or other plugins that may reset it
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            List<Player> snap = new ArrayList<>(Bukkit.getOnlinePlayers());
-            for (Player p : snap) PacketHelper.sendTabListAdd(p, fp);
-        }, 5L);
+            // 3. Re-send after 5 ticks in case TAB plugin overwrites it
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListAdd(p, fp);
+            }, 5L);
 
-        if (Config.joinMessage()) {
-            Bukkit.getScheduler().runTaskLater(plugin, () ->
-                BotBroadcast.broadcastJoin(fp), 2L);
-        }
+            // 4. Broadcast join message
+            if (Config.joinMessage()) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> BotBroadcast.broadcastJoin(fp), 2L);
+            }
 
-        if (persistence != null && Config.persistOnRestart()) {
-            persistence.saveAsync(activePlayers.values());
-        }
+            if (persistence != null && Config.persistOnRestart()) {
+                persistence.saveAsync(activePlayers.values());
+            }
 
-        if (swapAI != null) swapAI.schedule(fp);
-        fireVanillaJoin(fp);
+            if (swapAI != null) swapAI.schedule(fp);
+            fireVanillaJoin(fp);
+        });
     }
 
     // ── Remove all ───────────────────────────────────────────────────────────
@@ -314,6 +326,9 @@ public class FakePlayerManager {
 
         PlayerProfile profile = Bukkit.createProfile(uuid, name);
         FakePlayer fp = new FakePlayer(uuid, name, profile);
+        // For restored bots: if name is a valid Minecraft identifier (pool name), use it directly.
+        // If it looks like a user-bot internal name (ubot_*), pick a random pool name.
+        fp.setSkinName(name.startsWith("ubot_") ? pickRandomSkinName() : name);
         // Set display name using admin bot name format + LuckPerms prefix
         String lpPrefix = getLuckPermsPrefix();
         String displayName = lpPrefix + Config.adminBotNameFormat().replace("{bot_name}", name);
@@ -476,6 +491,7 @@ public class FakePlayerManager {
      * removal uses. 1 tick = 50 ms. If both min and max are 0, all bots leave
      * instantly with no sleep.
      */
+    @SuppressWarnings("BusyWait")
     public void removeAllSync() {
         if (activePlayers.isEmpty()) return;
 
@@ -517,15 +533,18 @@ public class FakePlayerManager {
                 long ticks = delayMin + (spread > 0
                         ? ThreadLocalRandom.current().nextInt(spread + 1)
                         : 0);
-                if (ticks > 0) {
-                    try {
-                        Thread.sleep(ticks * 50L);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
+                if (ticks > 0) sleepMs(ticks * 50L);
             }
+        }
+    }
+
+    /** Sleeps the current thread for {@code ms} milliseconds, handling interruption cleanly. */
+    @SuppressWarnings("BusyWait")
+    private static void sleepMs(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -648,6 +667,18 @@ public class FakePlayerManager {
 
     // ── Name generation ──────────────────────────────────────────────────────
 
+    /**
+     * Picks a random name from the bot-names pool for use as a skin source.
+     * Unlike {@link #generateName()}, this does NOT reserve the name —
+     * it is used only for skin lookup (Mojang API / auto resolution).
+     * Falls back to a random entry without worrying about uniqueness.
+     */
+    private String pickRandomSkinName() {
+        List<String> pool = Config.namePool();
+        if (pool.isEmpty()) return "Steve"; // absolute fallback
+        return pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+    }
+
     private String generateName() {
         List<String> pool = Config.namePool();
         if (pool.isEmpty()) return fallbackName();
@@ -655,6 +686,9 @@ public class FakePlayerManager {
         String chosen  = null;
         int    count   = 0;
         for (String n : pool) {
+            // Enforce Minecraft username constraints: 1-16 chars, letters/digits/underscore
+            if (n == null || n.isEmpty() || n.length() > 16
+                    || !n.matches("[a-zA-Z0-9_]+")) continue;
             if (usedNames.contains(n) || Bukkit.getPlayerExact(n) != null) continue;
             count++;
             if (ThreadLocalRandom.current().nextInt(count) == 0) chosen = n;
@@ -721,8 +755,8 @@ public class FakePlayerManager {
                 String directPrefix = defaultGroup.getNodes(net.luckperms.api.node.NodeType.PREFIX)
                         .stream()
                         .max(java.util.Comparator.comparingInt(
-                                n -> n.getPriority()))   // highest priority wins
-                        .map(n -> n.getMetaValue())
+                                net.luckperms.api.node.types.PrefixNode::getPriority))
+                        .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
                         .orElse(null);
                 if (directPrefix != null && !directPrefix.isEmpty()) {
                     Config.debug("[LP prefix] Direct node prefix from 'default': " + directPrefix);
@@ -748,8 +782,8 @@ public class FakePlayerManager {
                 String p = g.getNodes(net.luckperms.api.node.NodeType.PREFIX)
                         .stream()
                         .max(java.util.Comparator.comparingInt(
-                                n -> n.getPriority()))
-                        .map(n -> n.getMetaValue())
+                                net.luckperms.api.node.types.PrefixNode::getPriority))
+                        .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
                         .orElse(null);
                 if (p == null || p.isEmpty()) {
                     p = g.getCachedData().getMetaData(opts).getPrefix();
@@ -770,20 +804,6 @@ public class FakePlayerManager {
         return "";
     }
 
-    /**
-     * Generates a valid internal Minecraft name and a display name for an admin bot.
-     *
-     * @param botName the bot's actual Minecraft name
-     */
-    public UserBotName generateAdminBotName(String botName) {
-        // Internal name: "bot_<name>" truncated to 16 chars (valid MC identifier)
-        String internal = "bot_" + botName;
-        if (internal.length() > 16) internal = internal.substring(0, 16);
-        usedNames.add(internal);
-        String prefix  = getLuckPermsPrefix();
-        String display = prefix + Config.adminBotNameFormat().replace("{bot_name}", botName);
-        return new UserBotName(internal, display);
-    }
 
     /**
      * Generates a valid internal Minecraft name and a display name for a user-tier bot.
@@ -806,20 +826,12 @@ public class FakePlayerManager {
     }
 
     /**
-     * Fires a vanilla join event for a fake player, so it appears in the server player list and triggers vanilla join message.
+     * Sends a tab-list ADD packet for {@code fp} to every online player.
+     * Called from {@link #finishSpawn} after skin resolution completes.
      */
     private void fireVanillaJoin(FakePlayer fp) {
         for (Player online : Bukkit.getOnlinePlayers()) {
             PacketHelper.sendTabListAdd(online, fp);
-        }
-    }
-
-    /**
-     * Fires a vanilla leave event for a fake player, so it disappears from the server player list and triggers vanilla leave message.
-     */
-    private void fireVanillaLeave(FakePlayer fp) {
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            PacketHelper.sendTabListRemove(online, fp);
         }
     }
 }

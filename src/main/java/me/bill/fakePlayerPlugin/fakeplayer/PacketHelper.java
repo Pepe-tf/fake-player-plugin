@@ -196,10 +196,10 @@ public final class PacketHelper {
     public static void sendTabListAdd(Player receiver, FakePlayer fp) {
         if (!ensureReady()) return;
         try {
-            Object nms     = getHandle(receiver);
-            Object profile = gameProfileCtor != null
-                    ? gameProfileCtor.newInstance(fp.getUuid(), fp.getName())
-                    : gameProfileClass.getDeclaredConstructors()[0].newInstance(fp.getUuid(), fp.getName());
+            Object nms = getHandle(receiver);
+
+            // Build GameProfile with UUID + name, with skin injected if available
+            Object profile = buildProfileWithSkin(fp);
 
             // Parse display name: MiniMessage → Adventure Component → NMS Component
             String displayNameMini = fp.getDisplayName();
@@ -222,11 +222,145 @@ public final class PacketHelper {
             }
 
             sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, secondArg));
-            Config.debug("Tab ADD → " + receiver.getName() + " for " + fp.getName());
+            SkinProfile skin = fp.getResolvedSkin();
+            Config.debug("Tab ADD → " + receiver.getName() + " for " + fp.getName()
+                    + (skin != null && skin.isValid() ? " [skinned]" : ""));
         } catch (Exception e) {
             FppLogger.error("sendTabListAdd failed: " + e.getMessage());
             if (Config.isDebug()) FppLogger.warn("  → " + e);
         }
+    }
+
+    /**
+     * Builds a {@code GameProfile} for the fake player.
+     * If the player has a resolved skin, the {@code textures} property is added
+     * to a freshly-created mutable PropertyMap before the profile is returned.
+     *
+     * <p>We create the profile normally (UUID + name), then walk its
+     * {@code PropertyMap} to inject the property via the map's {@code put} method.
+     * Modern authlib PropertyMap delegates to a {@code HashMultimap} internally
+     * which IS mutable — we just need to bypass the immutable wrapper that
+     * may be returned by {@code getProperties()} in some builds.
+     */
+    private static Object buildProfileWithSkin(FakePlayer fp) throws Exception {
+        Object profile = gameProfileCtor != null
+                ? gameProfileCtor.newInstance(fp.getUuid(), fp.getName())
+                : gameProfileClass.getDeclaredConstructors()[0].newInstance(fp.getUuid(), fp.getName());
+
+        SkinProfile skin = fp.getResolvedSkin();
+        if (skin == null || !skin.isValid()) return profile;
+
+        try {
+            injectProperty(profile, "textures", skin.getValue(), skin.getSignature());
+        } catch (Exception e) {
+            Config.debug("buildProfileWithSkin: inject failed — " + e.getMessage());
+        }
+        return profile;
+    }
+
+    /**
+     * Injects a property into a {@code GameProfile}'s {@code PropertyMap} via reflection.
+     *
+     * <p>Authlib's {@code PropertyMap} is a {@code ForwardingMultimap} that wraps a mutable
+     * {@code HashMultimap}. We find the delegate field and call {@code put} on it directly,
+     * bypassing any immutability enforced at the forwarding level.
+     */
+    private static void injectProperty(Object profile, String key, String value, String signature)
+            throws Exception {
+
+        // ── Step 1: Resolve Property class ───────────────────────────────────
+        ClassLoader cl = profile.getClass().getClassLoader();
+        Class<?> propertyClass = cl.loadClass("com.mojang.authlib.properties.Property");
+
+        // Build Property(name, value, signature) — the canonical 3-arg constructor
+        Object property;
+        try {
+            Constructor<?> c3 = propertyClass.getDeclaredConstructor(
+                    String.class, String.class, String.class);
+            c3.setAccessible(true);
+            property = c3.newInstance(key, value, signature != null ? signature : "");
+        } catch (NoSuchMethodException ex) {
+            // Older authlib: 2-arg constructor (name, value) — no signature
+            Constructor<?> c2 = propertyClass.getDeclaredConstructor(String.class, String.class);
+            c2.setAccessible(true);
+            property = c2.newInstance(key, value);
+        }
+
+        // ── Step 2: Get PropertyMap from getProperties() ─────────────────────
+        Method getProps = null;
+        for (Method m : profile.getClass().getMethods()) {
+            if (m.getName().equals("getProperties") && m.getParameterCount() == 0) {
+                getProps = m;
+                break;
+            }
+        }
+        if (getProps == null) throw new NoSuchMethodException("GameProfile.getProperties()");
+        Object propertyMap = getProps.invoke(profile);
+
+        // ── Step 3: Direct put on the PropertyMap (try public API first) ──────
+        for (Method m : propertyMap.getClass().getMethods()) {
+            if ("put".equals(m.getName()) && m.getParameterCount() == 2) {
+                try {
+                    m.invoke(propertyMap, key, property);
+                    Config.debug("injectProperty: put via public API succeeded.");
+                    return;
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // ── Step 4: Walk declared fields for the underlying mutable Multimap ──
+        for (Field f : getAllFields(propertyMap.getClass())) {
+            f.setAccessible(true);
+            Object delegate = f.get(propertyMap);
+            if (delegate == null) continue;
+            String simpleName = delegate.getClass().getSimpleName();
+            if (!simpleName.contains("Multimap") && !simpleName.contains("HashMap")) continue;
+
+            for (Method m : delegate.getClass().getMethods()) {
+                if ("put".equals(m.getName()) && m.getParameterCount() == 2) {
+                    try {
+                        m.invoke(delegate, key, property);
+                        Config.debug("injectProperty: put via delegate '" + f.getName() + "' succeeded.");
+                        return;
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+
+        // ── Step 5: Replace delegate with a fresh HashMultimap ───────────────
+        Class<?> hashMultimapClass = cl.loadClass("com.google.common.collect.HashMultimap");
+        Method create = hashMultimapClass.getMethod("create");
+        Object mutableMap = create.invoke(null);
+
+        // put our property first
+        for (Method m : mutableMap.getClass().getMethods()) {
+            if ("put".equals(m.getName()) && m.getParameterCount() == 2) {
+                m.invoke(mutableMap, key, property);
+                break;
+            }
+        }
+
+        // Replace the first Multimap-like field in the PropertyMap with our mutable one
+        for (Field f : getAllFields(propertyMap.getClass())) {
+            f.setAccessible(true);
+            Object val = f.get(propertyMap);
+            if (val == null) continue;
+            if (val.getClass().getSimpleName().contains("Multimap")) {
+                f.set(propertyMap, mutableMap);
+                Config.debug("injectProperty: replaced delegate field '" + f.getName() + "'.");
+                return;
+            }
+        }
+
+        throw new IllegalStateException("Could not find a writable Multimap in PropertyMap");
+    }
+
+    /** Collects all declared fields from {@code clazz} and its superclasses. */
+    private static List<Field> getAllFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass())
+            fields.addAll(Arrays.asList(c.getDeclaredFields()));
+        return fields;
     }
 
     public static void sendTabListRemove(Player receiver, FakePlayer fp) {

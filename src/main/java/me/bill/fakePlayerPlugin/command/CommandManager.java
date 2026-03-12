@@ -1,7 +1,15 @@
 package me.bill.fakePlayerPlugin.command;
 
+import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.lang.Lang;
+import me.bill.fakePlayerPlugin.util.TextUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -18,10 +26,17 @@ import java.util.stream.Collectors;
  */
 public class CommandManager implements CommandExecutor, TabCompleter {
 
-    private final List<FppCommand> commands = new ArrayList<>();
-    private final Map<String, FppCommand> byName = new LinkedHashMap<>();
+    private static final TextColor ACCENT    = TextColor.fromHexString("#0079FF");
+    private static final TextColor DARK_GRAY = NamedTextColor.DARK_GRAY;
+    private static final TextColor GRAY      = NamedTextColor.GRAY;
+    private static final TextColor WHITE     = NamedTextColor.WHITE;
 
-    public CommandManager() {
+    private final List<FppCommand>       commands = new ArrayList<>();
+    private final Map<String, FppCommand> byName  = new LinkedHashMap<>();
+    private final FakePlayerPlugin        plugin;
+
+    public CommandManager(FakePlayerPlugin plugin) {
+        this.plugin = plugin;
         register(new HelpCommand(this));
     }
 
@@ -46,7 +61,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                              @NotNull String @NotNull [] args) {
 
         if (args.length == 0) {
-            byName.get("help").execute(sender, new String[]{});
+            sendPluginInfo(sender);
             return true;
         }
 
@@ -98,5 +113,75 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
         return Collections.emptyList();
     }
-}
 
+    // ── Plugin info screen ────────────────────────────────────────────────────
+
+    // Modrinth page — URL is fixed and intentionally not configurable
+    private static final String MODRINTH_URL =
+            "https://modrinth.com/plugin/fake-player-plugin-(fpp)";
+
+    /**
+     * Shown when the player types bare {@code /fpp} — a compact, themed info panel.
+     */
+    private void sendPluginInfo(CommandSender sender) {
+        String version = plugin.getPluginMeta().getVersion();
+        List<String> authors = plugin.getPluginMeta().getAuthors();
+        String author = authors.isEmpty() ? "Unknown" : String.join(", ", authors);
+
+        // Use the shared divider and header from lang
+        Component divider = TextUtil.colorize(Lang.raw("divider"));
+        Component header  = TextUtil.colorize(Lang.raw("info-screen-header"));
+
+        // Label for the Modrinth link — admins can rename it in en.yml
+        String modrinthLabel = Lang.raw("modrinth-label");
+
+        sender.sendMessage(divider);
+        sender.sendMessage(header);
+        sender.sendMessage(Component.empty());
+
+        // Version / Author rows
+        sender.sendMessage(row("ᴠᴇʀꜱɪᴏɴ", version));
+        sender.sendMessage(row("ᴀᴜᴛʜᴏʀ",  author));
+
+        // Active bots count (live)
+        me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager fpm = plugin.getFakePlayerManager();
+        if (fpm != null) {
+            sender.sendMessage(row("ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ", String.valueOf(fpm.getCount())));
+        }
+
+        // Modrinth link — short clickable label, URL hidden from chat
+        sender.sendMessage(Component.empty()
+                .append(Component.text("  ").color(DARK_GRAY))
+                .append(Component.text("ᴘᴀɢᴇ ").color(GRAY))
+                .append(Component.text("→ ").color(DARK_GRAY))
+                .append(Component.text(modrinthLabel)
+                        .color(ACCENT)
+                        .decorate(TextDecoration.UNDERLINED)
+                        .clickEvent(ClickEvent.openUrl(MODRINTH_URL))
+                        .hoverEvent(HoverEvent.showText(
+                                Component.text("Click to open the Modrinth page")
+                                         .color(GRAY)))));
+
+        sender.sendMessage(Component.empty());
+
+        // Help hint — clickable shortcut
+        sender.sendMessage(Component.empty()
+                .append(Component.text("  ").color(DARK_GRAY))
+                .append(Component.text("ᴛʏᴘᴇ ").color(GRAY))
+                .append(Component.text("/fpp help").color(ACCENT)
+                        .clickEvent(ClickEvent.runCommand("/fpp help"))
+                        .hoverEvent(HoverEvent.showText(
+                                Component.text("Click to open the help menu").color(GRAY))))
+                .append(Component.text(" ꜰᴏʀ ᴀ ʟɪꜱᴛ ᴏꜰ ᴄᴏᴍᴍᴀɴᴅꜱ.").color(GRAY)));
+
+        sender.sendMessage(divider);
+    }
+
+    private Component row(String label, String value) {
+        return Component.empty()
+                .append(Component.text("  ").color(DARK_GRAY))
+                .append(Component.text(label).color(GRAY))
+                .append(Component.text(" → ").color(DARK_GRAY))
+                .append(Component.text(value).color(WHITE));
+    }
+}

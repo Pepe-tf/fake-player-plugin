@@ -74,8 +74,7 @@ public class TphCommand implements FppCommand {
             // Match by display name first, then internal name
             String name = args[0];
             target = candidates.stream()
-                    .filter(fp -> fp.getDisplayName().equalsIgnoreCase(name)
-                            || fp.getName().equalsIgnoreCase(name))
+                    .filter(fp -> fp.getName().equalsIgnoreCase(name))
                     .findFirst().orElse(null);
 
             if (target == null) {
@@ -110,7 +109,7 @@ public class TphCommand implements FppCommand {
                 ? List.copyOf(manager.getActivePlayers())
                 : (sender instanceof Player p ? manager.getBotsOwnedBy(p.getUniqueId()) : List.of());
         return pool.stream()
-                .map(FakePlayer::getDisplayName)
+                .map(FakePlayer::getName)
                 .filter(n -> n.toLowerCase().startsWith(args[0].toLowerCase()))
                 .toList();
     }

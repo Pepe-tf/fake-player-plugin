@@ -98,10 +98,9 @@ public class InfoCommand implements FppCommand {
         String sub  = args[0].toLowerCase();
         String name = args.length > 1 ? args[1] : args[0];
 
-        // Try to match a live bot by display name or internal name first
+        // Try to match a live bot by internal name first, then plain display name
         FakePlayer live = manager.getActivePlayers().stream()
-                .filter(fp -> fp.getDisplayName().equalsIgnoreCase(args[0])
-                        || fp.getName().equalsIgnoreCase(args[0]))
+                .filter(fp -> fp.getName().equalsIgnoreCase(args[0]))
                 .findFirst().orElse(null);
 
         if (live != null && !sub.equals("bot") && !sub.equals("spawner")) {
@@ -149,8 +148,7 @@ public class InfoCommand implements FppCommand {
     private void showUserBotInfo(CommandSender sender, org.bukkit.entity.Player player, String input) {
         // Match by display name OR internal name
         FakePlayer fp = manager.getActivePlayers().stream()
-                .filter(b -> b.getDisplayName().equalsIgnoreCase(input)
-                        || b.getName().equalsIgnoreCase(input))
+                .filter(b -> b.getName().equalsIgnoreCase(input))
                 .findFirst().orElse(null);
 
         if (fp == null) {
@@ -183,23 +181,37 @@ public class InfoCommand implements FppCommand {
         if (active.isEmpty()) {
             sender.sendMessage(Component.empty()
                     .append(Component.text("  No bots are currently active.").color(MUTED)));
-            sender.sendMessage(divider());
-            return;
+        } else {
+            for (FakePlayer fp : active) {
+                sender.sendMessage(Component.empty()
+                        .append(Component.text("  ").color(MUTED))
+                        .append(Component.text(fp.getDisplayName()).color(ACCENT))
+                        .append(Component.text("  ⏱ ").color(MUTED))
+                        .append(Component.text(formatUptime(fp.getSpawnTime())).color(VALUE))
+                        .append(Component.text("  📍 ").color(MUTED))
+                        .append(Component.text(formatLoc(fp)).color(VALUE))
+                        .append(Component.text("  by ").color(MUTED))
+                        .append(Component.text(fp.getSpawnedBy()).color(LABEL)));
+            }
         }
 
-        for (FakePlayer fp : active) {
-            sender.sendMessage(Component.empty()
-                    .append(Component.text("  ").color(MUTED))
-                    .append(Component.text(fp.getDisplayName()).color(ACCENT))
-                    .append(Component.text("  ⏱ ").color(MUTED))
-                    .append(Component.text(formatUptime(fp.getSpawnTime())).color(VALUE))
-                    .append(Component.text("  📍 ").color(MUTED))
-                    .append(Component.text(formatLoc(fp)).color(VALUE))
-                    .append(Component.text("  by ").color(MUTED))
-                    .append(Component.text(fp.getSpawnedBy()).color(LABEL)));
-        }
-
+        // DB stats block
         if (db != null) {
+            me.bill.fakePlayerPlugin.database.DatabaseManager.DbStats stats = db.getStats();
+            sender.sendMessage(divider());
+            sender.sendMessage(header("ᴅᴀᴛᴀʙᴀꜱᴇ ꜱᴛᴀᴛꜱ (" + stats.backend() + ")"));
+            row(sender, "ᴛᴏᴛᴀʟ ꜱᴇꜱꜱɪᴏɴꜱ",  String.valueOf(stats.totalSessions()));
+            row(sender, "ᴜɴɪQᴜᴇ ʙᴏᴛꜱ",     String.valueOf(stats.uniqueBots()));
+            row(sender, "ᴜɴɪQᴜᴇ ꜱᴘᴀᴡɴᴇʀꜱ", String.valueOf(stats.uniqueSpawners()));
+            row(sender, "ᴛᴏᴛᴀʟ ᴜᴘᴛɪᴍᴇ",    stats.formattedUptime());
+
+            java.util.Map<String, Integer> top = db.getTopSpawners(3);
+            if (!top.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                top.forEach((p, c) -> { if (sb.length() > 0) sb.append(", "); sb.append(p).append(" (").append(c).append(")"); });
+                row(sender, "ᴛᴏᴘ ꜱᴘᴀᴡɴᴇʀꜱ", sb.toString());
+            }
+
             sender.sendMessage(Component.empty()
                     .append(Component.text("  Use /fpp info <name> or /fpp info spawner <name> for history.").color(MUTED)));
         }
@@ -222,8 +234,7 @@ public class InfoCommand implements FppCommand {
     private void showBotSessions(CommandSender sender, String botName) {
         // Show live info first if bot is currently active (match by display or internal name)
         FakePlayer live = manager.getActivePlayers().stream()
-                .filter(fp -> fp.getDisplayName().equalsIgnoreCase(botName)
-                        || fp.getName().equalsIgnoreCase(botName))
+                .filter(fp -> fp.getName().equalsIgnoreCase(botName))
                 .findFirst().orElse(null);
 
         if (live != null) {
@@ -232,14 +243,15 @@ public class InfoCommand implements FppCommand {
 
         // DB history — use internal name for the DB query
         String internalName = live != null ? live.getName() : botName;
-        List<BotRecord> records = db.getSessionsByBot(internalName);
+        int limit = me.bill.fakePlayerPlugin.config.Config.dbMaxHistoryRows();
+        List<BotRecord> records = db.getSessionsByBot(internalName, limit);
         if (records.isEmpty() && live == null) {
             sender.sendMessage(Lang.get("info-no-records", "name", botName));
             return;
         }
         if (records.isEmpty()) return;
 
-        sender.sendMessage(header("ꜱᴇꜱꜱɪᴏɴ ʜɪꜱᴛᴏʀʏ — " + botName));
+        sender.sendMessage(header("ꜱᴇꜱꜱɪᴏɴ ʜɪꜱᴛᴏʀʏ — " + botName + " (last " + records.size() + ")"));
         for (BotRecord r : records) {
             sender.sendMessage(sessionRow(r));
         }
@@ -247,12 +259,13 @@ public class InfoCommand implements FppCommand {
     }
 
     private void showSpawnerSessions(CommandSender sender, String playerName) {
-        List<BotRecord> records = db.getSessionsBySpawner(playerName);
+        int limit = me.bill.fakePlayerPlugin.config.Config.dbMaxHistoryRows();
+        List<BotRecord> records = db.getSessionsBySpawner(playerName, limit);
         if (records.isEmpty()) {
             sender.sendMessage(Lang.get("info-no-records", "name", playerName));
             return;
         }
-        sender.sendMessage(header("ꜱᴘᴀᴡɴᴇʀ ʜɪꜱᴛᴏʀʏ — " + playerName));
+        sender.sendMessage(header("ꜱᴘᴀᴡɴᴇʀ ʜɪꜱᴛᴏʀʏ — " + playerName + " (last " + records.size() + ")"));
         for (BotRecord r : records) {
             sender.sendMessage(sessionRow(r));
         }
@@ -337,17 +350,17 @@ public class InfoCommand implements FppCommand {
             List<String> suggestions = new java.util.ArrayList<>();
 
             if (isAdmin) {
-                // Admin: offer sub-commands + all active bot display names
+                // Admin: offer sub-commands + all active bot internal names
                 if ("bot".startsWith(lower))     suggestions.add("bot");
                 if ("spawner".startsWith(lower)) suggestions.add("spawner");
                 manager.getActivePlayers().stream()
-                        .map(FakePlayer::getDisplayName)
+                        .map(FakePlayer::getName)
                         .filter(n -> n.toLowerCase().startsWith(lower))
                         .forEach(suggestions::add);
             } else if (sender instanceof org.bukkit.entity.Player player) {
-                // User-tier: only own bots, display name only
+                // User-tier: only own bots by internal name
                 manager.getBotsOwnedBy(player.getUniqueId()).stream()
-                        .map(FakePlayer::getDisplayName)
+                        .map(FakePlayer::getName)
                         .filter(n -> n.toLowerCase().startsWith(lower))
                         .forEach(suggestions::add);
             }
@@ -360,7 +373,7 @@ public class InfoCommand implements FppCommand {
             String name = args[1].toLowerCase();
             if (sub.equals("bot")) {
                 return manager.getActivePlayers().stream()
-                        .map(FakePlayer::getDisplayName)
+                        .map(FakePlayer::getName)
                         .filter(n -> n.toLowerCase().startsWith(name))
                         .toList();
             }

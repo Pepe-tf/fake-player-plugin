@@ -1,237 +1,196 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.0.15
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.1.4
 #  Run /fpp reload to apply changes without restarting the server.
 #  Colors use MiniMessage syntax: <#0079FF>text</#0079FF>  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Language ──────────────────────────────────────────────────────────────────
-# Language file to load from plugins/FakePlayerPlugin/language/<lang>.yml
 language: en
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
-# Print verbose diagnostics to console. Useful for troubleshooting.
 debug: false
+
+# ── Update Checker ────────────────────────────────────────────────────────────
+# Check GitHub for a newer version on startup and /fpp reload.
+update-checker:
+  enabled: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT LIMITS
 # ─────────────────────────────────────────────────────────────────────────────
 limits:
-  # Maximum number of fake players allowed on the server at once. 0 = unlimited.
-  max-bots: 1000
-
-  # Default personal bot limit for players with fpp.user.spawn permission.
-  # Override per-player/group via fpp.bot.<num> (e.g. fpp.bot.5 = 5 bots).
-  user-bot-limit: 1
-
-  # Count presets shown in tab-complete for the admin spawn command.
+  max-bots: 1000          # 0 = unlimited
+  user-bot-limit: 1       # default limit for fpp.user.spawn users
   spawn-presets: [1, 5, 10, 15, 20]
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT NAMES
-#  Placeholders:  {bot_name} = bot's Minecraft name
-#                 {spawner}  = player who spawned the bot  (user bots only)
-#                 {num}      = bot number for that player  (user bots only)
-#  Colors: full MiniMessage tags — <#RRGGBB>  <gray>  <bold>  etc.
+#  {bot_name} = bot name   {spawner} = spawner name   {num} = bot number
 # ─────────────────────────────────────────────────────────────────────────────
 bot-name:
-  # Display name shown in tab list and nametag for admin-spawned bots.
   admin-format: '{bot_name}'
-
-  # Display name for bots spawned by normal users (fpp.user.spawn).
   user-format: 'bot-{spawner}-{num}'
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  LUCKPERMS INTEGRATION
 # ─────────────────────────────────────────────────────────────────────────────
 luckperms:
-  # Prepend the LuckPerms default-group prefix to every bot display name
-  # Example with use-prefix: true  →  §7[bot-Steve]
-  # Example with use-prefix: false →  [bot-Steve]   (colors from format only)
   use-prefix: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SKIN SYSTEM
+#  SKIN
+#
+#  mode: auto   — Bot gets the Mojang skin matching its name automatically.
+#                 "Notch" → Notch's skin. Works on online-mode servers.
+#                 This is the recommended setting.
+#
+#  mode: off    — No skin. All bots use the default Steve appearance.
+#
+#  mode: custom — Advanced skin control. Uses overrides, pool, and skin folder.
 # ─────────────────────────────────────────────────────────────────────────────
 skin:
-  # auto     — Paper resolves the skin from Mojang automatically (recommended).
-  # fetch    — Plugin manually fetches texture data from Mojang API.
-  # disabled — No skin; bots use the default Steve / Alex appearance.
-  mode: auto
+  mode: auto   # auto | off | custom
 
-  # Clear the skin fetch cache when /fpp reload is run (fetch mode only).
+  # (custom only) Per-bot skin overrides. bot-name: minecraft-username-to-copy
+  overrides: {}
+  # Examples:
+  #   Herobrine: Notch
+  #   CoolBot: Technoblade
+
+  # (custom only) Random skin pool — list of Minecraft usernames.
+  # Bots without an override get a random skin from this list.
+  pool: []
+  # Examples:
+  #   - Notch
+  #   - Dream
+  #   - Technoblade
+
+  # (custom only) Also use PNG files from plugins/FakePlayerPlugin/skins/.
+  # <botname>.png = exact match. Any other .png = random pool.
+  use-skin-folder: true
+
+  # Clear skin cache on /fpp reload.
   clear-cache-on-reload: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT BODY
 # ─────────────────────────────────────────────────────────────────────────────
 body:
-  # Spawn a visible Mannequin entity as the bot's physical body.
-  # false = bot exists only in the tab list and join/leave messages.
-  enabled: true
+  enabled: true   # false = tab list / messages only, no visible entity
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  PERSISTENCE
+#  PERSISTENCE  —  Bots rejoin at their last location after a server restart.
 # ─────────────────────────────────────────────────────────────────────────────
 persistence:
-  # Save active bots on shutdown and restore them when the server restarts.
-  # Bots rejoin at the location they were at when the server stopped.
   enabled: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  JOIN / LEAVE TIMING  (values are in ticks, 20 ticks = 1 second)
-#  A random delay between min and max is chosen independently for each bot,
-#  making multiple simultaneous spawns look like staggered real player joins.
+#  JOIN / LEAVE TIMING  (ticks — 20 ticks = 1 second)
 # ─────────────────────────────────────────────────────────────────────────────
 join-delay:
-  min: 0    # Minimum ticks before a bot appears after being queued
-  max: 40   # Maximum ticks  (set both to 0 for instant)
+  min: 0
+  max: 5
 
 leave-delay:
-  min: 0    # Minimum ticks before a bot disappears after being removed
-  max: 40   # Maximum ticks
+  min: 0
+  max: 5
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  MESSAGES
 # ─────────────────────────────────────────────────────────────────────────────
 messages:
-  # Broadcast a vanilla-style "X joined the game" when a bot is spawned.
   join-message: true
-
-  # Broadcast a vanilla-style "X left the game" when a bot is removed.
   leave-message: true
-
-  # Broadcast "<player> was slain by <bot>" when a player kills a bot.
   kill-message: false
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  COMBAT
 # ─────────────────────────────────────────────────────────────────────────────
 combat:
-  # Base health points for bots (20.0 = default player health).
   max-health: 20.0
-
-  # Play the vanilla player hurt sound when a bot takes damage.
   hurt-sound: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  DEATH & RESPAWN
 # ─────────────────────────────────────────────────────────────────────────────
 death:
-  # true  — bot respawns at its last known location after dying.
-  # false — bot leaves the server permanently on death.
   respawn-on-death: false
-
-  # Ticks to wait before a dead bot respawns (20 ticks = 1 second).
-  respawn-delay: 60
-
-  # Prevent bots from dropping items when they die.
+  respawn-delay: 60        # ticks
   suppress-drops: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CHUNK LOADING
-#  Bots keep chunks loaded around them the same way a real player would,
-#  preventing mobs from despawning and farms from stopping near bots.
+#
+#  Bots keep chunks loaded around them exactly like a real player — mobs spawn,
+#  redstone ticks, crops grow in the loaded area.
+#
+#  radius:          Chunk radius kept loaded around each bot.
+#                   0 = match the server's simulation-distance automatically.
+#                   Recommended: match your server's simulation-distance (default: 6).
+#
+#  update-interval: How often (in ticks) the loader checks if a bot has moved
+#                   to a new chunk and updates tickets. 20 = once per second.
+#                   Lower = more responsive to knockback; higher = less CPU.
 # ─────────────────────────────────────────────────────────────────────────────
 chunk-loading:
   enabled: true
-
-  # Chunk radius kept loaded around each bot (vanilla player default ≈ 10).
-  radius: 6
+  radius: 6           # 0 = auto (server simulation-distance)
+  update-interval: 20 # ticks between chunk-ticket refreshes
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  HEAD AI
-#  Bots rotate their head to look at the nearest real player within range.
+#  HEAD AI  —  Bots look at nearby players.
 # ─────────────────────────────────────────────────────────────────────────────
 head-ai:
-  # Distance in blocks. Set to 0 to disable head tracking entirely.
-  look-range: 8.0
-
-  # Rotation interpolation speed (0.0 = frozen, 1.0 = instant snap).
-  turn-speed: 0.3
+  look-range: 8.0   # blocks; 0 = disabled
+  turn-speed: 0.3   # 0.0 = frozen, 1.0 = instant snap
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  COLLISION & PUSH
-#  Controls physical interaction between bots, players, and each other.
 # ─────────────────────────────────────────────────────────────────────────────
 collision:
-  # Radius (blocks) at which walking into a bot triggers a push impulse.
   walk-radius: 0.85
-
-  # Impulse strength when a player walks into a bot.
   walk-strength: 0.22
-
-  # Maximum horizontal speed any push can impart on a bot.
   max-horizontal-speed: 0.30
-
-  # Knockback impulse when a player punches a bot.
   hit-strength: 0.45
-
-  # Radius at which two bots push each other apart (prevents stacking).
   bot-radius: 0.90
-
-  # Impulse strength for bot-vs-bot separation.
   bot-strength: 0.14
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT SWAP / ROTATION
-#  Simulates realistic session turnover — bots leave and rejoin with new
-#  names after a configurable session length, mimicking real player activity.
+#  Bots periodically leave and rejoin with a new name to simulate turnover.
 # ─────────────────────────────────────────────────────────────────────────────
 swap:
   enabled: false
-
-  # Session duration range in seconds before a bot swaps out.
-  session-min: 120
+  session-min: 120         # seconds before a bot swaps out
   session-max: 600
-
-  # Gap between a bot leaving and its replacement joining (seconds).
-  rejoin-delay-min: 5
+  rejoin-delay-min: 5      # seconds between leave and rejoin
   rejoin-delay-max: 45
-
-  # Random ±jitter added to each bot's session timer (seconds).
-  jitter: 30
-
-  # Chance (0.0–1.0) that a rejoining bot reconnects with the same name.
-  reconnect-chance: 0.15
-
-  # Percent chance (0–100) a rejoin gap is extended 1–3 min (AFK-kick sim).
-  afk-kick-chance: 5
-
-  # Bot sends a farewell chat message before leaving.
+  jitter: 30               # random ± seconds added to session timer
+  reconnect-chance: 0.15   # 0.0–1.0 chance to rejoin with the same name
+  afk-kick-chance: 5       # % chance rejoin gap is extended 1–3 min
   farewell-chat: true
-
-  # Replacement bot sends a greeting chat message after joining.
   greeting-chat: true
-
-  # Bias session lengths by server time-of-day (longer during peak hours).
-  time-of-day-bias: true
+  time-of-day-bias: true   # longer sessions during peak hours
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  FAKE CHAT
-#  Bots occasionally send random messages from bot-messages.yml.
+#  FAKE CHAT  —  Bots send random messages from bot-messages.yml.
 # ─────────────────────────────────────────────────────────────────────────────
 fake-chat:
   enabled: false
-
-  # Only send messages when at least one real player is online.
   require-player-online: true
-
-  # Probability (0.0–1.0) that a scheduled interval actually fires a message.
-  chance: 0.75
-
-  # Seconds between each bot's chat attempts (chosen randomly per bot).
+  chance: 0.75             # 0.0–1.0
   interval:
-    min: 5
+    min: 5                 # seconds
     max: 10
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  DATABASE
-#  Stores bot spawn history, last locations, and session data.
-#  Default: SQLite — no setup required, stored in plugins/FakePlayerPlugin/data/
-#  Optional: switch to MySQL for multi-server setups or external dashboards.
+#  DATABASE  —  Default: SQLite. Switch to MySQL for multi-server setups.
+#
+#  SQLite  — zero-config, stores data in plugins/FakePlayerPlugin/data/fpp.db
+#  MySQL   — recommended for multi-server / BungeeCord setups
 # ─────────────────────────────────────────────────────────────────────────────
 database:
-  # Set to true to use MySQL instead of the built-in SQLite.
+  # SQLite is used automatically when mysql-enabled is false.
   mysql-enabled: false
 
   mysql:
@@ -241,7 +200,15 @@ database:
     username: "root"
     password: ""
     use-ssl: false
-    # Maximum number of pooled connections (HikariCP).
     pool-size: 5
-    # Connection timeout in milliseconds.
     connection-timeout: 30000
+
+  # How often (in seconds) pending bot position updates are flushed to the DB.
+  # Lower = more accurate restart positions; higher = less DB I/O.
+  location-flush-interval: 30
+
+  # Session history — controls how many rows are returned by /fpp info
+  session-history:
+    # Max rows returned per query (e.g. /fpp info spawner <name>)
+    max-rows: 20
+
