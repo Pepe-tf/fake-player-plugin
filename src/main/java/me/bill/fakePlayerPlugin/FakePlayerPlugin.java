@@ -28,6 +28,7 @@ import me.bill.fakePlayerPlugin.listener.ServerListListener;
 import me.bill.fakePlayerPlugin.listener.PlayerJoinListener;
 import me.bill.fakePlayerPlugin.util.FppLogger;
 import me.bill.fakePlayerPlugin.util.UpdateChecker;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class FakePlayerPlugin extends JavaPlugin {
@@ -43,29 +44,39 @@ public final class FakePlayerPlugin extends JavaPlugin {
     private BotPersistence    botPersistence;
     private BotSwapAI         botSwapAI;
 
+    /** System.currentTimeMillis() captured at the start of onEnable. */
+    private long enabledAt;
+
     @Override
     public void onEnable() {
-        instance = this;
+        instance  = this;
+        enabledAt = System.currentTimeMillis();
         FppLogger.init(getLogger());
 
-        // Load config then language file
+        // ── Config ────────────────────────────────────────────────────────────
+        FppLogger.section("Loading Config");
         Config.init(this);
-        Config.debug("Config loaded.");
+        FppLogger.debug("config.yml loaded.");
+
         Lang.init(this);
-        Config.debug("Language file loaded (lang=" + Config.getLanguage() + ").");
+        FppLogger.debug("Language file loaded (lang=" + Config.getLanguage() + ").");
+
         BotNameConfig.init(this);
-        Config.debug("Bot name pool loaded (" + BotNameConfig.getNames().size() + " names).");
+        FppLogger.debug("Bot name pool: " + BotNameConfig.getNames().size() + " names.");
+
         BotMessageConfig.init(this);
-        Config.debug("Bot message pool loaded (" + BotMessageConfig.getMessages().size() + " messages).");
+        FppLogger.debug("Bot message pool: " + BotMessageConfig.getMessages().size() + " messages.");
 
         // Ensure plugin data directories exist regardless of config settings
         ensureDataDirectories();
 
-        // Skin repository — must be init'd after Config so skin.mode is readable
+        // ── Skin repository ───────────────────────────────────────────────────
+        FppLogger.section("Loading Skin Repository");
         SkinRepository.get().init(this);
-        Config.debug("Skin repository initialised (mode=" + Config.skinMode() + ").");
+        FppLogger.debug("Skin repository initialised (mode=" + Config.skinMode() + ").");
 
-        // Database
+        // ── Database ──────────────────────────────────────────────────────────
+        FppLogger.section("Connecting Database");
         databaseManager = new DatabaseManager();
         boolean dbOk = databaseManager.init(getDataFolder());
         if (!dbOk) {
@@ -73,21 +84,22 @@ public final class FakePlayerPlugin extends JavaPlugin {
             databaseManager = null;
         }
 
-        // Fake player manager + chunk loader
+        // ── Fake player manager + chunk loader ────────────────────────────────
+        FppLogger.section("Initialising Subsystems");
         fakePlayerManager = new FakePlayerManager(this);
         if (databaseManager != null) fakePlayerManager.setDatabaseManager(databaseManager);
+
         chunkLoader = new ChunkLoader(this, fakePlayerManager);
         fakePlayerManager.setChunkLoader(chunkLoader);
 
-        // Bot persistence
         botPersistence = new BotPersistence(this);
         fakePlayerManager.setBotPersistence(botPersistence);
 
-        // Swap AI — leave/rejoin rotation system
         botSwapAI = new BotSwapAI(this, fakePlayerManager);
         fakePlayerManager.setSwapAI(botSwapAI);
 
-        // Register commands — help is always first so the help menu lists it first
+        // ── Commands ──────────────────────────────────────────────────────────
+        FppLogger.section("Registering Commands");
         commandManager = new CommandManager(this);
         commandManager.register(new SpawnCommand(fakePlayerManager));
         commandManager.register(new DeleteCommand(fakePlayerManager));
@@ -98,7 +110,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager.register(new SwapCommand(this));
         commandManager.register(new ReloadCommand(this));
         commandManager.register(new InfoCommand(databaseManager, fakePlayerManager));
-        Config.debug("Commands registered: " + commandManager.getCommands().size() + " total.");
+        FppLogger.debug("Commands registered: " + commandManager.getCommands().size() + " total.");
 
         var fppCmd = getCommand("fpp");
         if (fppCmd != null) {
@@ -106,77 +118,101 @@ public final class FakePlayerPlugin extends JavaPlugin {
             fppCmd.setTabCompleter(commandManager);
         }
 
-        // Listeners
+        // ── Listeners ─────────────────────────────────────────────────────────
+        FppLogger.section("Registering Listeners");
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this, fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new FakePlayerEntityListener(this, fakePlayerManager, chunkLoader), this);
         getServer().getPluginManager().registerEvents(new BotCollisionListener(this, fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new ServerListListener(fakePlayerManager), this);
 
-        // Head AI — bots look at the nearest player within range
         new BotHeadAI(this, fakePlayerManager);
-        // Chat AI — bots randomly send chat messages
         new BotChatAI(this, fakePlayerManager);
 
-        FppLogger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        FppLogger.info("  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  v" + getPluginMeta().getVersion());
-        FppLogger.info("  Author: " + String.join(", ", getPluginMeta().getAuthors()));
-        FppLogger.success("  Plugin enabled successfully!");
-        FppLogger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        // ── Detect LuckPerms prefix (deferred 1 tick so LP is fully loaded) ──
+        boolean luckPermsInstalled = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
 
-        // Check for updates (async, non-blocking)
+        // ── Full startup banner ───────────────────────────────────────────────
+        String dbLabel = databaseManager == null ? "none"
+                : Config.mysqlEnabled()          ? "MySQL"
+                                                 : "SQLite (local)";
+
+        FppLogger.printStartupBanner(
+                getPluginMeta().getVersion(),
+                String.join(", ", getPluginMeta().getAuthors()),
+                BotNameConfig.getNames().size(),
+                BotMessageConfig.getMessages().size(),
+                dbLabel,
+                dbOk,
+                Config.skinMode(),
+                Config.spawnBody(),
+                Config.persistOnRestart(),
+                luckPermsInstalled,
+                Config.swapEnabled(),
+                Config.fakeChatEnabled(),
+                Config.chunkLoadingEnabled(),
+                Config.maxBots()
+        );
+
+        // ── Update checker (async, non-blocking) ─────────────────────────────
         UpdateChecker.check(this);
 
-        // Restore bots from previous session (deferred — worlds must be loaded first).
-        // First purge any orphaned Mannequin bodies left by a crash, then restore.
+        // ── Bot persistence restore ───────────────────────────────────────────
         botPersistence.purgeOrphanedBodiesAndRestore(fakePlayerManager);
 
         // Log LuckPerms prefix detection after server fully starts (1-tick delay)
         getServer().getScheduler().runTaskLater(this, () -> {
             String detected = fakePlayerManager.detectLuckPermsPrefix();
-            if (detected.isEmpty()) {
-                FppLogger.info("[FPP] LuckPerms: no prefix detected on default group.");
-            } else {
-                FppLogger.info("[FPP] LuckPerms: detected prefix → " + detected);
+            if (luckPermsInstalled) {
+                if (detected.isEmpty()) {
+                    FppLogger.info("LuckPerms: no prefix found on default group — using config format only.");
+                } else {
+                    FppLogger.success("LuckPerms: prefix detected → \"" + detected + "\"");
+                }
             }
         }, 1L);
 
-        Config.debug("onEnable complete.");
+        long startupMs = System.currentTimeMillis() - enabledAt;
+        FppLogger.info("Enable completed in " + startupMs + " ms.");
+        FppLogger.debug("onEnable complete.");
     }
 
     @Override
     public void onDisable() {
         Config.debug("onDisable called.");
 
+        int botsRemoved = fakePlayerManager != null ? fakePlayerManager.getCount() : 0;
+
         // Save active bots BEFORE removing them so the file is written with real locations
         if (botPersistence != null && fakePlayerManager != null) {
             if (Config.persistOnRestart()) {
+                FppLogger.debug("Saving " + botsRemoved + " bot(s) for persistence...");
                 botPersistence.save(fakePlayerManager.getActivePlayers());
             }
         }
 
-        if (chunkLoader != null) chunkLoader.releaseAll();
+        if (chunkLoader  != null) chunkLoader.releaseAll();
         // Cancel swap timers before sync removal to prevent ghost rejoin tasks
-        if (botSwapAI != null) botSwapAI.cancelAll();
+        if (botSwapAI    != null) botSwapAI.cancelAll();
         // removeAllSync sends leave messages + cleans up entities
         if (fakePlayerManager != null) fakePlayerManager.removeAllSync();
 
         // Flush DB — mark all open sessions as SHUTDOWN before closing
+        boolean dbFlushed = false;
         if (databaseManager != null) {
             databaseManager.recordAllShutdown();
             databaseManager.close();
+            dbFlushed = true;
         }
 
-        FppLogger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        FppLogger.warn("  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ is shutting down...");
-        FppLogger.info("  Goodbye! All fake players have been removed.");
-        FppLogger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        long uptimeMs = System.currentTimeMillis() - enabledAt;
+        FppLogger.printShutdownBanner(botsRemoved, dbFlushed, uptimeMs);
     }
 
     @SuppressWarnings("unused") // Public API — available for addons
-    public CommandManager    getCommandManager()       { return commandManager; }
+    public CommandManager    getCommandManager()    { return commandManager; }
     @SuppressWarnings("unused")
-    public FakePlayerManager getFakePlayerManager()    { return fakePlayerManager; }
-    public DatabaseManager   getDatabaseManager()      { return databaseManager; }
+    public FakePlayerManager getFakePlayerManager() { return fakePlayerManager; }
+    public DatabaseManager   getDatabaseManager()   { return databaseManager; }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -198,7 +234,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
             java.io.File d = new java.io.File(root, dir);
             if (!d.exists()) {
                 boolean ok = d.mkdirs();
-                FppLogger.debug("Created directory: " + d.getPath() + (ok ? " ✓" : " (already exists or failed)"));
+                FppLogger.debug("Created directory: " + d.getPath() + (ok ? " ✔" : " (already exists or failed)"));
             }
         }
 

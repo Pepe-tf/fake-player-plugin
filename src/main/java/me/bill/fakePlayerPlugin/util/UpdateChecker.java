@@ -10,30 +10,35 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 
 /**
- * Checks GitHub releases for a newer version of the plugin.
+ * Checks GitHub releases for a newer version of FakePlayerPlugin.
  *
- * <p>The check runs async, once on startup, and optionally on /fpp reload.
- * It can be disabled in config.yml via {@code update-checker.enabled: false}.
+ * <p>The check runs asynchronously once on startup (and optionally on {@code /fpp reload}).
+ * It can be disabled in {@code config.yml} via {@code update-checker.enabled: false}.
  *
- * <p>GitHub API endpoint used:
+ * <p>GitHub API endpoint:
  * {@code https://api.github.com/repos/<owner>/<repo>/releases/latest}
  */
 public final class UpdateChecker {
 
     /** GitHub repo path — update this if the repo moves. */
-    private static final String REPO     = "Pepe-tf/Fake-Player-Plugin-Public-";
-    private static final String API_URL  =
+    private static final String REPO    = "Pepe-tf/Fake-Player-Plugin-Public-";
+    private static final String API_URL =
             "https://api.github.com/repos/" + REPO + "/releases/latest";
+    private static final String MODRINTH_URL =
+            "https://modrinth.com/plugin/fake-player-plugin-(fpp)";
 
     private UpdateChecker() {}
 
     /**
      * Runs the update check asynchronously.
-     * Logs a warning to console if a newer version is found.
-     * Does nothing if {@code update-checker.enabled} is false in config.
+     * Emits a nicely-formatted warning block if a newer version is available.
+     * Does nothing if {@code update-checker.enabled} is {@code false} in config.
      */
     public static void check(Plugin plugin) {
-        if (!Config.updateCheckerEnabled()) return;
+        if (!Config.updateCheckerEnabled()) {
+            Config.debug("Update checker disabled in config.");
+            return;
+        }
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
@@ -43,10 +48,12 @@ public final class UpdateChecker {
                 conn.setConnectTimeout(5_000);
                 conn.setReadTimeout(5_000);
                 conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
-                conn.setRequestProperty("User-Agent", "FakePlayerPlugin-UpdateChecker");
+                conn.setRequestProperty("User-Agent", "FakePlayerPlugin-UpdateChecker/" +
+                        plugin.getPluginMeta().getVersion());
 
-                if (conn.getResponseCode() != 200) {
-                    Config.debug("UpdateChecker: HTTP " + conn.getResponseCode() + " — skipping.");
+                int code = conn.getResponseCode();
+                if (code != 200) {
+                    Config.debug("UpdateChecker: HTTP " + code + " — skipping.");
                     return;
                 }
 
@@ -66,23 +73,28 @@ public final class UpdateChecker {
                     return;
                 }
 
-                // Normalise: strip leading 'v' if present
+                // Normalise — strip leading 'v' if present
                 String latestClean  = latest.startsWith("v")  ? latest.substring(1)  : latest;
                 String currentClean = current.startsWith("v") ? current.substring(1) : current;
 
                 if (!latestClean.equals(currentClean)) {
-                    FppLogger.warn("┌─────────────────────────────────────────┐");
-                    FppLogger.warn("│  ꜰᴘᴘ Update Available!                  │");
-                    FppLogger.warn("│  Current : v" + padRight(currentClean, 28) + "│");
-                    FppLogger.warn("│  Latest  : v" + padRight(latestClean,  28) + "│");
-                    FppLogger.warn("│  https://github.com/" + REPO + " │");
-                    FppLogger.warn("└─────────────────────────────────────────┘");
+                    // Print a clearly-visible update notice using logger helpers
+                    FppLogger.warn("┌────────────────────────────────────────────────┐");
+                    FppLogger.warn("│     ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  Update Available!    │");
+                    FppLogger.warn("│                                                │");
+                    FppLogger.warn("│  Running : v" + padRight(currentClean, 35) + "│");
+                    FppLogger.warn("│  Latest  : v" + padRight(latestClean,  35) + "│");
+                    FppLogger.warn("│                                                │");
+                    FppLogger.warn("│  Download: " + padRight(MODRINTH_URL, 36) + "│");
+                    FppLogger.warn("└────────────────────────────────────────────────┘");
                 } else {
-                    FppLogger.info("ꜰᴘᴘ is up to date (v" + currentClean + ").");
+                    FppLogger.success("Running the latest version: v" + currentClean + "  ✔");
                 }
 
+            } catch (java.net.SocketTimeoutException e) {
+                Config.debug("UpdateChecker timed out (no internet / GitHub unreachable).");
             } catch (Exception e) {
-                Config.debug("UpdateChecker failed: " + e.getMessage());
+                Config.debug("UpdateChecker failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
         });
     }
@@ -107,4 +119,3 @@ public final class UpdateChecker {
         return s + " ".repeat(len - s.length());
     }
 }
-
