@@ -485,7 +485,7 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 ## ✦ License
 
 © 2026 Bill_Hub — All Rights Reserved.  
-See [LICENSE](LICENSE) for full terms.  
+See [LICENSE](https://github.com/Pepe-tf/Fake-Player-Plugin-Public-/blob/main/LICENSE) for full terms.  
 Contact: Discord `Bill_Hub`
 
 ---

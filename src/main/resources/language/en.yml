@@ -26,12 +26,12 @@ prefix: "<dark_gray>[<#0079FF>ꜰᴘᴘ</#0079FF><dark_gray>]<reset> "
 divider: "<dark_gray><st>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</st>"
 
 # Help menu — INTERNAL (placeholders {cmd}, {args}, {desc} required)
-help-header: "<dark_gray><st>━━━━━━━━━</st> <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</bold></#0079FF> <dark_gray><st>━━━━━━━━━</st>"
+help-header: "<dark_gray><st>━━━━━━━━━</st> <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</#0079FF> <dark_gray><st>━━━━━━━━━</st>"
 help-entry:  "  <#0079FF>/{cmd}</#0079FF><gray> {args} <dark_gray>— <white>{desc}"
 help-footer: "<dark_gray><st>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</st>"
 
 # Plugin info screen (/fpp bare) — INTERNAL header line
-info-screen-header: "  <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</#0079FF></bold> <dark_gray>· <gray>ꜰᴘᴘ"
+info-screen-header: "  <#0079FF><bold>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</#0079FF> <dark_gray>· <gray>ꜰᴘᴘ"
 
 # Modrinth page — URL is hardcoded in the plugin; only the label is shown to players
 modrinth-label: "ᴍᴏᴅʀɪɴᴛʜ"
