@@ -182,7 +182,7 @@ Assign the highest node the player should receive. FPP picks the highest matchin
 
 ## ✦ Configuration
 
-Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` to apply changes without restarting.
+Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` to apply changes without restarting
 
 ```yaml
 # ─────────────────────────────────────────────────────────────────────────────
