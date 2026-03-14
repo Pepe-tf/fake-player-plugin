@@ -69,6 +69,13 @@ public final class SkinRepository {
     /** Session cache: bot-name → resolved profile (cleared on reload). */
     private final Map<String, SkinProfile> sessionCache = new ConcurrentHashMap<>();
 
+    /**
+     * Pre-loaded fallback skin — fetched eagerly at startup from {@code skin.fallback-name}.
+     * Used as the last resort when all other resolution fails and {@code skin.guaranteed-skin} is true.
+     * Volatile so the async fetch callback is visible to the main thread immediately.
+     */
+    private volatile SkinProfile fallbackSkin = null;
+
     private Plugin plugin;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -92,14 +99,29 @@ public final class SkinRepository {
         namedOverrides.clear();
         poolSkins.clear();
         sessionCache.clear();
+        fallbackSkin = null;
 
         if (Config.skinClearCacheOnReload()) {
             SkinFetcher.clearCache();
         }
 
         String mode = Config.skinMode();
-        if ("off".equals(mode) || "disabled".equals(mode) || "auto".equals(mode)) {
-            FppLogger.debug("SkinRepository: mode=" + mode + " — repository not loaded.");
+
+        if ("off".equals(mode) || "disabled".equals(mode)) {
+            FppLogger.debug("SkinRepository: mode=off — repository not loaded.");
+            return;
+        }
+
+        if ("auto".equals(mode)) {
+            // In auto mode, Mojang resolves skins by name automatically.
+            // Only prewarm the fallback skin so guaranteed-skin has something to use
+            // when a bot name isn't a real Mojang account (generated names, user bots, etc.).
+            if (Config.skinGuaranteed()) {
+                loadFallbackSkin();
+                FppLogger.debug("SkinRepository: mode=auto + guaranteed-skin=true — fallback skin queued for prewarm.");
+            } else {
+                FppLogger.debug("SkinRepository: mode=auto — repository not loaded.");
+            }
             return;
         }
 
@@ -108,6 +130,9 @@ public final class SkinRepository {
             loadFolderSkins();
         }
         loadConfigPool();
+        if (Config.skinGuaranteed()) {
+            loadFallbackSkin();
+        }
         FppLogger.debug("SkinRepository: loaded " + folderSkins.size() + " folder skin(s), "
                 + poolSkins.size() + " pool skin(s), "
                 + namedOverrides.size() + " named override(s).");
@@ -194,6 +219,10 @@ public final class SkinRepository {
             if (value != null) {
                 SkinProfile p = new SkinProfile(value, sig, "name:" + botName);
                 callback.accept(p);
+            } else if (Config.skinGuaranteed()) {
+                // Mojang also returned null — use guaranteed fallback
+                FppLogger.debug("SkinRepository: Mojang fallback failed for '" + botName + "' — using guaranteed skin.");
+                getAnyValidSkin(callback);
             } else {
                 callback.accept(null);
             }
@@ -372,6 +401,85 @@ public final class SkinRepository {
             namedOverrides.put(botName, p);
             FppLogger.debug("SkinRepository: loaded URL override for '" + botName + "'.");
         });
+    }
+
+    // ── Fallback skin (guaranteed-skin safety net) ────────────────────────────
+
+    /**
+     * Eagerly fetches the configured {@code skin.fallback-name} and stores it in
+     * {@link #fallbackSkin} for instant use. Called from {@link #reload()} when
+     * {@code skin.guaranteed-skin} is {@code true}. The fetch is async — the
+     * fallback is available a few hundred ms after startup.
+     */
+    private void loadFallbackSkin() {
+        String name = Config.skinFallbackName();
+        if (name == null || name.isBlank()) return;
+        SkinFetcher.fetchAsync(name, (value, sig) -> {
+            if (value != null && !value.isBlank()) {
+                fallbackSkin = new SkinProfile(value, sig, "fallback:" + name);
+                FppLogger.debug("SkinRepository: fallback skin '" + name + "' pre-loaded.");
+            } else {
+                FppLogger.warn("SkinRepository: fallback skin '" + name
+                        + "' failed to fetch — bots using generated names may appear as Steve.");
+            }
+        });
+    }
+
+    /**
+     * Returns any valid skin available from the loaded repository.
+     * Resolution priority:
+     * <ol>
+     *   <li>Folder skins (loaded synchronously at startup)</li>
+     *   <li>Pool skins (loaded asynchronously — may be ready by now)</li>
+     *   <li>Pre-loaded fallback skin ({@code skin.fallback-name})</li>
+     *   <li>On-demand fetch of {@code skin.fallback-name} (last resort)</li>
+     * </ol>
+     *
+     * <p>Used as the final safety net when all other resolution fails and
+     * {@code skin.guaranteed-skin} is {@code true}. Callback receives {@code null}
+     * only if truly nothing is configured and the on-demand fetch also fails.
+     *
+     * @param callback receives a valid {@link SkinProfile}, or {@code null} if no skin is available
+     */
+    public void getAnyValidSkin(Consumer<SkinProfile> callback) {
+        // 1. Folder skins — loaded synchronously, always ready instantly
+        if (!folderSkins.isEmpty()) {
+            SkinProfile p = folderSkins.get(ThreadLocalRandom.current().nextInt(folderSkins.size()));
+            FppLogger.debug("SkinRepository: guaranteed-skin → folder skin (" + p.getSource() + ").");
+            callback.accept(p);
+            return;
+        }
+        // 2. Pool skins — loaded asynchronously; may be populated by the time bots spawn
+        if (!poolSkins.isEmpty()) {
+            SkinProfile p = poolSkins.get(ThreadLocalRandom.current().nextInt(poolSkins.size()));
+            FppLogger.debug("SkinRepository: guaranteed-skin → pool skin (" + p.getSource() + ").");
+            callback.accept(p);
+            return;
+        }
+        // 3. Pre-loaded fallback skin (already cached from startup prewarm)
+        if (fallbackSkin != null && fallbackSkin.isValid()) {
+            FppLogger.debug("SkinRepository: guaranteed-skin → pre-loaded fallback (" + fallbackSkin.getSource() + ").");
+            callback.accept(fallbackSkin);
+            return;
+        }
+        // 4. On-demand fetch of fallback name (last resort — prewarm may not have completed)
+        String name = Config.skinFallbackName();
+        if (name != null && !name.isBlank()) {
+            FppLogger.debug("SkinRepository: guaranteed-skin → on-demand fallback fetch for '" + name + "'.");
+            SkinFetcher.fetchAsync(name, (value, sig) -> {
+                if (value != null && !value.isBlank()) {
+                    SkinProfile p = new SkinProfile(value, sig, "fallback:" + name);
+                    fallbackSkin = p; // cache for next time
+                    FppLogger.debug("SkinRepository: on-demand fallback fetched for '" + name + "'.");
+                    callback.accept(p);
+                } else {
+                    FppLogger.warn("SkinRepository: on-demand fallback fetch also failed for '" + name + "' — bot will use Steve.");
+                    callback.accept(null);
+                }
+            });
+        } else {
+            callback.accept(null); // No fallback configured at all
+        }
     }
 
     // ── Statistics ────────────────────────────────────────────────────────────

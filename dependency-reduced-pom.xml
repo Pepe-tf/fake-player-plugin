@@ -4,7 +4,7 @@
   <groupId>me.bill</groupId>
   <artifactId>fpp</artifactId>
   <name>fpp</name>
-  <version>0.1.5</version>
+  <version>1.2.2</version>
   <build>
     <defaultGoal>clean package</defaultGoal>
     <resources>
@@ -54,6 +54,13 @@
       <artifactId>paper-api</artifactId>
       <version>1.21.11-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.luckperms</groupId>
+      <artifactId>luckperms-api</artifactId>
+      <version>5.5</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/libs/api-5.5.jar</systemPath>
     </dependency>
   </dependencies>
   <properties>

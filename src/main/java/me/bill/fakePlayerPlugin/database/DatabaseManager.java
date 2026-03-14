@@ -725,6 +725,117 @@ public class DatabaseManager {
         );
     }
 
+    // ── Merge API (used by DataMigrator) ─────────────────────────────────────
+
+    /**
+     * Inserts a session row from an external/old database without overwriting
+     * an existing row that has the same {@code bot_uuid} and {@code spawned_at}.
+     * Safe to call from any thread (runs synchronously on the calling thread,
+     * intended for use from the async DataMigrator task).
+     */
+    public void mergeSessionRow(
+            String botName, String botDisplay, String botUuid,
+            String spawnedBy, String spawnedByUuid,
+            String worldName,
+            double spawnX, double spawnY, double spawnZ,
+            float spawnYaw, float spawnPitch,
+            String lastWorld, double lastX, double lastY, double lastZ,
+            float lastYaw, float lastPitch,
+            String entityType,
+            long spawnedAtMs, Long removedAtMs, String removeReason) {
+
+        if (!isAlive()) return;
+
+        // Resolve nulls
+        if (lastWorld == null) lastWorld = worldName;
+        if (entityType == null) entityType = "MANNEQUIN";
+
+        // Use INSERT OR IGNORE (SQLite) / INSERT IGNORE (MySQL) so existing rows are untouched.
+        String sql = isMysql
+                ? "INSERT IGNORE INTO fpp_bot_sessions" +
+                  "(bot_name,bot_display,bot_uuid,spawned_by,spawned_by_uuid,world_name," +
+                  "spawn_x,spawn_y,spawn_z,spawn_yaw,spawn_pitch," +
+                  "last_world,last_x,last_y,last_z,last_yaw,last_pitch," +
+                  "entity_type,spawned_at,removed_at,remove_reason) " +
+                  "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                : "INSERT OR IGNORE INTO fpp_bot_sessions" +
+                  "(bot_name,bot_display,bot_uuid,spawned_by,spawned_by_uuid,world_name," +
+                  "spawn_x,spawn_y,spawn_z,spawn_yaw,spawn_pitch," +
+                  "last_world,last_x,last_y,last_z,last_yaw,last_pitch," +
+                  "entity_type,spawned_at,removed_at,remove_reason) " +
+                  "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1,  botName);       ps.setString(2,  botDisplay);
+            ps.setString(3,  botUuid);       ps.setString(4,  spawnedBy);
+            ps.setString(5,  spawnedByUuid); ps.setString(6,  worldName);
+            ps.setDouble(7,  spawnX);        ps.setDouble(8,  spawnY);     ps.setDouble(9,  spawnZ);
+            ps.setFloat(10,  spawnYaw);      ps.setFloat(11,  spawnPitch);
+            ps.setString(12, lastWorld);
+            ps.setDouble(13, lastX);         ps.setDouble(14, lastY);      ps.setDouble(15, lastZ);
+            ps.setFloat(16,  lastYaw);       ps.setFloat(17,  lastPitch);
+            ps.setString(18, entityType);    ps.setLong(19,   spawnedAtMs);
+            if (removedAtMs != null) ps.setLong(20, removedAtMs); else ps.setNull(20, java.sql.Types.BIGINT);
+            ps.setString(21, removeReason);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            FppLogger.error("DB mergeSessionRow: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Inserts an active-bot row from an external/old database without overwriting
+     * an existing row that has the same {@code bot_uuid}.
+     */
+    public void mergeActiveBotRow(
+            String botUuid, String botName, String botDisplay,
+            String spawnedBy, String spawnedByUuid,
+            String worldName, double posX, double posY, double posZ,
+            float posYaw, float posPitch, long updatedAt) {
+
+        if (!isAlive()) return;
+
+        String sql = isMysql
+                ? "INSERT IGNORE INTO fpp_active_bots" +
+                  "(bot_uuid,bot_name,bot_display,spawned_by,spawned_by_uuid," +
+                  "world_name,pos_x,pos_y,pos_z,pos_yaw,pos_pitch,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"
+                : "INSERT OR IGNORE INTO fpp_active_bots" +
+                  "(bot_uuid,bot_name,bot_display,spawned_by,spawned_by_uuid," +
+                  "world_name,pos_x,pos_y,pos_z,pos_yaw,pos_pitch,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1,  botUuid);       ps.setString(2,  botName);
+            ps.setString(3,  botDisplay);    ps.setString(4,  spawnedBy);
+            ps.setString(5,  spawnedByUuid); ps.setString(6,  worldName);
+            ps.setDouble(7,  posX);          ps.setDouble(8,  posY);  ps.setDouble(9,  posZ);
+            ps.setFloat(10,  posYaw);        ps.setFloat(11,  posPitch);
+            ps.setLong(12,   updatedAt);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            FppLogger.error("DB mergeActiveBotRow: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Returns the number of rows in {@code fpp_bot_sessions}.
+     * Used by DataMigrator / MigrateCommand to report totals.
+     */
+    public int countSessions() {
+        return getTotalSessionCount();
+    }
+
+    /**
+     * Returns the number of rows in {@code fpp_active_bots}.
+     */
+    public int countActiveBotRows() {
+        if (!isAlive()) return 0;
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM fpp_active_bots")) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) { FppLogger.error("DB countActiveBotRows: " + e.getMessage()); }
+        return 0;
+    }
+
     // ── Accessors ─────────────────────────────────────────────────────────────
     public boolean isMysql() { return isMysql; }
     public Map<String, BotRecord> getActiveRecords() { return Collections.unmodifiableMap(activeRecords); }

@@ -1,5 +1,5 @@
 name: FakePlayerPlugin
-version: '1.1.4'
+version: '1.2.2'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
@@ -32,6 +32,7 @@ permissions:
       fpp.info:             true
       fpp.tp:               true
       fpp.bypass.maxbots:   true
+      fpp.admin.migrate:    true
       fpp.user.*:           true
 
   # ── User wildcard ──────────────────────────────────────────────────────────
@@ -188,3 +189,12 @@ permissions:
       Bypass the global max-bots cap in config.yml during /fpp spawn.
       Grant with care — no upper bound when active.
     default: op
+
+  # ── Migration & Backup ────────────────────────────────────────────────────
+  fpp.admin.migrate:
+    description: >
+      Access /fpp migrate — create backups, run config migrations, merge old databases,
+      export session data to CSV, and migrate between SQLite and MySQL backends.
+      Op-only by default. Grant only to trusted server administrators.
+    default: op
+

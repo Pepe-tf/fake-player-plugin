@@ -89,6 +89,12 @@ public final class FakePlayerBody {
      * calls {@code onReady} on the main thread.  Used by finishSpawn so the
      * tab-list packet is only sent AFTER skin data is available — preventing
      * the "default Steve flash" that occurred when the packet was sent first.
+     *
+     * <p>When {@code skin.guaranteed-skin} is {@code true}, the system always
+     * applies some skin. If the primary lookup fails (name not on Mojang,
+     * empty pool, network error), it falls through to the guaranteed fallback
+     * chain: folder skins → pool skins → pre-loaded fallback name → on-demand
+     * fallback fetch. Only {@code off} mode skips this entirely.
      */
     public static void resolveAndFinish(Plugin plugin, FakePlayer fp,
                                         Location loc, Runnable onReady) {
@@ -108,28 +114,61 @@ public final class FakePlayerBody {
                             FppLogger.debug("Skin(custom) pre-resolved for " + skinName + ".");
                             onReady.run();
                         } else {
-                            // Custom found nothing — fall back to Mojang fetch
+                            // Custom pipeline found nothing — fall back to direct Mojang fetch
                             SkinFetcher.fetchAsync(skinName, (value, sig) ->
                                 Bukkit.getScheduler().runTask(plugin, () -> {
-                                    if (value != null && !value.isBlank())
+                                    if (value != null && !value.isBlank()) {
                                         fp.setResolvedSkin(new SkinProfile(value, sig, "auto:" + skinName));
-                                    onReady.run();
+                                        FppLogger.debug("Skin(custom→auto-fallback) resolved for " + skinName + ".");
+                                        onReady.run();
+                                    } else if (Config.skinGuaranteed()) {
+                                        // All custom + Mojang sources failed — use guaranteed skin
+                                        FppLogger.debug("Skin(custom→guaranteed) for " + skinName + " — applying any available skin.");
+                                        SkinRepository.get().getAnyValidSkin(fallback ->
+                                            Bukkit.getScheduler().runTask(plugin, () -> {
+                                                fp.setResolvedSkin(fallback);
+                                                if (fallback != null)
+                                                    FppLogger.debug("Skin(guaranteed) applied for " + skinName + " → " + fallback.getSource());
+                                                else
+                                                    FppLogger.debug("Skin(guaranteed): nothing available for " + skinName + " — Steve/Alex.");
+                                                onReady.run();
+                                            })
+                                        );
+                                    } else {
+                                        fp.setResolvedSkin(null);
+                                        onReady.run();
+                                    }
                                 })
                             );
                         }
                     })
                 );
             }
-            default -> { // "auto"
+            default -> { // "auto" — Mojang resolves skin by name; guaranteed fallback for unknown names
                 SkinFetcher.fetchAsync(skinName, (value, sig) ->
                     Bukkit.getScheduler().runTask(plugin, () -> {
                         if (value != null && !value.isBlank()) {
                             fp.setResolvedSkin(new SkinProfile(value, sig, "auto:" + skinName));
                             FppLogger.debug("Skin(auto) pre-resolved for " + skinName + ".");
+                            onReady.run();
+                        } else if (Config.skinGuaranteed()) {
+                            // Name not on Mojang (generated name, user bot, etc.) — use guaranteed skin
+                            FppLogger.debug("Skin(auto→guaranteed) for " + skinName
+                                    + " — name has no Mojang account, applying fallback.");
+                            SkinRepository.get().getAnyValidSkin(fallback ->
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    fp.setResolvedSkin(fallback);
+                                    if (fallback != null)
+                                        FppLogger.debug("Skin(guaranteed) applied for " + skinName + " → " + fallback.getSource());
+                                    else
+                                        FppLogger.debug("Skin(guaranteed): nothing available for " + skinName + " — Steve/Alex.");
+                                    onReady.run();
+                                })
+                            );
                         } else {
                             fp.setResolvedSkin(null);
+                            onReady.run();
                         }
-                        onReady.run();
                     })
                 );
             }
@@ -164,11 +203,24 @@ public final class FakePlayerBody {
     private static void resolveAutoAndApply(Plugin plugin, FakePlayer fp, Entity body, String skinName) {
         SkinFetcher.fetchAsync(skinName, (value, sig) ->
             Bukkit.getScheduler().runTask(plugin, () -> {
-                SkinProfile resolved = (value != null && !value.isBlank())
-                        ? new SkinProfile(value, sig, "auto:" + skinName) : null;
-                fp.setResolvedSkin(resolved);
-                applyToMannequin(body, skinName, resolved);
-                resendTab(fp);
+                if (value != null && !value.isBlank()) {
+                    SkinProfile resolved = new SkinProfile(value, sig, "auto:" + skinName);
+                    fp.setResolvedSkin(resolved);
+                    applyToMannequin(body, skinName, resolved);
+                    resendTab(fp);
+                } else if (Config.skinGuaranteed()) {
+                    SkinRepository.get().getAnyValidSkin(fallback ->
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            fp.setResolvedSkin(fallback);
+                            applyToMannequin(body, skinName, fallback);
+                            resendTab(fp);
+                        })
+                    );
+                } else {
+                    fp.setResolvedSkin(null);
+                    applyToMannequin(body, skinName, null);
+                    resendTab(fp);
+                }
             })
         );
     }
@@ -270,17 +322,124 @@ public final class FakePlayerBody {
 
     // ── Cleanup ───────────────────────────────────────────────────────────────
 
+    /**
+     * Removes the nametag ArmorStand for {@code fp}.
+     * Falls back to a world-scan if the direct reference is stale.
+     */
     public static void removeNametag(FakePlayer fp) {
         ArmorStand as = fp.getNametagEntity();
-        if (as != null && as.isValid()) { as.eject(); as.remove(); }
+        if (as != null) {
+            try { as.eject(); } catch (Exception ignored) {}
+            try { as.remove(); } catch (Exception ignored) {}
+        }
         fp.setNametagEntity(null);
+
+        // World-scan fallback — catches orphaned ArmorStands whose reference was lost.
+        removeOrphanedNametags(fp.getName());
     }
 
-
+    /**
+     * Removes the body Mannequin and nametag ArmorStand for {@code fp}.
+     *
+     * <p>Uses a two-phase approach:
+     * <ol>
+     *   <li>Remove via the stored entity reference (fast path).</li>
+     *   <li>Scan every loaded world for any entity that carries this bot's
+     *       PDC key — catches orphans left by chunk unload/reload cycles or
+     *       from a previous crash (slow path, only iterates loaded entities).</li>
+     * </ol>
+     */
     public static void removeAll(FakePlayer fp) {
+        // 1. Remove nametag ArmorStand
         removeNametag(fp);
+
+        // 2. Remove physics body
         Entity body = fp.getPhysicsEntity();
-        if (body != null && body.isValid()) body.remove();
+        if (body != null) {
+            try { body.remove(); } catch (Exception ignored) {}
+        }
         fp.setPhysicsEntity(null);
+
+        // 3. World-scan fallback — removes any leftover body entities too
+        removeOrphanedBodies(fp.getName());
+    }
+
+    /**
+     * Scans all loaded worlds for ArmorStand nametag entities that belong
+     * to the bot named {@code botName} and removes them.
+     * Safe to call even if no orphans exist — iterates only loaded entities.
+     */
+    public static void removeOrphanedNametags(String botName) {
+        if (FakePlayerManager.FAKE_PLAYER_KEY == null || botName == null) return;
+        String expectedTag = NAMETAG_PDC_VALUE + ":" + botName;
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                if (entity.isDead()) continue;
+                String val = entity.getPersistentDataContainer()
+                        .get(FakePlayerManager.FAKE_PLAYER_KEY,
+                                org.bukkit.persistence.PersistentDataType.STRING);
+                if (expectedTag.equals(val)) {
+                    try { entity.remove(); } catch (Exception ignored) {}
+                }
+            }
+        }
+    }
+
+    /**
+     * Scans all loaded worlds for Mannequin body entities that belong to
+     * the bot named {@code botName} and removes them.
+     */
+    public static void removeOrphanedBodies(String botName) {
+        if (FakePlayerManager.FAKE_PLAYER_KEY == null || botName == null) return;
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                if (entity.isDead()) continue;
+                if (entity instanceof org.bukkit.entity.ArmorStand) continue; // nametag handled separately
+                String val = entity.getPersistentDataContainer()
+                        .get(FakePlayerManager.FAKE_PLAYER_KEY,
+                                org.bukkit.persistence.PersistentDataType.STRING);
+                if (botName.equals(val)) {
+                    try { entity.remove(); } catch (Exception ignored) {}
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes ALL entities across all loaded worlds that carry any FPP PDC key
+     * but are not tracked by the given set of active bot names.
+     * Used for the periodic orphan sweep and crash recovery.
+     *
+     * @param activeBotNames set of currently registered bot internal names
+     * @return number of orphaned entities removed
+     */
+    public static int sweepOrphans(java.util.Set<String> activeBotNames) {
+        if (FakePlayerManager.FAKE_PLAYER_KEY == null) return 0;
+        int removed = 0;
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                if (entity.isDead()) continue;
+                String val = entity.getPersistentDataContainer()
+                        .get(FakePlayerManager.FAKE_PLAYER_KEY,
+                                org.bukkit.persistence.PersistentDataType.STRING);
+                if (val == null) continue;
+
+                // Determine the bot name this entity belongs to
+                String ownerName;
+                if (val.startsWith(NAMETAG_PDC_VALUE + ":")) {
+                    ownerName = val.substring((NAMETAG_PDC_VALUE + ":").length());
+                } else if (val.startsWith(VISUAL_PDC_VALUE + ":")) {
+                    ownerName = val.substring((VISUAL_PDC_VALUE + ":").length());
+                } else {
+                    ownerName = val; // plain name = body entity
+                }
+
+                if (!activeBotNames.contains(ownerName)) {
+                    try { entity.remove(); } catch (Exception ignored) {}
+                    removed++;
+                }
+            }
+        }
+        return removed;
     }
 }

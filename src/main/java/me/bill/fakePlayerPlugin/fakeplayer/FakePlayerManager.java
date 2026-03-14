@@ -5,12 +5,14 @@ import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.database.BotRecord;
 import me.bill.fakePlayerPlugin.database.DatabaseManager;
+import me.bill.fakePlayerPlugin.util.FppLogger;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.group.Group;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -310,7 +312,6 @@ public class FakePlayerManager {
             }
 
             if (swapAI != null) swapAI.schedule(fp);
-            fireVanillaJoin(fp);
         });
     }
 
@@ -373,6 +374,9 @@ public class FakePlayerManager {
         // Cancel all swap timers
         if (swapAI != null) swapAI.cancelAll();
 
+        // Calculate max possible delay for scheduling the final orphan sweep
+        long maxDelay = 0;
+
         for (int i = 0; i < toRemove.size(); i++) {
             FakePlayer fp = toRemove.get(i);
 
@@ -386,14 +390,12 @@ public class FakePlayerManager {
                         ? ThreadLocalRandom.current().nextInt(spread + 1)
                         : 0);
             }
+            maxDelay = Math.max(maxDelay, leaveDelay);
 
             final FakePlayer target = fp;
             Runnable doVisualRemove = () -> {
                 FakePlayerBody.removeAll(target);
                 if (chunkLoader != null) chunkLoader.releaseForBot(target);
-                // Clear entity-id index entry
-                if (target.getPhysicsEntity() != null)
-                    entityIdIndex.remove(target.getPhysicsEntity().getEntityId());
 
                 List<Player> snapshot = new ArrayList<>(Bukkit.getOnlinePlayers());
                 for (Player online : snapshot) PacketHelper.sendTabListRemove(online, target);
@@ -403,9 +405,6 @@ public class FakePlayerManager {
                 }
                 if (db != null) db.recordRemoval(target.getUuid(), "DELETED");
                 Config.debug("Removed bot: " + target.getName());
-                if (persistence != null && Config.persistOnRestart()) {
-                    persistence.saveAsync(activePlayers.values());
-                }
             };
 
             if (leaveDelay <= 0) {
@@ -414,6 +413,17 @@ public class FakePlayerManager {
                 Bukkit.getScheduler().runTaskLater(plugin, doVisualRemove, leaveDelay);
             }
         }
+
+        // Final orphan sweep: runs 20 ticks after all bots should be removed.
+        // Catches any entity that didn't clean up properly (cross-world, chunk issues).
+        final long sweepDelay = maxDelay + 20L;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            int swept = FakePlayerBody.sweepOrphans(java.util.Collections.emptySet());
+            if (swept > 0) FppLogger.info("Post-removeAll orphan sweep: removed " + swept + " entities.");
+            if (persistence != null && Config.persistOnRestart()) {
+                persistence.saveAsync(activePlayers.values());
+            }
+        }, sweepDelay);
 
         Config.debug("Staggered visual removal of " + toRemove.size() + " fake player(s).");
     }
@@ -433,11 +443,15 @@ public class FakePlayerManager {
         }
         if (fp == null) return false;
 
-        final FakePlayer target = fp;
+        final FakePlayer target   = fp;
+        final String     botName  = target.getName();
 
         // Remove from registry immediately — prevents double-delete and clears tab-complete
         activePlayers.remove(target.getUuid());
-        usedNames.remove(target.getName());
+        usedNames.remove(botName);
+        // Remove entity-id index entries now so no stale lookups remain
+        if (target.getPhysicsEntity() != null)
+            entityIdIndex.remove(target.getPhysicsEntity().getEntityId());
 
         // Cancel any pending swap timer so it doesn't rejoin after deletion
         if (swapAI != null) swapAI.cancel(target.getUuid());
@@ -456,10 +470,9 @@ public class FakePlayerManager {
         }
 
         Runnable doVisualRemove = () -> {
+            // Primary removal via entity reference
             FakePlayerBody.removeAll(target);
             if (chunkLoader != null) chunkLoader.releaseForBot(target);
-            if (target.getPhysicsEntity() != null)
-                entityIdIndex.remove(target.getPhysicsEntity().getEntityId());
 
             List<Player> snapshot = new ArrayList<>(Bukkit.getOnlinePlayers());
             for (Player online : snapshot) PacketHelper.sendTabListRemove(online, target);
@@ -468,10 +481,17 @@ public class FakePlayerManager {
                 BotBroadcast.broadcastLeave(target);
             }
             if (db != null) db.recordRemoval(target.getUuid(), "DELETED");
-            Config.debug("Deleted fake player: " + name);
+            Config.debug("Deleted fake player: " + botName);
             if (persistence != null && Config.persistOnRestart()) {
                 persistence.saveAsync(activePlayers.values());
             }
+
+            // Deferred world-scan to catch any entity that survived the direct remove
+            // (e.g., entity in a chunk that was loading at delete-time)
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                FakePlayerBody.removeOrphanedBodies(botName);
+                FakePlayerBody.removeOrphanedNametags(botName);
+            }, 10L);
         };
 
         if (leaveDelay <= 0) {
@@ -491,7 +511,6 @@ public class FakePlayerManager {
      * removal uses. 1 tick = 50 ms. If both min and max are 0, all bots leave
      * instantly with no sleep.
      */
-    @SuppressWarnings("BusyWait")
     public void removeAllSync() {
         if (activePlayers.isEmpty()) return;
 
@@ -539,7 +558,6 @@ public class FakePlayerManager {
     }
 
     /** Sleeps the current thread for {@code ms} milliseconds, handling interruption cleanly. */
-    @SuppressWarnings("BusyWait")
     private static void sleepMs(long ms) {
         try {
             Thread.sleep(ms);
@@ -594,14 +612,80 @@ public class FakePlayerManager {
     // ── Sync to joining player ────────────────────────────────────────────────
 
     /**
-     * Syncs all existing fake players' tab list entries to a newly joined real player.
-     * The Mannequin body is already visible via normal entity tracking.
+     * Syncs all existing fake players' tab list entries to a real player.
+     * Called after initial join AND after world changes.
+     *
+     * <p>The Mannequin body and ArmorStand nametag are real server-side entities
+     * kept alive by chunk tickets — no respawn needed. Only the packet-based
+     * tab-list entries must be re-sent (Minecraft clears them on world transitions).
      */
     public void syncToPlayer(Player player) {
         for (FakePlayer fp : activePlayers.values()) {
             PacketHelper.sendTabListAdd(player, fp);
-            // ArmorStand nametag is a real entity — syncs to new players automatically
-            // via normal entity tracking. No extra packets needed.
+        }
+    }
+
+    /**
+     * Performs a periodic validation pass across all active bots:
+     * <ol>
+     *   <li>Checks that each bot's physics entity is still valid.</li>
+     *   <li>If the body has become invalid (e.g., Mannequin entered DYING pose
+     *       and was removed by Minecraft), attempts to respawn it.</li>
+     *   <li>Sweeps all loaded worlds for orphaned FPP entities that belong to
+     *       bots no longer in the active map and removes them.</li>
+     * </ol>
+     * Called every few minutes by the scheduler in FakePlayerPlugin.
+     */
+    public void validateEntities() {
+        // ── Collect active bot names for orphan detection ────────────────────
+        java.util.Set<String> activeNames = activePlayers.values().stream()
+                .map(FakePlayer::getName)
+                .collect(java.util.stream.Collectors.toSet());
+
+        // ── Check each active bot's entity state ─────────────────────────────
+        for (FakePlayer fp : activePlayers.values()) {
+            Entity body = fp.getPhysicsEntity();
+
+            // Body is valid — nothing to do
+            if (body != null && body.isValid()) continue;
+
+            // Body became invalid (DYING pose removed by Minecraft, or other cause)
+            Config.debug("validateEntities: body of '" + fp.getName() + "' invalid — attempting respawn.");
+
+            fp.setPhysicsEntity(null);
+            ArmorStand as = fp.getNametagEntity();
+            if (as != null) {
+                try { as.remove(); } catch (Exception ignored) {}
+                fp.setNametagEntity(null);
+            }
+
+            if (!Config.spawnBody()) continue;
+
+            // Try to re-spawn at last known location
+            org.bukkit.Location loc = fp.getSpawnLocation();
+            if (loc == null || loc.getWorld() == null) continue;
+
+            Entity newBody = FakePlayerBody.spawn(fp, loc);
+            if (newBody == null) continue;
+
+            fp.setPhysicsEntity(newBody);
+            entityIdIndex.put(newBody.getEntityId(), fp);
+
+            final FakePlayer target = fp;
+            final Entity bodyRef   = newBody;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!bodyRef.isValid()) return;
+                FakePlayerBody.applyResolvedSkin(plugin, target, bodyRef);
+                target.setNametagEntity(FakePlayerBody.spawnNametag(target, bodyRef));
+                // Re-send tab list so skin + name update for everyone
+                for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListAdd(p, target);
+            }, 2L);
+        }
+
+        // ── Sweep orphaned entities ──────────────────────────────────────────
+        int swept = FakePlayerBody.sweepOrphans(activeNames);
+        if (swept > 0) {
+            FppLogger.info("Orphan sweep: removed " + swept + " stale FPP entity/entities.");
         }
     }
 
@@ -612,9 +696,26 @@ public class FakePlayerManager {
         return entityIdIndex.get(entity.getEntityId());
     }
 
-    /** Returns the FakePlayer with the given UUID, or {@code null} if not found. */
+    /**
+     * Returns the active {@link FakePlayer} with the given UUID, or {@code null}
+     * if no bot with that UUID is currently registered.
+     */
     public FakePlayer getByUuid(UUID uuid) {
-        return activePlayers.get(uuid);
+        if (uuid == null) return null;
+        for (FakePlayer fp : activePlayers.values()) {
+            if (uuid.equals(fp.getUuid())) return fp;
+        }
+        return null;
+    }
+
+    /** Removes a stale entry from the entity-ID index. Called by the death handler. */
+    public void removeFromEntityIndex(int entityId) {
+        entityIdIndex.remove(entityId);
+    }
+
+    /** Registers or updates an entity-ID → FakePlayer mapping. Called after respawn. */
+    public void registerEntityIndex(int entityId, FakePlayer fp) {
+        entityIdIndex.put(entityId, fp);
     }
 
     /** Returns a list of all active bot names (for tab-completion). */
@@ -825,13 +926,4 @@ public class FakePlayerManager {
         return new UserBotName(internal, display);
     }
 
-    /**
-     * Sends a tab-list ADD packet for {@code fp} to every online player.
-     * Called from {@link #finishSpawn} after skin resolution completes.
-     */
-    private void fireVanillaJoin(FakePlayer fp) {
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            PacketHelper.sendTabListAdd(online, fp);
-        }
-    }
 }

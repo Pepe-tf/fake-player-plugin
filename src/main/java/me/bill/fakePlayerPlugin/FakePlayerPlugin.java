@@ -5,6 +5,7 @@ import me.bill.fakePlayerPlugin.command.CommandManager;
 import me.bill.fakePlayerPlugin.command.DeleteCommand;
 import me.bill.fakePlayerPlugin.command.InfoCommand;
 import me.bill.fakePlayerPlugin.command.ListCommand;
+import me.bill.fakePlayerPlugin.command.MigrateCommand;
 import me.bill.fakePlayerPlugin.command.ReloadCommand;
 import me.bill.fakePlayerPlugin.command.SpawnCommand;
 import me.bill.fakePlayerPlugin.command.SwapCommand;
@@ -24,8 +25,11 @@ import me.bill.fakePlayerPlugin.fakeplayer.SkinRepository;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.listener.BotCollisionListener;
 import me.bill.fakePlayerPlugin.listener.FakePlayerEntityListener;
-import me.bill.fakePlayerPlugin.listener.ServerListListener;
 import me.bill.fakePlayerPlugin.listener.PlayerJoinListener;
+import me.bill.fakePlayerPlugin.listener.PlayerWorldChangeListener;
+import me.bill.fakePlayerPlugin.listener.ServerListListener;
+import me.bill.fakePlayerPlugin.util.BackupManager;
+import me.bill.fakePlayerPlugin.util.ConfigMigrator;
 import me.bill.fakePlayerPlugin.util.FppLogger;
 import me.bill.fakePlayerPlugin.util.UpdateChecker;
 import org.bukkit.Bukkit;
@@ -52,6 +56,11 @@ public final class FakePlayerPlugin extends JavaPlugin {
         instance  = this;
         enabledAt = System.currentTimeMillis();
         FppLogger.init(getLogger());
+
+        // ── Migration (runs before Config.init so it operates on raw YAML) ────
+        // Ensures config.yml is upgraded from any previous version, adds missing
+        // keys from defaults, and creates a backup if any changes are applied.
+        ConfigMigrator.migrateIfNeeded(this);
 
         // ── Config ────────────────────────────────────────────────────────────
         FppLogger.section("Loading Config");
@@ -110,6 +119,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager.register(new SwapCommand(this));
         commandManager.register(new ReloadCommand(this));
         commandManager.register(new InfoCommand(databaseManager, fakePlayerManager));
+        commandManager.register(new MigrateCommand(this));
         FppLogger.debug("Commands registered: " + commandManager.getCommands().size() + " total.");
 
         var fppCmd = getCommand("fpp");
@@ -121,12 +131,20 @@ public final class FakePlayerPlugin extends JavaPlugin {
         // ── Listeners ─────────────────────────────────────────────────────────
         FppLogger.section("Registering Listeners");
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this, fakePlayerManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerWorldChangeListener(this, fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new FakePlayerEntityListener(this, fakePlayerManager, chunkLoader), this);
         getServer().getPluginManager().registerEvents(new BotCollisionListener(this, fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new ServerListListener(fakePlayerManager), this);
 
         new BotHeadAI(this, fakePlayerManager);
         new BotChatAI(this, fakePlayerManager);
+
+        // ── Periodic entity health check + orphan sweep (every 5 min) ─────────
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (fakePlayerManager.getCount() > 0) {
+                fakePlayerManager.validateEntities();
+            }
+        }, 6000L, 6000L);
 
         // ── Detect LuckPerms prefix (deferred 1 tick so LP is fully loaded) ──
         boolean luckPermsInstalled = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
@@ -136,6 +154,11 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 : Config.mysqlEnabled()          ? "MySQL"
                                                  : "SQLite (local)";
 
+        // Build skin mode label — include guaranteed-skin status for clarity
+        String skinLabel = Config.skinMode()
+                + (Config.skinGuaranteed() && !"off".equals(Config.skinMode())
+                        ? " (guaranteed → " + Config.skinFallbackName() + ")" : "");
+
         FppLogger.printStartupBanner(
                 getPluginMeta().getVersion(),
                 String.join(", ", getPluginMeta().getAuthors()),
@@ -143,7 +166,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 BotMessageConfig.getMessages().size(),
                 dbLabel,
                 dbOk,
-                Config.skinMode(),
+                skinLabel,
                 Config.spawnBody(),
                 Config.persistOnRestart(),
                 luckPermsInstalled,
@@ -152,6 +175,16 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 Config.chunkLoadingEnabled(),
                 Config.maxBots()
         );
+
+        // ── Migration summary ─────────────────────────────────────────────────
+        int cfgVer = Config.configVersion();
+        FppLogger.kv("Config version",
+                "v" + cfgVer + (cfgVer >= ConfigMigrator.CURRENT_VERSION ? " ✔" : " (migrated)"));
+        int backupCount = BackupManager.listBackups(this).size();
+        if (backupCount > 0) {
+            FppLogger.kv("Backups stored",
+                    backupCount + " (see plugins/FakePlayerPlugin/backups/)");
+        }
 
         // ── Update checker (async, non-blocking) ─────────────────────────────
         UpdateChecker.check(this);

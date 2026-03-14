@@ -64,6 +64,7 @@ Compatible with **LuckPerms**, **PermissionsEx**, **GroupManager**, and vanilla 
 | [`fpp.info`](#fppinfo) | `op` | Full database query via `/fpp info` |
 | [`fpp.tp`](#fpptp) | `op` | Teleport yourself to any bot |
 | [`fpp.bypass.maxbots`](#fppbypassmaxbots) | `op` | Bypass the global `max-bots` cap |
+| [`fpp.admin.migrate`](#fppadminmigrate) | `op` | Run migration system / create backups |
 
 ### User tier (`fpp.user.*`)
 
@@ -433,4 +434,33 @@ Negated nodes always take priority over inherited `true` values from parent grou
 
 ---
 
-*ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ v0.1.5 · Paper 1.21.x · Java 21*
+### `fpp.admin.migrate`
+**Default:** `op`  
+Grants access to the `/fpp migrate` command suite — the plugin's built-in update, migration, and backup system.
+
+**What it allows:**
+| Subcommand | Action |
+|---|---|
+| `/fpp migrate backup` | Create a manual timestamped backup of all plugin files |
+| `/fpp migrate backups` | List stored backups with sizes |
+| `/fpp migrate status` | Show config version, database stats, backup count |
+| `/fpp migrate config` | Re-run the config migration chain to update `config.yml` |
+| `/fpp migrate db merge [file]` | Merge records from an old `fpp.db` into the current database |
+| `/fpp migrate db export` | Export all session history to a CSV file |
+| `/fpp migrate db tomysql` | Migrate data from local SQLite into configured MySQL |
+
+**Grant with care** — this command gives access to all data files and can overwrite database records.
+
+```bash
+# Owner only — included in fpp.*
+/lp group owner permission set fpp.* true
+
+# Or grant explicitly
+/lp user TrustedAdmin permission set fpp.admin.migrate true
+```
+
+> **Automatic backups:** A backup is always created automatically before any migration or merge runs. Backups are stored in `plugins/FakePlayerPlugin/backups/` and the 10 most recent sets are kept.
+
+---
+
+*ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ v1.1.4 · Paper 1.21.x · Java 21*

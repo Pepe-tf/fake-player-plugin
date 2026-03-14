@@ -139,6 +139,16 @@ public final class Perm {
     /** Bypass the max-bots cap defined in config.yml. */
     public static final String BYPASS_MAX = "fpp.bypass.maxbots";
 
+    // ── Migration / Backup ────────────────────────────────────────────────────
+
+    /**
+     * Access {@code /fpp migrate} — the config and database migration system.
+     * Allows: creating backups, running config migrations, merging old databases,
+     * exporting data, and migrating between backends (SQLite → MySQL).
+     * Default: op only.
+     */
+    public static final String ADMIN_MIGRATE = "fpp.admin.migrate";
+
     // ── Static helpers ────────────────────────────────────────────────────────
 
     /** Returns {@code true} if {@code sender} has the given permission node. */

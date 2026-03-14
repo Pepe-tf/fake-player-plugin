@@ -95,15 +95,23 @@ public class FakePlayerEntityListener implements Listener {
         final String name        = fp.getName();
         final String displayName = fp.getDisplayName();
 
-        // Nametag already removed on fatal damage; clear physics ref
+        // Remove nametag immediately (entity is dead but ArmorStand is not)
         FakePlayerBody.removeNametag(fp);
+        // Clear physics entity reference — the Mannequin is now dead/invalid
+        fp.setPhysicsEntity(null);
+        // Remove from entity-id index so stale lookups don't return this fp
+        manager.removeFromEntityIndex(event.getEntity().getEntityId());
 
         if (Config.respawnOnDeath()) {
             int delay = Math.max(1, Config.respawnDelay());
             chunkLoader.releaseForBot(fp);
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                // Remove from tab list while dead
                 for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
+
+                // Double-check no orphaned nametag survived
+                FakePlayerBody.removeOrphanedNametags(name);
 
                 if (Config.spawnBody()) {
                     Entity newBody = FakePlayerBody.spawn(fp, respawnLoc);
@@ -113,15 +121,21 @@ public class FakePlayerEntityListener implements Listener {
                         return;
                     }
                     fp.setPhysicsEntity(newBody);
+                    manager.registerEntityIndex(newBody.getEntityId(), fp);
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (!newBody.isValid()) return;
-                        FakePlayerBody.applySkin(plugin, fp, newBody);
+                        FakePlayerBody.applyResolvedSkin(plugin, fp, newBody);
                         fp.setNametagEntity(FakePlayerBody.spawnNametag(fp, newBody));
                         Bukkit.getScheduler().runTaskLater(plugin, () -> {
                             for (Player p : Bukkit.getOnlinePlayers())
                                 PacketHelper.sendTabListAdd(p, fp);
                         }, 20L);
                     }, 1L);
+                } else {
+                    // Body disabled but bot should "respawn" — re-add to tab list
+                    fp.setNametagEntity(null);
+                    for (Player p : Bukkit.getOnlinePlayers())
+                        PacketHelper.sendTabListAdd(p, fp);
                 }
 
                 fp.setSpawnLocation(respawnLoc);
@@ -131,6 +145,9 @@ public class FakePlayerEntityListener implements Listener {
             chunkLoader.releaseForBot(fp);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
+                // World-scan cleanup — catches any entity the direct ref missed
+                FakePlayerBody.removeOrphanedNametags(name);
+                FakePlayerBody.removeOrphanedBodies(name);
                 broadcastLeave(displayName);
                 manager.removeByName(name);
             }, 1L);

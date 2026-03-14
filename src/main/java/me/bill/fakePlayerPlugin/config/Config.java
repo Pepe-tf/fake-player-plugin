@@ -40,6 +40,11 @@ public final class Config {
 
     // ── Language & Debug ──────────────────────────────────────────────────────
 
+    /** The config-version stamped by the migration system. */
+    public static int configVersion() {
+        return cfg.getInt("config-version", 0);
+    }
+
     /** Language file identifier, e.g. {@code "en"}. Maps to {@code language}. */
     public static String getLanguage() {
         return cfg.getString("language", "en");
@@ -100,7 +105,9 @@ public final class Config {
     /**
      * Skin rendering mode:
      * <ul>
-     *   <li>{@code "auto"}   — Paper resolves skin from Mojang automatically (recommended).</li>
+     *   <li>{@code "auto"}   — Paper resolves skin from Mojang automatically (recommended).
+     *                          When {@code skin.guaranteed-skin} is true, bots whose names
+     *                          have no Mojang account receive a fallback skin instead of Steve.</li>
      *   <li>{@code "custom"} — Plugin manages skin resolution via SkinRepository
      *                          (name-overrides, skin folder, config pool, Mojang fallback).</li>
      *   <li>{@code "off"}    — No skin; bots display the default Steve / Alex appearance.</li>
@@ -113,6 +120,26 @@ public final class Config {
     /** Clear the skin cache when {@code /fpp reload} is run. */
     public static boolean skinClearCacheOnReload() {
         return cfg.getBoolean("skin.clear-cache-on-reload", true);
+    }
+
+    /**
+     * When {@code true}, bots always receive a skin — even if their name has no
+     * Mojang account (generated names, user bots, etc.). The system falls back
+     * through: folder skins → pool skins → {@link #skinFallbackName()} skin.
+     * Config path: {@code skin.guaranteed-skin}.
+     */
+    public static boolean skinGuaranteed() {
+        return cfg.getBoolean("skin.guaranteed-skin", true);
+    }
+
+    /**
+     * A real Mojang username used as the absolute last-resort skin when all other
+     * resolution fails and {@code skin.guaranteed-skin} is {@code true}.
+     * Must be a valid, existing Minecraft account.
+     * Config path: {@code skin.fallback-name}.
+     */
+    public static String skinFallbackName() {
+        return cfg.getString("skin.fallback-name", "Notch");
     }
 
     /**
@@ -247,6 +274,11 @@ public final class Config {
     public static int chunkLoadingUpdateInterval() { return cfg.getInt("chunk-loading.update-interval", 20); }
 
     // ── Head AI  (head-ai.*) ──────────────────────────────────────────────────
+
+    /** Whether the head-AI rotation system is active. Set false to fully disable it. */
+    public static boolean headAiEnabled() {
+        return cfg.getBoolean("head-ai.enabled", true);
+    }
 
     /** Radius in blocks within which a bot looks at the nearest player. */
     public static double headAiLookRange() { return cfg.getDouble("head-ai.look-range", 8.0); }

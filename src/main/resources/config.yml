@@ -1,91 +1,88 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.1.4
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.2.2
 #  Run /fpp reload to apply changes without restarting the server.
-#  Colors use MiniMessage syntax: <#0079FF>text</#0079FF>  <gray>text</gray>
+#  Colors use MiniMessage: <#0079FF>text</#0079FF>  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ── Language ──────────────────────────────────────────────────────────────────
-language: en
+# Internal — managed by the migration system. Do NOT edit.
+config-version: 12
 
-# ── Debug ─────────────────────────────────────────────────────────────────────
-debug: false
+language: en         # Language file to use (language/<lang>.yml)
+debug: false         # Set true to enable verbose console logging
 
-# ── Update Checker ────────────────────────────────────────────────────────────
-# Check GitHub for a newer version on startup and /fpp reload.
 update-checker:
-  enabled: true
+  enabled: true      # Check for new versions on startup and /fpp reload
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT LIMITS
 # ─────────────────────────────────────────────────────────────────────────────
 limits:
-  max-bots: 1000          # 0 = unlimited
-  user-bot-limit: 1       # default limit for fpp.user.spawn users
-  spawn-presets: [1, 5, 10, 15, 20]
+  max-bots: 1000           # Global cap across all spawners. 0 = unlimited.
+  user-bot-limit: 1        # Default personal limit for fpp.user.spawn players.
+  spawn-presets: [1, 5, 10, 15, 20]  # Tab-complete suggestions for /fpp spawn
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  BOT NAMES
-#  {bot_name} = bot name   {spawner} = spawner name   {num} = bot number
+#  BOT DISPLAY NAMES
+#  Placeholders: {bot_name}  {spawner}  {num}
+#  Colors: <#0079FF>{bot_name}</#0079FF>  or  <gray>{bot_name}</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 bot-name:
-  admin-format: '{bot_name}'
-  user-format: 'bot-{spawner}-{num}'
+  admin-format: '{bot_name}'             # /fpp spawn (admin)
+  user-format:  'bot-{spawner}-{num}'   # /fpp spawn (user tier)
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  LUCKPERMS INTEGRATION
+#  LUCKPERMS
 # ─────────────────────────────────────────────────────────────────────────────
 luckperms:
-  use-prefix: true
+  use-prefix: true   # Prepend the default-group prefix to every bot display name
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SKIN
 #
-#  mode: auto   — Bot gets the Mojang skin matching its name automatically.
-#                 "Notch" → Notch's skin. Works on online-mode servers.
-#                 This is the recommended setting.
-#
-#  mode: off    — No skin. All bots use the default Steve appearance.
-#
-#  mode: custom — Advanced skin control. Uses overrides, pool, and skin folder.
+#  mode: auto   — Mojang skin matching the bot's name. Best for online-mode.
+#  mode: custom — Full control: per-bot overrides, pool, and skins/ folder.
+#  mode: off    — No skin. All bots use default Steve / Alex appearance.
 # ─────────────────────────────────────────────────────────────────────────────
 skin:
-  mode: auto   # auto | off | custom
+  mode: auto
 
-  # (custom only) Per-bot skin overrides. bot-name: minecraft-username-to-copy
-  overrides: {}
-  # Examples:
+  # Bots always get SOME skin — never spawn as Steve. When the primary lookup
+  # fails (generated name, user bot, rate-limit), this fallback chain runs:
+  #   skins/ folder → pool → fallback-name skin fetched from Mojang
+  guaranteed-skin: true
+  fallback-name: Notch    # Real Minecraft account used as last-resort skin
+
+  # ── custom mode only ──────────────────────────────────────────────────────
+  overrides: {}           # Per-bot override: bot-name: minecraft-username
+  # overrides:
   #   Herobrine: Notch
   #   CoolBot: Technoblade
 
-  # (custom only) Random skin pool — list of Minecraft usernames.
-  # Bots without an override get a random skin from this list.
-  pool: []
-  # Examples:
+  pool: []                # Random skin pool — list of Minecraft usernames
+  # pool:
   #   - Notch
   #   - Dream
   #   - Technoblade
 
-  # (custom only) Also use PNG files from plugins/FakePlayerPlugin/skins/.
-  # <botname>.png = exact match. Any other .png = random pool.
-  use-skin-folder: true
-
-  # Clear skin cache on /fpp reload.
+  use-skin-folder: true   # Scan plugins/FakePlayerPlugin/skins/ for PNG files
   clear-cache-on-reload: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT BODY
 # ─────────────────────────────────────────────────────────────────────────────
 body:
-  enabled: true   # false = tab list / messages only, no visible entity
+  enabled: true   # false = tab-list / server-count only, no visible entity
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  PERSISTENCE  —  Bots rejoin at their last location after a server restart.
+#  PERSISTENCE
+#  Bots leave on server shutdown and rejoin at their last position on restart.
 # ─────────────────────────────────────────────────────────────────────────────
 persistence:
   enabled: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  JOIN / LEAVE TIMING  (ticks — 20 ticks = 1 second)
+#  Each bot joins/leaves after a random delay in this range.
 # ─────────────────────────────────────────────────────────────────────────────
 join-delay:
   min: 0
@@ -99,100 +96,95 @@ leave-delay:
 #  MESSAGES
 # ─────────────────────────────────────────────────────────────────────────────
 messages:
-  join-message: true
-  leave-message: true
-  kill-message: false
+  join-message: true    # "<Name> joined the game" — vanilla-style broadcast
+  leave-message: true   # "<Name> left the game"
+  kill-message: false   # Broadcast when a real player kills a bot
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  COMBAT
 # ─────────────────────────────────────────────────────────────────────────────
 combat:
-  max-health: 20.0
-  hurt-sound: true
+  max-health: 20.0   # Bot HP (20.0 = standard player health, 2 HP = 1 heart)
+  hurt-sound: true   # Play the player hurt sound when a bot takes damage
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  DEATH & RESPAWN
 # ─────────────────────────────────────────────────────────────────────────────
 death:
-  respawn-on-death: false
-  respawn-delay: 60        # ticks
-  suppress-drops: true
+  respawn-on-death: false   # Respawn the bot after death instead of removing it
+  respawn-delay: 60         # Ticks before respawn (60 = 3 seconds)
+  suppress-drops: true      # Prevent bots from dropping items on death
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CHUNK LOADING
-#
-#  Bots keep chunks loaded around them exactly like a real player — mobs spawn,
-#  redstone ticks, crops grow in the loaded area.
-#
-#  radius:          Chunk radius kept loaded around each bot.
-#                   0 = match the server's simulation-distance automatically.
-#                   Recommended: match your server's simulation-distance (default: 6).
-#
-#  update-interval: How often (in ticks) the loader checks if a bot has moved
-#                   to a new chunk and updates tickets. 20 = once per second.
-#                   Lower = more responsive to knockback; higher = less CPU.
+#  Bots keep surrounding chunks loaded exactly like a real player.
+#  Mobs spawn, redstone ticks, crops grow inside the loaded radius.
 # ─────────────────────────────────────────────────────────────────────────────
 chunk-loading:
   enabled: true
-  radius: 6           # 0 = auto (server simulation-distance)
-  update-interval: 20 # ticks between chunk-ticket refreshes
+  radius: 6            # Chunk radius kept loaded. 0 = match server simulation-distance.
+  update-interval: 20  # Ticks between position checks (20 = 1 s). Lower = more responsive.
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  HEAD AI  —  Bots look at nearby players.
+#  HEAD AI
+#  Bots smoothly rotate to look at the nearest player within range.
 # ─────────────────────────────────────────────────────────────────────────────
 head-ai:
-  look-range: 8.0   # blocks; 0 = disabled
-  turn-speed: 0.3   # 0.0 = frozen, 1.0 = instant snap
+  enabled: true
+  look-range: 8.0   # Detection radius in blocks
+  turn-speed: 0.3   # Rotation smoothing (0.0 = frozen, 1.0 = instant snap)
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  COLLISION & PUSH
+#  COLLISION & PUSH  ·  Advanced — defaults work well for most servers.
+#  Controls how hard players/hits push bots, and how bots separate from each other.
 # ─────────────────────────────────────────────────────────────────────────────
 collision:
-  walk-radius: 0.85
-  walk-strength: 0.22
-  max-horizontal-speed: 0.30
-  hit-strength: 0.45
-  bot-radius: 0.90
-  bot-strength: 0.14
+  walk-radius: 0.85        # Radius in which walking into a bot pushes it
+  walk-strength: 0.22      # Push force when walking into a bot
+  hit-strength: 0.45       # Knockback force when hitting a bot
+  bot-radius: 0.90         # Radius for bot-vs-bot separation
+  bot-strength: 0.14       # Separation force between two bots
+  max-horizontal-speed: 0.30  # Maximum push speed cap (all sources)
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT SWAP / ROTATION
-#  Bots periodically leave and rejoin with a new name to simulate turnover.
+#  Bots automatically leave and rejoin with a new name to simulate real turnover.
 # ─────────────────────────────────────────────────────────────────────────────
 swap:
   enabled: false
-  session-min: 120         # seconds before a bot swaps out
-  session-max: 600
-  rejoin-delay-min: 5      # seconds between leave and rejoin
-  rejoin-delay-max: 45
-  jitter: 30               # random ± seconds added to session timer
-  reconnect-chance: 0.15   # 0.0–1.0 chance to rejoin with the same name
-  afk-kick-chance: 5       # % chance rejoin gap is extended 1–3 min
-  farewell-chat: true
-  greeting-chat: true
-  time-of-day-bias: true   # longer sessions during peak hours
+  session-min: 120   # Min seconds a bot stays online before swapping
+  session-max: 600   # Max seconds
+
+  # Advanced options — fine-tune realism (leave at defaults for most servers)
+  rejoin-delay-min: 5      # Min seconds between leave and rejoin
+  rejoin-delay-max: 45     # Max seconds
+  jitter: 30               # ± seconds added randomly to session timer
+  reconnect-chance: 0.15   # Chance (0.0–1.0) to rejoin with the same name
+  afk-kick-chance: 5       # % chance the rejoin gap is extended (AFK-kick sim)
+  farewell-chat: true      # Bot sends a farewell message before leaving
+  greeting-chat: true      # Bot sends a greeting message after rejoining
+  time-of-day-bias: true   # Longer sessions during peak hours
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  FAKE CHAT  —  Bots send random messages from bot-messages.yml.
+#  FAKE CHAT
+#  Bots send random messages from bot-messages.yml at random intervals.
 # ─────────────────────────────────────────────────────────────────────────────
 fake-chat:
   enabled: false
-  require-player-online: true
-  chance: 0.75             # 0.0–1.0
+  require-player-online: true  # Only chat when at least one real player is online
+  chance: 0.75                 # Probability (0.0–1.0) a message fires each interval
   interval:
-    min: 5                 # seconds
-    max: 10
+    min: 5    # Seconds between messages (min)
+    max: 10   # Seconds between messages (max)
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  DATABASE  —  Default: SQLite. Switch to MySQL for multi-server setups.
-#
-#  SQLite  — zero-config, stores data in plugins/FakePlayerPlugin/data/fpp.db
-#  MySQL   — recommended for multi-server / BungeeCord setups
+#  DATABASE
+#  Records every bot session for auditing and in-game queries (/fpp info).
+#  SQLite: zero-config — stored at plugins/FakePlayerPlugin/data/fpp.db
+#  MySQL:  for multi-server / BungeeCord setups — set mysql-enabled: true
 # ─────────────────────────────────────────────────────────────────────────────
 database:
-  # SQLite is used automatically when mysql-enabled is false.
   mysql-enabled: false
-
   mysql:
     host: "localhost"
     port: 3306
@@ -203,12 +195,6 @@ database:
     pool-size: 5
     connection-timeout: 30000
 
-  # How often (in seconds) pending bot position updates are flushed to the DB.
-  # Lower = more accurate restart positions; higher = less DB I/O.
-  location-flush-interval: 30
-
-  # Session history — controls how many rows are returned by /fpp info
+  location-flush-interval: 30  # Seconds between position flushes to DB
   session-history:
-    # Max rows returned per query (e.g. /fpp info spawner <name>)
-    max-rows: 20
-
+    max-rows: 20               # Max rows returned per /fpp info query

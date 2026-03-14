@@ -1,4 +1,4 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · **Commands** · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · **Commands** · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Migration & Backups](Migration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
 
 ---
 
@@ -23,6 +23,7 @@ Sub-commands are listed below. Tab-completion is available for all commands — 
 | [`/fpp chat`](#fpp-chat) | `fpp.chat` | Toggle bot fake-chat on/off |
 | [`/fpp swap`](#fpp-swap) | `fpp.swap` | Toggle the bot rotation system |
 | [`/fpp reload`](#fpp-reload) | `fpp.reload` | Hot-reload all configs |
+| [`/fpp migrate`](#fpp-migrate) | `fpp.admin.migrate` | Backup, migrate, and merge data |
 
 ---
 
@@ -280,6 +281,38 @@ Active bots are **not** affected by a reload.
 The skin cache is cleared if `skin.clear-cache-on-reload: true` in config.
 
 **Permission:** `fpp.reload` (operator by default)
+
+---
+
+## /fpp migrate
+
+```
+/fpp migrate <backup|backups|status|config|db <merge|export|tomysql>>
+```
+
+The migration and backup management command. All subcommands require `fpp.admin.migrate`.
+
+| Subcommand | Description |
+|------------|-------------|
+| `backup` | Create a full timestamped backup of all plugin files now |
+| `backups` | List all stored backup directories |
+| `status` | Show config version, DB stats, and backup storage info |
+| `config` | Re-run the config migration chain (updates missing keys) |
+| `db merge [file]` | Merge records from an old `fpp.db` into the current database |
+| `db export` | Export all session history to a CSV in `exports/` |
+| `db tomysql` | Migrate all SQLite data into the configured MySQL backend |
+
+**Examples:**
+```
+/fpp migrate backup
+/fpp migrate status
+/fpp migrate db merge fpp_old.db
+/fpp migrate db export
+```
+
+**Permission:** `fpp.admin.migrate` (operator by default, included in `fpp.*`)
+
+> See [Migration & Backups](Migration.md) for the full guide.
 
 ---
 

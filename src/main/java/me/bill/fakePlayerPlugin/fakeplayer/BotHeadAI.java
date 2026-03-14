@@ -29,7 +29,12 @@ public final class BotHeadAI {
     }
 
     private void tick() {
+        // Bail out early if head-AI is disabled or there's nothing to look at
+        if (!Config.headAiEnabled()) return;
+
         double lookRange  = Config.headAiLookRange();
+        if (lookRange <= 0) return;  // look-range: 0 also disables head AI
+
         float  turnSpeed  = Config.headAiTurnSpeed();
         double rangeSq    = lookRange * lookRange;
 

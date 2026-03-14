@@ -64,9 +64,14 @@ public final class SkinFetcher {
                 return t;
             });
 
-    /** Gap between consecutive Mojang API requests (ms). */
-    private static final long REQUEST_GAP_MS = 200;
+    /** Gap between consecutive Mojang API requests (ms). Mojang's limit is ~1 req/s — 800 ms is safely within it. */
+    private static final long REQUEST_GAP_MS = 800;
     private static long nextSlotMs = 0;
+
+    /** Thrown internally when Mojang returns HTTP 429 (rate limited). Never cached. */
+    private static final class RateLimitException extends RuntimeException {
+        RateLimitException() { super("Mojang API rate limited (429)"); }
+    }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -214,6 +219,7 @@ public final class SkinFetcher {
 
     private static void doFetch(String playerName) {
         String value = null, signature = null;
+        boolean shouldCache = true;
         try {
             String uuid = fetchUuid(playerName);
             if (uuid != null) {
@@ -223,13 +229,20 @@ public final class SkinFetcher {
             if (value != null)
                 FppLogger.debug("SkinFetcher: fetched skin for '" + playerName + "'.");
             else
-                FppLogger.debug("SkinFetcher: no skin found for '" + playerName + "'.");
+                FppLogger.debug("SkinFetcher: no Mojang skin for '" + playerName + "' (name may not be a real account).");
+        } catch (RateLimitException e) {
+            // Don't cache rate-limited results — the next fetchAsync call will retry.
+            shouldCache = false;
+            FppLogger.warn("SkinFetcher: Mojang rate-limited for '" + playerName + "'. Not caching — will retry on next request.");
         } catch (Exception e) {
             FppLogger.warn("SkinFetcher error for '" + playerName + "': " + e.getMessage());
         }
 
-        String[] result = {value, signature};
-        cache.put(playerName, result);
+        // Only cache definitive results (found or "name doesn't exist").
+        // Rate-limited responses are NOT cached so a future call will retry.
+        if (shouldCache) {
+            cache.put(playerName, new String[]{value, signature});
+        }
 
         List<BiConsumer<String, String>> cbs = pending.remove(playerName);
         if (cbs != null) {
@@ -271,9 +284,13 @@ public final class SkinFetcher {
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(5_000);
         conn.setReadTimeout(5_000);
-        conn.setRequestProperty("User-Agent", "FakePlayerPlugin/1.0");
+        conn.setRequestProperty("User-Agent", "FakePlayerPlugin/1.2.2");
         int code = conn.getResponseCode();
-        if (code == 204 || code == 404 || code == 429) return null;
+        if (code == 429) {
+            conn.disconnect();
+            throw new RateLimitException(); // caller must NOT cache this result
+        }
+        if (code == 204 || code == 404) return null;
         try (BufferedReader br = new BufferedReader(
                 new InputStreamReader(conn.getInputStream()))) {
             StringBuilder sb = new StringBuilder();

@@ -1,10 +1,10 @@
-> **🏠 Home** · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
+> **🏠 Home** · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Migration & Backups](Migration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
 
 ---
 
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ — Wiki
 
-> **Version:** 1.0.15 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
+> **Version:** 1.1.4 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
 
 ---
 
@@ -23,6 +23,7 @@ It spawns realistic fake players that appear in the **tab list**, **server list*
 | [Commands](Commands.md) | Every `/fpp` sub-command with usage and examples |
 | [Permissions](Permissions.md) | Full permission node reference and LuckPerms setup |
 | [Configuration](Configuration.md) | `config.yml` reference — every option explained |
+| [Migration & Backups](Migration.md) | Auto-migration, backups, DB merge/export, SQLite→MySQL |
 | [Language](Language.md) | `language/en.yml` — editing messages and colours |
 | [Bot Names](Bot-Names.md) | `bot-names.yml` — managing the name pool |
 | [Bot Messages](Bot-Messages.md) | `bot-messages.yml` — fake chat message pool |
@@ -59,6 +60,9 @@ It spawns realistic fake players that appear in the **tab list**, **server list*
 - ✅ **Database** — SQLite (default) or MySQL session history  
 - ✅ Full **LuckPerms** compatibility via Bukkit permission layer  
 - ✅ MiniMessage colour formatting throughout  
+- ✅ **Auto-migration** — config upgrades automatically on update, never loses your data  
+- ✅ **Backup system** — timestamped backups before every migration, 10-set rolling window  
+- ✅ **DB merge/export** — merge old databases, export CSV, switch backends via `/fpp migrate`  
 
 ---
 
