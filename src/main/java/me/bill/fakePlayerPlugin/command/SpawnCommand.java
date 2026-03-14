@@ -119,6 +119,13 @@ public class SpawnCommand implements FppCommand {
             }
         }
 
+        // ── Cooldown check (user and admin — bypass with fpp.bypass.cooldown) ──
+        if (!Perm.has(sender, Perm.BYPASS_COOLDOWN) && manager.isOnCooldown(player.getUniqueId())) {
+            long remaining = manager.getRemainingCooldown(player.getUniqueId());
+            sender.sendMessage(Lang.get("spawn-cooldown", "seconds", String.valueOf(remaining)));
+            return true;
+        }
+
         // ── User-tier: enforce personal bot limit & use display-name format ──
         if (!isAdmin) {
             int perPlayerLimit = Perm.resolveUserBotLimit(sender);
@@ -139,6 +146,7 @@ public class SpawnCommand implements FppCommand {
             if (spawned <= 0) {
                 sender.sendMessage(Lang.get("spawn-max-reached", "max", String.valueOf(Config.maxBots())));
             } else {
+                manager.recordSpawnCooldown(player.getUniqueId());
                 sender.sendMessage(Lang.get("spawn-success",
                         "count", String.valueOf(spawned),
                         "total", String.valueOf(manager.getCount())));
@@ -155,9 +163,12 @@ public class SpawnCommand implements FppCommand {
                     "max", String.valueOf(Config.maxBots())));
             case  0 -> sender.sendMessage(Lang.get("spawn-name-taken",
                     "name", customName));
-            default -> sender.sendMessage(Lang.get("spawn-success",
-                    "count", String.valueOf(spawned),
-                    "total", String.valueOf(manager.getCount())));
+            default -> {
+                manager.recordSpawnCooldown(player.getUniqueId());
+                sender.sendMessage(Lang.get("spawn-success",
+                        "count", String.valueOf(spawned),
+                        "total", String.valueOf(manager.getCount())));
+            }
         }
         return true;
     }

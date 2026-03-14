@@ -6,7 +6,7 @@
 
     <groupId>me.bill</groupId>
     <artifactId>fpp</artifactId>
-    <version>1.2.2</version>
+    <version>1.2.7</version>
     <packaging>jar</packaging>
 
     <name>fpp</name>
@@ -37,24 +37,40 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <minimizeJar>false</minimizeJar>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <artifactSet>
+                                <includes>
+                                    <include>org.xerial:sqlite-jdbc</include>
+                                    <include>com.mysql:mysql-connector-j</include>
+                                    <!-- FastStats is NOT shaded — it is bundled as raw jar resources
+                                         (src/main/resources/faststats/) and loaded via URLClassLoader
+                                         at runtime to avoid shade-relocation class-loading issues. -->
+                                </includes>
+                            </artifactSet>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <minimizeJar>false</minimizeJar>
-                    <relocations>
-                        <!-- Relocate FastStats so it doesn't clash with other plugins -->
-                        <relocation>
-                            <pattern>dev.faststats</pattern>
-                            <shadedPattern>me.bill.fakePlayerPlugin.libs.faststats</shadedPattern>
-                        </relocation>
-                    </relocations>
-                </configuration>
             </plugin>
         </plugins>
         <resources>
+            <!-- Regular resources: YAML, properties, etc. — text filtering enabled -->
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
+                <excludes>
+                    <!-- Binary jar files must NOT be text-filtered -->
+                    <exclude>faststats/**</exclude>
+                </excludes>
+            </resource>
+            <!-- FastStats bundled jars — binary, no filtering -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>faststats/**</include>
+                </includes>
             </resource>
         </resources>
     </build>
@@ -67,6 +83,10 @@
         <repository>
             <id>central</id>
             <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
+            <id>placeholderapi-repo</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
         </repository>
         <repository>
             <id>faststats-releases</id>
@@ -116,10 +136,25 @@
             <systemPath>${project.basedir}/libs/api-5.5.jar</systemPath>
         </dependency>
 
+        <!-- PlaceholderAPI — soft optional; provides %fpp_count% etc. -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/placeholderapi-2.11.6.jar</systemPath>
+        </dependency>
+
         <!-- FastStats — anonymous usage analytics (shaded + relocated) -->
         <dependency>
             <groupId>dev.faststats.metrics</groupId>
             <artifactId>bukkit</artifactId>
+            <version>0.18.1</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.faststats.metrics</groupId>
+            <artifactId>core</artifactId>
             <version>0.18.1</version>
             <scope>compile</scope>
         </dependency>

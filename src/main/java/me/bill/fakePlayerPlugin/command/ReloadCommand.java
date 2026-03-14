@@ -8,6 +8,7 @@ import me.bill.fakePlayerPlugin.fakeplayer.SkinFetcher;
 import me.bill.fakePlayerPlugin.fakeplayer.SkinRepository;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
+import me.bill.fakePlayerPlugin.util.ConfigValidator;
 import me.bill.fakePlayerPlugin.util.FppLogger;
 import me.bill.fakePlayerPlugin.util.UpdateChecker;
 import org.bukkit.command.CommandSender;
@@ -50,6 +51,19 @@ public class ReloadCommand implements FppCommand {
 
         long ms = System.currentTimeMillis() - start;
         Config.debug("Reload finished in " + ms + "ms.");
+
+        // Reload tab-list header/footer (picks up new toggle + interval)
+        if (plugin.getTabListManager() != null) {
+            plugin.getTabListManager().reload();
+            Config.debug("TabListManager reloaded.");
+        }
+
+        // Re-validate config and warn if issues found
+        int issues = ConfigValidator.validate();
+        if (issues > 0) {
+            FppLogger.warn("Reload completed with " + issues + " config issue(s) — see above.");
+        }
+
         FppLogger.success("Plugin reloaded by " + sender.getName() + " in " + ms + "ms.");
         sender.sendMessage(Lang.get("reload-success", "ms", String.valueOf(ms)));
         // Re-run update check after reload (async, non-blocking)

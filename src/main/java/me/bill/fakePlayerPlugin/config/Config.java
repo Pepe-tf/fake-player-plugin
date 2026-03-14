@@ -60,6 +60,43 @@ public final class Config {
         return cfg.getBoolean("update-checker.enabled", true);
     }
 
+    /** Whether anonymous FastStats metrics are enabled. Maps to {@code metrics.enabled}. */
+    public static boolean metricsEnabled() {
+        return cfg.getBoolean("metrics.enabled", true);
+    }
+
+    // ── Spawn cooldown  (spawn-cooldown) ──────────────────────────────────────
+
+    /**
+     * Seconds a user must wait between spawn commands.
+     * 0 = no cooldown (default). Admins with {@code fpp.bypass.cooldown} are exempt.
+     */
+    public static int spawnCooldown() {
+        return Math.max(0, cfg.getInt("spawn-cooldown", 0));
+    }
+
+    // ── Tab list  (tab-list.*) ────────────────────────────────────────────────
+
+    /** Whether the tab-list header/footer manager is active. */
+    public static boolean tabListEnabled() {
+        return cfg.getBoolean("tab-list.enabled", false);
+    }
+
+    /** MiniMessage text for the tab-list header. Supports {bot_count}, {real_count}, {total_count}, {max_bots}. */
+    public static String tabListHeader() {
+        return cfg.getString("tab-list.header", "");
+    }
+
+    /** MiniMessage text for the tab-list footer. Same placeholders as header. */
+    public static String tabListFooter() {
+        return cfg.getString("tab-list.footer", "");
+    }
+
+    /** How often (ticks) to refresh the tab-list header/footer. Default 40 (2 s). */
+    public static int tabListUpdateInterval() {
+        return cfg.getInt("tab-list.update-interval", 40);
+    }
+
     // ── Bot Limits  (limits.*) ────────────────────────────────────────────────
 
     /** Maximum bots allowed at once. 0 = unlimited. */

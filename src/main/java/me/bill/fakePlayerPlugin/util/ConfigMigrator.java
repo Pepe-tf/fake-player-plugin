@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 12;
+    public static final int CURRENT_VERSION = 14;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -105,6 +105,8 @@ public final class ConfigMigrator {
         if (stored < 10) anyChange |= v9to10(cfg);
         if (stored < 11) anyChange |= v10to11(cfg);
         if (stored < 12) anyChange |= v11to12(cfg);
+        if (stored < 13) anyChange |= v12to13(cfg);
+        if (stored < 14) anyChange |= v13to14(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -426,6 +428,42 @@ public final class ConfigMigrator {
         cfg.set("head-ai.enabled", true);
         log("v11→v12", "added head-ai.enabled = true");
         return true;
+    }
+
+    /**
+     * v12 → v13: Added metrics opt-out toggle.
+     */
+    private static boolean v12to13(YamlConfiguration cfg) {
+        if (cfg.contains("metrics.enabled")) return false;
+        cfg.set("metrics.enabled", true);
+        log("v12→v13", "added metrics.enabled = true");
+        return true;
+    }
+
+    /**
+     * v13 → v14: Added spawn-cooldown and tab-list header/footer.
+     * <ul>
+     *   <li>Added {@code spawn-cooldown} — per-user spawn delay in seconds (default: 0)</li>
+     *   <li>Added {@code tab-list.enabled} — tab-list header/footer toggle (default: false)</li>
+     *   <li>Added {@code tab-list.update-interval}, {@code tab-list.header}, {@code tab-list.footer}</li>
+     * </ul>
+     */
+    private static boolean v13to14(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("spawn-cooldown")) {
+            cfg.set("spawn-cooldown", 0);
+            log("v13→v14", "added spawn-cooldown = 0");
+            changed = true;
+        }
+        if (!cfg.contains("tab-list.enabled")) {
+            cfg.set("tab-list.enabled", false);
+            cfg.set("tab-list.update-interval", 40);
+            cfg.set("tab-list.header", "");
+            cfg.set("tab-list.footer", "");
+            log("v13→v14", "added tab-list section");
+            changed = true;
+        }
+        return changed;
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

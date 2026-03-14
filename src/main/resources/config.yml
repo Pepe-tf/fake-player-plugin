@@ -1,11 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.2.2
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.2.7
 #  Run /fpp reload to apply changes without restarting the server.
 #  Colors use MiniMessage: <#0079FF>text</#0079FF>  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed by the migration system. Do NOT edit.
-config-version: 12
+config-version: 14
 
 language: en         # Language file to use (language/<lang>.yml)
 debug: false         # Set true to enable verbose console logging
@@ -14,12 +14,28 @@ update-checker:
   enabled: true      # Check for new versions on startup and /fpp reload
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  METRICS
+#  Anonymous usage statistics sent to FastStats. Helps the developer understand
+#  which features are used most. No personal data is ever collected.
+#  Set false to opt out completely.
+# ─────────────────────────────────────────────────────────────────────────────
+metrics:
+  enabled: true
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  BOT LIMITS
 # ─────────────────────────────────────────────────────────────────────────────
 limits:
   max-bots: 1000           # Global cap across all spawners. 0 = unlimited.
   user-bot-limit: 1        # Default personal limit for fpp.user.spawn players.
   spawn-presets: [1, 5, 10, 15, 20]  # Tab-complete suggestions for /fpp spawn
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  SPAWN COOLDOWN
+#  How many seconds a player must wait between /fpp spawn commands.
+#  0 = no cooldown. Admins with fpp.bypass.cooldown are always exempt.
+# ─────────────────────────────────────────────────────────────────────────────
+spawn-cooldown: 0
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BOT DISPLAY NAMES
@@ -176,6 +192,18 @@ fake-chat:
   interval:
     min: 5    # Seconds between messages (min)
     max: 10   # Seconds between messages (max)
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  TAB LIST HEADER / FOOTER
+#  Optional tab-list header and footer showing real vs fake player counts.
+#  Placeholders: {bot_count}  {real_count}  {total_count}  {max_bots}
+#  Colors use MiniMessage: <#0079FF>text</#0079FF>
+# ─────────────────────────────────────────────────────────────────────────────
+tab-list:
+  enabled: false
+  update-interval: 40   # Ticks between refreshes (40 = 2 s)
+  header: "<dark_gray>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<#0079FF><bold>ꜱᴇʀᴠᴇʀ ɴᴀᴍᴇ</#0079FF>\n<gray>Players: <white>{real_count} <dark_gray>+ <#0079FF>{bot_count} ʙᴏᴛꜱ\n<dark_gray>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  footer: "<dark_gray>ᴘᴏᴡᴇʀᴇᴅ ʙʏ <#0079FF>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</#0079FF>"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  DATABASE

@@ -86,6 +86,16 @@ public final class FakePlayer {
     /** How many times this bot has been "tag list refreshed" (diagnostic). */
     private int tabRefreshCount = 0;
 
+    /**
+     * Whether this bot is currently frozen in place.
+     * Frozen bots have {@code setImmovable(true)} and {@code setGravity(false)};
+     * head-AI skips them and they are highlighted in /fpp list & /fpp stats.
+     */
+    private boolean frozen = false;
+
+    /** Last world name — used for fast orphan/cross-world detection. */
+    private String lastKnownWorld = null;
+
     public FakePlayer(UUID uuid, String name, PlayerProfile profile) {
         this.uuid    = uuid;
         this.name    = name;
@@ -159,11 +169,15 @@ public final class FakePlayer {
     public int    getDeathCount()                { return deathCount; }
     public boolean isAlive()                     { return alive; }
     public int    getTabRefreshCount()           { return tabRefreshCount; }
+    public boolean isFrozen()                    { return frozen; }
+    public String getLastKnownWorld()            { return lastKnownWorld; }
 
     public void addDamageTaken(double amount)    { totalDamageTaken += amount; }
     public void incrementDeathCount()            { deathCount++; }
     public void setAlive(boolean alive)          { this.alive = alive; }
     public void incrementTabRefresh()            { tabRefreshCount++; }
+    public void setFrozen(boolean frozen)        { this.frozen = frozen; }
+    public void setLastKnownWorld(String world)  { this.lastKnownWorld = world; }
 
     // ── Chunk tracking (for ChunkLoader fast-path) ────────────────────────────
     public int getLastChunkX()                   { return lastChunkX; }

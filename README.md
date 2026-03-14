@@ -2,7 +2,7 @@
 
 > Spawn realistic fake players on your Paper server — complete with tab list, server list count, join/leave/kill messages, staggered join/leave delays, in-world physics bodies, real-player-equivalent chunk loading, guaranteed skin support, bot swap/rotation, fake chat, session database tracking, LuckPerms integration, and full hot-reload configuration.
 
-![Version](https://img.shields.io/badge/version-1.2.2-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.7-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
@@ -61,7 +61,7 @@
 
 ## ✦ Installation
 
-1. Download `fpp-1.2.2.jar` from [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)).
+1. Download `fpp-1.2.7.jar` from [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)).
 2. Place it in your server's `plugins/` folder.
 3. Restart the server — default config files are generated automatically.
 4. Edit `plugins/FakePlayerPlugin/config.yml` as desired.
@@ -87,6 +87,9 @@ All sub-commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp list` | `fpp.list` | List all active bots with name, uptime, world, coordinates, and spawner |
 | `/fpp chat [on\|off\|status]` | `fpp.chat` | Toggle or query the fake-chat system |
 | `/fpp swap [on\|off\|status]` | `fpp.swap` | Toggle or query the bot swap/rotation system |
+| `/fpp freeze <name\|all> [on\|off]` | `fpp.freeze` | Freeze or unfreeze a bot — body becomes immovable; shown with ❄ in list/stats |
+| `/fpp setpos <name>` | `fpp.setpos` | Teleport a bot to your location (inverse of `/fpp tp`) |
+| `/fpp stats` | `fpp.stats` | Rich statistics panel — live bots, frozen count, system status, DB lifetime stats, TPS |
 | `/fpp reload` | `fpp.reload` | Hot-reload config, language, name pool, message pool, and skin repository |
 | `/fpp info` | `fpp.info` | Show total session count and current active bots from the database |
 | `/fpp info bot <name>` | `fpp.info` | Live status + full spawn history for a specific bot name |
@@ -114,6 +117,11 @@ All sub-commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 /fpp list                   — show all active bots with uptime and location
 /fpp chat on / off / status — toggle or check fake chat
 /fpp swap on / off / status — toggle or check bot swap
+/fpp freeze Steve           — toggle frozen state on "Steve"
+/fpp freeze Steve on        — freeze "Steve" (body becomes immovable)
+/fpp freeze all off         — unfreeze every bot
+/fpp setpos Steve           — teleport bot "Steve" to your position
+/fpp stats                  — live plugin statistics panel
 /fpp reload                 — hot-reload all configuration
 /fpp info                   — database stats
 /fpp info bot Steve         — live info + history of bot "Steve"
@@ -142,10 +150,14 @@ All sub-commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `fpp.list` | `op` | List all active bots |
 | `fpp.chat` | `op` | Toggle bot fake-chat |
 | `fpp.swap` | `op` | Toggle bot swap/rotation |
+| `fpp.freeze` | `op` | Freeze / unfreeze any bot or all bots |
+| `fpp.setpos` | `op` | Teleport any bot to your location |
+| `fpp.stats` | `op` | View the `/fpp stats` live statistics panel |
 | `fpp.reload` | `op` | Reload plugin configuration |
 | `fpp.info` | `op` | Full database query for any bot or spawner |
 | `fpp.tp` | `op` | Teleport yourself to any bot |
 | `fpp.bypass.maxbots` | `op` | Bypass the global `limits.max-bots` cap |
+| `fpp.bypass.cooldown` | `op` | Bypass the per-player spawn cooldown |
 | `fpp.admin.migrate` | `op` | Access `/fpp migrate` — backups, config migration, DB export/merge |
 
 ### User Permissions
@@ -187,12 +199,12 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` to apply cha
 
 ```yaml
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.2.2
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.2.7
 #  Run /fpp reload to apply changes without restarting the server.
 #  Colors use MiniMessage: <#0079FF>text</#0079FF>  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 
-config-version: 12   # Internal — do NOT edit
+config-version: 14   # Internal — do NOT edit
 
 language: en         # Language file (language/<lang>.yml)
 debug: false         # Verbose console logging
@@ -200,11 +212,19 @@ debug: false         # Verbose console logging
 update-checker:
   enabled: true
 
+metrics:
+  enabled: true      # Anonymous usage stats via FastStats (no personal data)
+
 # ── Bot Limits ─────────────────────────────────────────────────────────────
 limits:
   max-bots: 1000           # Global cap. 0 = unlimited.
   user-bot-limit: 1        # Personal limit for fpp.user.spawn players
   spawn-presets: [1, 5, 10, 15, 20]
+
+# ── Spawn Cooldown ─────────────────────────────────────────────────────────
+#  Seconds a player must wait between /fpp spawn uses. 0 = no cooldown.
+#  Admins with fpp.bypass.cooldown are always exempt.
+spawn-cooldown: 0
 
 # ── Bot Display Names ──────────────────────────────────────────────────────
 #  Placeholders: {bot_name}  {spawner}  {num}
@@ -310,6 +330,15 @@ fake-chat:
   interval:
     min: 5
     max: 10
+
+# ── Tab List Header / Footer ───────────────────────────────────────────────
+#  Optional animated tab-list header and footer.
+#  Placeholders: {bot_count}  {real_count}  {total_count}  {max_bots}
+tab-list:
+  enabled: false
+  update-interval: 40   # Ticks between refreshes (40 = 2 s)
+  header: "<dark_gray>━━━━━━━━━━\n<#0079FF><bold>ꜱᴇʀᴠᴇʀ ɴᴀᴍᴇ</#0079FF>\n<gray>Players: <white>{real_count} <dark_gray>+ <#0079FF>{bot_count} ʙᴏᴛꜱ\n<dark_gray>━━━━━━━━━━"
+  footer: "<dark_gray>ᴘᴏᴡᴇʀᴇᴅ ʙʏ <#0079FF>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ</#0079FF>"
 
 # ── Database ───────────────────────────────────────────────────────────────
 #  SQLite: zero-config — plugins/FakePlayerPlugin/data/fpp.db
@@ -478,6 +507,45 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 
 ## ✦ Changelog
 
+### v1.2.7 *(2026-03-14)*
+
+#### New Commands
+- **`/fpp freeze <bot|all> [on|off]`** *(new, `fpp.freeze`)* — freeze any bot in place; the Mannequin body becomes immovable and gravity is disabled so it hovers. Toggle, set explicitly, or freeze all at once. Frozen bots are shown with an ❄ indicator in `/fpp list` and `/fpp stats`
+- **`/fpp setpos <botname>`** *(new, `fpp.setpos`)* — teleport any bot to the sender's current location; the inverse of `/fpp tp`
+- **`/fpp stats`** *(new, `fpp.stats`)* — rich live statistics panel: active / frozen bot count with uptime breakdown, system status (chat, swap, chunk-load, skin mode), database lifetime totals, and server health (TPS, online players)
+
+#### PlaceholderAPI Integration
+- FPP now registers a **PlaceholderAPI expansion** automatically when PAPI is installed (soft-dependency — no restart needed if PAPI is added later via `/papi reload`)
+- Available placeholders:
+
+| Placeholder | Value |
+|---|---|
+| `%fpp_count%` | Number of currently active bots |
+| `%fpp_max%` | Global max-bots limit (or `∞`) |
+| `%fpp_chat%` | `on` / `off` — fake-chat state |
+| `%fpp_swap%` | `on` / `off` — bot-swap state |
+| `%fpp_skin%` | Current skin mode (`auto` / `custom` / `off`) |
+| `%fpp_body%` | `on` / `off` — body-spawn state |
+| `%fpp_frozen%` | Number of currently frozen bots |
+| `%fpp_version%` | Plugin version string |
+
+#### Config
+- `config-version` **12 → 14**
+- **`metrics.enabled`** *(new)* — opt-out toggle for anonymous FastStats usage statistics
+- **`spawn-cooldown`** *(new)* — per-player spawn cooldown in seconds (`0` = no cooldown); admins with `fpp.bypass.cooldown` are always exempt
+- **`tab-list`** *(new)* — optional animated tab-list header and footer; supports `{bot_count}`, `{real_count}`, `{total_count}`, `{max_bots}` placeholders and full MiniMessage colouring; disabled by default
+
+#### New Permissions
+- `fpp.freeze` — freeze / unfreeze bots (default: `op`)
+- `fpp.setpos` — teleport a bot to your location (default: `op`)
+- `fpp.stats` — view the `/fpp stats` panel (default: `op`)
+- `fpp.bypass.cooldown` — bypass per-player spawn cooldown (default: `op`)
+
+#### Bug Fixes & Internals
+- Automatic config migration handles the jump from any previous version; a timestamped backup is created before any changes are written
+
+---
+
 ### v1.2.2 *(2026-03-14)*
 
 #### Skin System — Guaranteed Skin & Rate-Limit Fix
@@ -554,4 +622,4 @@ Contact: [Discord](https://discord.gg/ZhsstSJb) — `Bill_Hub`
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.2.2 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp))*
+*Built for Paper 1.21.x · Java 21 · FPP v1.2.7 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp))*

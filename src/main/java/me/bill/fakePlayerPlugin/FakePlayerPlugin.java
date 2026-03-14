@@ -3,11 +3,14 @@ package me.bill.fakePlayerPlugin;
 import me.bill.fakePlayerPlugin.command.ChatCommand;
 import me.bill.fakePlayerPlugin.command.CommandManager;
 import me.bill.fakePlayerPlugin.command.DeleteCommand;
+import me.bill.fakePlayerPlugin.command.FreezeCommand;
 import me.bill.fakePlayerPlugin.command.InfoCommand;
 import me.bill.fakePlayerPlugin.command.ListCommand;
 import me.bill.fakePlayerPlugin.command.MigrateCommand;
 import me.bill.fakePlayerPlugin.command.ReloadCommand;
+import me.bill.fakePlayerPlugin.command.SetposCommand;
 import me.bill.fakePlayerPlugin.command.SpawnCommand;
+import me.bill.fakePlayerPlugin.command.StatsCommand;
 import me.bill.fakePlayerPlugin.command.SwapCommand;
 import me.bill.fakePlayerPlugin.command.TpCommand;
 import me.bill.fakePlayerPlugin.command.TphCommand;
@@ -30,8 +33,10 @@ import me.bill.fakePlayerPlugin.listener.PlayerWorldChangeListener;
 import me.bill.fakePlayerPlugin.listener.ServerListListener;
 import me.bill.fakePlayerPlugin.util.BackupManager;
 import me.bill.fakePlayerPlugin.util.ConfigMigrator;
+import me.bill.fakePlayerPlugin.util.ConfigValidator;
 import me.bill.fakePlayerPlugin.util.FppLogger;
 import me.bill.fakePlayerPlugin.util.FppMetrics;
+import me.bill.fakePlayerPlugin.util.TabListManager;
 import me.bill.fakePlayerPlugin.util.UpdateChecker;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -49,6 +54,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
     private BotPersistence    botPersistence;
     private BotSwapAI         botSwapAI;
     private FppMetrics        fppMetrics;
+    private TabListManager    tabListManager;
 
     /** System.currentTimeMillis() captured at the start of onEnable. */
     private long enabledAt;
@@ -122,6 +128,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager.register(new ReloadCommand(this));
         commandManager.register(new InfoCommand(databaseManager, fakePlayerManager));
         commandManager.register(new MigrateCommand(this));
+        commandManager.register(new StatsCommand(fakePlayerManager, databaseManager));
+        commandManager.register(new FreezeCommand(fakePlayerManager));
+        commandManager.register(new SetposCommand(fakePlayerManager));
         FppLogger.debug("Commands registered: " + commandManager.getCommands().size() + " total.");
 
         var fppCmd = getCommand("fpp");
@@ -148,10 +157,48 @@ public final class FakePlayerPlugin extends JavaPlugin {
             }
         }, 6000L, 6000L);
 
+        // ── Config validation ─────────────────────────────────────────────────
+        int configIssues = ConfigValidator.validate();
+        if (configIssues > 0) {
+            FppLogger.warn("Config validation found " + configIssues + " issue(s) — see above.");
+        }
+
+        // ── Tab list header/footer ────────────────────────────────────────────
+        tabListManager = new TabListManager(this, fakePlayerManager);
+        tabListManager.start();
+
+        // ── PlaceholderAPI soft-dependency ────────────────────────────────────
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            try {
+                new me.bill.fakePlayerPlugin.util.FppPlaceholderExpansion(this, fakePlayerManager).register();
+                FppLogger.success("PlaceholderAPI: expansion registered (%fpp_count%, %fpp_max%, …).");
+            } catch (Exception e) {
+                FppLogger.warn("PlaceholderAPI: failed to register expansion — " + e.getMessage());
+            }
+        }
+
         // ── Detect LuckPerms prefix (deferred 1 tick so LP is fully loaded) ──
         boolean luckPermsInstalled = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
 
         // ── Full startup banner ───────────────────────────────────────────────
+        // ── Update checker (async, non-blocking) ─────────────────────────────
+        UpdateChecker.check(this);
+
+        // ── Metrics (FastStats) — init before banner so status is known ───────
+        fppMetrics = new FppMetrics();
+        if (Config.metricsEnabled()) {
+            try {
+                fppMetrics.init(this, fakePlayerManager);
+            } catch (Throwable t) {
+                FppLogger.error("Metrics: unexpected top-level error — " + t.getClass().getName() + ": " + t.getMessage());
+                for (StackTraceElement el : t.getStackTrace()) {
+                    FppLogger.error("  at " + el);
+                }
+            }
+        } else {
+            FppLogger.info("Metrics: disabled in config.yml — skipping FastStats init.");
+        }
+
         String dbLabel = databaseManager == null ? "none"
                 : Config.mysqlEnabled()          ? "MySQL"
                                                  : "SQLite (local)";
@@ -175,7 +222,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 Config.swapEnabled(),
                 Config.fakeChatEnabled(),
                 Config.chunkLoadingEnabled(),
-                Config.maxBots()
+                Config.maxBots(),
+                fppMetrics.isActive()
         );
 
         // ── Migration summary ─────────────────────────────────────────────────
@@ -188,12 +236,6 @@ public final class FakePlayerPlugin extends JavaPlugin {
                     backupCount + " (see plugins/FakePlayerPlugin/backups/)");
         }
 
-        // ── Update checker (async, non-blocking) ─────────────────────────────
-        UpdateChecker.check(this);
-
-        // ── Metrics (FastStats) ───────────────────────────────────────────────
-        fppMetrics = new FppMetrics();
-        fppMetrics.init(this, fakePlayerManager);
 
         // ── Bot persistence restore ───────────────────────────────────────────
         botPersistence.purgeOrphanedBodiesAndRestore(fakePlayerManager);
@@ -205,7 +247,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 if (detected.isEmpty()) {
                     FppLogger.info("LuckPerms: no prefix found on default group — using config format only.");
                 } else {
-                    FppLogger.success("LuckPerms: prefix detected → \"" + detected + "\"");
+                    // Strip MiniMessage tags for a clean console message
+                    String readable = detected.replaceAll("<[^>]+>", "").strip();
+                    String display  = readable.isEmpty() ? "(formatting/whitespace only)" : "\"" + readable + "\"";
+                    FppLogger.success("LuckPerms: default group prefix active — " + display);
                 }
             }
         }, 1L);
@@ -234,6 +279,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
         if (botSwapAI    != null) botSwapAI.cancelAll();
         // removeAllSync sends leave messages + cleans up entities
         if (fakePlayerManager != null) fakePlayerManager.removeAllSync();
+        // Shut down tab list header/footer
+        if (tabListManager != null) tabListManager.shutdown();
 
         // Flush DB — mark all open sessions as SHUTDOWN before closing
         boolean dbFlushed = false;
@@ -255,6 +302,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
     @SuppressWarnings("unused")
     public FakePlayerManager getFakePlayerManager() { return fakePlayerManager; }
     public DatabaseManager   getDatabaseManager()   { return databaseManager; }
+    public TabListManager    getTabListManager()     { return tabListManager; }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

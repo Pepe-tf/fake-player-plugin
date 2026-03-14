@@ -141,13 +141,20 @@ public final class Perm {
 
     // ── Migration / Backup ────────────────────────────────────────────────────
 
-    /**
-     * Access {@code /fpp migrate} — the config and database migration system.
-     * Allows: creating backups, running config migrations, merging old databases,
-     * exporting data, and migrating between backends (SQLite → MySQL).
-     * Default: op only.
-     */
+    /** Access {@code /fpp migrate} — the config and database migration system. */
     public static final String ADMIN_MIGRATE = "fpp.admin.migrate";
+
+    /** View the /fpp stats panel with live and database statistics. */
+    public static final String STATS         = "fpp.stats";
+
+    /** Freeze or unfreeze bots with /fpp freeze <bot|all> [on|off]. */
+    public static final String FREEZE        = "fpp.freeze";
+
+    /** Teleport a bot to the sender's location with /fpp setpos <bot>. */
+    public static final String SETPOS        = "fpp.setpos";
+
+    /** Bypass per-user spawn cooldown. */
+    public static final String BYPASS_COOLDOWN = "fpp.bypass.cooldown";
 
     // ── Static helpers ────────────────────────────────────────────────────────
 

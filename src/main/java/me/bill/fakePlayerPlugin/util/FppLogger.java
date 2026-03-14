@@ -207,6 +207,7 @@ public final class FppLogger {
      * @param fakeChatEnable whether fake chat is on
      * @param chunkLoading   whether chunk loading is on
      * @param maxBots        global bot limit (0 = unlimited)
+     * @param metricsActive  whether FastStats metrics are running
      */
     public static void printStartupBanner(
             String version,
@@ -222,7 +223,8 @@ public final class FppLogger {
             boolean swapEnabled,
             boolean fakeChatEnable,
             boolean chunkLoading,
-            int    maxBots) {
+            int    maxBots,
+            boolean metricsActive) {
 
         boldRule();
         info("  " + BOLD + BLUE + "ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ" + RESET + WHITE + "  v" + version + RESET);
@@ -237,13 +239,14 @@ public final class FppLogger {
         kv("Max bots",       maxBots == 0 ? "unlimited" : String.valueOf(maxBots));
 
         section("Subsystems");
-        statusRow(dbOk,           "Database",      dbBackend);
-        statusRow(bodyEnabled,    "Mannequin body", bodyEnabled    ? "enabled" : "disabled");
-        statusRow(persistEnabled, "Persistence",   persistEnabled ? "enabled" : "disabled");
-        statusRow(chunkLoading,   "Chunk loading", chunkLoading   ? "enabled" : "disabled");
-        statusRow(swapEnabled,    "Bot swap",      swapEnabled    ? "enabled" : "disabled");
-        statusRow(fakeChatEnable, "Fake chat",     fakeChatEnable ? "enabled" : "disabled");
-        statusRow(luckPermsFound, "LuckPerms",     luckPermsFound ? "detected" : "not installed");
+        statusRow(dbOk,           "Database",       dbBackend);
+        statusRow(bodyEnabled,    "Mannequin body", bodyEnabled    ? "enabled"       : "disabled");
+        statusRow(persistEnabled, "Persistence",    persistEnabled ? "enabled"       : "disabled");
+        statusRow(chunkLoading,   "Chunk loading",  chunkLoading   ? "enabled"       : "disabled");
+        statusRow(swapEnabled,    "Bot swap",        swapEnabled    ? "enabled"       : "disabled");
+        statusRow(fakeChatEnable, "Fake chat",       fakeChatEnable ? "enabled"       : "disabled");
+        statusRow(luckPermsFound, "LuckPerms",       luckPermsFound ? "detected"      : "not installed");
+        statusRow(metricsActive,  "Metrics",         metricsActive  ? "reporting"     : "disabled");
 
         boldRule();
         success("  Plugin started successfully! Type /fpp for help.");

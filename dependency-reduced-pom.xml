@@ -34,6 +34,14 @@
         </executions>
         <configuration>
           <minimizeJar>false</minimizeJar>
+          <artifactSet>
+            <includes>
+              <include>org.xerial:sqlite-jdbc</include>
+              <include>com.mysql:mysql-connector-j</include>
+              <include>dev.faststats.metrics:bukkit</include>
+              <include>dev.faststats.metrics:core</include>
+            </includes>
+          </artifactSet>
         </configuration>
       </plugin>
     </plugins>
@@ -46,6 +54,10 @@
     <repository>
       <id>central</id>
       <url>https://repo.maven.apache.org/maven2</url>
+    </repository>
+    <repository>
+      <id>faststats-releases</id>
+      <url>https://repo.faststats.dev/releases</url>
     </repository>
   </repositories>
   <dependencies>

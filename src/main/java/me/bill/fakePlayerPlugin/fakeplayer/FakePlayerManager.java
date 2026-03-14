@@ -33,6 +33,8 @@ public class FakePlayerManager {
     /** Secondary index: Bukkit entity id → FakePlayer for O(1) getByEntity(). */
     private final Map<Integer, FakePlayer> entityIdIndex = new ConcurrentHashMap<>();
     private final Set<String> usedNames = new HashSet<>();
+    /** Per-player spawn cooldown: UUID → last spawn timestamp (ms). */
+    private final Map<UUID, Long> spawnCooldowns = new ConcurrentHashMap<>();
     private ChunkLoader     chunkLoader;
     private DatabaseManager db;
     private BotPersistence  persistence;
@@ -721,6 +723,54 @@ public class FakePlayerManager {
     /** Returns a list of all active bot names (for tab-completion). */
     public List<String> getActiveNames() {
         return activePlayers.values().stream().map(FakePlayer::getName).collect(Collectors.toList());
+    }
+
+    /**
+     * Returns the active {@link FakePlayer} with the given internal name (case-insensitive),
+     * or {@code null} if no matching bot is active. O(n) — use sparingly.
+     */
+    public FakePlayer getByName(String name) {
+        if (name == null || name.isBlank()) return null;
+        for (FakePlayer fp : activePlayers.values()) {
+            if (fp.getName().equalsIgnoreCase(name)) return fp;
+        }
+        return null;
+    }
+
+    // ── Spawn cooldown helpers ────────────────────────────────────────────────
+
+    /**
+     * Returns {@code true} if the given player is currently on spawn cooldown.
+     * Always returns {@code false} when {@code spawn-cooldown} is 0.
+     */
+    public boolean isOnCooldown(UUID playerUuid) {
+        int secs = Config.spawnCooldown();
+        if (secs <= 0) return false;
+        Long last = spawnCooldowns.get(playerUuid);
+        if (last == null) return false;
+        return (System.currentTimeMillis() - last) / 1000L < secs;
+    }
+
+    /**
+     * Returns the remaining cooldown seconds for the given player (0 if none).
+     */
+    public long getRemainingCooldown(UUID playerUuid) {
+        int secs = Config.spawnCooldown();
+        if (secs <= 0) return 0;
+        Long last = spawnCooldowns.get(playerUuid);
+        if (last == null) return 0;
+        long elapsed = (System.currentTimeMillis() - last) / 1000L;
+        return Math.max(0, secs - elapsed);
+    }
+
+    /** Records the current time as the last spawn instant for {@code playerUuid}. */
+    public void recordSpawnCooldown(UUID playerUuid) {
+        spawnCooldowns.put(playerUuid, System.currentTimeMillis());
+    }
+
+    /** Clears the spawn cooldown for a player (e.g. after an admin bypass). */
+    public void clearCooldown(UUID playerUuid) {
+        spawnCooldowns.remove(playerUuid);
     }
 
     public Collection<FakePlayer> getActivePlayers() {

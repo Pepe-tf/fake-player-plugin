@@ -1,9 +1,10 @@
 name: FakePlayerPlugin
-version: '1.2.2'
+version: '1.2.7'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
 description: Advanced Fake Player Spoofer for Paper 1.21+
+softdepend: [ PlaceholderAPI, LuckPerms ]
 
 commands:
   fpp:
@@ -32,7 +33,11 @@ permissions:
       fpp.info:             true
       fpp.tp:               true
       fpp.bypass.maxbots:   true
+      fpp.bypass.cooldown:  true
       fpp.admin.migrate:    true
+      fpp.stats:            true
+      fpp.freeze:           true
+      fpp.setpos:           true
       fpp.user.*:           true
 
   # ── User wildcard ──────────────────────────────────────────────────────────
@@ -196,5 +201,33 @@ permissions:
       Access /fpp migrate — create backups, run config migrations, merge old databases,
       export session data to CSV, and migrate between SQLite and MySQL backends.
       Op-only by default. Grant only to trusted server administrators.
+    default: op
+
+  # ── Stats ─────────────────────────────────────────────────────────────────
+  fpp.stats:
+    description: >
+      View the /fpp stats panel showing live bot counts, system status,
+      database lifetime statistics, and server TPS.
+    default: op
+
+  # ── Freeze ────────────────────────────────────────────────────────────────
+  fpp.freeze:
+    description: >
+      Freeze or unfreeze bots with /fpp freeze <bot|all> [on|off].
+      Frozen bots are immovable and shown with an ❄ indicator in /fpp list.
+    default: op
+
+  # ── Setpos ────────────────────────────────────────────────────────────────
+  fpp.setpos:
+    description: >
+      Teleport any bot to your location with /fpp setpos <botname>.
+      Admin equivalent of /fpp tph — works on any bot regardless of owner.
+    default: op
+
+  # ── Bypass cooldown ───────────────────────────────────────────────────────
+  fpp.bypass.cooldown:
+    description: >
+      Bypass the spawn-cooldown delay for /fpp spawn.
+      Automatically granted to admins via fpp.*.
     default: op
 

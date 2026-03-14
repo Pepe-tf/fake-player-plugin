@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="faststats-api">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/libs/faststats-bukkit-0.18.1.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/faststats-core-0.18.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
