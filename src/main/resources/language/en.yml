@@ -141,12 +141,6 @@ freeze-unfrozen:      "{prefix}<#0079FF>{name}</#0079FF> <gray>ɪꜱ ɴᴏᴡ <w
 freeze-all-frozen:    "{prefix}<#66CCFF>❄</#66CCFF> <#0079FF>{count}</#0079FF> <gray>ʙᴏᴛ(ꜱ) ꜰʀᴏᴢᴇɴ<gray>."
 freeze-all-unfrozen:  "{prefix}<#0079FF>{count}</#0079FF> <gray>ʙᴏᴛ(ꜱ) ᴜɴꜰʀᴏᴢᴇɴ<gray>."
 
-# ── Setpos ────────────────────────────────────────────────────────────────────
-# {name} — bot display name
-setpos-usage:     "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp setpos <botname></#0079FF><gray>."
-setpos-not-found: "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
-setpos-success:   "{prefix}<gray>ᴛᴇʟᴇᴘᴏʀᴛᴇᴅ <#0079FF>{name}</#0079FF> <gray>ᴛᴏ ʏᴏᴜʀ ʟᴏᴄᴀᴛɪᴏɴ<gray>."
-setpos-failed:    "{prefix}<red>ᴄᴏᴜʟᴅ ɴᴏᴛ ᴛᴇʟᴇᴘᴏʀᴛ <white>{name}<red> — ᴇɴᴛɪᴛʏ ɪɴᴠᴀʟɪᴅ."
 
 # ── Spawn cooldown ────────────────────────────────────────────────────────────
 # {seconds} — seconds remaining on cooldown

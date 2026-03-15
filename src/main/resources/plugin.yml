@@ -1,9 +1,10 @@
 name: FakePlayerPlugin
-version: '1.2.7'
+version: '1.3.0'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
-description: Advanced Fake Player Spoofer for Paper 1.21+
+description: "Advanced Fake Player Spoofer for Paper 1.21+"
+website: "https://modrinth.com/plugin/fake-player-plugin-(fpp)"
 softdepend: [ PlaceholderAPI, LuckPerms ]
 
 commands:
@@ -37,7 +38,6 @@ permissions:
       fpp.admin.migrate:    true
       fpp.stats:            true
       fpp.freeze:           true
-      fpp.setpos:           true
       fpp.user.*:           true
 
   # ── User wildcard ──────────────────────────────────────────────────────────
@@ -217,12 +217,6 @@ permissions:
       Frozen bots are immovable and shown with an ❄ indicator in /fpp list.
     default: op
 
-  # ── Setpos ────────────────────────────────────────────────────────────────
-  fpp.setpos:
-    description: >
-      Teleport any bot to your location with /fpp setpos <botname>.
-      Admin equivalent of /fpp tph — works on any bot regardless of owner.
-    default: op
 
   # ── Bypass cooldown ───────────────────────────────────────────────────────
   fpp.bypass.cooldown:

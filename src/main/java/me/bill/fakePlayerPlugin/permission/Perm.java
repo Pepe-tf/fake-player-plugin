@@ -150,8 +150,6 @@ public final class Perm {
     /** Freeze or unfreeze bots with /fpp freeze <bot|all> [on|off]. */
     public static final String FREEZE        = "fpp.freeze";
 
-    /** Teleport a bot to the sender's location with /fpp setpos <bot>. */
-    public static final String SETPOS        = "fpp.setpos";
 
     /** Bypass per-user spawn cooldown. */
     public static final String BYPASS_COOLDOWN = "fpp.bypass.cooldown";

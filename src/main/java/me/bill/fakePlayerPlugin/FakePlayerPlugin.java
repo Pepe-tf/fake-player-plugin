@@ -8,7 +8,6 @@ import me.bill.fakePlayerPlugin.command.InfoCommand;
 import me.bill.fakePlayerPlugin.command.ListCommand;
 import me.bill.fakePlayerPlugin.command.MigrateCommand;
 import me.bill.fakePlayerPlugin.command.ReloadCommand;
-import me.bill.fakePlayerPlugin.command.SetposCommand;
 import me.bill.fakePlayerPlugin.command.SpawnCommand;
 import me.bill.fakePlayerPlugin.command.StatsCommand;
 import me.bill.fakePlayerPlugin.command.SwapCommand;
@@ -130,7 +129,6 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager.register(new MigrateCommand(this));
         commandManager.register(new StatsCommand(fakePlayerManager, databaseManager));
         commandManager.register(new FreezeCommand(fakePlayerManager));
-        commandManager.register(new SetposCommand(fakePlayerManager));
         FppLogger.debug("Commands registered: " + commandManager.getCommands().size() + " total.");
 
         var fppCmd = getCommand("fpp");

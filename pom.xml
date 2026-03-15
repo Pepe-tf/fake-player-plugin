@@ -6,7 +6,7 @@
 
     <groupId>me.bill</groupId>
     <artifactId>fpp</artifactId>
-    <version>1.2.7</version>
+    <version>1.3.0</version>
     <packaging>jar</packaging>
 
     <name>fpp</name>
@@ -157,6 +157,12 @@
             <artifactId>core</artifactId>
             <version>0.18.1</version>
             <scope>compile</scope>
+        </dependency>
+        <!-- Explicitly add safe version to override vulnerable transitive dependency -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
         </dependency>
     </dependencies>
 </project>

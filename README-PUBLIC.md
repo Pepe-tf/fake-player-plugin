@@ -2,7 +2,7 @@
 
 > Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, and full hot-reload support.
 
-![Version](https://img.shields.io/badge/version-1.2.7-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.0-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
@@ -46,7 +46,7 @@ FPP adds fake players to your server that look and behave like real ones:
 
 ## ✦ Installation
 
-1. Download `fpp-1.2.7.jar` and place it in your `plugins/` folder.
+1. Download `fpp-1.3.0.jar` from [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) and place it in your `plugins/` folder.
 2. Download [PacketEvents](https://modrinth.com/plugin/packetevents) and place it in `plugins/` too.
 3. Restart your server — config files are created automatically.
 4. Edit `plugins/FakePlayerPlugin/config.yml` to your liking.
@@ -70,7 +70,6 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp chat [on\|off\|status]` | Toggle the fake chat system |
 | `/fpp swap [on\|off\|status]` | Toggle the bot swap/rotation system |
 | `/fpp freeze <name\|all> [on\|off]` | Freeze or unfreeze a bot — body becomes immovable; shown with ❄ in list/stats |
-| `/fpp setpos <name>` | Teleport a bot to your location (inverse of `/fpp tp`) |
 | `/fpp stats` | Live statistics panel — bots, frozen count, system status, DB totals, TPS |
 | `/fpp reload` | Hot-reload all config, language, skins, and name/message pools |
 | `/fpp info [bot <name> \| spawner <name>]` | Query the session database |
@@ -92,7 +91,6 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `fpp.chat` | Toggle fake chat |
 | `fpp.swap` | Toggle bot swap |
 | `fpp.freeze` | Freeze / unfreeze any bot or all bots |
-| `fpp.setpos` | Teleport any bot to your location |
 | `fpp.stats` | View the `/fpp stats` live statistics panel |
 | `fpp.reload` | Reload configuration |
 | `fpp.info` | Query the database |
@@ -210,9 +208,16 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 
 ## ✦ Changelog
 
+### v1.3.0 *(2026-03-15)*
+#### Changes
+- Config reload now updates all config files, including language, bot-names, and bot-messages.
+- Updated plugin info and documentation for Modrinth link and version 1.3.0.
+- Removed `/fpp setpos` command and all references.
+
+---
+
 ### v1.2.7 *(2026-03-14)*
 - **`/fpp freeze <bot|all> [on|off]`** — freeze any bot in place; the Mannequin body becomes immovable and gravity is disabled. Frozen bots show ❄ in `/fpp list` and `/fpp stats`
-- **`/fpp setpos <botname>`** — teleport any bot to your current location (inverse of `/fpp tp`)
 - **`/fpp stats`** — live statistics panel: active / frozen bots, uptime breakdown, system status, database lifetime totals, and server TPS
 - **PlaceholderAPI** — FPP registers a PAPI expansion automatically when PAPI is installed; 8 placeholders available (`%fpp_count%`, `%fpp_frozen%`, etc.)
 - **`spawn-cooldown`** — per-player spawn cooldown in seconds (`0` = off); bypass with `fpp.bypass.cooldown`
@@ -265,4 +270,4 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 
 ---
 
-*Paper 1.21.x · Java 21 · FPP v1.2.7*
+*Built for Paper 1.21.x · Java 21 · FPP v1.3.0 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp))*
