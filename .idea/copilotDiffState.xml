@@ -48,31 +48,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/.gitignore">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/.gitignore" />
-              <option name="originalContent" value="# Project exclude paths&#10;/target/" />
-              <option name="updatedContent" value="# Project exclude paths&#10;/target/&#10;&#10;# Build / output&#10; /build/&#10;dist/&#10;&#10;# Maven&#10;dependency-reduced-pom.xml&#10;*.class&#10;*.log&#10;&#10;# IDEs&#10;/.idea/&#10;*.iml&#10;*.iws&#10;/.project&#10;/.classpath&#10;/.settings/&#10;out/&#10;&#10;# Node / frontend&#10;/node_modules/&#10;/frontend/node_modules/&#10;/frontend/.next/&#10;/frontend/dist/&#10;/frontend/.vercel/&#10;.vercel/&#10;&#10;# Vercel / serverless&#10;/.vercel_build_output/&#10;&#10;# OS&#10;.DS_Store&#10;Thumbs.db&#10;&#10;# Environment&#10;.env&#10;*.env&#10;&#10;# Logs&#10;logs/&#10;*.log&#10;&#10;# Misc&#10;*.swp&#10;*.tmp&#10;/.idea/&#10;&#10;# Keep libs (vendor) unless you want to ignore them intentionally&#10;# /libs/&#10;" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
-        <entry key="$PROJECT_DIR$/package.json">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/package.json" />
-              <option name="updatedContent" value="{&#10;  &quot;name&quot;: &quot;fake-player-plugin-frontend&quot;,&#10;  &quot;version&quot;: &quot;0.1.0&quot;,&#10;  &quot;private&quot;: true,&#10;  &quot;scripts&quot;: {&#10;    &quot;start&quot;: &quot;node frontend/index.js&quot;,&#10;    &quot;dev&quot;: &quot;nodemon frontend/index.js&quot;,&#10;    &quot;format&quot;: &quot;prettier --write \&quot;frontend/**\&quot;&quot;&#10;  },&#10;  &quot;dependencies&quot;: {&#10;    &quot;cors&quot;: &quot;^2.8.5&quot;,&#10;    &quot;express&quot;: &quot;^4.18.2&quot;,&#10;    &quot;js-yaml&quot;: &quot;4.1.0&quot;,&#10;    &quot;node-fetch&quot;: &quot;2.6.7&quot;,&#10;    &quot;semver&quot;: &quot;^7.5.4&quot;&#10;  },&#10;  &quot;devDependencies&quot;: {&#10;    &quot;nodemon&quot;: &quot;^2.0.22&quot;,&#10;    &quot;prettier&quot;: &quot;^2.8.8&quot;&#10;  }&#10;}&#10;" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
-        <entry key="$PROJECT_DIR$/vercel.json">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/vercel.json" />
-              <option name="updatedContent" value="{&#10;  &quot;version&quot;: 2,&#10;  &quot;builds&quot;: [&#10;    { &quot;src&quot;: &quot;frontend/api/*.js&quot;, &quot;use&quot;: &quot;@vercel/node&quot; }&#10;  ],&#10;  &quot;routes&quot;: [&#10;    { &quot;src&quot;: &quot;/api/(.*)&quot;, &quot;dest&quot;: &quot;/frontend/api/$1.js&quot; },&#10;    { &quot;src&quot;: &quot;/(.*)&quot;, &quot;dest&quot;: &quot;/frontend/api/status.js&quot; }&#10;  ]&#10;}&#10;" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
