@@ -1,11 +1,11 @@
 {
-  "name": "fpp-frontend-server",
+  "name": "fake-player-plugin-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "format": "prettier --write ."
+    "start": "node frontend/index.js",
+    "dev": "nodemon frontend/index.js",
+    "format": "prettier --write \"frontend/**\""
   },
   "dependencies": {
     "cors": "^2.8.5",
