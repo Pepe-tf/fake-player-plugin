@@ -203,6 +203,11 @@ permissions:
       Op-only by default. Grant only to trusted server administrators.
     default: op
 
+  # Permission used to receive update notifications when a newer plugin version is available
+  fakeplayer.notify:
+    description: Receive update notifications from FakePlayerPlugin (ops always notified)
+    default: op
+
   # ── Stats ─────────────────────────────────────────────────────────────────
   fpp.stats:
     description: >

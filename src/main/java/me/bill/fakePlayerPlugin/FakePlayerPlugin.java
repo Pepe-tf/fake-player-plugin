@@ -294,11 +294,17 @@ public final class FakePlayerPlugin extends JavaPlugin {
         //     in-order with the startup banner. Falls back to async behavior
         //     when the check times out or is disabled.
         try {
-            me.bill.fakePlayerPlugin.util.UpdateChecker.UpdateInfo ui = UpdateChecker.checkBlocking(this, 2500);
-            if (ui != null) UpdateChecker.handleResultOnMainThread(this, ui);
+            FppLogger.debug("Running update check (blocking, up to 5000ms)...");
+            me.bill.fakePlayerPlugin.util.UpdateChecker.UpdateInfo ui = UpdateChecker.checkBlocking(this, 5000);
+            if (ui != null) {
+                UpdateChecker.handleResultOnMainThread(this, ui);
+            } else {
+                FppLogger.info("UpdateChecker: blocking check did not complete in time — running async fallback.");
+                UpdateChecker.check(this);
+            }
         } catch (Throwable t) {
             // Ensure startup proceeds even if update checking has issues
-            Config.debug("UpdateChecker blocking call failed: " + t.getClass().getSimpleName() + ": " + t.getMessage());
+            FppLogger.warn("UpdateChecker blocking call failed: " + t.getClass().getSimpleName() + ": " + t.getMessage());
             // Fallback to non-blocking check so reload still triggers checks later
             UpdateChecker.check(this);
         }

@@ -164,54 +164,70 @@ public final class UpdateChecker {
     /** Performs the HTTP fetch and returns an UpdateInfo with parsed fields or error. */
     private static UpdateInfo fetchUpdateInfo(Plugin plugin) {
         UpdateInfo info = new UpdateInfo();
-        try {
-            HttpURLConnection conn = (HttpURLConnection)
-                    URI.create(API_URL).toURL().openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(5_000);
-            conn.setReadTimeout(5_000);
-            conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "FakePlayerPlugin-UpdateChecker/" +
-                    plugin.getPluginMeta().getVersion());
+        String[] candidates = new String[] {
+                API_URL,
+                API_URL + "/api/check-update",
+                API_URL + "/api/status",
+                API_URL + "/latest",
+                API_URL + "/api/latest",
+        };
+        for (String url : candidates) {
+            try {
+                HttpURLConnection conn = (HttpURLConnection)
+                        URI.create(url).toURL().openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5_000);
+                conn.setReadTimeout(5_000);
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("User-Agent", "FakePlayerPlugin-UpdateChecker/" +
+                        plugin.getPluginMeta().getVersion());
 
-            int code = conn.getResponseCode();
-            if (code != 200) {
-                info.error = "HTTP " + code;
-                Config.debug("UpdateChecker: HTTP " + code + " — skipping.");
+                int code = conn.getResponseCode();
+                if (code != 200) {
+                    Config.debug("UpdateChecker: HTTP " + code + " for " + url + " — trying next.");
+                    continue;
+                }
+
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream()))) {
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                }
+
+                String body = sb.toString();
+                // Try common JSON keys and common remote API shapes (e.g. remoteVersion)
+                Pattern kvPattern = Pattern.compile("\"(tag_name|version|latest|name|remoteVersion|remote_version)\"\\s*:\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+                Matcher kvm = kvPattern.matcher(body);
+                String latest = null;
+                if (kvm.find()) latest = kvm.group(2).trim();
+
+                if (latest == null || latest.isBlank()) {
+                    // Fallback to generic extraction (looks for version-like token)
+                    latest = extractLatestVersion(body);
+                }
+
+                if (latest == null || latest.isBlank()) {
+                    Config.debug("UpdateChecker: could not find version in response from " + url + ".");
+                    continue; // try next candidate
+                }
+
+                String current = plugin.getPluginMeta().getVersion();
+                info.latest = latest;
+                info.latestStartsWithV = latest.startsWith("v");
+                info.current = current;
+                info.currentStartsWithV = current.startsWith("v");
                 return info;
+            } catch (java.net.SocketTimeoutException e) {
+                Config.debug("UpdateChecker timed out for " + url + " (no internet / unreachable).");
+                // try next candidate
+            } catch (Exception e) {
+                Config.debug("UpdateChecker failed for " + url + ": " + e.getClass().getSimpleName() + ": " + e.getMessage());
+                // try next candidate
             }
-
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader r = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream()))) {
-                String line;
-                while ((line = r.readLine()) != null) sb.append(line);
-            }
-
-            String json    = sb.toString();
-            String latest  = extractLatestVersion(json);
-            String current = plugin.getPluginMeta().getVersion();
-
-            if (latest == null || latest.isBlank()) {
-                info.error = "could not parse version from response";
-                Config.debug("UpdateChecker: could not parse tag_name from response.");
-                return info;
-            }
-
-            info.latest = latest;
-            info.latestStartsWithV = latest.startsWith("v");
-            info.current = current;
-            info.currentStartsWithV = current.startsWith("v");
-            return info;
-        } catch (java.net.SocketTimeoutException e) {
-            info.error = "timed out";
-            Config.debug("UpdateChecker timed out (no internet / GitHub unreachable).");
-            return info;
-        } catch (Exception e) {
-            info.error = e.getClass().getSimpleName() + ": " + e.getMessage();
-            Config.debug("UpdateChecker failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
-            return info;
         }
+        info.error = "no successful response from update API";
+        return info;
     }
 
     private static String padRight(String s, int len) {
