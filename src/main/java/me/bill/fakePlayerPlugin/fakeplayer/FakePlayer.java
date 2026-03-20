@@ -60,6 +60,14 @@ public final class FakePlayer {
     private String skinName = null;
 
     /**
+     * Optional override for the profile name sent in PlayerInfo packets (tab list).
+     * This is used to inject a small, non-visible sort prefix based on LuckPerms
+     * group weight so bots can be ordered in the tab list without changing their
+     * visible display name or skin lookup source.
+     */
+    private String packetProfileName = null;
+
+    /**
      * The resolved skin texture (value + signature) for this bot.
      * Populated after async skin resolution. {@code null} if skin mode is "off".
      */
@@ -192,6 +200,13 @@ public final class FakePlayer {
     public void setDisplayName(String name)       { this.displayName   = name; }
     public void setSkinName(String name)          { this.skinName      = name; }
     public void setResolvedSkin(SkinProfile skin) { this.resolvedSkin  = skin; }
+
+    /** The profile name to use when building the GameProfile in tab packets. */
+    public String getPacketProfileName() {
+        return packetProfileName != null ? packetProfileName : name;
+    }
+
+    public void setPacketProfileName(String s) { this.packetProfileName = s; }
 
     /** The resolved skin for this bot, or {@code null} if not yet resolved or skin is off. */
     public SkinProfile getResolvedSkin()          { return resolvedSkin; }

@@ -140,7 +140,7 @@ public class InfoCommand implements FppCommand {
                     .append(Component.text("  ⏱ ").color(MUTED))
                     .append(Component.text(formatUptime(fp.getSpawnTime())).color(VALUE))
                     .append(Component.text("  📍 ").color(MUTED))
-                    .append(Component.text(formatLoc(fp)).color(VALUE)));
+                    .append(Component.text(manager.formatLocationForDisplay(fp)).color(VALUE)));
         }
         sender.sendMessage(divider());
     }
@@ -164,7 +164,7 @@ public class InfoCommand implements FppCommand {
 
         sender.sendMessage(header("ʙᴏᴛ — " + fp.getDisplayName()));
         row(sender, "ᴡᴏʀʟᴅ",    getWorld(fp));
-        row(sender, "ʟᴏᴄᴀᴛɪᴏɴ",  formatLoc(fp));
+        row(sender, "ʟᴏᴄᴀᴛɪᴏɴ",  manager.formatLocationForDisplay(fp));
         row(sender, "ᴜᴘᴛɪᴍᴇ",    formatUptime(fp.getSpawnTime()));
         row(sender, "ꜱᴘᴀᴡɴᴇᴅ ʙʏ", fp.getSpawnedBy());
         sender.sendMessage(divider());
@@ -183,13 +183,13 @@ public class InfoCommand implements FppCommand {
                     .append(Component.text("  No bots are currently active.").color(MUTED)));
         } else {
             for (FakePlayer fp : active) {
-                sender.sendMessage(Component.empty()
+                    sender.sendMessage(Component.empty()
                         .append(Component.text("  ").color(MUTED))
                         .append(Component.text(fp.getDisplayName()).color(ACCENT))
                         .append(Component.text("  ⏱ ").color(MUTED))
                         .append(Component.text(formatUptime(fp.getSpawnTime())).color(VALUE))
                         .append(Component.text("  📍 ").color(MUTED))
-                        .append(Component.text(formatLoc(fp)).color(VALUE))
+                                .append(Component.text(manager.formatLocationForDisplay(fp)).color(VALUE))
                         .append(Component.text("  by ").color(MUTED))
                         .append(Component.text(fp.getSpawnedBy()).color(LABEL)));
             }

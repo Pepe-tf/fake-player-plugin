@@ -137,6 +137,28 @@ public final class Config {
         return cfg.getBoolean("luckperms.use-prefix", true);
     }
 
+    /**
+     * When {@code true} the LuckPerms group weight is used to influence
+     * tab-list ordering for bot entries. Set to {@code false} to disable
+     * weight-aware ordering (tab ordering will be unmodified).
+     */
+    public static boolean luckpermsWeightOrderingEnabled() {
+        return cfg.getBoolean("luckperms.weight-ordering-enabled", true);
+    }
+
+    /** Optional explicit LuckPerms group to treat bots as. If empty, plugin uses default/auto logic. */
+    public static String luckpermsBotGroup() {
+        return cfg.getString("luckperms.bot-group", "");
+    }
+
+    /** Optional single character prefixed before the numeric weight index in packet names. */
+    public static String luckpermsPacketPrefixChar() {
+        String s = cfg.getString("luckperms.packet-prefix-char", "");
+        if (s == null) return "";
+        return s;
+    }
+
+
     // ── Skin  (skin.*) ────────────────────────────────────────────────────────
 
     /**
@@ -269,6 +291,9 @@ public final class Config {
     /** Broadcast a kill message when a player kills a bot. */
     public static boolean killMessage()  { return cfg.getBoolean("messages.kill-message", false); }
 
+    /** Whether compatibility warnings should be sent to ops/admins when they join. */
+    public static boolean warningsNotifyAdmins() { return cfg.getBoolean("messages.notify-admins-on-join", true); }
+
     // ── Combat  (combat.*) ────────────────────────────────────────────────────
 
     /** Base health bots spawn with. */
@@ -361,6 +386,8 @@ public final class Config {
 
     /** Use MySQL instead of the built-in SQLite. */
     public static boolean mysqlEnabled()      { return cfg.getBoolean("database.mysql-enabled", false); }
+    /** Master toggle to disable database I/O entirely. When false, persistence and DB stats are off. */
+    public static boolean databaseEnabled()   { return cfg.getBoolean("database.enabled", true); }
     public static String  mysqlHost()         { return cfg.getString("database.mysql.host", "localhost"); }
     public static int     mysqlPort()         { return cfg.getInt("database.mysql.port", 3306); }
     public static String  mysqlDatabase()     { return cfg.getString("database.mysql.database", "fpp"); }

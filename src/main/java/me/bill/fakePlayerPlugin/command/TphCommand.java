@@ -55,6 +55,12 @@ public class TphCommand implements FppCommand {
                 ? List.copyOf(manager.getActivePlayers())
                 : manager.getBotsOwnedBy(player.getUniqueId());
 
+        // If bodies are disabled, inform the player and abort
+        if (!manager.physicalBodiesEnabled()) {
+            sender.sendMessage(Component.text("[ꜰᴘᴘ] ").color(ACCENT)
+                    .append(Component.text("No body to tp to or from.").color(MUTED)));
+            return true;
+        }
         if (candidates.isEmpty()) {
             sender.sendMessage(Lang.get("tph-no-bots"));
             return true;

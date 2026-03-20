@@ -104,7 +104,7 @@ public class FakePlayerEntityListener implements Listener {
 
         if (Config.respawnOnDeath()) {
             int delay = Math.max(1, Config.respawnDelay());
-            chunkLoader.releaseForBot(fp);
+            if (chunkLoader != null) chunkLoader.releaseForBot(fp);
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Remove from tab list while dead
@@ -142,7 +142,7 @@ public class FakePlayerEntityListener implements Listener {
             }, delay);
 
         } else {
-            chunkLoader.releaseForBot(fp);
+            if (chunkLoader != null) chunkLoader.releaseForBot(fp);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
                 // World-scan cleanup — catches any entity the direct ref missed

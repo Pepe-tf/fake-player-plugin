@@ -56,6 +56,13 @@ public class TpCommand implements FppCommand {
             return true;
         }
 
+        // If physical bodies are disabled, teleporting to them is pointless
+        if (!manager.physicalBodiesEnabled()) {
+            sender.sendMessage(Component.text("[ꜰᴘᴘ] ").color(ACCENT)
+                    .append(Component.text("No body to tp to or from.").color(MUTED)));
+            return true;
+        }
+
         FakePlayer target;
 
         if (args.length == 0) {

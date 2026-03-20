@@ -317,10 +317,13 @@ public final class BotSwapAI {
 
     /** Stagger ticks for the leave phase — matches the global leave-delay config. */
     private long leaveStaggerTicks() {
-        int min = Config.leaveDelayMin();
-        int max = Math.max(min, Config.leaveDelayMax());
-        if (max <= 0) return 1L;
-        return Math.max(1L, min + ThreadLocalRandom.current().nextInt(max - min + 1));
+        // Config leave-delay values are in seconds; convert to ticks
+        int minSecs = Config.leaveDelayMin();
+        int maxSecs = Math.max(minSecs, Config.leaveDelayMax());
+        if (maxSecs <= 0) return 1L;
+        int spread = maxSecs - minSecs;
+        int secs = minSecs + (spread > 0 ? ThreadLocalRandom.current().nextInt(spread + 1) : 0);
+        return Math.max(1L, (long) secs * 20L);
     }
 
     /** Whether to send a chat message this swap cycle (70 % base chance). */

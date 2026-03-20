@@ -17,8 +17,8 @@ public class DeleteCommand implements FppCommand {
 
     public DeleteCommand(FakePlayerManager manager) { this.manager = manager; }
 
-    @Override public String getName()        { return "delete"; }
-    @Override public String getDescription() { return "Deletes a fake player bot by name."; }
+    @Override public String getName()        { return "despawn"; }
+    @Override public String getDescription() { return "Despawns a fake player bot by name."; }
     @Override public String getUsage()       { return "<name|all>"; }
     @Override public String getPermission()  { return Perm.DELETE; }
 

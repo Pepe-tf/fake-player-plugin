@@ -222,21 +222,24 @@ public final class BotPersistence {
         // Spawn with restored UUID — pass null as spawner (server restored it)
         manager.spawnRestored(sb.name, sb.uuid, sb.spawnedBy, sb.spawnedByUuid, loc);
 
-        // Stagger: use the configured join-delay range
-        int delayMin = Config.joinDelayMin();
-        int delayMax = Math.max(delayMin, Config.joinDelayMax());
-        long delay;
-        if (delayMax <= 0) {
-            delay = 1L;
+        // Stagger: use the configured join-delay range (config values are seconds)
+        int delayMinSecs = Config.joinDelayMin();
+        int delayMaxSecs = Math.max(delayMinSecs, Config.joinDelayMax());
+        long delayTicks;
+        if (delayMaxSecs <= 0) {
+            // immediate-ish: schedule next on the next tick so world updates propagate
+            delayTicks = 1L;
         } else {
-            int spread = delayMax - delayMin;
-            delay = Math.max(1, delayMin + (spread > 0
+            int spread = delayMaxSecs - delayMinSecs;
+            int secs = delayMinSecs + (spread > 0
                     ? java.util.concurrent.ThreadLocalRandom.current().nextInt(spread + 1)
-                    : 0));
+                    : 0);
+            // convert seconds -> ticks (20 ticks = 1s) and ensure at least 1 tick
+            delayTicks = Math.max(1L, (long) secs * 20L);
         }
 
         Bukkit.getScheduler().runTaskLater(plugin,
-                () -> restoreChain(manager, saved, index + 1), delay);
+                () -> restoreChain(manager, saved, index + 1), delayTicks);
     }
 
     // ── Purge + Restore ───────────────────────────────────────────────────────

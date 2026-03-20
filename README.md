@@ -2,7 +2,7 @@
 
 > Spawn realistic fake players on your Paper server — complete with tab list, server list count, join/leave/kill messages, staggered join/leave delays, in-world physics bodies, real-player-equivalent chunk loading, guaranteed skin support, bot swap/rotation, fake chat, session database tracking, LuckPerms integration, and full hot-reload configuration.
 
-![Version](https://img.shields.io/badge/version-1.3.1-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.14-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
@@ -53,6 +53,8 @@
 | Java | 21+ |
 | [PacketEvents](https://github.com/retrooper/packetevents) | 2.x (shaded / provided) |
 | [LuckPerms](https://luckperms.net) *(optional)* | 5.x — auto-detected, not required |
+
+Note: Semi-support is provided for older 1.21 releases (1.21.0 → 1.21.8). On those versions some features may be restricted or disabled and the plugin will enter a restricted compatibility mode — check server console for exact warnings and details.
 
 > SQLite JDBC is bundled — no setup needed for local storage.  
 > MySQL connector is also included if you prefer an external database.
@@ -506,10 +508,13 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 
 
 
-### v1.3.1 *(2026-03-17)*
-#### Hotfix
-- Fixed NullPointerException in BotSwapAI when bot entity is null.
-- Fixed StackOverflowError in FakePlayerManager.visualChain by adding a recursion base case.
+### v1.4.14 *(2026-03-20)*
+#### Release
+- Compatibility checks: detect non-Paper servers and Minecraft versions below 1.21.9 and enter a restricted compatibility mode when needed (physical bodies and chunk-loading disabled).
+- Added runtime guard for missing server API classes (prevents NoClassDefFoundError when the Mannequin class is absent).
+- Admin-facing in-game compatibility warning (configurable) sent on enable and on admin join.
+- Teleport commands updated: `/fpp tp` and `/fpp tph` now report when no physical body is available; `/fpp info` shows "No Body" when bodies are disabled.
+- Command rename: `/fpp delete` renamed to `/fpp despawn` (permission node `fpp.delete` retained for compatibility).
 
 ### v1.3.0 *(2026-03-15)*
 
@@ -633,4 +638,4 @@ Contact: [Discord](https://discord.gg/ZhsstSJb) — `Bill_Hub`
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.3.1 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp))*
+*Built for Paper 1.21.x · Java 21 · FPP v1.4.14 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) - [Spigotmc](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) - [Papermc](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin)*

@@ -199,6 +199,7 @@ public final class PacketHelper {
             Object nms = getHandle(receiver);
 
             // Build GameProfile with UUID + name, with skin injected if available
+            // Build GameProfile with UUID + name (may include invisible sort prefix)
             Object profile = buildProfileWithSkin(fp);
 
             // Parse display name: MiniMessage → Adventure Component → NMS Component
@@ -243,9 +244,11 @@ public final class PacketHelper {
      * may be returned by {@code getProperties()} in some builds.
      */
     private static Object buildProfileWithSkin(FakePlayer fp) throws Exception {
+        // Use packet profile name (may include invisible sort prefix) when building the GameProfile
+        String profileName = fp.getPacketProfileName();
         Object profile = gameProfileCtor != null
-                ? gameProfileCtor.newInstance(fp.getUuid(), fp.getName())
-                : gameProfileClass.getDeclaredConstructors()[0].newInstance(fp.getUuid(), fp.getName());
+                ? gameProfileCtor.newInstance(fp.getUuid(), profileName)
+                : gameProfileClass.getDeclaredConstructors()[0].newInstance(fp.getUuid(), profileName);
 
         SkinProfile skin = fp.getResolvedSkin();
         if (skin == null || !skin.isValid()) return profile;

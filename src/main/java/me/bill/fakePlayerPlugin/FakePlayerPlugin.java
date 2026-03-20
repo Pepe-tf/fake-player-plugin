@@ -39,9 +39,59 @@ import me.bill.fakePlayerPlugin.util.TabListManager;
 import me.bill.fakePlayerPlugin.util.UpdateChecker;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import java.util.ArrayList;
+import java.util.List;
+import org.bukkit.entity.Player;
+import net.kyori.adventure.text.Component;
+import me.bill.fakePlayerPlugin.util.TextUtil;
+import me.bill.fakePlayerPlugin.permission.Perm;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class FakePlayerPlugin extends JavaPlugin {
 
+
+    /**
+     * Detects whether the running server appears to be PaperMC.
+     * We check multiple Bukkit-provided strings for robustness.
+     */
+    private static boolean isPaperServer() {
+        try {
+            String ver = Bukkit.getVersion();
+            String bver = Bukkit.getBukkitVersion();
+            String name = Bukkit.getServer().getName();
+            if (ver.toLowerCase().contains("paper")) return true;
+            if (bver.toLowerCase().contains("paper")) return true;
+            if (name.toLowerCase().contains("paper")) return true;
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    /**
+     * Compares two version strings like "1.21.11" and "1.21.9".
+     * Returns negative if a &lt; b, zero if equal, positive if a &gt; b.
+     */
+    private static int compareVersionStrings(String a, String b) {
+        List<Integer> va = parseVersion(a);
+        List<Integer> vb = parseVersion(b);
+        int max = Math.max(va.size(), vb.size());
+        for (int i = 0; i < max; i++) {
+            int na = i < va.size() ? va.get(i) : 0;
+            int nb = i < vb.size() ? vb.get(i) : 0;
+            if (na != nb) return Integer.compare(na, nb);
+        }
+        return 0;
+    }
+
+    private static List<Integer> parseVersion(String s) {
+        List<Integer> parts = new ArrayList<>();
+        if (s == null) return parts;
+        Matcher m = Pattern.compile("(\\d+)").matcher(s);
+        while (m.find()) {
+            try { parts.add(Integer.parseInt(m.group(1))); } catch (NumberFormatException ignored) {}
+        }
+        return parts;
+    }
     private static FakePlayerPlugin instance;
     @SuppressWarnings("unused")
     public static FakePlayerPlugin getInstance() { return instance; }
@@ -54,6 +104,11 @@ public final class FakePlayerPlugin extends JavaPlugin {
     private BotSwapAI         botSwapAI;
     private FppMetrics        fppMetrics;
     private TabListManager    tabListManager;
+    /** When true the plugin detected an unsupported server/runtime and restrains some features */
+    private boolean compatibilityRestricted = false;
+
+    /** Single concise compatibility warning message (Adventure Component) to send to ops/admins when configured. */
+    private Component compatibilityWarningMessage = null;
 
     /** System.currentTimeMillis() captured at the start of onEnable. */
     private long enabledAt;
@@ -91,12 +146,57 @@ public final class FakePlayerPlugin extends JavaPlugin {
         SkinRepository.get().init(this);
         FppLogger.debug("Skin repository initialised (mode=" + Config.skinMode() + ").");
 
+        // ── Server compatibility check ───────────────────────────────────────
+        // Warn early if running on a non-Paper server or on Minecraft < 1.21.9
+        try {
+            String bukkitVersion = Bukkit.getBukkitVersion(); // e.g. "1.21.11-R0.1-SNAPSHOT"
+            String mcVersion = bukkitVersion.contains("-") ? bukkitVersion.split("-", 2)[0] : bukkitVersion;
+            String minVersion = "1.21.9";
+            boolean isPaper = isPaperServer();
+            boolean versionTooOld = compareVersionStrings(mcVersion, minVersion) < 0;
+
+            // Run checks and log detailed console warnings; build a single concise in-game message
+            if (!isPaper) {
+                compatibilityRestricted = true;
+                FppLogger.warn("Server implementation not supported: this plugin targets PaperMC. Detected: " + Bukkit.getVersion());
+            }
+            if (versionTooOld) {
+                compatibilityRestricted = true;
+                FppLogger.warn("Server version " + mcVersion + " is below the supported minimum " + minVersion + ". This version is not supported and may cause errors.");
+            }
+            if (compatibilityRestricted) {
+                FppLogger.warn("Entering restricted compatibility mode: spawning physical bodies and chunk-loading will be disabled.");
+            }
+
+            // Additionally detect Mannequin presence and log; keep player-facing text generic
+            try {
+                Class.forName("org.bukkit.entity.Mannequin");
+            } catch (ClassNotFoundException cnfe) {
+                compatibilityRestricted = true;
+                FppLogger.warn("Mannequin entity class not found — disabling physical bodies and Mannequin-dependent listeners/AI.");
+            }
+
+            if (compatibilityRestricted) {
+                String mm = "<bold><#0079FF>[ꜰᴘᴘ]</#0079FF></bold> <white>Not fully supported — some features disabled.</white>";
+                compatibilityWarningMessage = TextUtil.colorize(mm);
+            }
+        } catch (Throwable t) {
+            // Don't fail startup just because version detection couldn't run
+            FppLogger.debug("Server compatibility check failed: " + t.getMessage());
+        }
+
         // ── Database ──────────────────────────────────────────────────────────
         FppLogger.section("Connecting Database");
-        databaseManager = new DatabaseManager();
-        boolean dbOk = databaseManager.init(getDataFolder());
-        if (!dbOk) {
-            FppLogger.warn("Database could not be initialised — session tracking disabled.");
+        boolean dbOk = false;
+        if (Config.databaseEnabled()) {
+            databaseManager = new DatabaseManager();
+            dbOk = databaseManager.init(getDataFolder());
+            if (!dbOk) {
+                FppLogger.warn("Database could not be initialised — session tracking disabled.");
+                databaseManager = null;
+            }
+        } else {
+            FppLogger.info("Database disabled in config — skipping database initialisation.");
             databaseManager = null;
         }
 
@@ -105,8 +205,14 @@ public final class FakePlayerPlugin extends JavaPlugin {
         fakePlayerManager = new FakePlayerManager(this);
         if (databaseManager != null) fakePlayerManager.setDatabaseManager(databaseManager);
 
-        chunkLoader = new ChunkLoader(this, fakePlayerManager);
-        fakePlayerManager.setChunkLoader(chunkLoader);
+        if (!compatibilityRestricted) {
+            chunkLoader = new ChunkLoader(this, fakePlayerManager);
+            fakePlayerManager.setChunkLoader(chunkLoader);
+        } else {
+            FppLogger.debug("Skipping ChunkLoader initialisation due to compatibility restrictions.");
+            chunkLoader = null;
+            // fakePlayerManager.setChunkLoader(null); // no-op, leave unset
+        }
 
         botPersistence = new BotPersistence(this);
         fakePlayerManager.setBotPersistence(botPersistence);
@@ -141,11 +247,16 @@ public final class FakePlayerPlugin extends JavaPlugin {
         FppLogger.section("Registering Listeners");
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this, fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new PlayerWorldChangeListener(this, fakePlayerManager), this);
-        getServer().getPluginManager().registerEvents(new FakePlayerEntityListener(this, fakePlayerManager, chunkLoader), this);
-        getServer().getPluginManager().registerEvents(new BotCollisionListener(this, fakePlayerManager), this);
-        getServer().getPluginManager().registerEvents(new ServerListListener(fakePlayerManager), this);
 
-        new BotHeadAI(this, fakePlayerManager);
+        if (!compatibilityRestricted) {
+            getServer().getPluginManager().registerEvents(new FakePlayerEntityListener(this, fakePlayerManager, chunkLoader), this);
+            getServer().getPluginManager().registerEvents(new BotCollisionListener(this, fakePlayerManager), this);
+            new BotHeadAI(this, fakePlayerManager);
+        } else {
+            FppLogger.info("Skipping Mannequin-dependent listeners and BotHeadAI due to compatibility restrictions.");
+        }
+
+        getServer().getPluginManager().registerEvents(new ServerListListener(fakePlayerManager), this);
         new BotChatAI(this, fakePlayerManager);
 
         // ── Periodic entity health check + orphan sweep (every 5 min) ─────────
@@ -206,6 +317,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 + (Config.skinGuaranteed() && !"off".equals(Config.skinMode())
                         ? " (guaranteed → " + Config.skinFallbackName() + ")" : "");
 
+        boolean effectiveSpawnBody = Config.spawnBody() && !compatibilityRestricted;
+        boolean effectiveChunkLoading = Config.chunkLoadingEnabled() && !compatibilityRestricted;
+
         FppLogger.printStartupBanner(
                 getPluginMeta().getVersion(),
                 String.join(", ", getPluginMeta().getAuthors()),
@@ -214,12 +328,12 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 dbLabel,
                 dbOk,
                 skinLabel,
-                Config.spawnBody(),
+                effectiveSpawnBody,
                 Config.persistOnRestart(),
                 luckPermsInstalled,
                 Config.swapEnabled(),
                 Config.fakeChatEnabled(),
-                Config.chunkLoadingEnabled(),
+                effectiveChunkLoading,
                 Config.maxBots(),
                 fppMetrics.isActive()
         );
@@ -256,6 +370,17 @@ public final class FakePlayerPlugin extends JavaPlugin {
         long startupMs = System.currentTimeMillis() - enabledAt;
         FppLogger.info("Enable completed in " + startupMs + " ms.");
         FppLogger.debug("onEnable complete.");
+
+        // Deliver a single compatibility warning to currently-online ops/admins if configured
+        try {
+            if (Config.warningsNotifyAdmins() && compatibilityWarningMessage != null) {
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (Perm.hasOrOp(p, Perm.ALL)) {
+                        p.sendMessage(compatibilityWarningMessage);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
     }
 
     @Override
@@ -301,6 +426,12 @@ public final class FakePlayerPlugin extends JavaPlugin {
     public FakePlayerManager getFakePlayerManager() { return fakePlayerManager; }
     public DatabaseManager   getDatabaseManager()   { return databaseManager; }
     public TabListManager    getTabListManager()     { return tabListManager; }
+
+    /** Returns true when the plugin detected an unsupported server/runtime. */
+    public boolean isCompatibilityRestricted() { return compatibilityRestricted; }
+
+    /** Returns the (possibly null) compatibility warning message collected during startup. */
+    public Component getCompatibilityWarning() { return compatibilityWarningMessage; }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

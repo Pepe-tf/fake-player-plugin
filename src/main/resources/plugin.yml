@@ -1,5 +1,5 @@
 name: FakePlayerPlugin
-version: '1.3.1'
+version: '1.4.14'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
@@ -143,14 +143,14 @@ permissions:
 
   # ── Delete ────────────────────────────────────────────────────────────────
   fpp.delete:
-    description: Delete a fake player by name with /fpp delete <name>.
+    description: Despawn a fake player by name with /fpp despawn <name>.
     default: op
     children:
       fpp.delete.all: true
 
   fpp.delete.all:
     description: >
-      Delete ALL bots at once with /fpp delete all.
+      Despawn ALL bots at once with /fpp despawn all.
       Negate to allow individual deletions without mass-wipe access.
     default: op
 

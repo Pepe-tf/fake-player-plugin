@@ -2,7 +2,7 @@
 
 > Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, and full hot-reload support.
 
-![Version](https://img.shields.io/badge/version-1.3.1-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.14-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
@@ -39,6 +39,8 @@ FPP adds fake players to your server that look and behave like real ones:
 | [PacketEvents](https://modrinth.com/plugin/packetevents) | 2.x |
 | [LuckPerms](https://luckperms.net) | Optional — auto-detected |
 | [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) | Optional — auto-detected |
+
+Note: Semi-support is available for older 1.21 releases (1.21.0 → 1.21.8). On those servers some features may be disabled and FPP will run in a restricted compatibility mode — check the server console for detailed warnings.
 
 > SQLite is bundled — no database setup required. MySQL is available for multi-server setups.
 
@@ -210,10 +212,13 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 
 
 
-### v1.3.1 *(2026-03-17)*
-#### Hotfix
-- Fixed NullPointerException in BotSwapAI when bot entity is null.
-- Fixed StackOverflowError in FakePlayerManager.visualChain by adding a recursion base case.
+### v1.4.14 *(2026-03-20)*
+#### Release
+- Compatibility checks: detect non-Paper servers and Minecraft versions below 1.21.9 and enter a restricted compatibility mode when needed (physical bodies and chunk-loading disabled).
+- Added runtime guard for missing server API classes to avoid startup crashes when certain entity classes are absent.
+- In-game admin compatibility notifications (configurable) on enable and on admin join.
+- Teleport commands now warn when no physical body exists; `/fpp info` displays "No Body" when appropriate.
+- Command rename: `/fpp delete` → `/fpp despawn` (permissions kept for compatibility).
 
 ### v1.3.0 *(2026-03-15)*
 #### Changes
@@ -272,9 +277,11 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 ## ✦ Links
 
 - [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) — download
-- [Discord](https://discord.gg/ZhsstSJb) — support & feedback
+- [Spigotmc](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) - download
+- [Papermc](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) - download
+- [Discord](https://discord.com/users/640512148786642947) — support & feedback
 - [GitHub](https://github.com/Pepe-tf/Fake-Player-Plugin-Public-) — source & issues
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.3.1 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp))*
+*Built for Paper 1.21.x · Java 21 · FPP v1.4.14 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) - [Spigotmc](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) - [Papermc](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin)*

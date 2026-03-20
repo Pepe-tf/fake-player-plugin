@@ -5,7 +5,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed by the migration system. Do NOT edit.
-config-version: 14
+config-version: 15
+# Internal migration version — updated automatically. Do not edit.
 
 language: en         # Language file to use (language/<lang>.yml)
 debug: false         # Set true to enable verbose console logging
@@ -51,6 +52,17 @@ bot-name:
 # ─────────────────────────────────────────────────────────────────────────────
 luckperms:
   use-prefix: true   # Prepend the default-group prefix to every bot display name
+  # When true, encode LuckPerms group weight into the tab-list packet profile
+  # name so bots can be ordered according to rank weight. Set false to disable.
+  weight-ordering-enabled: true
+  # Optional: force bots to be treated as members of this LuckPerms group.
+  # If set to an existing group name, bots will use that group's prefix and
+  # weight for display and tab-list ordering. Leave blank to use default/auto.
+  bot-group: ""
+  # Optional single character prefixed before the numeric weight index.
+  # Leave empty to use only numeric index (e.g. "00_"). When set to '~' the
+  # plugin will try to place bots after regular player names by using '~00_'.
+  packet-prefix-char: "{"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SKIN
@@ -102,11 +114,11 @@ persistence:
 # ─────────────────────────────────────────────────────────────────────────────
 join-delay:
   min: 0
-  max: 5
+  max: 1
 
 leave-delay:
   min: 0
-  max: 5
+  max: 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  MESSAGES
@@ -115,6 +127,9 @@ messages:
   join-message: true    # "<Name> joined the game" — vanilla-style broadcast
   leave-message: true   # "<Name> left the game"
   kill-message: false   # Broadcast when a real player kills a bot
+  # When true any compatibility warnings (version/API checks) are sent to
+  # server operators and players with admin permission when they join.
+  notify-admins-on-join: true
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  COMBAT
@@ -212,6 +227,7 @@ tab-list:
 #  MySQL:  for multi-server / BungeeCord setups — set mysql-enabled: true
 # ─────────────────────────────────────────────────────────────────────────────
 database:
+  enabled: true     # Master toggle: set to false to disable all DB operations (no persistence, no stats)
   mysql-enabled: false
   mysql:
     host: "localhost"

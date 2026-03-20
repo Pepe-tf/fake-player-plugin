@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 14;
+    public static final int CURRENT_VERSION = 16;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -107,6 +107,8 @@ public final class ConfigMigrator {
         if (stored < 12) anyChange |= v11to12(cfg);
         if (stored < 13) anyChange |= v12to13(cfg);
         if (stored < 14) anyChange |= v13to14(cfg);
+        if (stored < 15) anyChange |= v14to15(cfg);
+        if (stored < 16) anyChange |= v15to16(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -461,6 +463,33 @@ public final class ConfigMigrator {
             cfg.set("tab-list.header", "");
             cfg.set("tab-list.footer", "");
             log("v13→v14", "added tab-list section");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /** v14 -> v15: Add database.enabled master toggle and messages.notify-admins-on-join default */
+    private static boolean v14to15(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("database.enabled")) {
+            cfg.set("database.enabled", true);
+            log("v14→v15", "added database.enabled = true");
+            changed = true;
+        }
+        if (!cfg.contains("messages.notify-admins-on-join")) {
+            cfg.set("messages.notify-admins-on-join", true);
+            log("v14→v15", "added messages.notify-admins-on-join = true");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /** v15 -> v16: Add luckperms.weight-ordering-enabled default */
+    private static boolean v15to16(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("luckperms.weight-ordering-enabled")) {
+            cfg.set("luckperms.weight-ordering-enabled", true);
+            log("v15→v16", "added luckperms.weight-ordering-enabled = true");
             changed = true;
         }
         return changed;

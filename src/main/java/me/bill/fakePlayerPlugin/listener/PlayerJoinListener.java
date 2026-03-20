@@ -23,6 +23,22 @@ public class PlayerJoinListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
+        // Also send compatibility warnings to admins/ops if configured
+        try {
+            var warnComp = plugin.getCompatibilityWarning();
+            if (warnComp != null && me.bill.fakePlayerPlugin.config.Config.warningsNotifyAdmins()) {
+                if (me.bill.fakePlayerPlugin.permission.Perm.hasOrOp(event.getPlayer(), me.bill.fakePlayerPlugin.permission.Perm.ALL)) {
+                    try {
+                        // Preferred: send as Component (Adventure API)
+                        event.getPlayer().sendMessage(warnComp);
+                    } catch (NoSuchMethodError | NoClassDefFoundError e) {
+                        // Older Bukkit without Adventure: fall back to plain text (strip tags)
+                        event.getPlayer().sendMessage(warnComp.toString());
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+
         if (manager.getCount() == 0) return;
         // Small delay so the client is fully ready to receive entity packets
         event.getPlayer().getScheduler().runDelayed(
