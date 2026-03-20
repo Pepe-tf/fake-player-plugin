@@ -248,7 +248,7 @@ app.get("/api/status", async (req, res) => {
 
 // Update checker
 const UPDATE_API_URL =
-  process.env.UPDATE_API_URL || "https://api.fpp.com/latest";
+  process.env.UPDATE_API_URL || "https://fake-player-plugin.vercel.app";
 let cachedUpdate = null;
 let cachedAt = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000;
