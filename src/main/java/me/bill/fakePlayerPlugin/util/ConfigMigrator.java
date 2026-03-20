@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 16;
+    public static final int CURRENT_VERSION = 17;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -109,6 +109,7 @@ public final class ConfigMigrator {
         if (stored < 14) anyChange |= v13to14(cfg);
         if (stored < 15) anyChange |= v14to15(cfg);
         if (stored < 16) anyChange |= v15to16(cfg);
+        if (stored < 17) anyChange |= v16to17(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -490,6 +491,22 @@ public final class ConfigMigrator {
         if (!cfg.contains("luckperms.weight-ordering-enabled")) {
             cfg.set("luckperms.weight-ordering-enabled", true);
             log("v15→v16", "added luckperms.weight-ordering-enabled = true");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /** v16 -> v17: Add luckperms.bot-group and luckperms.packet-prefix-char defaults */
+    private static boolean v16to17(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("luckperms.bot-group")) {
+            cfg.set("luckperms.bot-group", "");
+            log("v16→v17", "added luckperms.bot-group = ''");
+            changed = true;
+        }
+        if (!cfg.contains("luckperms.packet-prefix-char")) {
+            cfg.set("luckperms.packet-prefix-char", "{");
+            log("v16→v17", "added luckperms.packet-prefix-char = '{'");
             changed = true;
         }
         return changed;
