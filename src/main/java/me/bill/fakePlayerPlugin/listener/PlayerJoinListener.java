@@ -56,11 +56,8 @@ public class PlayerJoinListener implements Listener {
 
         if (manager.getCount() == 0) return;
         // Small delay so the client is fully ready to receive entity packets
-        event.getPlayer().getScheduler().runDelayed(
-                plugin,
-                task -> manager.syncToPlayer(event.getPlayer()),
-                null,
-                5L
-        );
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            try { manager.syncToPlayer(event.getPlayer()); } catch (Throwable ignored) {}
+        }, 5L);
     }
 }

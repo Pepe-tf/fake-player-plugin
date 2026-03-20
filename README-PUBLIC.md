@@ -210,9 +210,12 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 
 ## ✦ Changelog
 
+### v1.4.20 *(2026-03-21)*
+#### Release
+- Added a proper version check to the update checker (previously it only checked if the API was reachable, not if the version was actually newer).
+- Fixed a bug where the update checker would report an update available when the API was reachable but returned an error or invalid response.
 
-
-### v1.4.20 *(2026-03-20)*
+### v1.4.14 *(2026-03-20)*
 #### Release
 - Compatibility checks: detect non-Paper servers and Minecraft versions below 1.21.9 and enter a restricted compatibility mode when needed (physical bodies and chunk-loading disabled).
 - Added runtime guard for missing server API classes to avoid startup crashes when certain entity classes are absent.

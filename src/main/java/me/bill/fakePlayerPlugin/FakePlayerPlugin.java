@@ -181,8 +181,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
             }
 
             if (compatibilityRestricted) {
-                String mm = "<bold><#0079FF>[ꜰᴘᴘ]</#0079FF></bold> <white>Not fully supported — some features disabled.</white>";
-                compatibilityWarningMessage = TextUtil.colorize(mm);
+                // Use language file for the compatibility warning so server owners can customise it
+                compatibilityWarningMessage = me.bill.fakePlayerPlugin.lang.Lang.get("compatibility-warning");
             }
         } catch (Throwable t) {
             // Don't fail startup just because version detection couldn't run

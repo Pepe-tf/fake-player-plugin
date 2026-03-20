@@ -198,12 +198,12 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` to apply cha
 
 ```yaml
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.3.0
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.4.20
 #  Run /fpp reload to apply changes without restarting the server.
 #  Colors use MiniMessage: <#0079FF>text</#0079FF>  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 
-config-version: 14   # Internal — do NOT edit
+config-version: 19   # Internal — do NOT edit
 
 language: en         # Language file (language/<lang>.yml)
 debug: false         # Verbose console logging
@@ -506,9 +506,12 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 
 ## ✦ Changelog
 
+### v1.4.20 *(2026-03-21)*
+#### Release
+- Added a proper version check to the update checker (previously it only checked if the API was reachable, not if the version was actually newer).
+- Fixed a bug where the update checker would report an update available when the API was reachable but returned an error or invalid response.
 
-
-### v1.4.20 *(2026-03-20)*
+### v1.4.14 *(2026-03-20)*
 #### Release
 - Compatibility checks: detect non-Paper servers and Minecraft versions below 1.21.9 and enter a restricted compatibility mode when needed (physical bodies and chunk-loading disabled).
 - Added runtime guard for missing server API classes (prevents NoClassDefFoundError when the Mannequin class is absent).

@@ -91,6 +91,12 @@ public final class UpdateChecker {
             // Use language file for consistent plugin style
             Component console = me.bill.fakePlayerPlugin.lang.Lang.get("update-available", "current", currentClean, "latest", latestClean);
             String plain = PlainTextComponentSerializer.plainText().serialize(console);
+            // Remove language prefix (e.g. "[ꜰᴘᴘ] ") since FppLogger already prepends the TAG
+            try {
+                String prefixRaw = me.bill.fakePlayerPlugin.lang.Lang.raw("prefix");
+                String prefixPlain = PlainTextComponentSerializer.plainText().serialize(TextUtil.colorize(prefixRaw));
+                if (plain.startsWith(prefixPlain)) plain = plain.substring(prefixPlain.length()).trim();
+            } catch (Throwable ignored) {}
             FppLogger.warn(plain);
 
             Component msg = me.bill.fakePlayerPlugin.lang.Lang.get("update-available", "current", currentClean, "latest", latestClean);
@@ -112,6 +118,11 @@ public final class UpdateChecker {
         } else {
             Component ok = me.bill.fakePlayerPlugin.lang.Lang.get("update-up-to-date", "current", currentClean);
             String plainOk = PlainTextComponentSerializer.plainText().serialize(ok);
+            try {
+                String prefixRaw = me.bill.fakePlayerPlugin.lang.Lang.raw("prefix");
+                String prefixPlain = PlainTextComponentSerializer.plainText().serialize(TextUtil.colorize(prefixRaw));
+                if (plainOk.startsWith(prefixPlain)) plainOk = plainOk.substring(prefixPlain.length()).trim();
+            } catch (Throwable ignored) {}
             FppLogger.success(plainOk + "  ✔");
             // Clear any previously stored notification
             try {

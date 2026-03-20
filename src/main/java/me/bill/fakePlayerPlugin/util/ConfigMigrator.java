@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 17;
+    public static final int CURRENT_VERSION = 19;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
