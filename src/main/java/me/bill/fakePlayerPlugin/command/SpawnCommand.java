@@ -72,8 +72,9 @@ public class SpawnCommand implements FppCommand {
             return true;
         }
 
-        boolean isAdmin = Perm.has(sender, Perm.SPAWN);
-        boolean isUser  = Perm.has(sender, Perm.USER_SPAWN);
+        // Check admin tier first (includes OP check) — if they have fpp.spawn OR are OP, treat as admin
+        boolean isAdmin = Perm.hasOrOp(sender, Perm.SPAWN);
+        boolean isUser  = !isAdmin && Perm.has(sender, Perm.USER_SPAWN);
 
         if (!isAdmin && !isUser) {
             sender.sendMessage(Lang.get("no-permission"));

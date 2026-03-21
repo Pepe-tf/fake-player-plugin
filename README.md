@@ -2,7 +2,7 @@
 
 > Spawn realistic fake players on your Paper server — complete with tab list, server list count, join/leave/kill messages, staggered join/leave delays, in-world physics bodies, real-player-equivalent chunk loading, guaranteed skin support, bot swap/rotation, fake chat, session database tracking, LuckPerms integration, and full hot-reload configuration.
 
-![Version](https://img.shields.io/badge/version-1.4.20-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.21-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
@@ -198,7 +198,7 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` to apply cha
 
 ```yaml
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.4.20
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.4.21
 #  Run /fpp reload to apply changes without restarting the server.
 #  Colors use MiniMessage: <#0079FF>text</#0079FF>  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
@@ -506,6 +506,11 @@ FPP auto-detects LuckPerms at startup. When installed and `luckperms.use-prefix:
 
 ## ✦ Changelog
 
+### v1.4.21 *(2026-03-21)*
+#### Bug Fixes
+- Fixed bot display names containing literal `{spawner}`, `{num}`, or `{bot_name}` placeholders after a server restart — stale saves from older versions are now detected and the display name is reconstructed correctly on restore.
+- Fixed unclosed hex color tags (e.g. `<#9782ff>`) at the end of LuckPerms prefixes being passed to the MiniMessage parser and rendered as broken text — trailing unclosed tags are now silently stripped before parsing.
+
 ### v1.4.20 *(2026-03-21)*
 #### Release
 - Added a proper version check to the update checker (previously it only checked if the API was reachable, not if the version was actually newer).
@@ -641,4 +646,4 @@ Contact: [Discord](https://discord.gg/ZhsstSJb) — `Bill_Hub`
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.4.20 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) - [Spigotmc](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) - [Papermc](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.4.21 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) - [Spigotmc](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) - [Papermc](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin)*

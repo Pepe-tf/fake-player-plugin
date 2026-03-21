@@ -43,8 +43,7 @@ public class PlayerJoinListener implements Listener {
         try {
             var upd = plugin.getUpdateNotification();
             if (upd != null) {
-                if (me.bill.fakePlayerPlugin.permission.Perm.hasOrOp(event.getPlayer(), me.bill.fakePlayerPlugin.permission.Perm.ALL)
-                        || event.getPlayer().hasPermission("fakeplayer.notify")) {
+                if (me.bill.fakePlayerPlugin.permission.Perm.hasOrOp(event.getPlayer(), me.bill.fakePlayerPlugin.permission.Perm.ALL)) {
                     try {
                         event.getPlayer().sendMessage(upd);
                     } catch (NoSuchMethodError | NoClassDefFoundError e) {

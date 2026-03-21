@@ -193,63 +193,78 @@ public final class FppLogger {
      *
      * <p>Call after ALL subsystems have been initialised so statuses are accurate.
      *
-     * @param version        plugin version string
-     * @param authors        comma-joined author list
-     * @param namePoolSize   number of names in the name pool
-     * @param msgPoolSize    number of chat messages in the pool
-     * @param dbBackend      short label like "SQLite (local)" or "MySQL" or "none"
-     * @param dbOk           whether the DB connected successfully
-     * @param skinMode       value from Config.skinMode()
-     * @param bodyEnabled    whether Mannequin bodies are spawned
-     * @param persistEnabled whether bot persistence is on
-     * @param luckPermsFound whether LuckPerms is installed
-     * @param swapEnabled    whether bot swap/rotation is on
-     * @param fakeChatEnable whether fake chat is on
-     * @param chunkLoading   whether chunk loading is on
-     * @param maxBots        global bot limit (0 = unlimited)
-     * @param metricsActive  whether FastStats metrics are running
+     * @param version          plugin version string
+     * @param authors          comma-joined author list
+     * @param namePoolSize     number of names in the name pool
+     * @param msgPoolSize      number of chat messages in the pool
+     * @param dbBackend        short label like "SQLite (local)" or "MySQL" or "none"
+     * @param dbOk             whether the DB connected successfully
+     * @param skinMode         value from Config.skinMode()
+     * @param bodyEnabled      whether physical bodies are spawned
+     * @param persistEnabled   whether bot persistence is on
+     * @param luckPermsFound   whether LuckPerms is installed
+     * @param swapEnabled      whether bot swap/rotation is on
+     * @param fakeChatEnable   whether fake chat is on
+     * @param chunkLoading     whether chunk loading is on
+     * @param maxBots          global bot limit (0 = unlimited)
+     * @param metricsActive    whether FastStats metrics are running
+     * @param compatRestricted whether the server failed a compatibility check
+     * @param configVersion    formatted config version string, e.g. {@code "v19 ✔"}
+     * @param backupCount      number of config backups on disk (0 = none)
+     * @param startupMs        plugin enable time in milliseconds
      */
     public static void printStartupBanner(
-            String version,
-            String authors,
-            int    namePoolSize,
-            int    msgPoolSize,
-            String dbBackend,
+            String  version,
+            String  authors,
+            int     namePoolSize,
+            int     msgPoolSize,
+            String  dbBackend,
             boolean dbOk,
-            String skinMode,
+            String  skinMode,
             boolean bodyEnabled,
             boolean persistEnabled,
             boolean luckPermsFound,
             boolean swapEnabled,
             boolean fakeChatEnable,
             boolean chunkLoading,
-            int    maxBots,
-            boolean metricsActive) {
+            int     maxBots,
+            boolean metricsActive,
+            boolean compatRestricted,
+            String  configVersion,
+            int     backupCount,
+            long    startupMs) {
 
         boldRule();
         info("  " + BOLD + BLUE + "ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ" + RESET + WHITE + "  v" + version + RESET);
-        info("  " + GRAY + "Author : " + WHITE + authors);
-        info("  " + GRAY + "Modrinth → " + BLUE + "https://modrinth.com/plugin/fake-player-plugin-(fpp)");
+        info("  " + GRAY + "Author  : " + WHITE + authors);
+        info("  " + GRAY + "Link    : " + BLUE + "https://modrinth.com/plugin/fake-player-plugin-(fpp)");
         rule();
 
         section("Configuration");
-        kv("Skin mode",      skinMode);
-        kv("Name pool",      namePoolSize + " names");
-        kv("Msg pool",       msgPoolSize  + " messages");
-        kv("Max bots",       maxBots == 0 ? "unlimited" : String.valueOf(maxBots));
+        kv("Skin mode",       skinMode);
+        kv("Name pool",       namePoolSize + " names");
+        kv("Msg pool",        msgPoolSize  + " messages");
+        kv("Max bots",        maxBots == 0 ? "unlimited" : String.valueOf(maxBots));
+        kv("Config version",  configVersion);
 
         section("Subsystems");
-        statusRow(dbOk,           "Database",       dbBackend);
-        statusRow(bodyEnabled,    "Mannequin body", bodyEnabled    ? "enabled"       : "disabled");
-        statusRow(persistEnabled, "Persistence",    persistEnabled ? "enabled"       : "disabled");
-        statusRow(chunkLoading,   "Chunk loading",  chunkLoading   ? "enabled"       : "disabled");
-        statusRow(swapEnabled,    "Bot swap",        swapEnabled    ? "enabled"       : "disabled");
-        statusRow(fakeChatEnable, "Fake chat",       fakeChatEnable ? "enabled"       : "disabled");
-        statusRow(luckPermsFound, "LuckPerms",       luckPermsFound ? "detected"      : "not installed");
-        statusRow(metricsActive,  "Metrics",         metricsActive  ? "reporting"     : "disabled");
+        statusRow(!compatRestricted, "Server compat",   !compatRestricted ? "OK" : "restricted — check logs");
+        statusRow(dbOk,              "Database",        dbBackend);
+        statusRow(bodyEnabled,       "Physical bodies", bodyEnabled      ? "enabled"       : "disabled");
+        statusRow(persistEnabled,    "Persistence",     persistEnabled   ? "enabled"       : "disabled");
+        statusRow(chunkLoading,      "Chunk loading",   chunkLoading     ? "enabled"       : "disabled");
+        statusRow(swapEnabled,       "Bot swap",        swapEnabled      ? "enabled"       : "disabled");
+        statusRow(fakeChatEnable,    "Fake chat",       fakeChatEnable   ? "enabled"       : "disabled");
+        statusRow(luckPermsFound,    "LuckPerms",       luckPermsFound   ? "detected"      : "not installed");
+        statusRow(metricsActive,     "Metrics",         metricsActive    ? "reporting"     : "disabled");
 
-        boldRule();
+        rule();
         success("  Plugin started successfully! Type /fpp for help.");
+        String footerLine = "  " + GRAY + "Started in " + WHITE + startupMs + " ms" + RESET;
+        if (backupCount > 0) {
+            footerLine += GRAY + "  ·  " + WHITE + backupCount + " config backup(s) stored" + RESET;
+        }
+        info(footerLine);
         boldRule();
     }
 

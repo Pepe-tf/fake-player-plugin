@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 19;
+    public static final int CURRENT_VERSION = 21;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -110,6 +110,9 @@ public final class ConfigMigrator {
         if (stored < 15) anyChange |= v14to15(cfg);
         if (stored < 16) anyChange |= v15to16(cfg);
         if (stored < 17) anyChange |= v16to17(cfg);
+        if (stored < 18) anyChange |= v17to18(cfg);
+        if (stored < 19) anyChange |= v18to19(cfg);
+        if (stored < 20) anyChange |= v19to20(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -512,6 +515,37 @@ public final class ConfigMigrator {
         return changed;
     }
 
+    /**
+     * v17 → v18: Added skin folder integration controls.
+     * <ul>
+     *   <li>{@code skin.use-skin-folder}      — scan plugins/FakePlayerPlugin/skins/ for PNGs</li>
+     *   <li>{@code skin.clear-cache-on-reload} — clear resolved skin cache on /fpp reload</li>
+     * </ul>
+     */
+    private static boolean v17to18(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("skin.use-skin-folder")) {
+            cfg.set("skin.use-skin-folder", true);
+            log("v17→v18", "added skin.use-skin-folder = true");
+            changed = true;
+        }
+        if (!cfg.contains("skin.clear-cache-on-reload")) {
+            cfg.set("skin.clear-cache-on-reload", true);
+            log("v17→v18", "added skin.clear-cache-on-reload = true");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * v18 → v19: Internal restructure pass — no config-key changes in this bump.
+     * {@link #fillDefaults(FakePlayerPlugin, YamlConfiguration)} fills any missing entries.
+     */
+    private static boolean v18to19(YamlConfiguration cfg) {
+        // No structural config changes — version bump was driven by code/plugin.yml changes.
+        return false;
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
     private static void fillDefaults(FakePlayerPlugin plugin, YamlConfiguration cfg) {
         try (InputStream stream = plugin.getResource("config.yml")) {
@@ -524,6 +558,17 @@ public final class ConfigMigrator {
             // Safe: does not use Config.cfg
             FppLogger.warn("ConfigMigrator.fillDefaults: " + e.getMessage());
         }
+    }
+
+    /** v19 -> v20: Add luckperms.weight-offset default */
+    private static boolean v19to20(YamlConfiguration cfg) {
+        boolean any = false;
+        if (!cfg.contains("luckperms.weight-offset")) {
+            cfg.set("luckperms.weight-offset", -10);
+            log("v19→v20", "added luckperms.weight-offset = -10");
+            any = true;
+        }
+        return any;
     }
 
     /**

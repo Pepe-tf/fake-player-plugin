@@ -158,6 +158,15 @@ public final class Config {
         return s;
     }
 
+    /**
+     * Weight offset applied to bot weights for tab-list ordering.
+     * Negative values (default -10) demote bots below players of the same group.
+     * Set to 0 to rank bots exactly with their group weight.
+     */
+    public static int luckpermsWeightOffset() {
+        return cfg.getInt("luckperms.weight-offset", -10);
+    }
+
 
     // ── Skin  (skin.*) ────────────────────────────────────────────────────────
 

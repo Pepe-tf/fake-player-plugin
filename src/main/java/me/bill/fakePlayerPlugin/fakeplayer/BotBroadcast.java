@@ -4,8 +4,6 @@ import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.util.TextUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -22,8 +20,6 @@ import org.bukkit.entity.Player;
  */
 public final class BotBroadcast {
 
-    private static final MiniMessage MM = MiniMessage.miniMessage();
-
     private BotBroadcast() {}
 
     // ── Internal helpers ──────────────────────────────────────────────────────
@@ -39,37 +35,23 @@ public final class BotBroadcast {
 
     /**
      * Converts a raw display-name string (which may contain MiniMessage tags,
-     * legacy §-codes, or a mix) into a {@link Component}.
-     * <p>
-     * LuckPerms prefixes are stored with {@code §} codes. We strip those to a
-     * Component first, then reserialize to MiniMessage so the whole string can
-     * be parsed cleanly by {@link MiniMessage}.
+     * LuckPerms gradient shorthand {@code {#RRGGBB>}text{#RRGGBB<}}, or legacy
+     * {@code §}-codes) into a {@link Component}.
+     * Delegates entirely to {@link TextUtil#colorize} which handles all three
+     * formats in the correct order.
      */
     private static Component parseDisplayName(String raw) {
         if (raw == null || raw.isEmpty()) return Component.empty();
-        // If LuckPerms (or anything else) injected §-codes, deserialize those
-        // first so they don't corrupt the surrounding MiniMessage parse.
-        if (raw.indexOf('§') >= 0) {
-            // Split on §-codes: deserialize the legacy part, then append any
-            // trailing MiniMessage fragment.  Simplest safe approach: deserialize
-            // everything through legacySection which at least produces correct colours,
-            // then re-parse MiniMessage tags that survived.
-            String reSerialized = MM.serialize(
-                    LegacyComponentSerializer.legacySection().deserialize(raw));
-            return MM.deserialize(reSerialized);
-        }
-        // Pure MiniMessage (the normal case when LuckPerms is absent / use-prefix: false)
-        return MM.deserialize(raw);
+        return TextUtil.colorize(raw);
     }
 
     /**
      * Builds the broadcast Component by:
      * 1. Getting the raw lang template (e.g. {@code "<yellow>{name} joined the game"}).
      * 2. Splitting on the {@code {name}} placeholder.
-     * 3. Parsing each half as MiniMessage, then inserting the pre-parsed display-name Component.
-     *
-     * This avoids embedding a raw display-name string (which may contain §-codes)
-     * directly into a MiniMessage template, which would corrupt it.
+     * 3. Parsing each half, then inserting the pre-parsed display-name Component.
+     * This avoids embedding a raw display-name string directly into a MiniMessage
+     * template, which would corrupt gradient/colour tags or §-codes.
      */
     private static Component buildMessage(String langKey, String displayName,
                                           String... extraArgs) {

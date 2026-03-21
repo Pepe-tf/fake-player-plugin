@@ -6,16 +6,13 @@ import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.database.BotRecord;
 import me.bill.fakePlayerPlugin.database.DatabaseManager;
 import me.bill.fakePlayerPlugin.util.FppLogger;
-import net.luckperms.api.LuckPerms;
-import net.luckperms.api.LuckPermsProvider;
-import net.luckperms.api.model.group.Group;
+import me.bill.fakePlayerPlugin.util.LuckPermsHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 
 import java.time.Instant;
 import java.util.*;
@@ -25,7 +22,6 @@ import java.util.stream.Collectors;
 
 public class FakePlayerManager {
 
-    private record LpPrefix(int weight, String prefix) {}
 
     /** PDC key used to tag the physics-body zombie. */
     public static NamespacedKey FAKE_PLAYER_KEY;
@@ -172,24 +168,18 @@ public class FakePlayerManager {
             // For user bots the internal name (ubot_*) has no Mojang skin —
             // pick a random name from the pool to use for skin lookup instead.
             fp.setSkinName(pickRandomSkinName());
-            // Store display name as MiniMessage string — NEVER convert to legacy
-            // Prefer a configured bot-group prefix if present, otherwise use the lowest-weight prefix
-            String configuredPrefix = getConfiguredBotGroupPrefix();
-            String lowestPrefixForUser = configuredPrefix != null && !configuredPrefix.isEmpty()
-                    ? configuredPrefix
-                    : getLowestLuckPermsPrefix();
-            // ubn.displayName() was previously built using owner prefix; rebuild using chosen prefix
-            String userDisplay = lowestPrefixForUser + Config.userBotNameFormat()
+            // Resolve LP data using the spawner's UUID so user bots mirror their owner's rank.
+            LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(spawnerUuid);
+            String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
+            String userDisplay = lpPrefix + Config.userBotNameFormat()
                     .replace("{spawner}", spawnerName)
                     .replace("{num}", String.valueOf(alreadyOwned + i + 1))
                     .replace("{bot_name}", ubn.internalName());
             fp.setDisplayName(userDisplay);
-            // Packet profile name: prefer configured bot-group weight if set, otherwise use default/lowest
-            int cfgWeight = getConfiguredBotGroupWeight();
-            int defaultWeight = cfgWeight != Integer.MIN_VALUE ? cfgWeight : getDefaultOrLowestGroupWeight();
-            String pktName = buildPacketProfileName(defaultWeight, ubn.internalName());
+            String pktName = LuckPermsHelper.buildPacketProfileName(lpData.weight(), ubn.internalName());
             fp.setPacketProfileName(pktName);
-            Config.debug("Packet profile for user-bot '" + ubn.internalName() + "' -> '" + pktName + "' (weight=" + defaultWeight + ")");
+            Config.debug("[LP] user-bot '" + ubn.internalName() + "' owner=" + spawnerUuid
+                    + " weight=" + lpData.weight() + " pkt='" + pktName + "'");
             fp.setSpawnLocation(location);
             fp.setSpawnedBy(spawnerName, spawnerUuid);
             activePlayers.put(uuid, fp);
@@ -252,17 +242,16 @@ public class FakePlayerManager {
             FakePlayer fp = new FakePlayer(uuid, name, profile);
             // For admin bots the internal name IS the skin name (e.g. "Notch", "Dream")
             fp.setSkinName(name);
-            // Set display name using admin bot name format + configured or lowest LuckPerms prefix
-            String cfgPrefix = getConfiguredBotGroupPrefix();
-            String lpPrefix = cfgPrefix != null && !cfgPrefix.isEmpty() ? cfgPrefix : getLowestLuckPermsPrefix();
+            // Resolve LP data (prefix + weight) for this bot.
+            // Admin bots use the bot-group config or the 'default' group — no owner UUID.
+            LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(null);
+            String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
             String displayName = lpPrefix + Config.adminBotNameFormat().replace("{bot_name}", name);
             fp.setDisplayName(displayName);
-            // Packet profile name: include LP weight to control sorting in tab list
-            int cfgAdminWeight = getConfiguredBotGroupWeight();
-            int defaultAdminWeight = cfgAdminWeight != Integer.MIN_VALUE ? cfgAdminWeight : getDefaultOrLowestGroupWeight();
-            String pktAdmin = buildPacketProfileName(defaultAdminWeight, name);
+            String pktAdmin = LuckPermsHelper.buildPacketProfileName(lpData.weight(), name);
             fp.setPacketProfileName(pktAdmin);
-            Config.debug("Packet profile for admin-bot '" + name + "' -> '" + pktAdmin + "' (weight=" + defaultAdminWeight + ")");
+            Config.debug("[LP] admin-bot '" + name + "' display='" + displayName
+                    + "' pkt='" + pktAdmin + "' weight=" + lpData.weight());
             fp.setSpawnLocation(location);
             fp.setSpawnedBy(spawnerName, spawnerUuid);
             activePlayers.put(uuid, fp);
@@ -393,9 +382,11 @@ public class FakePlayerManager {
 
     /**
      * Restores a single fake player from persisted data (called on startup).
-     * The original UUID is reused so database records stay linked.
+     * The original UUID and display name are reused so database records stay linked
+     * and bots maintain their original appearance (prefix, format, etc.).
      */
-    public void spawnRestored(String name, UUID uuid, String spawnedBy, UUID spawnedByUuid, Location location) {
+    public void spawnRestored(String name, UUID uuid, String savedDisplayName, 
+                              String spawnedBy, UUID spawnedByUuid, Location location) {
         // Skip if name already active (e.g. duplicate in save file)
         if (usedNames.contains(name)) return;
 
@@ -404,17 +395,76 @@ public class FakePlayerManager {
         // For restored bots: if name is a valid Minecraft identifier (pool name), use it directly.
         // If it looks like a user-bot internal name (ubot_*), pick a random pool name.
         fp.setSkinName(name.startsWith("ubot_") ? pickRandomSkinName() : name);
-        // Set display name using admin bot name format + configured or lowest LuckPerms prefix
-        String cfgPrefix = getConfiguredBotGroupPrefix();
-        String lpPrefix = cfgPrefix != null && !cfgPrefix.isEmpty() ? cfgPrefix : getLowestLuckPermsPrefix();
-        String displayName = lpPrefix + Config.adminBotNameFormat().replace("{bot_name}", name);
+        
+        // Determine if this is a user bot or admin bot based on internal name
+        boolean isUserBot = name.startsWith("ubot_");
+        
+        // Use saved display name if available and valid, otherwise reconstruct it
+        String displayName = null;
+        
+        // Check if saved display name is usable
+        if (savedDisplayName != null && !savedDisplayName.isBlank()) {
+            // Check if saved display name contains unreplaced placeholders (from old buggy saves)
+            if (savedDisplayName.contains("{spawner}") || savedDisplayName.contains("{num}") || savedDisplayName.contains("{bot_name}")) {
+                // Saved display has placeholder syntax - needs reconstruction
+                Config.debug("[Restore] Saved display contains placeholders - reconstructing: '" + savedDisplayName + "'");
+                // Don't use it, will reconstruct below
+            } else {
+                // Additional check: verify display format matches bot type
+                // This prevents admin bots from incorrectly using user format (bot-{spawner}-{num})
+                String userFormatPrefix = "bot-" + spawnedBy + "-";
+                boolean looksLikeUserFormat = savedDisplayName.contains(userFormatPrefix);
+                
+                if (!isUserBot && looksLikeUserFormat) {
+                    // Admin bot but saved display uses user format - force reconstruction
+                    Config.debug("[Restore] Admin bot '" + name + "' has user-format display '" + savedDisplayName + "' - reconstructing with admin format");
+                    // Don't use it, will reconstruct below
+                } else {
+                    // Display format is appropriate for bot type - use it
+                    displayName = savedDisplayName;
+                    Config.debug("[Restore] Using saved display name: '" + displayName + "'");
+                }
+            }
+        }
+        
+        // If display name wasn't set above, reconstruct it
+        if (displayName == null) {
+            // Fallback: reconstruct display name (legacy support for old persistence files or broken saves)
+            // Detect if this was a user bot (name starts with ubot_) or admin bot
+            if (name.startsWith("ubot_")) {
+                // User bot - try to reconstruct user format
+                LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(spawnedByUuid);
+                String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
+                // Extract bot number from internal name if possible
+                // ubot_PlayerName_1 -> extract "1"
+                String botNum = "1"; // default
+                if (name.matches("^ubot_.+_(\\d+)$")) {
+                    botNum = name.replaceFirst("^ubot_.+_(\\d+)$", "$1");
+                }
+                displayName = lpPrefix + Config.userBotNameFormat()
+                        .replace("{spawner}", spawnedBy)
+                        .replace("{num}", botNum)
+                        .replace("{bot_name}", name);
+                Config.debug("[Restore] Reconstructed user-bot display: '" + displayName + "'");
+            } else {
+                // Admin bot - use admin format
+                LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(null);
+                String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
+                displayName = lpPrefix + Config.adminBotNameFormat().replace("{bot_name}", name);
+                Config.debug("[Restore] Reconstructed admin-bot display: '" + displayName + "'");
+            }
+        }
+        
         fp.setDisplayName(displayName);
-        // Packet profile name for restored bots — prefer configured bot-group weight when set
-        int cfgRestoredWeight = getConfiguredBotGroupWeight();
-        int defaultRestoredWeight = cfgRestoredWeight != Integer.MIN_VALUE ? cfgRestoredWeight : getDefaultOrLowestGroupWeight();
-        String pktRestored = buildPacketProfileName(defaultRestoredWeight, name);
+        
+        // Build packet name for tab-list ordering (re-resolve weight on restore)
+        LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(
+            name.startsWith("ubot_") ? spawnedByUuid : null
+        );
+        String pktRestored = LuckPermsHelper.buildPacketProfileName(lpData.weight(), name);
         fp.setPacketProfileName(pktRestored);
-        Config.debug("Packet profile for restored-bot '" + name + "' -> '" + pktRestored + "' (weight=" + defaultRestoredWeight + ")");
+        Config.debug("[LP] restored-bot '" + name + "' weight=" + lpData.weight()
+                + " pkt='" + pktRestored + "' display='" + displayName + "'");
         fp.setSpawnLocation(location);
         fp.setSpawnedBy(spawnedBy, spawnedByUuid);
         usedNames.add(name);
@@ -678,6 +728,38 @@ public class FakePlayerManager {
         return spawn(location, 1, null, forcedName);
     }
 
+    /**
+     * Cancels all pending swap session timers.
+     * Call after disabling swap via config reload or {@code /fpp swap off}
+     * so no in-flight doLeave tasks fire after swap is turned off.
+     */
+    public void cancelAllSwap() {
+        if (swapAI != null) swapAI.cancelAll();
+    }
+
+    /**
+     * Immediately removes the physical Mannequin body and nametag ArmorStand
+     * from every active bot when {@code body.enabled} is {@code false}.
+     * Safe to call on the main thread after a config reload.
+     * Has no effect when bodies are enabled.
+     */
+    public void applyBodyConfig() {
+        if (physicalBodiesEnabled()) return;
+        for (FakePlayer fp : activePlayers.values()) {
+            Entity body = fp.getPhysicsEntity();
+            if (body != null) {
+                try { body.remove(); } catch (Exception ignored) {}
+                entityIdIndex.remove(body.getEntityId());
+                fp.setPhysicsEntity(null);
+            }
+            ArmorStand as = fp.getNametagEntity();
+            if (as != null) {
+                try { as.remove(); } catch (Exception ignored) {}
+                fp.setNametagEntity(null);
+            }
+        }
+    }
+
     // ── Remove by name (post-death cleanup) ──────────────────────────────────
 
     /** Removes a fake player by name (called after permanent death). */
@@ -732,6 +814,22 @@ public class FakePlayerManager {
         for (FakePlayer fp : activePlayers.values()) {
             Entity body = fp.getPhysicsEntity();
 
+            // Bodies disabled: remove any that still exist (e.g. after a config reload)
+            // and skip all respawn logic — this handles body.enabled toggled via /fpp reload.
+            if (!physicalBodiesEnabled()) {
+                if (body != null && body.isValid()) {
+                    try { body.remove(); } catch (Exception ignored) {}
+                    entityIdIndex.remove(body.getEntityId());
+                    fp.setPhysicsEntity(null);
+                }
+                ArmorStand as = fp.getNametagEntity();
+                if (as != null) {
+                    try { as.remove(); } catch (Exception ignored) {}
+                    fp.setNametagEntity(null);
+                }
+                continue;
+            }
+
             // Body is valid — nothing to do
             if (body != null && body.isValid()) continue;
 
@@ -745,7 +843,6 @@ public class FakePlayerManager {
                 fp.setNametagEntity(null);
             }
 
-            if (!Config.spawnBody() || plugin.isCompatibilityRestricted()) continue;
 
             // Try to re-spawn at last known location
             org.bukkit.Location loc = fp.getSpawnLocation();
@@ -874,6 +971,61 @@ public class FakePlayerManager {
     }
 
     /**
+     * Updates display names and tab-list entries for all active bots.
+     * Called automatically when LuckPerms group data changes.
+     * @return number of bots updated
+     */
+    public int updateAllBotPrefixes() {
+        if (activePlayers.isEmpty()) return 0;
+
+        int updated = 0;
+        List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+
+        for (FakePlayer fp : activePlayers.values()) {
+            try {
+                // Re-resolve LP data for this bot
+                UUID ownerUuid = fp.getSpawnedByUuid();
+                LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(ownerUuid);
+                
+                // Build new display name with updated prefix
+                String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
+                String botName = fp.getName();
+                String nameFormat = ownerUuid != null 
+                    ? Config.userBotNameFormat() 
+                    : Config.adminBotNameFormat();
+                String newDisplayName = lpPrefix + nameFormat.replace("{bot_name}", botName);
+                
+                // Only update if changed
+                if (!newDisplayName.equals(fp.getDisplayName())) {
+                    fp.setDisplayName(newDisplayName);
+                    
+                    // Update packet profile name for tab-list ordering
+                    String newPacketName = LuckPermsHelper.buildPacketProfileName(lpData.weight(), botName);
+                    fp.setPacketProfileName(newPacketName);
+                    
+                    // Update nametag entity if it exists
+                    ArmorStand nametag = fp.getNametagEntity();
+                    if (nametag != null && nametag.isValid()) {
+                        nametag.customName(me.bill.fakePlayerPlugin.util.TextUtil.colorize(newDisplayName));
+                    }
+                    
+                    // Re-send tab-list update to all online players
+                    for (Player p : online) {
+                        PacketHelper.sendTabListDisplayNameUpdate(p, fp);
+                    }
+                    
+                    updated++;
+                    Config.debug("[LP-Auto-Update] Updated bot '" + botName + "' -> '" + newDisplayName + "'");
+                }
+            } catch (Exception e) {
+                Config.debug("[LP-Auto-Update] Failed to update bot: " + e.getMessage());
+            }
+        }
+
+        return updated;
+    }
+
+    /**
      * Moves the physics body of {@code fp} to {@code destination} immediately.
      * Used by the tph / tp commands.
      */
@@ -958,416 +1110,33 @@ public class FakePlayerManager {
     public record UserBotName(String internalName, String displayName) {}
 
     /**
-     * Converts a LuckPerms prefix (legacy & codes, §codes, or already MiniMessage) to MiniMessage.
-     * Handles plain named colors (&7 → <gray>), hex (&x&0&0&7&9&F&F), and &#RRGGBB formats.
-     */
-    private String convertLuckPermsPrefixToMiniMessage(String prefix) {
-        if (prefix == null || prefix.isEmpty()) return "";
-        // Use TextUtil's round-trip conversion which handles all legacy formats correctly
-        return me.bill.fakePlayerPlugin.util.TextUtil.legacyToMiniMessage(prefix);
-    }
-
-    /**
-     * Returns the prefix (converted to MiniMessage) from the lowest-weight LuckPerms group.
-     * Falls back to an empty string if LuckPerms is not present or no prefix found.
-     */
-    private String getLowestLuckPermsPrefix() {
-        if (!Config.luckpermsUsePrefix()) return "";
-        Plugin lpPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
-        if (lpPlugin == null || !lpPlugin.isEnabled()) return "";
-        try {
-            LuckPerms lp = LuckPermsProvider.get();
-            net.luckperms.api.query.QueryOptions opts = net.luckperms.api.query.QueryOptions.nonContextual();
-            // Prefer the explicit 'default' group's prefix/weight when present
-            Group defaultGroup = lp.getGroupManager().getGroup("default");
-            if (defaultGroup != null) {
-                String p = defaultGroup.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                        .stream()
-                        .max(java.util.Comparator.comparingInt(
-                                net.luckperms.api.node.types.PrefixNode::getPriority))
-                        .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                        .orElse(null);
-                if (p == null || p.isEmpty()) p = defaultGroup.getCachedData().getMetaData(opts).getPrefix();
-                if (p != null && !p.isEmpty()) return convertLuckPermsPrefixToMiniMessage(p);
-                // default group exists but has no prefix — return empty to avoid showing other groups
-                return "";
-            }
-
-            // Otherwise, find the lowest-weight group that has a prefix
-            int lowestWeight = Integer.MAX_VALUE;
-            String chosen = null;
-            for (Group g : lp.getGroupManager().getLoadedGroups()) {
-                int weight = g.getWeight().orElse(0);
-                String p = g.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                        .stream()
-                        .max(java.util.Comparator.comparingInt(
-                                net.luckperms.api.node.types.PrefixNode::getPriority))
-                        .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                        .orElse(null);
-                if (p == null || p.isEmpty()) p = g.getCachedData().getMetaData(opts).getPrefix();
-                if (p == null || p.isEmpty()) continue;
-                if (weight < lowestWeight) {
-                    lowestWeight = weight;
-                    chosen = p;
-                }
-            }
-            if (chosen != null && !chosen.isEmpty()) return convertLuckPermsPrefixToMiniMessage(chosen);
-        } catch (Exception e) {
-            Config.debug("[LP prefix] getLowestLuckPermsPrefix failed: " + e.getMessage());
-        }
-        return "";
-    }
-
-    /**
-     * Returns the configured weight to use for tab-list ordering when default/lowest
-     * group ordering is desired. Prefers the 'default' group's weight when present,
-     * falls back to the lowest-weight group, and returns 0 if LuckPerms is absent.
-     */
-    private int getDefaultOrLowestGroupWeight() {
-        Plugin lpPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
-        if (lpPlugin == null || !lpPlugin.isEnabled()) return 0;
-        try {
-            LuckPerms lp = LuckPermsProvider.get();
-            // Return the lowest group weight found (so bots appear with the lowest rank ordering)
-            int lowest = Integer.MAX_VALUE;
-            for (Group g : lp.getGroupManager().getLoadedGroups()) {
-                int w = g.getWeight().orElse(0);
-                if (w < lowest) lowest = w;
-            }
-            if (lowest == Integer.MAX_VALUE) return 0;
-            return lowest;
-        } catch (Exception e) {
-            Config.debug("[LP prefix] getDefaultOrLowestGroupWeight failed: " + e.getMessage());
-            return 0;
-        }
-    }
-
-    /**
-     * If the admin configured a specific LuckPerms group for bots, return
-     * that group's prefix (converted to MiniMessage). Returns empty string
-     * when not configured or when LuckPerms isn't available or group lacks prefix.
-     */
-    private String getConfiguredBotGroupPrefix() {
-        String configured = Config.luckpermsBotGroup();
-        if (configured == null || configured.isBlank()) return "";
-        Plugin lpPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
-        if (lpPlugin == null || !lpPlugin.isEnabled()) return "";
-        try {
-            LuckPerms lp = LuckPermsProvider.get();
-            Group g = lp.getGroupManager().getGroup(configured);
-            if (g == null) return "";
-            net.luckperms.api.query.QueryOptions opts = net.luckperms.api.query.QueryOptions.nonContextual();
-            String p = g.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                    .stream()
-                    .max(java.util.Comparator.comparingInt(
-                            net.luckperms.api.node.types.PrefixNode::getPriority))
-                    .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                    .orElse(null);
-            if (p == null || p.isEmpty()) p = g.getCachedData().getMetaData(opts).getPrefix();
-            if (p == null || p.isEmpty()) return "";
-            return convertLuckPermsPrefixToMiniMessage(p);
-        } catch (Exception e) {
-            Config.debug("[LP prefix] getConfiguredBotGroupPrefix failed: " + e.getMessage());
-            return "";
-        }
-    }
-
-    /**
-     * Return the configured bot group's weight, or Integer.MIN_VALUE when not found.
-     */
-    private int getConfiguredBotGroupWeight() {
-        String configured = Config.luckpermsBotGroup();
-        if (configured == null || configured.isBlank()) return Integer.MIN_VALUE;
-        Plugin lpPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
-        if (lpPlugin == null || !lpPlugin.isEnabled()) return Integer.MIN_VALUE;
-        try {
-            LuckPerms lp = LuckPermsProvider.get();
-            Group g = lp.getGroupManager().getGroup(configured);
-            if (g == null) return Integer.MIN_VALUE;
-            return g.getWeight().orElse(0);
-        } catch (Exception e) {
-            Config.debug("[LP prefix] getConfiguredBotGroupWeight failed: " + e.getMessage());
-            return Integer.MIN_VALUE;
-        }
-    }
-
-    /** Public accessor for startup diagnostic logging. Returns the LP prefix in MiniMessage, or empty string. */
-    public String detectLuckPermsPrefix() {
-        return getLuckPermsPrefix(null);
-    }
-
-    /**
-     * Returns the LuckPerms prefix (converted to MiniMessage) for the given owner UUID.
-     * When {@code ownerUuid} is null the method falls back to the previous default-group logic.
-     */
-    private String getLuckPermsPrefix(java.util.UUID ownerUuid) {
-        // Respect the config toggle
-        if (!Config.luckpermsUsePrefix()) return "";
-        Plugin lpPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
-        if (lpPlugin == null || !lpPlugin.isEnabled()) return "";
-        // Treat the special zero UUID (new UUID(0,0)) as 'no owner' (console/restored bots)
-        if (ownerUuid != null && ownerUuid.getMostSignificantBits() == 0 && ownerUuid.getLeastSignificantBits() == 0) {
-            ownerUuid = null;
-        }
-        try {
-            LuckPerms lp = LuckPermsProvider.get();
-            net.luckperms.api.query.QueryOptions opts =
-                    net.luckperms.api.query.QueryOptions.nonContextual();
-
-            // If an owner UUID is provided, attempt to read the user's cached prefix first
-            if (ownerUuid != null) {
-                try {
-                    net.luckperms.api.model.user.User user = lp.getUserManager().getUser(ownerUuid);
-                    if (user == null) {
-                        // Attempt to synchronously load the user as a fallback
-                        try { user = lp.getUserManager().loadUser(ownerUuid).join(); } catch (Exception ignored) {}
-                    }
-                    if (user != null) {
-                        String userPrefix = user.getCachedData().getMetaData(opts).getPrefix();
-                        if (userPrefix != null && !userPrefix.isEmpty()) {
-                            Config.debug("[LP prefix] User prefix for " + ownerUuid + ": " + userPrefix);
-                            return convertLuckPermsPrefixToMiniMessage(userPrefix);
-                        }
-
-                        // Fall back to primary group
-                        String primary = user.getPrimaryGroup();
-                        Group g = lp.getGroupManager().getGroup(primary);
-                        if (g != null) {
-                            String p = g.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                                    .stream()
-                                    .max(java.util.Comparator.comparingInt(
-                                            net.luckperms.api.node.types.PrefixNode::getPriority))
-                                    .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                                    .orElse(null);
-                            if (p == null || p.isEmpty()) p = g.getCachedData().getMetaData(opts).getPrefix();
-                            if (p != null && !p.isEmpty()) {
-                                Config.debug("[LP prefix] Primary-group prefix for user " + ownerUuid + ": " + p);
-                                return convertLuckPermsPrefixToMiniMessage(p);
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    Config.debug("[LP prefix] Failed to read user prefix: " + e.getMessage());
-                }
-            }
-
-            // ── Fallback: scan all groups by weight and pick the best available prefix ──
-            String bestPrefix = null;
-            int bestWeight = Integer.MIN_VALUE;
-            for (Group g : lp.getGroupManager().getLoadedGroups()) {
-                int weight = g.getWeight().orElse(0);
-                if (weight <= bestWeight) continue;
-                String p = g.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                        .stream()
-                        .max(java.util.Comparator.comparingInt(
-                                net.luckperms.api.node.types.PrefixNode::getPriority))
-                        .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                        .orElse(null);
-                if (p == null || p.isEmpty()) {
-                    p = g.getCachedData().getMetaData(opts).getPrefix();
-                }
-                if (p != null && !p.isEmpty()) {
-                    bestPrefix = p;
-                    bestWeight = weight;
-                }
-            }
-            if (bestPrefix != null) {
-                Config.debug("[LP prefix] Best-weight group prefix: " + bestPrefix);
-                return convertLuckPermsPrefixToMiniMessage(bestPrefix);
-            }
-
-        } catch (Exception e) {
-            Config.debug("[LP prefix] Failed to get LuckPerms prefix: " + e.getMessage());
-        }
-        return "";
-    }
-
-    /**
-     * Returns both the LuckPerms prefix (converted to MiniMessage) and the
-     * group's weight that produced it. Weight is 0 when unavailable.
-     * When {@code ownerUuid} is non-null the method attempts to derive the
-     * prefix/weight from that user's primary group / cached metadata.
-     */
-    private LpPrefix getLuckPermsPrefixWithWeight(java.util.UUID ownerUuid) {
-        // Weight retrieval is independent from whether prefixes are displayed.
-        Plugin lpPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
-        if (lpPlugin == null || !lpPlugin.isEnabled()) return new LpPrefix(0, "");
-        // Treat the special zero UUID as 'no owner'
-        if (ownerUuid != null && ownerUuid.getMostSignificantBits() == 0 && ownerUuid.getLeastSignificantBits() == 0) {
-            ownerUuid = null;
-        }
-        try {
-            LuckPerms lp = LuckPermsProvider.get();
-            net.luckperms.api.query.QueryOptions opts =
-                    net.luckperms.api.query.QueryOptions.nonContextual();
-
-            // If owner provided, try to use their primary group weight/prefix
-            if (ownerUuid != null) {
-                try {
-                    net.luckperms.api.model.user.User user = lp.getUserManager().getUser(ownerUuid);
-                    if (user == null) {
-                        try { user = lp.getUserManager().loadUser(ownerUuid).join(); } catch (Exception ignored) {}
-                    }
-                    if (user != null) {
-                        String primary = user.getPrimaryGroup();
-                        Group g = lp.getGroupManager().getGroup(primary);
-                        if (g != null) {
-                            int weight = g.getWeight().orElse(0);
-                            String p = g.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                                    .stream()
-                                    .max(java.util.Comparator.comparingInt(
-                                            net.luckperms.api.node.types.PrefixNode::getPriority))
-                                    .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                                    .orElse(null);
-                            if (p == null || p.isEmpty()) p = g.getCachedData().getMetaData(opts).getPrefix();
-                            if (p != null && !p.isEmpty()) {
-                                Config.debug("[LP prefix] User primary group prefix/weight: " + p + " / " + weight);
-                                return new LpPrefix(weight, convertLuckPermsPrefixToMiniMessage(p));
-                            }
-                            return new LpPrefix(weight, "");
-                        }
-                    }
-                } catch (Exception e) {
-                    Config.debug("[LP prefix] Failed to read user weight/prefix: " + e.getMessage());
-                }
-            }
-
-            // Fallback to default/best-weight scanning as before
-            Group defaultGroup = lp.getGroupManager().getGroup("default");
-            if (defaultGroup != null) {
-                int weight = defaultGroup.getWeight().orElse(0);
-                String directPrefix = defaultGroup.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                        .stream()
-                        .max(java.util.Comparator.comparingInt(
-                                net.luckperms.api.node.types.PrefixNode::getPriority))
-                        .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                        .orElse(null);
-                if (directPrefix != null && !directPrefix.isEmpty()) {
-                    Config.debug("[LP prefix] Direct node prefix from 'default': " + directPrefix);
-                    return new LpPrefix(weight, convertLuckPermsPrefixToMiniMessage(directPrefix));
-                }
-                String cachedPrefix = defaultGroup.getCachedData().getMetaData(opts).getPrefix();
-                if (cachedPrefix != null && !cachedPrefix.isEmpty()) {
-                    Config.debug("[LP prefix] Cached metadata prefix from 'default': " + cachedPrefix);
-                    return new LpPrefix(weight, convertLuckPermsPrefixToMiniMessage(cachedPrefix));
-                }
-            }
-
-            String bestPrefix = null;
-            int bestWeight = Integer.MIN_VALUE;
-            for (Group g : lp.getGroupManager().getLoadedGroups()) {
-                int weight = g.getWeight().orElse(0);
-                if (weight <= bestWeight) continue;
-
-                String p = g.getNodes(net.luckperms.api.node.NodeType.PREFIX)
-                        .stream()
-                        .max(java.util.Comparator.comparingInt(
-                                net.luckperms.api.node.types.PrefixNode::getPriority))
-                        .map(net.luckperms.api.node.types.PrefixNode::getMetaValue)
-                        .orElse(null);
-                if (p == null || p.isEmpty()) {
-                    p = g.getCachedData().getMetaData(opts).getPrefix();
-                }
-                if (p != null && !p.isEmpty()) {
-                    bestPrefix = p;
-                    bestWeight = weight;
-                }
-            }
-            if (bestPrefix != null) {
-                Config.debug("[LP prefix] Best-weight group prefix: " + bestPrefix);
-                return new LpPrefix(bestWeight, convertLuckPermsPrefixToMiniMessage(bestPrefix));
-            }
-
-        } catch (Exception e) {
-            Config.debug("[LP prefix] Failed to get LuckPerms prefix: " + e.getMessage());
-        }
-        return new LpPrefix(0, "");
-    }
-
-    /**
-     * Builds a safe GameProfile name used in tab-list packets that encodes a
-     * small sortable index derived from LuckPerms group weight. The visible
-     * display name is unaffected because we send an explicit display component.
-     */
-    private String buildPacketProfileName(int lpWeight, String originalName) {
-        try {
-            // If weight-ordering is disabled, return the original name unchanged
-            if (!Config.luckpermsWeightOrderingEnabled()) return originalName;
-            Plugin lpPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
-            if (lpPlugin == null || !lpPlugin.isEnabled()) return originalName;
-            LuckPerms lp = LuckPermsProvider.get();
-
-            // Collect unique weights and sort DESC (highest weight first)
-            java.util.Set<Integer> weights = new java.util.TreeSet<>(java.util.Collections.reverseOrder());
-            // If a specific bot-group is configured, prefer using only that group's
-            // weight so bots behave like members of that group for ordering.
-            String forcedGroup = Config.luckpermsBotGroup();
-            if (forcedGroup != null && !forcedGroup.isBlank()) {
-                Group fg = lp.getGroupManager().getGroup(forcedGroup);
-                if (fg != null) {
-                    weights.add(fg.getWeight().orElse(0));
-                }
-            } else {
-                for (Group g : lp.getGroupManager().getLoadedGroups()) weights.add(g.getWeight().orElse(0));
-            }
-            // Ensure the caller's weight is included so unknown-but-valid weights are ordered correctly
-            weights.add(lpWeight);
-            if (weights.isEmpty()) return originalName;
-
-            List<Integer> sorted = new ArrayList<>(weights);
-            int idx = sorted.indexOf(lpWeight);
-            if (idx < 0) idx = sorted.size() - 1; // put unknown weight last
-            // Cap to two digits for name-space: 00..99
-            if (idx < 0) idx = 99;
-            if (idx > 99) idx = 99;
-            // Optional single-character prefix to place bots after/before players.
-            // If not set, no extra char is used and names become "00_...".
-            String prefixChar = Config.luckpermsPacketPrefixChar();
-            String prefix;
-            if (prefixChar != null && !prefixChar.isEmpty()) {
-                char c = prefixChar.charAt(0);
-                prefix = String.format("%c%02d_", c, idx);
-            } else {
-                prefix = String.format("%02d_", idx);
-            }
-            // Debug output to diagnose ordering issues
-            try {
-                if (Config.isDebug()) {
-                    Config.debug("buildPacketProfileName: lpWeight=" + lpWeight
-                            + " sortedWeights=" + sorted.toString()
-                            + " idx=" + idx
-                            + " prefixChar='" + prefixChar + "'"
-                            + " prefix='" + prefix + "'");
-                }
-            } catch (Exception ignored) {}
-            int available = 16 - prefix.length();
-            String base = originalName.length() > available ? originalName.substring(0, available) : originalName;
-            return prefix + base;
-        } catch (Exception ignored) {
-            return originalName;
-        }
-    }
-
-
-    /**
      * Generates a valid internal Minecraft name and a display name for a user-tier bot.
      *
      * @param spawnerName   the spawning player's Minecraft name
      * @param existingCount bots this player already owns (used for the numeric suffix)
      */
     public UserBotName generateUserBotName(String spawnerName, int existingCount) {
-        // Internal name: "ubot_<spawner>_<num>" truncated to 16 chars
         String suffix   = String.valueOf(existingCount + 1);
         String internal = "ubot_" + spawnerName + "_" + suffix;
         if (internal.length() > 16) internal = internal.substring(0, 16);
         usedNames.add(internal);
-        String cfgPrefix = getConfiguredBotGroupPrefix();
-        String prefix  = cfgPrefix != null && !cfgPrefix.isEmpty() ? cfgPrefix : getLowestLuckPermsPrefix();
-        String display = prefix + Config.userBotNameFormat()
+        // Use LP helper for consistency — display name built by caller with the same helper
+        String lpPrefix = LuckPermsHelper.getBotPrefix();
+        String display  = lpPrefix + Config.userBotNameFormat()
                 .replace("{spawner}", spawnerName)
                 .replace("{num}",     suffix)
                 .replace("{bot_name}", internal);
         return new UserBotName(internal, display);
+    }
+
+    // ── LuckPerms public accessor ─────────────────────────────────────────────
+
+    /**
+     * Returns the detected LP prefix for startup/reload diagnostic logging.
+     * Delegates entirely to {@link LuckPermsHelper#detectDefaultPrefix()}.
+     */
+    public String detectLuckPermsPrefix() {
+        return LuckPermsHelper.detectDefaultPrefix();
     }
 
 }

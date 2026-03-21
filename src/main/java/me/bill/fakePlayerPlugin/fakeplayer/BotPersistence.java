@@ -98,6 +98,7 @@ public final class BotPersistence {
             var section = new java.util.LinkedHashMap<String, Object>();
             section.put("name",            fp.getName());
             section.put("uuid",            fp.getUuid().toString());
+            section.put("display-name",    fp.getDisplayName());  // Save display name for restoration
             section.put("spawned-by",      fp.getSpawnedBy());
             section.put("spawned-by-uuid", fp.getSpawnedByUuid().toString());
             section.put("world",           loc.getWorld().getName());
@@ -146,6 +147,7 @@ public final class BotPersistence {
                         saved.add(new SavedBot(
                                 row.botName(),
                                 UUID.fromString(row.botUuid()),
+                                row.botDisplay(),  // Include saved display name from database
                                 row.spawnedBy(),
                                 UUID.fromString(row.spawnedByUuid()),
                                 row.world(),
@@ -177,6 +179,7 @@ public final class BotPersistence {
             try {
                 String name          = (String) map.get("name");
                 UUID   uuid          = UUID.fromString((String) map.get("uuid"));
+                String displayName   = (String) map.get("display-name");  // Load saved display name
                 Object sbRaw         = map.get("spawned-by");
                 String spawnedBy     = sbRaw instanceof String s ? s : "SERVER";
                 Object sbuRaw        = map.get("spawned-by-uuid");
@@ -189,7 +192,7 @@ public final class BotPersistence {
                 float  yaw           = (float) toDouble(map.get("yaw"));
                 float  pitch         = (float) toDouble(map.get("pitch"));
                 if (name == null || worldName == null) continue;
-                saved.add(new SavedBot(name, uuid, spawnedBy, spawnedByUuid,
+                saved.add(new SavedBot(name, uuid, displayName, spawnedBy, spawnedByUuid,
                         worldName, x, y, z, yaw, pitch));
             } catch (Exception e) {
                 FppLogger.warn("Skipping malformed bot entry in " + FILE_NAME + ": " + e.getMessage());
@@ -219,8 +222,8 @@ public final class BotPersistence {
 
         Location loc = new Location(world, sb.x, sb.y, sb.z, sb.yaw, sb.pitch);
 
-        // Spawn with restored UUID — pass null as spawner (server restored it)
-        manager.spawnRestored(sb.name, sb.uuid, sb.spawnedBy, sb.spawnedByUuid, loc);
+        // Spawn with restored UUID and display name — pass saved display name for proper restoration
+        manager.spawnRestored(sb.name, sb.uuid, sb.displayName, sb.spawnedBy, sb.spawnedByUuid, loc);
 
         // Stagger: use the configured join-delay range (config values are seconds)
         int delayMinSecs = Config.joinDelayMin();
@@ -308,6 +311,7 @@ public final class BotPersistence {
 
     private record SavedBot(
             String name, UUID uuid,
+            String displayName,  // Saved display name (with prefix) for restoration
             String spawnedBy, UUID spawnedByUuid,
             String worldName,
             double x, double y, double z,

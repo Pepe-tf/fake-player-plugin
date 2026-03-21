@@ -139,6 +139,11 @@ public final class BotSwapAI {
     // ── Leave phase ───────────────────────────────────────────────────────────
 
     private void doLeave(FakePlayer fp) {
+        // Safety guard: if swap was disabled between schedule() and the timer firing, abort.
+        if (!Config.swapEnabled()) {
+            sessionTasks.remove(fp.getUuid());
+            return;
+        }
         if (manager.getByUuid(fp.getUuid()) == null) return;
         sessionTasks.remove(fp.getUuid());
 

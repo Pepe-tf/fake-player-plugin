@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed by the migration system. Do NOT edit.
-config-version: 19
+config-version: 21
 # Internal migration version — updated automatically. Do not edit.
 
 language: en         # Language file to use (language/<lang>.yml)
@@ -63,6 +63,10 @@ luckperms:
   # Leave empty to use only numeric index (e.g. "00_"). When set to '~' the
   # plugin will try to place bots after regular player names by using '~00_'.
   packet-prefix-char: "{"
+  # Weight offset applied to bots — negative values demote bots below players of the same group.
+  # Example: if your rank has weight 100, setting -10 gives bots effective weight 90,
+  # so they appear AFTER you in the tab list.  Set to 0 for no penalty.
+  weight-offset: -10
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  SKIN

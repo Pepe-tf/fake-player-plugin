@@ -462,6 +462,7 @@ public class DatabaseManager {
             while (rs.next()) {
                 list.add(new ActiveBotRow(
                         rs.getString("bot_uuid"), rs.getString("bot_name"),
+                        rs.getString("bot_display"),  // Read display name from database
                         rs.getString("spawned_by"), rs.getString("spawned_by_uuid"),
                         rs.getString("world_name"),
                         rs.getDouble("pos_x"), rs.getDouble("pos_y"), rs.getDouble("pos_z"),
@@ -845,7 +846,7 @@ public class DatabaseManager {
 
     /** Row from fpp_active_bots — used for startup restore. */
     public record ActiveBotRow(
-            String botUuid, String botName,
+            String botUuid, String botName, String botDisplay,
             String spawnedBy, String spawnedByUuid,
             String world, double x, double y, double z,
             float yaw, float pitch

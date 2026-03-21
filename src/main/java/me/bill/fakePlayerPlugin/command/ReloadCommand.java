@@ -10,6 +10,7 @@ import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.ConfigValidator;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import me.bill.fakePlayerPlugin.util.LuckPermsHelper;
 import me.bill.fakePlayerPlugin.util.UpdateChecker;
 import org.bukkit.command.CommandSender;
 
@@ -58,6 +59,19 @@ public class ReloadCommand implements FppCommand {
             Config.debug("TabListManager reloaded.");
         }
 
+        // Apply runtime-state changes that must take effect immediately:
+        // • If swap was disabled, cancel all pending session timers so no bots leave
+        // • If body.enabled was turned off, remove Mannequin bodies from active bots now
+        me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager fpm = plugin.getFakePlayerManager();
+        if (fpm != null) {
+            if (!Config.swapEnabled()) {
+                fpm.cancelAllSwap();
+                Config.debug("Swap disabled — cancelled all pending session timers.");
+            }
+            fpm.applyBodyConfig();
+            Config.debug("Body config applied to active bots.");
+        }
+
         // Re-validate config and warn if issues found
         int issues = ConfigValidator.validate();
         if (issues > 0) {
@@ -66,7 +80,11 @@ public class ReloadCommand implements FppCommand {
 
         FppLogger.success("Plugin reloaded by " + sender.getName() + " in " + ms + "ms.");
         sender.sendMessage(Lang.get("reload-success", "ms", String.valueOf(ms)));
-        // Re-run update check after reload (async, non-blocking)
+        // Invalidate LP cache so any group/prefix changes in LuckPerms are picked up
+        LuckPermsHelper.invalidateCache();
+
+        // Invalidate cached update result then re-run check so admins always see current status
+        UpdateChecker.invalidateCache();
         UpdateChecker.check(plugin);
         return true;
     }

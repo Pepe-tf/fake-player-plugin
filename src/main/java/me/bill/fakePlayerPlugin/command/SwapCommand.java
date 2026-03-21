@@ -2,6 +2,7 @@ package me.bill.fakePlayerPlugin.command;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
+import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import org.bukkit.command.CommandSender;
@@ -45,12 +46,18 @@ public class SwapCommand implements FppCommand {
             }
         }
 
-        plugin.getConfig().set("fake-player.swap.enabled", enable);
+        plugin.getConfig().set("swap.enabled", enable);
         plugin.saveConfig();
         Config.reload();
 
+        // When disabling, cancel any pending session timers so bots stop leaving
+        if (!enable) {
+            FakePlayerManager mgr = plugin.getFakePlayerManager();
+            if (mgr != null) mgr.cancelAllSwap();
+        }
+
         sender.sendMessage(Lang.get(enable ? "swap-enabled" : "swap-disabled"));
-        Config.debug("fake-player.swap.enabled set to " + enable + " by " + sender.getName());
+        Config.debug("swap.enabled set to " + enable + " by " + sender.getName());
         return true;
     }
 

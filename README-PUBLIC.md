@@ -2,7 +2,7 @@
 
 > Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, and full hot-reload support.
 
-![Version](https://img.shields.io/badge/version-1.4.20-0079FF?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.21-0079FF?style=flat-square)
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Paper-0079FF?style=flat-square)
 ![Java](https://img.shields.io/badge/Java-21-0079FF?style=flat-square)
@@ -210,6 +210,10 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 
 ## ✦ Changelog
 
+### v1.4.21 *(2026-03-21)*
+- **Bug fix** — bots restored after a server restart no longer show literal `{spawner}`, `{num}`, or `{bot_name}` in their display name; stale saves from older versions are detected and the display name is rebuilt correctly.
+- **Bug fix** — trailing unclosed hex color tags (e.g. `<#9782ff>`) at the end of LuckPerms prefixes are now stripped before parsing, preventing broken text in nametags and the tab list.
+
 ### v1.4.20 *(2026-03-21)*
 #### Release
 - Added a proper version check to the update checker (previously it only checked if the API was reachable, not if the version was actually newer).
@@ -287,4 +291,4 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.4.20 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) - [Spigotmc](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) - [Papermc](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.4.21 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) - [Spigotmc](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) - [Papermc](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin)*

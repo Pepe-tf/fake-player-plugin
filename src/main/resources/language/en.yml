@@ -95,7 +95,7 @@ bot-respawn: "{prefix}<gray>ʙᴏᴛ <#0079FF>{name}</#0079FF> <gray>ᴡɪʟʟ �
 
 # ── Swap ──────────────────────────────────────────────────────────────────────
 swap-enabled:    "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
-swap-disabled:   "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
+swap-disabled:   "{prefix}<#0079FF>ʙᴏᴳ ꜱᴡᴀᴘ</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɴ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
 swap-status-on:  "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ<gray>."
 swap-status-off: "{prefix}<#0079FF>ʙᴏᴛ ꜱᴡᴀᴘ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
 swap-invalid:    "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp swap <on|off|status></#0079FF><gray>."
@@ -117,7 +117,7 @@ info-no-bots:        "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ɴᴏ ᴀᴄᴛɪᴠᴇ 
 # {name} — bot name
 tph-success:      "{prefix}<gray>ᴛᴇʟᴇᴘᴏʀᴛᴇᴅ <#0079FF>{name}</#0079FF> <gray>ᴛᴏ ʏᴏᴜ."
 tph-no-bots:      "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ."
-tph-specify-name: "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ᴍᴜʟᴛɪᴘʟᴇ ʙᴏᴛꜱ. <gray>ꜱᴘᴇᴄɪꜰʏ ᴏɴᴇ: <#0079FF>/fpp tph <botname></#0079FF>"
+tph-specify-name: "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ᴍᴜʟᴛɪᴘʟᴇ ʙᴏᴛꜱ. <gray>ꜱᴘᴇᴄɪ꜕ʏ ᴏɴᴇ: <#0079FF>/fpp tph <botname></#0079FF>"
 tph-not-yours:    "{prefix}<red>ʏᴏᴜ ᴅᴏɴ'ᴛ ᴏᴡɴ ᴀ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
 tph-not-found:    "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
 tph-failed:       "{prefix}<red>ᴄᴏᴜʟᴅ ɴᴏᴛ ᴛᴇʟᴇᴘᴏʀᴛ <white>{name}<red> — ᴇɴᴛɪᴛʏ ɪɴᴠᴀʟɪᴅ."
@@ -127,13 +127,23 @@ tp-not-found:     "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ 
 tp-failed:        "{prefix}<red>ᴄᴏᴜʟᴅ ɴᴏᴛ ᴛᴇʟᴇᴘᴏʀᴛ ᴛᴏ <white>{name}<red> — ᴇɴᴛɪᴛʏ ɪɴᴠᴀʟɪᴅ."
 
 # ── Update checker ────────────────────────────────────────────────────────────
-# {current} — installed version  |  {latest} — latest version
-update-available:  "{prefix}<bold><#0079FF>UPDATE AVAILABLE</#0079FF></bold> <gray>— <white>v{current} <gray>→ <white>v{latest}</white>\n{prefix}<gray>Download: <#0079FF>https://modrinth.com/plugin/fake-player-plugin-(fpp)</#0079FF>"
+# {current}      — installed version
+# {latest}       — latest version
+# {download_url} — download link (from API response or fallback Modrinth URL)
+update-available:  "{prefix}<bold><#0079FF>UPDATE AVAILABLE</#0079FF></bold> <gray>— <white>v{current} <gray>→ <white>v{latest}</white>\n{prefix}<gray>Download: <#0079FF>{download_url}</#0079FF>"
 update-up-to-date: "{prefix}<#66CC66>Plugin is up to date</#66CC66> <dark_gray>(<#0079FF>v{current}</#0079FF>)<dark_gray>"
 update-failed:     "{prefix}<gray>ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʜᴇᴄᴋ ꜰᴏʀ ᴜᴘᴅᴀᴛᴇꜱ."
 
 # In-game compatibility warning shown to admins when the server/runtime is restricted
-compatibility-warning: "{prefix}<white>Not fully supported — some features disabled.</white>"
+# compatibility-header       — title line prepended to the per-issue list
+# compatibility-not-paper    — server is not PaperMC     | {version} detected server version
+# compatibility-version-old  — MC version too old         | {version} detected, {required} minimum
+# compatibility-no-mannequin — physical body rendering unsupported | {version} detected, {required} minimum
+compatibility-warning:      "{prefix}<white>Not fully supported — some features disabled.</white>"
+compatibility-header:       "{prefix}<red>⚠ <bold>Compatibility Issues Detected</bold> — some features are disabled:"
+compatibility-not-paper:    "{prefix}<red>  • Not running PaperMC <gray>(detected: <white>{version}</white><gray>) — switch to Paper."
+compatibility-version-old:  "{prefix}<red>  • Server version <white>{version}</white> is below required <white>{required}</white> — please update."
+compatibility-no-mannequin: "{prefix}<red>  • Physical bot bodies require Paper <white>{required}</white> or newer — please update your server."
 
 # ── Freeze ────────────────────────────────────────────────────────────────────
 # {name}  — bot display name  |  {count} — number of bots (all)
