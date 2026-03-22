@@ -645,7 +645,7 @@ public final class ConfigMigrator {
     /**
      * Logs a migration step message.
      * Uses {@link #rawDebug} read from the raw YAML — never touches {@code Config.cfg}
-     * because this runs before {@code Config.init()}.
+     * because this runs before {@code Config.init()}
      */
     private static void log(String step, String message) {
         if (rawDebug) {
