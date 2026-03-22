@@ -2,6 +2,7 @@
   "name": "fake-player-plugin-frontend",
   "version": "0.1.0",
   "private": true,
+  "main": "frontend/index.js",
   "scripts": {
     "start": "node frontend/index.js",
     "dev": "nodemon frontend/index.js",
