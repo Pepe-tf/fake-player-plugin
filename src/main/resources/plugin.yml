@@ -16,7 +16,7 @@ commands:
 permissions:
 
   # ── Admin wildcard ─────────────────────────────────────────────────────────
-  # Grants EVERYTHING — assign to owner / admin groups only.
+  # Grants EVERYTHING — assign to owner / admin groups only
   fpp.*:
     description: Grants access to all FPP commands and features (admin).
     default: op
