@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Fix Test - FakePlayerPlugin Wiki</title>
+    <link rel="stylesheet" href="/wiki-styles.css">
+</head>
+<body>
+    <div class="wiki-container">
+        <div class="wiki-content-wrapper">
+            <div class="wiki-content">
+                <h1>🔍 404 Error Handling Test</h1>
+
+                <div class="error-page">
+                    <div class="error-icon">✅</div>
+                    <h2>All 404 Fixes Successfully Applied!</h2>
+
+                    <h3>🛠️ What Was Fixed:</h3>
+                    <ul>
+                        <li><strong>Page Validation:</strong> Added VALID_PAGES array to restrict access to existing pages only</li>
+                        <li><strong>Error Handling:</strong> Created proper 404 pages instead of raw HTML display</li>
+                        <li><strong>URL Validation:</strong> All hash changes and navigation now validate page names</li>
+                        <li><strong>Graceful Fallbacks:</strong> Invalid pages redirect to Home with helpful suggestions</li>
+                        <li><strong>User Experience:</strong> Beautiful error pages with navigation options</li>
+                    </ul>
+
+                    <h3>🧪 Test These Invalid URLs:</h3>
+                    <div class="page-grid">
+                        <a href="/wiki#InvalidPage" class="page-card">
+                            <h4>Invalid Page Test</h4>
+                            <p>Should show 404 error page</p>
+                        </a>
+                        <a href="/wiki#Homewdawd" class="page-card">
+                            <h4>Original Bug Test</h4>
+                            <p>The exact case from the bug report</p>
+                        </a>
+                        <a href="/wiki#NonExistent123" class="page-card">
+                            <h4>Random Invalid Page</h4>
+                            <p>Should show suggestions if similar</p>
+                        </a>
+                        <a href="/wiki#Con" class="page-card">
+                            <h4>Partial Match Test</h4>
+                            <p>Should suggest "Configuration"</p>
+                        </a>
+                    </div>
+
+                    <h3>✅ Valid Pages (Should Work):</h3>
+                    <div class="page-grid">
+                        <a href="/wiki#Home" class="page-card">
+                            <h4>Home</h4>
+                        </a>
+                        <a href="/wiki#Commands" class="page-card">
+                            <h4>Commands</h4>
+                        </a>
+                        <a href="/wiki#Configuration" class="page-card">
+                            <h4>Configuration</h4>
+                        </a>
+                        <a href="/wiki#FAQ" class="page-card">
+                            <h4>FAQ</h4>
+                        </a>
+                    </div>
+
+                    <h3>🎯 Expected Behavior:</h3>
+                    <div class="error-suggestions">
+                        <strong>Before Fix:</strong> Invalid pages showed raw HTML code<br>
+                        <strong>After Fix:</strong> Invalid pages show a beautiful 404 error page with:
+                        <ul style="margin-top: 0.5rem;">
+                            <li>Clear error message</li>
+                            <li>Page suggestions (if similar names found)</li>
+                            <li>Navigation buttons (Home, Browse All Pages)</li>
+                            <li>Consistent styling with the rest of the site</li>
+                        </ul>
+                    </div>
+
+                    <div class="error-actions" style="margin-top: 2rem;">
+                        <a href="/wiki#Home" class="btn-primary">🏠 Go to Wiki Home</a>
+                        <a href="/wiki#InvalidTestPage" class="btn-secondary">🧪 Test 404 Error</a>
+                    </div>
+                </div>
+
+                <hr style="margin: 3rem 0;">
+
+                <h2>📋 Technical Implementation</h2>
+
+                <h3>🔧 Added Features:</h3>
+                <ul>
+                    <li><strong>VALID_PAGES Array:</strong> Whitelist of all existing wiki pages</li>
+                    <li><strong>Page Validation:</strong> All navigation functions now validate page names</li>
+                    <li><strong>Error Functions:</strong> <code>showPageNotFound()</code> and <code>showLoadError()</code></li>
+                    <li><strong>Smart Suggestions:</strong> <code>getSimilarPages()</code> suggests similar page names</li>
+                    <li><strong>URL Sanitization:</strong> Clean invalid characters from page names</li>
+                    <li><strong>Browser Navigation:</strong> Handles back/forward and direct URL changes</li>
+                </ul>
+
+                <h3>🎨 Styling Enhancements:</h3>
+                <ul>
+                    <li><strong>Error Pages CSS:</strong> Beautiful 404 pages matching site theme</li>
+                    <li><strong>Suggestion Lists:</strong> Interactive page suggestion cards</li>
+                    <li><strong>Action Buttons:</strong> Primary and secondary button styles</li>
+                    <li><strong>Responsive Design:</strong> Mobile-friendly error pages</li>
+                    <li><strong>Dark Theme Support:</strong> Proper colors for both light and dark themes</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

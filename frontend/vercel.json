@@ -1,8 +1,75 @@
 {
   "version": 2,
-  "builds": [{ "src": "api/*.js", "use": "@vercel/node" }],
+  "builds": [
+    { "src": "api/*.js", "use": "@vercel/node" },
+    { "src": "index.js", "use": "@vercel/node" }
+  ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/(.*)", "dest": "/api/status.js" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "X-Plugin-Request, X-FPP-Request, User-Agent"
+      }
+    },
+    {
+      "src": "/wiki/(.*)",
+      "dest": "/wiki.html"
+    },
+    {
+      "src": "/wiki",
+      "dest": "/wiki.html"
+    },
+    {
+      "src": "/Icon/(.*)",
+      "dest": "/Icon/$1"
+    },
+    {
+      "src": "/wiki-styles.css",
+      "dest": "/wiki-styles.css",
+      "headers": {
+        "Content-Type": "text/css"
+      }
+    },
+    {
+      "src": "/wiki-script.js",
+      "dest": "/wiki-script.js",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|md))",
+      "dest": "/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/wiki.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/wiki.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-Plugin-Request, X-FPP-Request, User-Agent"
+        }
+      ]
+    }
   ]
 }

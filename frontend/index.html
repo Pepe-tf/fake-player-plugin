@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FPP - Fake Player Plugin</title>
+    <title>Fake Player Plugin</title>
+    <link rel="icon" type="image/png" href="/Icon/FPP.png">
+    <link rel="shortcut icon" type="image/png" href="/Icon/FPP.png">
+    <link rel="apple-touch-icon" href="/Icon/FPP.png">
     <style>
         * {
             margin: 0;
@@ -39,8 +42,19 @@
         }
 
         .logo {
-            font-size: 4rem;
             margin-bottom: 1rem;
+        }
+
+        .logo img {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .logo img:hover {
+            transform: scale(1.05);
         }
 
         .header h1 {
@@ -170,7 +184,9 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🎮</div>
+            <div class="logo">
+                <img src="/Icon/FPP.png" alt="FPP Logo">
+            </div>
             <h1>Fake Player Plugin <span class="badge">v1.4.28</span></h1>
             <p>Realistic fake players for Paper servers</p>
         </div>

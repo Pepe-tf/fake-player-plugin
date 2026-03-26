@@ -9,6 +9,13 @@ const WIKI_BASE_URL = isLocalDev
 
 const DEFAULT_PAGE = 'Home';
 
+// Valid wiki pages - only these pages exist
+const VALID_PAGES = [
+    'Home', 'Getting-Started', 'FAQ', 'Commands', 'Permissions', 'Configuration',
+    'Language', 'Bot-Names', 'Bot-Messages', 'Bot-Behaviour', 'Skin-System',
+    'Swap-System', 'Fake-Chat', 'Placeholders', 'Database', 'Migration'
+];
+
 // Cache busting - add timestamp to URLs to force fresh content (only for GitHub)
 const CACHE_BUSTER = isLocalDev ? '' : '?v=' + Date.now();
 
@@ -85,6 +92,12 @@ function closeMobileMenu() {
 }
 
 function setActivePage(page) {
+    // Validate page parameter
+    if (!page || !VALID_PAGES.includes(page)) {
+        console.warn('Attempted to set invalid active page:', page);
+        page = DEFAULT_PAGE;
+    }
+
     document.querySelectorAll('.sidebar-nav a').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('data-page') === page) {
@@ -96,6 +109,12 @@ function setActivePage(page) {
 }
 
 function updateURL(page) {
+    // Validate page before updating URL
+    if (!page || !VALID_PAGES.includes(page)) {
+        console.warn('Invalid page for URL update:', page);
+        page = DEFAULT_PAGE;
+    }
+
     const url = new URL(window.location);
     url.hash = page;
     window.history.pushState({}, '', url);
@@ -106,27 +125,50 @@ function updateURL(page) {
 async function loadPage(page) {
     const content = document.getElementById('content');
 
+    // Validate page name first
+    if (!page || typeof page !== 'string') {
+        showPageNotFound('Invalid page name', content);
+        return;
+    }
+
+    // Clean the page name - remove any invalid characters
+    const cleanPage = page.replace(/[^a-zA-Z0-9-_]/g, '');
+
+    // Check if page exists in our valid pages list
+    if (!VALID_PAGES.includes(cleanPage)) {
+        showPageNotFound(cleanPage, content);
+        return;
+    }
+
     // Show loading state
     content.innerHTML = `
         <div class="loading">
             <div class="spinner"></div>
-            <p>Loading ${page}...</p>
+            <p>Loading ${cleanPage}...</p>
         </div>
     `;
 
     try {
         // Try to fetch from GitHub with cache busting
-        const url = `${WIKI_BASE_URL}${page}.md${CACHE_BUSTER}`;
+        const url = `${WIKI_BASE_URL}${cleanPage}.md${CACHE_BUSTER}`;
         const response = await fetch(url);
 
         if (!response.ok) {
-            throw new Error(`Failed to load ${page}`);
+            throw new Error(`HTTP ${response.status}: Failed to load ${cleanPage}`);
         }
 
         const markdown = await response.text();
 
+        // Validate that we got actual markdown content, not HTML
+        if (markdown.includes('<!DOCTYPE html>') || markdown.includes('<html>')) {
+            throw new Error('Received HTML instead of markdown content');
+        }
+
         // Cache the content
-        wikiContent[page] = markdown;
+        wikiContent[cleanPage] = markdown;
+
+        // Update current page
+        currentPage = cleanPage;
 
         // Render the page
         renderMarkdown(markdown);
@@ -142,17 +184,130 @@ async function loadPage(page) {
 
     } catch (error) {
         console.error('Error loading page:', error);
-        content.innerHTML = `
-            <div class="error-state">
-                <h1>⚠️ Page Not Found</h1>
-                <p>The page <strong>${page}</strong> could not be loaded.</p>
-                <p>This might be a temporary network issue or the page doesn't exist.</p>
+        showLoadError(cleanPage, error.message, content);
+    }
+}
+
+function showPageNotFound(pageName, content) {
+    // Get similar page suggestions
+    const suggestions = getSimilarPages(pageName);
+
+    content.innerHTML = `
+        <div class="error-page">
+            <div class="error-icon">🔍</div>
+            <h1>Page Not Found</h1>
+            <p class="error-message">The page <strong>"${pageName}"</strong> doesn't exist in our documentation.</p>
+
+            ${suggestions.length > 0 ? `
+            <div class="error-suggestions">
+                <h3>Did you mean?</h3>
+                <ul class="suggestion-list">
+                    ${suggestions.map(page => `
+                        <li><a href="#${page}" onclick="loadPage('${page}')">${formatPageTitle(page)}</a></li>
+                    `).join('')}
+                </ul>
+            </div>
+            ` : ''}
+
+            <div class="error-actions">
                 <button onclick="loadPage('${DEFAULT_PAGE}')" class="btn-primary">
-                    Go to Home Page
+                    🏠 Go to Home
                 </button>
+                <button onclick="showAllPages()" class="btn-secondary">
+                    📚 Browse All Pages
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function showLoadError(pageName, errorMessage, content) {
+    content.innerHTML = `
+        <div class="error-page">
+            <div class="error-icon">⚠️</div>
+            <h1>Loading Failed</h1>
+            <p class="error-message">Could not load <strong>"${pageName}"</strong></p>
+            <p class="error-details">${errorMessage}</p>
+
+            <div class="error-actions">
+                <button onclick="loadPage('${pageName}')" class="btn-primary">
+                    🔄 Try Again
+                </button>
+                <button onclick="loadPage('${DEFAULT_PAGE}')" class="btn-secondary">
+                    🏠 Go to Home
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function getSimilarPages(input) {
+    if (!input) return [];
+
+    const inputLower = input.toLowerCase();
+    const similar = [];
+
+    VALID_PAGES.forEach(page => {
+        const pageLower = page.toLowerCase();
+
+        // Exact partial match
+        if (pageLower.includes(inputLower) || inputLower.includes(pageLower)) {
+            similar.push(page);
+        }
+        // Similar starting letters
+        else if (pageLower.startsWith(inputLower.substring(0, 3)) && inputLower.length >= 3) {
+            similar.push(page);
+        }
+    });
+
+    return similar.slice(0, 5); // Return top 5 suggestions
+}
+
+function formatPageTitle(page) {
+    return page.replace(/-/g, ' ');
+}
+
+function showAllPages() {
+    const content = document.getElementById('content');
+
+    const pagesByCategory = {
+        'Getting Started': ['Home', 'Getting-Started', 'FAQ'],
+        'Core Features': ['Commands', 'Permissions', 'Configuration', 'Language'],
+        'Bot Systems': ['Bot-Names', 'Bot-Messages', 'Bot-Behaviour', 'Skin-System'],
+        'Advanced': ['Swap-System', 'Fake-Chat', 'Placeholders', 'Database', 'Migration']
+    };
+
+    let html = `
+        <div class="all-pages">
+            <h1>📚 All Documentation Pages</h1>
+            <p>Browse all available documentation pages by category:</p>
+    `;
+
+    for (const [category, pages] of Object.entries(pagesByCategory)) {
+        html += `
+            <div class="page-category">
+                <h2>${category}</h2>
+                <div class="page-grid">
+                    ${pages.map(page => `
+                        <a href="#${page}" onclick="loadPage('${page}')" class="page-card">
+                            <h3>${formatPageTitle(page)}</h3>
+                        </a>
+                    `).join('')}
+                </div>
             </div>
         `;
     }
+
+    html += `
+            <div class="error-actions" style="margin-top: 2rem;">
+                <button onclick="loadPage('${DEFAULT_PAGE}')" class="btn-primary">
+                    🏠 Back to Home
+                </button>
+            </div>
+        </div>
+    `;
+
+    content.innerHTML = html;
 }
 
 function renderMarkdown(markdown) {
@@ -1042,13 +1197,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load initial page from URL hash or default
     const hash = window.location.hash.substring(1);
-    const initialPage = hash || DEFAULT_PAGE;
+    let initialPage = hash || DEFAULT_PAGE;
+
+    // Validate the initial page - if invalid, redirect to home
+    if (!VALID_PAGES.includes(initialPage)) {
+        console.warn('Invalid page in URL hash:', initialPage);
+        initialPage = DEFAULT_PAGE;
+        // Update URL to remove invalid hash
+        window.history.replaceState({}, '', window.location.pathname + '#' + DEFAULT_PAGE);
+    }
+
     loadPage(initialPage);
     setActivePage(initialPage);
 
-    // Handle browser back/forward
+    // Handle browser back/forward with validation
     window.addEventListener('popstate', () => {
-        const page = window.location.hash.substring(1) || DEFAULT_PAGE;
+        const hash = window.location.hash.substring(1);
+        let page = hash || DEFAULT_PAGE;
+
+        // Validate page from browser navigation
+        if (!VALID_PAGES.includes(page)) {
+            console.warn('Invalid page from browser navigation:', page);
+            page = DEFAULT_PAGE;
+            // Silently correct the URL
+            window.history.replaceState({}, '', window.location.pathname + '#' + DEFAULT_PAGE);
+        }
+
+        loadPage(page);
+        setActivePage(page);
+    });
+
+    // Handle hash changes (for direct hash modifications)
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.substring(1);
+        let page = hash || DEFAULT_PAGE;
+
+        // Validate page from hash change
+        if (!VALID_PAGES.includes(page)) {
+            console.warn('Invalid page from hash change:', page);
+            page = DEFAULT_PAGE;
+            // Redirect to home page
+            window.location.hash = DEFAULT_PAGE;
+            return;
+        }
+
         loadPage(page);
         setActivePage(page);
     });

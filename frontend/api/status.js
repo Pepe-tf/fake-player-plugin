@@ -75,7 +75,22 @@ async function fetchFromModrinth() {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 module.exports = async (req, res) => {
+  // Check if request is from plugin (Java HTTP client) or browser
+  const userAgent = req.headers['user-agent'] || '';
+  const pluginHeaders = req.headers['x-plugin-request'] || req.headers['x-fpp-request'];
+  const isPluginRequest = userAgent.includes('Java') ||
+                         userAgent.includes('Apache-HttpClient') ||
+                         pluginHeaders === 'true';
+
+  // If browser request, redirect to wiki
+  if (!isPluginRequest) {
+    res.writeHead(302, { 'Location': '/wiki' });
+    res.end();
+    return;
+  }
+
   res.setHeader("Content-Type", "application/json");
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   // Pinned version always wins (set LATEST_VERSION on Vercel when publishing a release)
   const pinnedVersion = process.env.LATEST_VERSION || process.env.PLUGIN_VERSION || null;
