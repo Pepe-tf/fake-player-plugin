@@ -20,6 +20,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityPortalEvent;
+import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.persistence.PersistentDataType;
 
 public class FakePlayerEntityListener implements Listener {
@@ -40,6 +42,13 @@ public class FakePlayerEntityListener implements Listener {
     public void onEntityDamage(EntityDamageEvent event) {
         if (!isFakeBotBody(event.getEntity())) return;
 
+        // Primary damageable guard — event-level cancellation beats any entity flag.
+        // Checked live from config so /fpp reload takes effect without respawn.
+        if (!Config.bodyDamageable()) {
+            event.setCancelled(true);
+            return;
+        }
+
         // Cancel damage types that shouldn't affect a player-like entity
         switch (event.getCause()) {
             case VOID, SUFFOCATION, CRAMMING,
@@ -53,8 +62,11 @@ public class FakePlayerEntityListener implements Listener {
             default -> {}
         }
 
-        // On fatal hit — remove nametag before death animation plays
-        if (event.getEntity() instanceof Mannequin m) {
+        // On fatal hit — remove nametag before death animation plays.
+        // Only act when the event is NOT already cancelled so we don't strip the
+        // nametag on a hit that will produce no damage (e.g. if another plugin
+        // cancels the event after us but the damage value is still non-zero).
+        if (!event.isCancelled() && event.getEntity() instanceof Mannequin m) {
             double remaining = m.getHealth() - event.getFinalDamage();
             if (remaining <= 0) {
                 FakePlayer fp = manager.getByEntity(m);
@@ -68,6 +80,48 @@ public class FakePlayerEntityListener implements Listener {
             for (Player p : Bukkit.getOnlinePlayers())
                 p.playSound(loc, Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
         }
+    }
+
+    // ── Portal / teleport guard ───────────────────────────────────────────────
+
+    /**
+     * Prevents bot Mannequin bodies from traversing portals.
+     *
+     * <p>When an entity goes through a portal Minecraft ejects its passengers
+     * (the ArmorStand nametag) at the portal entrance, orphaning it in the
+     * original world.  The entity also receives a new entity-id in the target
+     * world, breaking {@code entityIdIndex} lookups and causing the death
+     * handler to silently skip cleanup.  Blocking the portal event prevents
+     * all of these cascading issues.
+     */
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onEntityPortal(EntityPortalEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
+        event.setCancelled(true);
+        Config.debug("Blocked portal traversal for bot body: "
+                + event.getEntity().getPersistentDataContainer()
+                        .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
+    }
+
+    /**
+     * Prevents bot Mannequin bodies from being teleported to a different world
+     * via commands, plugins, or other mechanics (chorus fruit, etc.).
+     *
+     * <p>Same root cause as the portal case: cross-world teleports eject
+     * passengers and break the entity-id index.  Same-world teleports are
+     * allowed (they don't change the entity id or eject riders).
+     */
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onEntityTeleport(EntityTeleportEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
+        org.bukkit.Location from = event.getFrom();
+        org.bukkit.Location to   = event.getTo();
+        if (to == null || from.getWorld() == null || to.getWorld() == null) return;
+        if (from.getWorld().equals(to.getWorld())) return; // same world — fine
+        event.setCancelled(true);
+        Config.debug("Blocked cross-world teleport for bot body: "
+                + event.getEntity().getPersistentDataContainer()
+                        .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
     }
 
     // ── Death ─────────────────────────────────────────────────────────────────
@@ -95,7 +149,19 @@ public class FakePlayerEntityListener implements Listener {
         final String name        = fp.getName();
         final String displayName = fp.getDisplayName();
 
-        // Remove nametag immediately (entity is dead but ArmorStand is not)
+        // Remove nametag immediately (entity is dead but ArmorStand is not).
+        // If the body crossed worlds the stored ArmorStand reference may point to a
+        // different world; null it first so removeNametag always falls through to the
+        // full world-scan, which finds and removes it regardless of which world it's in.
+        if (fp.getNametagEntity() != null
+                && fp.getPhysicsEntity() != null
+                && fp.getPhysicsEntity().isValid()
+                && fp.getNametagEntity().getWorld() != null
+                && !fp.getNametagEntity().getWorld().equals(fp.getPhysicsEntity().getWorld())) {
+            // Nametag is in a different world than the body (ejected at portal entrance).
+            // Clear the direct ref so removeNametag goes straight to the world-scan.
+            fp.setNametagEntity(null);
+        }
         FakePlayerBody.removeNametag(fp);
         // Clear physics entity reference — the Mannequin is now dead/invalid
         fp.setPhysicsEntity(null);

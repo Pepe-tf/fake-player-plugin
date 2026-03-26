@@ -1,7 +1,3 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · **Bot Behaviour** · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # Bot Behaviour
 
 This page covers all the ways fake player bots behave in the world — their physical body, AI, combat, death, and interaction with chunks.
@@ -15,11 +11,31 @@ The Mannequin is a player-shaped entity with a proper hitbox and physics.
 
 Controlled by:
 ```yaml
-fake-player:
-  spawn-body: true   # false = tab-list/messages only, no entity
+body:
+  enabled: true    # false = tab-list/messages only, no entity
+  pushable: true   # false = body is completely immovable
+  damageable: true # false = body is invulnerable (no health loss)
 ```
 
-When `spawn-body: false`, bots appear only in the tab list and join/leave messages with no visible entity.
+When `enabled: false`, bots appear only in the tab list and join/leave messages with no visible entity.
+
+### Pushable
+
+| Value | Effect |
+|-------|--------|
+| `true` (default) | Players and other entities can physically push the Mannequin. Walk-into force, hit-knockback, and bot-vs-bot separation all apply. |
+| `false` | The Mannequin is completely immovable. All three push mechanisms are disabled. The collision physics settings in `collision:` are ignored. |
+
+### Damageable
+
+| Value | Effect |
+|-------|--------|
+| `true` (default) | The Mannequin takes damage normally. It can die, triggering death/respawn logic. |
+| `false` | The Mannequin is invulnerable. Hits play the hurt sound (if `combat.hurt-sound: true`) but deal zero damage. |
+
+Both settings are **hot-reloadable** via `/fpp reload` and take effect immediately on all active bots — no need to respawn them.
+
+> Setting `pushable: false` **and** `damageable: false` produces a fully static, indestructible bot that players cannot move or kill.
 
 ### What the Mannequin Does
 
@@ -146,15 +162,19 @@ When enabled, each bot keeps the chunks around it loaded exactly as a real playe
 ## Push & Collision
 
 ```yaml
-fake-player:
-  collision:
-    walk-radius: 0.85
-    walk-strength: 0.22
-    max-horizontal-speed: 0.30
-    hit-strength: 0.45
-    bot-radius: 0.90
-    bot-strength: 0.14
+body:
+  pushable: true   # master toggle — set false to make bodies immovable
+
+collision:
+  walk-radius: 0.85
+  walk-strength: 0.22
+  max-horizontal-speed: 0.30
+  hit-strength: 0.45
+  bot-radius: 0.90
+  bot-strength: 0.14
 ```
+
+When `body.pushable: false`, all collision physics are skipped entirely and the settings below have no effect.
 
 Bots react to being pushed:
 
@@ -174,8 +194,3 @@ All push forces are horizontal only — bots cannot be launched into the air by 
 When `spawn-body: true`, bots are counted in the server list player count, making the server appear more populated to players browsing the server list.
 
 This is handled automatically via a packet-level hook — no extra configuration needed.
-
----
-
-| [◀ Skin System](Skin-System.md) | [🏠 Home](Home.md) | [Swap System ▶](Swap-System.md) |
-|:---|:---:|---:|

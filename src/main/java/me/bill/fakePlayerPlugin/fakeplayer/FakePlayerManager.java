@@ -189,12 +189,11 @@ public class FakePlayerManager {
             fp.setBotIndex(alreadyOwned + i + 1);
             // Resolve LP data using the spawner's UUID so user bots mirror their owner's rank.
             LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(spawnerUuid);
-            String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
-            String userDisplay = lpPrefix + Config.userBotNameFormat()
+            String rawUserName = Config.userBotNameFormat()
                     .replace("{spawner}", spawnerName)
                     .replace("{num}", String.valueOf(alreadyOwned + i + 1))
                     .replace("{bot_name}", ubn.internalName());
-            userDisplay = sanitizeDisplayName(userDisplay, ubn.internalName());
+            String userDisplay = finalizeDisplayName(rawUserName, ubn.internalName(), lpData);
             fp.setDisplayName(userDisplay);
             String pktName = LuckPermsHelper.buildPacketProfileName(lpData.weight(), ubn.internalName());
             fp.setPacketProfileName(pktName);
@@ -265,10 +264,8 @@ public class FakePlayerManager {
             // Resolve LP data (prefix + weight) for this bot.
             // Admin bots use the bot-group config or the 'default' group — no owner UUID.
             LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(null);
-            String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
-            String displayName = sanitizeDisplayName(
-                    lpPrefix + Config.adminBotNameFormat().replace("{bot_name}", name),
-                    name);
+            String rawAdminName = Config.adminBotNameFormat().replace("{bot_name}", name);
+            String displayName  = finalizeDisplayName(rawAdminName, name, lpData);
             fp.setDisplayName(displayName);
             String pktAdmin = LuckPermsHelper.buildPacketProfileName(lpData.weight(), name);
             fp.setPacketProfileName(pktAdmin);
@@ -381,6 +378,15 @@ public class FakePlayerManager {
         // never sees a "default Steve" flash.  Everything downstream fires from
         // the skin callback — guaranteed to run on the main thread.
         FakePlayerBody.resolveAndFinish(plugin, fp, spawnLoc, () -> {
+            // Guard: bot may have been removed while skin was resolving (e.g. /fpp despawn all
+            // fired during a join-delay chain or async skin fetch).  Abort entirely so no
+            // stale tab-list add, scoreboard entry, or join message is ever sent.
+            if (!activePlayers.containsKey(fp.getUuid())) {
+                Config.debug("finishSpawn aborted for '" + fp.getName()
+                        + "' — removed before skin callback fired.");
+                return;
+            }
+
             // At this point fp.getResolvedSkin() is populated (or null for off/auto).
 
             // 1. Spawn body (Mannequin) — profile already has texture data
@@ -392,6 +398,7 @@ public class FakePlayerManager {
                     entityIdIndex.put(body.getEntityId(), fp);
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (!body.isValid()) return;
+                        if (!activePlayers.containsKey(fp.getUuid())) return; // removed mid-spawn
                         FakePlayerBody.applyResolvedSkin(plugin, fp, body);
                         fp.setNametagEntity(FakePlayerBody.spawnNametag(fp, body));
                     }, 1L);
@@ -415,12 +422,14 @@ public class FakePlayerManager {
 
                 // 3. Re-send after 3 ticks and again after 20 ticks in case TAB plugin overwrites it
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!activePlayers.containsKey(fp.getUuid())) return; // removed mid-spawn
                     Config.debug("Re-sending tab-list add (3t) for '" + fp.getName() + "' display='" + fp.getDisplayName() + "' packet='" + fp.getPacketProfileName() + "'");
                     for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListAdd(p, fp);
                     for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListDisplayNameUpdate(p, fp);
                 }, 3L);
 
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!activePlayers.containsKey(fp.getUuid())) return; // removed mid-spawn
                     Config.debug("Re-sending tab-list add (20t) for '" + fp.getName() + "' display='" + fp.getDisplayName() + "' packet='" + fp.getPacketProfileName() + "'");
                     for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListAdd(p, fp);
                     for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListDisplayNameUpdate(p, fp);
@@ -434,7 +443,10 @@ public class FakePlayerManager {
 
             // 4. Broadcast join message
             if (Config.joinMessage()) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> BotBroadcast.broadcastJoin(fp), 2L);
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!activePlayers.containsKey(fp.getUuid())) return; // removed mid-spawn
+                    BotBroadcast.broadcastJoin(fp);
+                }, 2L);
             }
 
             if (persistence != null && Config.persistOnRestart()) {
@@ -498,24 +510,23 @@ public class FakePlayerManager {
         String effectiveSpawner = (spawnedBy != null && !spawnedBy.isBlank()) ? spawnedBy : "Unknown";
         // Use the restored LP group override (if any), otherwise fall back to owner/config/default.
         LuckPermsHelper.LpData lpData  = LuckPermsHelper.getBotLpData(luckpermsGroup, isUserBot ? spawnedByUuid : null);
-        String                 lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
         String displayName;
 
         if (isUserBot) {
             int    botIdx = fp.getBotIndex();
             String numStr = String.valueOf(botIdx > 0 ? botIdx : 1);
-            displayName = lpPrefix + Config.userBotNameFormat()
+            String rawName = Config.userBotNameFormat()
                     .replace("{spawner}", effectiveSpawner)
                     .replace("{num}",     numStr)
                     .replace("{bot_name}", name);
             Config.debug("[Restore] user-bot '" + name + "' spawner='" + effectiveSpawner
-                    + "' num=" + numStr + " display='" + displayName + "'");
+                    + "' num=" + numStr + "'");
+            displayName = finalizeDisplayName(rawName, name, lpData);
         } else {
-            displayName = lpPrefix + Config.adminBotNameFormat()
-                    .replace("{bot_name}", name);
-            Config.debug("[Restore] admin-bot '" + name + "' display='" + displayName + "'");
+            String rawName = Config.adminBotNameFormat().replace("{bot_name}", name);
+            Config.debug("[Restore] admin-bot '" + name + "'");
+            displayName = finalizeDisplayName(rawName, name, lpData);
         }
-        displayName = sanitizeDisplayName(displayName, name);
 
         fp.setDisplayName(displayName);
 
@@ -575,8 +586,7 @@ public class FakePlayerManager {
             if (!PLACEHOLDER_PATTERN.matcher(current).find()) continue;
 
             // Reconstruct from current format
-            LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(spawnerUuid);
-            String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
+            LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(fp.getLuckpermsGroup(), spawnerUuid);
             int idx = fp.getBotIndex();
             if (idx <= 0) {
                 String botName = fp.getName();
@@ -586,11 +596,11 @@ public class FakePlayerManager {
                     catch (NumberFormatException ignored) { idx = 1; }
                 } else { idx = 1; }
             }
-            String newDisplay = lpPrefix + Config.userBotNameFormat()
+            String rawDisplay = Config.userBotNameFormat()
                     .replace("{spawner}", spawnerName)
                     .replace("{num}",     String.valueOf(idx))
                     .replace("{bot_name}", fp.getName());
-            newDisplay = sanitizeDisplayName(newDisplay, fp.getName());
+            String newDisplay = finalizeDisplayName(rawDisplay, fp.getName(), lpData);
             fp.setDisplayName(newDisplay);
 
             // Update nametag entity
@@ -866,7 +876,20 @@ public class FakePlayerManager {
      * Has no effect when bodies are enabled.
      */
     public void applyBodyConfig() {
-        if (physicalBodiesEnabled()) return;
+        if (physicalBodiesEnabled()) {
+            // Bodies enabled — apply damageable/pushable to all existing Mannequins
+            boolean invulnerable = !Config.bodyDamageable();
+            boolean immovable    = !Config.bodyPushable();
+            for (FakePlayer fp : activePlayers.values()) {
+                Entity body = fp.getPhysicsEntity();
+                if (body instanceof org.bukkit.entity.Mannequin m && m.isValid()) {
+                    m.setInvulnerable(invulnerable);
+                    m.setImmovable(immovable);
+                }
+            }
+            return;
+        }
+        // Bodies disabled — remove all physical entities
         for (FakePlayer fp : activePlayers.values()) {
             Entity body = fp.getPhysicsEntity();
             if (body != null) {
@@ -1036,7 +1059,35 @@ public class FakePlayerManager {
 
     /** Returns the FakePlayer whose physics body has the given entity id, or null. O(1). */
     public FakePlayer getByEntity(Entity entity) {
-        return entityIdIndex.get(entity.getEntityId());
+        // Fast path: entity-id index (O(1))
+        FakePlayer fp = entityIdIndex.get(entity.getEntityId());
+        if (fp != null) return fp;
+
+        // Fallback: PDC bot-name lookup — handles the case where an entity crossed
+        // worlds via a portal and Paper recreated it with a new entity-id and a new
+        // Java object.  PDC data is copied during recreation so the bot-name tag
+        // survives the transition.  We heal the index and the physicsEntity reference
+        // so all subsequent lookups (damage, death cleanup, etc.) work normally again.
+        if (FAKE_PLAYER_KEY == null) return null;
+        String botName = entity.getPersistentDataContainer()
+                .get(FAKE_PLAYER_KEY, org.bukkit.persistence.PersistentDataType.STRING);
+        if (botName == null || botName.isBlank()) return null;
+
+        FakePlayer candidate = getByName(botName);
+        if (candidate == null) return null;
+
+        // Remove the now-stale old entity-id entry before registering the new one
+        Entity oldBody = candidate.getPhysicsEntity();
+        if (oldBody != null && oldBody.getEntityId() != entity.getEntityId()) {
+            entityIdIndex.remove(oldBody.getEntityId());
+        }
+
+        // Update the entity reference and re-register with the new id
+        candidate.setPhysicsEntity(entity);
+        entityIdIndex.put(entity.getEntityId(), candidate);
+        Config.debug("getByEntity: recovered '" + botName
+                + "' via PDC after world-change — new entityId=" + entity.getEntityId());
+        return candidate;
     }
 
     /**
@@ -1148,37 +1199,29 @@ public class FakePlayerManager {
                 LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(fp.getLuckpermsGroup(), ownerUuid);
 
                 // Build new display name with updated prefix.
-                // User bots (internal name starts with "ubot_") need {spawner} and {num}
-                // replaced in addition to {bot_name}.  Admin bots only need {bot_name}.
-                String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
-                String botName  = fp.getName();
+                String botName    = fp.getName();
                 boolean isUserBot = botName.startsWith("ubot_");
-                String newDisplayName;
+                String rawName;
 
                 if (isUserBot) {
-                    // Retrieve spawner name — stored on the FakePlayer at spawn time
                     String spawnerName = fp.getSpawnedBy();
                     if (spawnerName == null || spawnerName.isBlank()) spawnerName = "Unknown";
-                    // Retrieve sequential index — stored via setBotIndex() at spawn / restore
                     int idx = fp.getBotIndex();
                     if (idx <= 0) {
-                        // Fallback: extract trailing _N from internal name
                         int lastUs = botName.lastIndexOf('_');
                         if (lastUs > 0 && lastUs < botName.length() - 1) {
                             try { idx = Integer.parseInt(botName.substring(lastUs + 1)); }
                             catch (NumberFormatException ignored) { idx = 1; }
                         } else { idx = 1; }
                     }
-                    newDisplayName = lpPrefix + Config.userBotNameFormat()
+                    rawName = Config.userBotNameFormat()
                             .replace("{spawner}", spawnerName)
                             .replace("{num}",     String.valueOf(idx))
                             .replace("{bot_name}", botName);
                 } else {
-                    newDisplayName = lpPrefix + Config.adminBotNameFormat()
-                            .replace("{bot_name}", botName);
+                    rawName = Config.adminBotNameFormat().replace("{bot_name}", botName);
                 }
-                // Safety net: catch any remaining unreplaced placeholders
-                newDisplayName = sanitizeDisplayName(newDisplayName, botName);
+                String newDisplayName = finalizeDisplayName(rawName, botName, lpData);
 
                 // Update if the stored display name differs — compare both the raw
                 // MiniMessage string AND the rendered plain-text form.  This catches
@@ -1264,10 +1307,9 @@ public class FakePlayerManager {
             LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(botSpecificGroup, ownerUuid);
 
             // Build new display name with updated prefix
-            String lpPrefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
-            String botName  = fp.getName();
+            String botName    = fp.getName();
             boolean isUserBot = botName.startsWith("ubot_");
-            String newDisplayName;
+            String rawName;
 
             if (isUserBot) {
                 String spawnerName = fp.getSpawnedBy();
@@ -1280,18 +1322,16 @@ public class FakePlayerManager {
                         catch (NumberFormatException ignored) { idx = 1; }
                     } else { idx = 1; }
                 }
-                newDisplayName = lpPrefix + Config.userBotNameFormat()
+                rawName = Config.userBotNameFormat()
                         .replace("{spawner}", spawnerName)
                         .replace("{num}",     String.valueOf(idx))
                         .replace("{bot_name}", botName);
             } else {
-                newDisplayName = lpPrefix + Config.adminBotNameFormat()
-                        .replace("{bot_name}", botName);
+                rawName = Config.adminBotNameFormat().replace("{bot_name}", botName);
             }
-            newDisplayName = sanitizeDisplayName(newDisplayName, botName);
+            String newDisplayName = finalizeDisplayName(rawName, botName, lpData);
 
             // Update display name and packet profile name
-            String oldDisplay = fp.getDisplayName();
             fp.setDisplayName(newDisplayName);
             
             // Update packet profile name for tab-list ordering
@@ -1370,6 +1410,45 @@ public class FakePlayerManager {
     }
 
     // ── Name generation ──────────────────────────────────────────────────────
+
+    /**
+     * Builds the final display name for a bot by applying {@code bot-name.tab-list-format},
+     * PAPI expansion, and sanitization.
+     *
+     * <p>Placeholders resolved:
+     * <ul>
+     *   <li>{@code {prefix}} — LP group prefix (empty when {@code use-prefix: false})</li>
+     *   <li>{@code {bot_name}} — base name already resolved from admin/user format</li>
+     *   <li>{@code {suffix}} — LP group suffix (empty when {@code use-prefix: false})</li>
+     *   <li>Any {@code %papi_placeholder%} tokens when PlaceholderAPI is installed</li>
+     * </ul>
+     *
+     * @param rawName base name resolved from admin/user format (placeholders already applied)
+     * @param botName internal bot name for sanitize-log context
+     * @param lpData  resolved LP data (prefix, weight, suffix)
+     * @return fully resolved, sanitized MiniMessage-compatible display string
+     */
+    private String finalizeDisplayName(String rawName, String botName,
+                                        me.bill.fakePlayerPlugin.util.LuckPermsHelper.LpData lpData) {
+        String prefix = Config.luckpermsUsePrefix() ? lpData.prefix() : "";
+        String suffix = Config.luckpermsUsePrefix() ? lpData.suffix() : "";
+
+        String display = Config.tabListNameFormat()
+                .replace("{prefix}", prefix)
+                .replace("{bot_name}", rawName)
+                .replace("{suffix}", suffix);
+
+        // Expand PlaceholderAPI placeholders (server-wide, null player context)
+        if (display.contains("%")) {
+            try {
+                if (org.bukkit.Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                    display = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(null, display);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        return sanitizeDisplayName(display, botName);
+    }
 
     /**
      * Compiled pattern that matches unreplaced {@code {placeholder}} tokens in

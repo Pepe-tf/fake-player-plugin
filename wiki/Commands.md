@@ -1,7 +1,3 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · **Commands** · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Migration & Backups](Migration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # Commands
 
 All FPP commands go through the root command `/fpp` (aliases: `/fakeplayer`, `/fp`).  
@@ -89,10 +85,6 @@ User-tier players only see `1`.
 ```
 
 > Bots are spawned with a configurable random join delay per-bot to mimic organic joins.  
-> See [`join-delay`](Configuration.md#join-delay) in config.
-
----
-
 ## /fpp delete
 
 ```
@@ -239,10 +231,6 @@ Toggles the fake-chat system. Changes are written to `config.yml` immediately an
 
 **Permission:** `fpp.chat` (operator by default)
 
-> See [Fake Chat](Fake-Chat.md) for detailed configuration.
-
----
-
 ## /fpp swap
 
 ```
@@ -259,10 +247,6 @@ Toggles the bot swap / rotation system. Changes are written to `config.yml` imme
 | *(none)* | Show current state |
 
 **Permission:** `fpp.swap` (operator by default)
-
-> See [Swap System](Swap-System.md) for detailed configuration.
-
----
 
 ## /fpp reload
 
@@ -312,18 +296,9 @@ The migration and backup management command. All subcommands require `fpp.admin.
 
 **Permission:** `fpp.admin.migrate` (operator by default, included in `fpp.*`)
 
-> See [Migration & Backups](Migration.md) for the full guide.
-
----
-
 ## Command Aliases
 
 | Alias | Resolves to |
 |-------|-------------|
 | `/fakeplayer` | `/fpp` |
 | `/fp` | `/fpp` |
-
----
-
-| [◀ Getting Started](Getting-Started.md) | [🏠 Home](Home.md) | [Permissions ▶](Permissions.md) |
-|:---|:---:|---:|

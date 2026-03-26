@@ -2,9 +2,9 @@ package me.bill.fakePlayerPlugin.fakeplayer;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
+import me.bill.fakePlayerPlugin.util.LuckPermsHelper;
+import me.bill.fakePlayerPlugin.util.TextUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -132,12 +132,33 @@ public final class BotChatAI {
                 .replace("{name}", bot.getName())
                 .replace("{random_player}", resolveRandomPlayer(bot));
 
-        // Broadcast vanilla-style: <BotName> message
-        Component chatLine = Component.empty()
-                .append(Component.text("<", NamedTextColor.WHITE))
-                .append(Component.text(bot.getName(), TextColor.color(0x0079FF)))
-                .append(Component.text("> ", NamedTextColor.WHITE))
-                .append(Component.text(message, NamedTextColor.WHITE));
+        // Build the broadcast line from the configurable chat-format
+        // Resolve LP prefix/suffix (cached — no extra HTTP calls)
+        String prefix = "";
+        String suffix = "";
+        if (Config.luckpermsUsePrefix()) {
+            LuckPermsHelper.LpData lpData = LuckPermsHelper.getBotLpData(
+                    bot.getLuckpermsGroup(), bot.getSpawnedByUuid());
+            prefix = lpData.prefix();
+            suffix = lpData.suffix();
+        }
+
+        String formatted = Config.fakeChatFormat()
+                .replace("{prefix}", prefix)
+                .replace("{suffix}", suffix)
+                .replace("{bot_name}", bot.getDisplayName())
+                .replace("{message}", message);
+
+        // Expand PlaceholderAPI tokens if available
+        if (formatted.contains("%")) {
+            try {
+                if (org.bukkit.Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                    formatted = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(null, formatted);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        Component chatLine = TextUtil.colorize(formatted);
 
         Bukkit.getServer().broadcast(chatLine);
         Config.debug("BotChatAI: " + bot.getName() + " said: " + message);

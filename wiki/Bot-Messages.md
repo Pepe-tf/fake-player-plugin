@@ -1,7 +1,3 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · **Bot Messages** · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # Bot Messages (Fake Chat)
 
 FPP bots can send chat messages to make the server feel alive.  
@@ -107,8 +103,3 @@ The state is saved to `config.yml` and persists across restarts.
 - Use `{random_player}` sparingly — overuse looks robotic.  
 - Set `interval.min` and `interval.max` to at least 5–10 seconds to avoid spam.  
 - A `chance` of `0.5`–`0.75` gives a realistic sporadic feel.
-
----
-
-| [◀ Bot Names](Bot-Names.md) | [🏠 Home](Home.md) | [Database ▶](Database.md) |
-|:---|:---:|---:|

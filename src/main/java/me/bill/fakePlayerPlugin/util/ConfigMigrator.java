@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 26;
+    public static final int CURRENT_VERSION = 29;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -118,6 +118,8 @@ public final class ConfigMigrator {
         if (stored < 24) anyChange |= v23to24(cfg);
         if (stored < 25) anyChange |= v24to25(cfg);
         if (stored < 26) anyChange |= v25to26(cfg);
+        if (stored < 27) anyChange |= v26to27(cfg);
+        if (stored < 28) anyChange |= v27to28(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -662,14 +664,49 @@ public final class ConfigMigrator {
      * v25 → v26: Housekeeping stamp for v1.4.24.
      * <ul>
      *   <li>No structural changes — version bump only.</li>
-     *   <li>Ensures existing installations are stamped at the current schema version
-     *       so future migrations have a clean baseline.</li>
      * </ul>
      */
     private static boolean v25to26(YamlConfiguration cfg) {
         // No structural changes in this release — stamp only.
         log("v25→v26", "housekeeping stamp for v1.4.24 (no structural changes)");
         return false;
+    }
+
+    /**
+     * v26 → v27: Customizable tab-list / nametag display format.
+     * <ul>
+     *   <li>Adds {@code bot-name.tab-list-format} with default {@code "{prefix}{bot_name}{suffix}"}.</li>
+     * </ul>
+     */
+    private static boolean v26to27(YamlConfiguration cfg) {
+        if (cfg.contains("bot-name.tab-list-format")) return false;
+        cfg.set("bot-name.tab-list-format", "{prefix}{bot_name}{suffix}");
+        log("v26→v27", "added bot-name.tab-list-format");
+        return true;
+    }
+
+    /**
+     * v27 → v28: Body pushable / damageable toggles.
+     * <ul>
+     *   <li>Adds {@code body.pushable} (default {@code true}) — controls whether
+     *       players can push bot bodies and whether knockback applies on hit.</li>
+     *   <li>Adds {@code body.damageable} (default {@code true}) — controls whether
+     *       bot bodies can receive damage.</li>
+     * </ul>
+     */
+    private static boolean v27to28(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("body.pushable")) {
+            cfg.set("body.pushable", true);
+            log("v27→v28", "added body.pushable = true");
+            changed = true;
+        }
+        if (!cfg.contains("body.damageable")) {
+            cfg.set("body.damageable", true);
+            log("v27→v28", "added body.damageable = true");
+            changed = true;
+        }
+        return changed;
     }
 
     /**

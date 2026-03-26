@@ -117,6 +117,16 @@ public final class Config {
         return cfg.getString("bot-name.user-format", "<gray>[bot-{spawner}-{num}]</gray>");
     }
 
+    /**
+     * Full tab-list / nametag display format.
+     * Placeholders: {@code {prefix}} (LP prefix), {@code {bot_name}} (resolved from admin/user format),
+     * {@code {suffix}} (LP suffix), and any PlaceholderAPI {@code %placeholder%} tokens.
+     * Default: {@code "{prefix}{bot_name}{suffix}"} (reproduces legacy behaviour).
+     */
+    public static String tabListNameFormat() {
+        return cfg.getString("bot-name.tab-list-format", "{prefix}{bot_name}{suffix}");
+    }
+
     // ── LuckPerms  (luckperms.*) ──────────────────────────────────────────────
 
     /**
@@ -202,6 +212,24 @@ public final class Config {
 
     /**
      * Pool of Minecraft player names whose skins will be randomly assigned
+     * when a bot's name has no Mojang account (auto mode fallback).
+     * Provides skin diversity instead of all unknown-name bots using the same fallback-name.
+     * Config path: {@code skin.fallback-pool}
+     */
+    public static List<String> skinFallbackPool() {
+        Object raw = cfg.get("skin.fallback-pool");
+        if (raw instanceof List<?> list) {
+            return list.stream()
+                    .filter(o -> o instanceof String)
+                    .map(o -> (String) o)
+                    .filter(s -> !s.isBlank())
+                    .toList();
+        }
+        return List.of();
+    }
+
+    /**
+     * Pool of Minecraft player names whose skins will be randomly assigned
      * to bots in {@code custom} mode.
      * Config path: {@code skin.pool}
      */
@@ -249,6 +277,23 @@ public final class Config {
     /** Whether bots spawn a visible Mannequin body in the world. */
     public static boolean spawnBody() {
         return cfg.getBoolean("body.enabled", true);
+    }
+
+    /**
+     * Whether players and other entities can push bot bodies.
+     * {@code false} = Mannequin is immovable; all collision push logic is skipped.
+     */
+    public static boolean bodyPushable() {
+        return cfg.getBoolean("body.pushable", true);
+    }
+
+    /**
+     * Whether bot bodies can take damage.
+     * {@code false} = Mannequin is invulnerable; the damage event still fires
+     * (for hit-knockback if pushable is true) but HP is never reduced.
+     */
+    public static boolean bodyDamageable() {
+        return cfg.getBoolean("body.damageable", true);
     }
 
     // ── Persistence  (persistence.*) ─────────────────────────────────────────
@@ -377,6 +422,15 @@ public final class Config {
     public static double  fakeChatChance()         { return cfg.getDouble("fake-chat.chance", 0.75); }
     public static int     fakeChatIntervalMin()    { return cfg.getInt("fake-chat.interval.min", 5); }
     public static int     fakeChatIntervalMax()    { return cfg.getInt("fake-chat.interval.max", 10); }
+
+    /**
+     * MiniMessage/legacy-color format string for broadcast chat lines.
+     * Supports placeholders {@code {bot_name}} and {@code {message}}.
+     * Default: {@code "<{bot_name}> {message}"} (vanilla-style).
+     */
+    public static String fakeChatFormat() {
+        return cfg.getString("fake-chat.chat-format", "<{bot_name}> {message}");
+    }
 
     /** Messages bots can randomly send — loaded from bot-messages.yml. */
     public static List<String> fakeChatMessages() { return BotMessageConfig.getMessages(); }

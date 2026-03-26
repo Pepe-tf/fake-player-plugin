@@ -1,7 +1,3 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · **Fake Chat** · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # Fake Chat
 
 FPP bots can send random chat messages to make the server feel lively and populated.
@@ -56,6 +52,10 @@ fake-chat:
   interval:
     min: 5
     max: 10
+
+  # Chat line format. Supports MiniMessage tags and legacy & codes.
+  # Placeholders: {bot_name}  {message}
+  chat-format: "&7{bot_name}: {message}"
 ```
 
 | Setting | Description |
@@ -65,6 +65,27 @@ fake-chat:
 | `chance` | Roll probability per interval tick (`0.75` = 75% chance) |
 | `interval.min` | Minimum seconds between a single bot's messages |
 | `interval.max` | Maximum seconds between a single bot's messages |
+| `chat-format` | Format of every chat line. Supports MiniMessage and `&` codes. Placeholders: `{prefix}`, `{bot_name}`, `{suffix}`, `{message}`. |
+
+### `chat-format` placeholders
+
+| Placeholder | Value |
+|-------------|-------|
+| `{prefix}` | LuckPerms group prefix for this bot (empty when `luckperms.use-prefix: false`) |
+| `{bot_name}` | Bot display name |
+| `{suffix}` | LuckPerms group suffix for this bot (empty when `luckperms.use-prefix: false`) |
+| `{message}` | Message text drawn from `bot-messages.yml` |
+
+### `chat-format` examples
+
+| Format string | Output style |
+|---------------|-------------|
+| `"&7{bot_name}: {message}"` | Gray name with colon (default) |
+| `"&7{prefix}{bot_name}&7: {message}"` | LP prefix before name |
+| `"{prefix}{bot_name}{suffix}&7: {message}"` | Full prefix + suffix wrap |
+| `"<{bot_name}> {message}"` | IRC-style `<BotName> hello` |
+| `"<gray>[Bot]</gray> {bot_name}: {message}"` | Gray `[Bot]` label |
+| `"<gradient:#ff0000:#0000ff>{bot_name}</gradient>: {message}"` | Gradient-colored name |
 
 ---
 
@@ -138,8 +159,3 @@ fake-chat:
 - **Use `{random_player}` sparingly** — only 10–20% of messages should address real players
 - **Longer intervals feel more natural** — 30–120 seconds is a realistic human chat pace
 - Set `require-player-online: true` if you don't want bots chatting into an empty server
-
----
-
-| [◀ Swap System](Swap-System.md) | [🏠 Home](Home.md) | [FAQ & Troubleshooting ▶](FAQ.md) |
-|:---|:---:|---:|

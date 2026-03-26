@@ -38,7 +38,9 @@ FPP adds fake players to your server that look and behave like real ones:
 | Java | 21+ |
 | [PacketEvents](https://modrinth.com/plugin/packetevents) | 2.x |
 | [LuckPerms](https://luckperms.net) | Optional — auto-detected |
-| [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) | Optional — auto-detected |
+| [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) | Optional — auto-detected (18 placeholders) |
+
+> **PlaceholderAPI Integration:** FPP provides 18+ placeholders including per-world bot counts, player-relative stats, and system status. See [PLACEHOLDERAPI.md](PLACEHOLDERAPI.md) for the complete reference.
 
 Note: Semi-support is available for older 1.21 releases (1.21.0 → 1.21.8). On those servers some features may be disabled and FPP will run in a restricted compatibility mode — check the server console for detailed warnings.
 
@@ -177,16 +179,71 @@ Set `skin.fallback-name` to any valid Minecraft username (default: `Notch`).
 
 When [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) is installed, FPP registers its placeholders automatically — no restart needed.
 
+> **📚 Full Documentation:** [PLACEHOLDERAPI.md](PLACEHOLDERAPI.md) — Complete reference with usage examples, troubleshooting, and integration guides.
+
+FPP provides **18 placeholders** organized into three categories:
+
+### Server-Wide Placeholders
+
 | Placeholder | Value |
 |---|---|
 | `%fpp_count%` | Number of currently active bots |
 | `%fpp_max%` | Global max-bots limit (or `∞`) |
+| `%fpp_real%` | Number of real (non-bot) players online |
+| `%fpp_total%` | Total players (real + bots) |
+| `%fpp_online%` | Alias for `%fpp_total%` |
+| `%fpp_frozen%` | Number of currently frozen bots |
 | `%fpp_chat%` | `on` / `off` — fake-chat state |
 | `%fpp_swap%` | `on` / `off` — bot-swap state |
 | `%fpp_skin%` | Current skin mode (`auto` / `custom` / `off`) |
 | `%fpp_body%` | `on` / `off` — body-spawn state |
-| `%fpp_frozen%` | Number of currently frozen bots |
+| `%fpp_pushable%` | `on` / `off` — body pushable state |
+| `%fpp_damageable%` | `on` / `off` — body damageable state |
+| `%fpp_tab%` | `on` / `off` — tab-list visibility |
+| `%fpp_max_health%` | Bot max health value |
+| `%fpp_names%` | Comma-separated list of all bot display names |
 | `%fpp_version%` | Plugin version string |
+
+### Per-World Placeholders
+
+| Placeholder | Value |
+|---|---|
+| `%fpp_count_<world>%` | Bots in specific world (e.g., `%fpp_count_world_nether%`) |
+| `%fpp_real_<world>%` | Real players in specific world |
+| `%fpp_total_<world>%` | Total (real + bots) in specific world |
+
+World names are case-insensitive. Use underscores for worlds with spaces.
+
+### Player-Relative Placeholders
+
+| Placeholder | Value |
+|---|---|
+| `%fpp_user_count%` | Number of bots owned by the player |
+| `%fpp_user_max%` | Bot limit for the player |
+| `%fpp_user_names%` | Comma-separated names of player's bots |
+
+### Quick Examples
+
+**Scoreboard sidebar:**
+```
+&7Bots: &b%fpp_count%&7/&b%fpp_max%
+&7Real: &a%fpp_real%
+&7Total: &e%fpp_total%
+```
+
+**Tab list header:**
+```
+&7Server: &bSurvival &8| &7Players: &a%fpp_real% &8| &7Bots: &b%fpp_count%
+```
+
+**Per-world display:**
+```
+&7Overworld: &e%fpp_total_world%
+&7Nether: &c%fpp_total_world_nether%
+&7End: &d%fpp_total_world_the_end%
+```
+
+> **Full documentation:** See [PLACEHOLDERAPI.md](PLACEHOLDERAPI.md) for detailed usage examples.
 
 ---
 
@@ -212,6 +269,18 @@ When LuckPerms is installed and `luckperms.use-prefix: true`:
 ---
 
 ## ✦ Changelog
+
+### v1.4.28 *(2026-03-26)*
+- **Skin diversity fix** — guaranteed-skin fallback pool now uses on-demand random selection when bots spawn before async prewarm completes, ensuring every bot gets a unique skin even during rapid spawning at server startup (no more "Notch clone armies")
+- **Vanilla skin pool** — default fallback-pool updated to use 27 official Minecraft system accounts (Mojang developers + MHF_* mob/block skins) instead of content creator accounts for a pure vanilla aesthetic
+- **Per-world placeholders** — added dynamic world-specific bot counts: `%fpp_count_<world>%`, `%fpp_real_<world>%`, `%fpp_total_<world>%` (case-insensitive world names)
+- **PlaceholderAPI expansion** — added `%fpp_online%` as cleaner alias for `%fpp_total%` (real players + bots combined)
+- **Fake chat prefix/suffix support** — `fake-chat.chat-format` now supports `{prefix}` and `{suffix}` placeholders for full LuckPerms integration (respects `luckperms.use-prefix` toggle)
+- **Spawn race condition fixed** — `/fpp despawn all` while bots are spawning no longer leaves ghost entries in tab-list/scoreboard; all deferred spawn tasks now check if bot was removed before executing
+- **Portal/teleport bug fixed** — bots pushed through portals or cross-world teleports are now protected: portals cancelled, teleports cancelled, PDC-based entity recovery system added, orphaned nametags cleaned up automatically
+- **Body damageable toggle fixed** — `body.damageable: false` now correctly prevents all damage via event-level cancellation (previous entity-flag-only approach could be bypassed)
+- **Body pushable/damageable live reload** — `/fpp reload` now immediately applies body config changes to all active Mannequins without requiring respawn
+- **Enhanced documentation** — added PLACEHOLDERAPI.md reference, updated Skin-System.md with guaranteed-skin details, created technical documentation for skin system fix
 
 ### v1.4.27 *(2026-03-25)*
 - **Unified spawn syntax** — in-game `/fpp spawn` now supports the same flexible positional syntax as console: `[count] [world] [x y z] [--name <name>]`. Count can be leading or trailing; coordinates can be space-separated (`-609 71 -67`) or comma-separated (`-609,71,-67`). Player without a world arg still spawns at their own location.

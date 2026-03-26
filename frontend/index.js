@@ -10,6 +10,9 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 
+// Serve static files from frontend directory (CSS, JS, etc.)
+app.use(express.static(__dirname));
+
 function findProjectRoot(startDir) {
   if (process.env.PLUGIN_ROOT) return path.resolve(process.env.PLUGIN_ROOT);
   let cur = path.resolve(startDir);
@@ -357,7 +360,15 @@ app.get("/api/check-update", async (req, res) => {
   });
 });
 
-app.get("/", (req, res) => res.redirect("/api/status"));
+// Wiki route - serve the wiki HTML
+app.get("/wiki", (req, res) => {
+  res.sendFile(path.join(__dirname, "wiki.html"));
+});
+
+// Root serves landing page
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 app.listen(port, () =>
   console.log("FPP frontend API listening at http://localhost:" + port)

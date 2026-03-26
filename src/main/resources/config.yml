@@ -1,11 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.4.26
+#  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.4.28
 #  Run /fpp reload to apply changes without restarting the server.
 #  Colors use MiniMessage: <#0079FF>text</#0079FF>  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed by the migration system. Do NOT edit.
-config-version: 26
+config-version: 28
 # Internal migration version — updated automatically. Do not edit.
 
 language: en         # Language file to use (language/<lang>.yml)
@@ -46,6 +46,17 @@ spawn-cooldown: 0
 bot-name:
   admin-format: '{bot_name}'             # /fpp spawn (admin)
   user-format:  'bot-{spawner}-{num}'   # /fpp spawn (user tier)
+
+  # Full tab-list / nametag display format.
+  # Placeholders: {prefix}   — LuckPerms group prefix (respects use-prefix toggle)
+  #               {bot_name} — name resolved from admin-format / user-format above
+  #               {suffix}   — LuckPerms group suffix (respects use-prefix toggle)
+  #               %any_papi% — any PlaceholderAPI placeholder (server-wide context)
+  # Examples:
+  #   "{prefix}{bot_name}{suffix}"                   ← default (same as old behaviour)
+  #   "&7{prefix}{bot_name}{suffix}"                 ← gray prefix/suffix
+  #   "{prefix}{bot_name}{suffix} <gray>%server_uptime%"
+  tab-list-format: '{prefix}{bot_name}{suffix}'
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  LUCKPERMS INTEGRATION
@@ -97,9 +108,47 @@ skin:
 
   # Bots always get SOME skin — never spawn as Steve. When the primary lookup
   # fails (generated name, user bot, rate-limit), this fallback chain runs:
-  #   skins/ folder → pool → fallback-name skin fetched from Mojang
+  #   skins/ folder → pool → fallback-pool (pre-loaded OR on-demand random) → fallback-name
+  # The fallback-pool ensures skin diversity even during server startup before
+  # async preloads complete — a random name is picked on-demand if needed.
   guaranteed-skin: true
-  fallback-name: Notch    # Real Minecraft account used as last-resort skin
+  fallback-name: Notch    # Real Minecraft account used as LAST-resort skin (only when fallback-pool is empty)
+
+  # Random fallback pool — used when bot name has no Mojang skin (generated names, user bots)
+  # Provides skin diversity instead of all unknown bots using the same fallback-name skin
+  # These are official Minecraft system accounts with vanilla skins. The plugin will:
+  #  1. Pre-load all these skins at startup (async, takes ~2-5 seconds)
+  #  2. If bots spawn before preload completes, randomly pick one and fetch on-demand
+  # This guarantees skin variety even during rapid bot spawning at server start.
+  # List includes: Mojang developers (Notch, jeb_) + MHF_* map marker system accounts
+  fallback-pool:
+    - Notch              # Minecraft creator
+    - jeb_               # Lead developer (rainbow sheep easter egg)
+    - Dinnerbone         # Developer (upside-down easter egg)
+    - Grumm              # Developer (upside-down easter egg)
+    - MHF_Steve          # Default male player skin
+    - MHF_Alex           # Default female player skin
+    - MHF_Herobrine      # Herobrine skin
+    - MHF_Zombie         # Zombie mob skin
+    - MHF_PigZombie      # Zombie Pigman skin
+    - MHF_Skeleton       # Skeleton mob skin
+    - MHF_Creeper        # Creeper mob skin
+    - MHF_Spider         # Spider mob skin
+    - MHF_Enderman       # Enderman mob skin
+    - MHF_Blaze          # Blaze mob skin
+    - MHF_Slime          # Slime mob skin
+    - MHF_Villager       # Villager skin
+    - MHF_Golem          # Iron Golem skin
+    - MHF_Pig            # Pig mob skin
+    - MHF_Sheep          # Sheep mob skin
+    - MHF_Cow            # Cow mob skin
+    - MHF_Chicken        # Chicken mob skin
+    - MHF_Squid          # Squid mob skin
+    - MHF_MushroomCow    # Mooshroom skin
+    - MHF_Ocelot         # Ocelot/Cat skin
+    - MHF_Cactus         # Cactus block skin
+    - MHF_Cake           # Cake block skin
+    - MHF_Chest          # Chest block skin
 
   # ── custom mode only ──────────────────────────────────────────────────────
   overrides: {}           # Per-bot override: bot-name: minecraft-username
@@ -120,7 +169,9 @@ skin:
 #  BOT BODY
 # ─────────────────────────────────────────────────────────────────────────────
 body:
-  enabled: true   # false = tab-list / server-count only, no visible entity
+  enabled: true    # false = tab-list / server-count only, no visible entity
+  pushable: true   # true = players/bots can push the body; false = body is immovable
+  damageable: true # true = body takes damage and can die; false = body is invulnerable
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  PERSISTENCE
@@ -230,6 +281,16 @@ fake-chat:
   interval:
     min: 5    # Seconds between messages (min)
     max: 10   # Seconds between messages (max)
+  # Chat line format. Supports MiniMessage tags and legacy & codes.
+  # Placeholders: {prefix}    — LuckPerms group prefix (respects use-prefix toggle)
+  #               {bot_name}  — bot display name
+  #               {suffix}    — LuckPerms group suffix (respects use-prefix toggle)
+  #               {message}   — text drawn from bot-messages.yml
+  # Examples:
+  #   "&7{prefix}{bot_name}&7: {message}"
+  #   "<gray>{bot_name}<white>: {message}"
+  #   "<{bot_name}> {message}"
+  chat-format: "&7{bot_name}: {message}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  TAB LIST

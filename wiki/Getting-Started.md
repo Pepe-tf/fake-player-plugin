@@ -1,15 +1,7 @@
-> [🏠 Home](Home.md) · **Getting Started** · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # Getting Started
 
 > **Platform:** Paper 1.21.x (Mojang-mapped)  
 > **Java:** 21 or higher  
-> **Dependencies:** [PacketEvents 2.11.2](https://github.com/retrooper/packetevents) *(must be installed alongside FPP)*
-
----
-
 ## Requirements
 
 | Requirement | Version |
@@ -20,10 +12,6 @@
 | Online mode | Recommended (`auto` skin mode requires it) |
 
 > **Forks:** Purpur, Pufferfish, and similar Paper forks are supported.  
-> Spigot and CraftBukkit are **not** supported.
-
----
-
 ## Installation
 
 ### Step 1 — Install PacketEvents
@@ -100,10 +88,6 @@ Five fake players will appear with:
 3. **Do not delete** `plugins/FakePlayerPlugin/` — your configs and database are preserved.
 4. Start the server.
 
-> After an upgrade, run `/fpp reload` to apply any new default config values.
-
----
-
 ## Uninstalling
 
 1. Stop the server.
@@ -118,8 +102,3 @@ Five fake players will appear with:
 - [Commands](Commands.md) — learn how to spawn, delete, and manage bots  
 - [Configuration](Configuration.md) — tune the plugin to your server  
 - [Permissions](Permissions.md) — set up access for your staff and players
-
----
-
-| [◀ 🏠 Home](Home.md) | [🏠 Home](Home.md) | [Commands ▶](Commands.md) |
-|:---|:---:|---:|

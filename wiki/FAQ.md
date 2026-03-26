@@ -1,7 +1,3 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · **FAQ & Troubleshooting**
-
----
-
 # FAQ & Troubleshooting
 
 Common issues, questions, and their solutions.
@@ -275,8 +271,3 @@ If your issue is not listed here, contact the plugin owner:
 - **GitHub:** https://github.com/Bill-Hub
 
 > See [LICENSE](../LICENSE) — this software is proprietary. Redistribution and modification are prohibited.
-
----
-
-| [◀ Fake Chat](Fake-Chat.md) | [🏠 Home](Home.md) | *(last page)* ▶ |
-|:---|:---:|---:|

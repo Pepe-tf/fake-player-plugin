@@ -66,6 +66,9 @@ public final class SkinRepository {
     /** Resolved skins from the config pool (player names + URLs). */
     private final List<SkinProfile> poolSkins = new CopyOnWriteArrayList<>();
 
+    /** Resolved fallback pool skins — loaded from {@code skin.fallback-pool} for auto mode diversity. */
+    private final List<SkinProfile> fallbackPoolSkins = new CopyOnWriteArrayList<>();
+
     /** Session cache: bot-name → resolved profile (cleared on reload). */
     private final Map<String, SkinProfile> sessionCache = new ConcurrentHashMap<>();
 
@@ -98,6 +101,7 @@ public final class SkinRepository {
         folderSkins.clear();
         namedOverrides.clear();
         poolSkins.clear();
+        fallbackPoolSkins.clear();
         sessionCache.clear();
         fallbackSkin = null;
 
@@ -114,11 +118,13 @@ public final class SkinRepository {
 
         if ("auto".equals(mode)) {
             // In auto mode, Mojang resolves skins by name automatically.
-            // Only prewarm the fallback skin so guaranteed-skin has something to use
-            // when a bot name isn't a real Mojang account (generated names, user bots, etc.).
+            // Load fallback pool for diversity when bot names don't exist on Mojang
+            // (generated names, user bots, etc.), then prewarm the single fallback-name
+            // as the absolute last resort.
             if (Config.skinGuaranteed()) {
+                loadFallbackPool();
                 loadFallbackSkin();
-                FppLogger.debug("SkinRepository: mode=auto + guaranteed-skin=true — fallback skin queued for prewarm.");
+                FppLogger.debug("SkinRepository: mode=auto + guaranteed-skin=true — fallback pool + fallback skin queued for prewarm.");
             } else {
                 FppLogger.debug("SkinRepository: mode=auto — repository not loaded.");
             }
@@ -406,6 +412,36 @@ public final class SkinRepository {
     // ── Fallback skin (guaranteed-skin safety net) ────────────────────────────
 
     /**
+     * Loads the {@code skin.fallback-pool} — a list of real Minecraft usernames
+     * whose skins are fetched and randomly used when a bot's name has no Mojang account.
+     * Provides skin diversity in auto mode instead of all unknown-name bots using
+     * the same fallback-name skin. Called from {@link #reload()} when
+     * {@code skin.guaranteed-skin} is {@code true} and mode is {@code auto}.
+     */
+    private void loadFallbackPool() {
+        List<String> names = Config.skinFallbackPool();
+        if (names.isEmpty()) {
+            FppLogger.debug("SkinRepository: fallback-pool is empty — will use single fallback-name.");
+            return;
+        }
+        
+        FppLogger.debug("SkinRepository: loading " + names.size() + " fallback-pool skins...");
+        for (String name : names) {
+            if (name == null || name.isBlank()) continue;
+            SkinFetcher.fetchAsync(name, (value, sig) -> {
+                if (value != null && !value.isBlank()) {
+                    SkinProfile p = new SkinProfile(value, sig, "fallback-pool:" + name);
+                    fallbackPoolSkins.add(p);
+                    FppLogger.debug("SkinRepository: fallback-pool skin '" + name + "' loaded (" 
+                            + fallbackPoolSkins.size() + "/" + names.size() + ").");
+                } else {
+                    FppLogger.debug("SkinRepository: fallback-pool skin '" + name + "' not found on Mojang.");
+                }
+            });
+        }
+    }
+
+    /**
      * Eagerly fetches the configured {@code skin.fallback-name} and stores it in
      * {@link #fallbackSkin} for instant use. Called from {@link #reload()} when
      * {@code skin.guaranteed-skin} is {@code true}. The fetch is async — the
@@ -431,6 +467,8 @@ public final class SkinRepository {
      * <ol>
      *   <li>Folder skins (loaded synchronously at startup)</li>
      *   <li>Pool skins (loaded asynchronously — may be ready by now)</li>
+     *   <li>Fallback pool skins ({@code skin.fallback-pool} — pre-loaded, auto mode diversity)</li>
+     *   <li>On-demand random pick from {@code skin.fallback-pool} config (if pool not ready yet)</li>
      *   <li>Pre-loaded fallback skin ({@code skin.fallback-name})</li>
      *   <li>On-demand fetch of {@code skin.fallback-name} (last resort)</li>
      * </ol>
@@ -456,13 +494,51 @@ public final class SkinRepository {
             callback.accept(p);
             return;
         }
-        // 3. Pre-loaded fallback skin (already cached from startup prewarm)
+        // 3. Fallback pool skins — diverse auto mode fallback (pre-loaded asynchronously)
+        if (!fallbackPoolSkins.isEmpty()) {
+            SkinProfile p = fallbackPoolSkins.get(ThreadLocalRandom.current().nextInt(fallbackPoolSkins.size()));
+            FppLogger.debug("SkinRepository: guaranteed-skin → fallback-pool skin (" + p.getSource() + ").");
+            callback.accept(p);
+            return;
+        }
+        // 4. On-demand random pick from fallback-pool config (fallback for when prewarm incomplete)
+        //    This ensures diversity even if bots spawn before async preloads finish
+        List<String> poolConfig = Config.skinFallbackPool();
+        if (poolConfig != null && !poolConfig.isEmpty()) {
+            String randomName = poolConfig.get(ThreadLocalRandom.current().nextInt(poolConfig.size()));
+            if (randomName != null && !randomName.isBlank()) {
+                FppLogger.debug("SkinRepository: guaranteed-skin → on-demand random fallback-pool fetch for '" + randomName + "'.");
+                SkinFetcher.fetchAsync(randomName, (value, sig) -> {
+                    if (value != null && !value.isBlank()) {
+                        SkinProfile p = new SkinProfile(value, sig, "fallback-pool-ondemand:" + randomName);
+                        // Cache it for next time
+                        fallbackPoolSkins.add(p);
+                        FppLogger.debug("SkinRepository: on-demand fallback-pool skin '" + randomName + "' fetched and cached.");
+                        callback.accept(p);
+                    } else {
+                        // This specific name failed — fall through to single fallback-name
+                        FppLogger.debug("SkinRepository: on-demand fallback-pool fetch failed for '" + randomName + "' — trying fallback-name.");
+                        fetchSingleFallback(callback);
+                    }
+                });
+                return;
+            }
+        }
+        // 5. Pre-loaded fallback skin (already cached from startup prewarm)
         if (fallbackSkin != null && fallbackSkin.isValid()) {
             FppLogger.debug("SkinRepository: guaranteed-skin → pre-loaded fallback (" + fallbackSkin.getSource() + ").");
             callback.accept(fallbackSkin);
             return;
         }
-        // 4. On-demand fetch of fallback name (last resort — prewarm may not have completed)
+        // 6. On-demand fetch of fallback name (last resort — prewarm may not have completed)
+        fetchSingleFallback(callback);
+    }
+
+    /**
+     * Helper method to fetch the single {@code skin.fallback-name} as the absolute last resort.
+     * Extracted to avoid duplication in the fallback chain.
+     */
+    private void fetchSingleFallback(Consumer<SkinProfile> callback) {
         String name = Config.skinFallbackName();
         if (name != null && !name.isBlank()) {
             FppLogger.debug("SkinRepository: guaranteed-skin → on-demand fallback fetch for '" + name + "'.");

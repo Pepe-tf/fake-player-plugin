@@ -6,6 +6,7 @@ import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.group.Group;
 import net.luckperms.api.node.NodeType;
 import net.luckperms.api.node.types.PrefixNode;
+import net.luckperms.api.node.types.SuffixNode;
 import net.luckperms.api.query.QueryOptions;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
@@ -68,16 +69,21 @@ public final class LuckPermsHelper {
 
     /**
      * Immutable result of a LuckPerms lookup.
-     * {@link #prefix} is already converted to MiniMessage format (or empty string).
+     * {@link #prefix} and {@link #suffix} are already converted to MiniMessage format (or empty string).
      * {@link #weight} is the raw LP group weight integer.
      */
-    public record LpData(String prefix, int weight) {
+    public record LpData(String prefix, int weight, String suffix) {
         /** Sentinel returned when LP is unavailable or no data is found. */
-        public static final LpData EMPTY = new LpData("", 0);
+        public static final LpData EMPTY = new LpData("", 0, "");
 
         /** @return true when a non-blank prefix was resolved. */
         public boolean hasPrefix() {
             return prefix != null && !prefix.isBlank();
+        }
+
+        /** @return true when a non-blank suffix was resolved. */
+        public boolean hasSuffix() {
+            return suffix != null && !suffix.isBlank();
         }
     }
 
@@ -375,7 +381,9 @@ public final class LuckPermsHelper {
             String rawPrefix = extractBestPrefix(g);
             String prefix    = rawPrefix != null ? TextUtil.legacyToMiniMessage(rawPrefix) : "";
             int    weight    = g.getWeight().orElse(0);
-            return store(key, new LpData(prefix, weight));
+            String rawSuffix = extractBestSuffix(g);
+            String suffix    = rawSuffix != null ? TextUtil.legacyToMiniMessage(rawSuffix) : "";
+            return store(key, new LpData(prefix, weight, suffix));
         } catch (Exception e) {
             Config.debug("[LP] getGroupData('" + groupName + "') failed: " + e.getMessage());
             return LpData.EMPTY;
@@ -412,7 +420,7 @@ public final class LuckPermsHelper {
                 }
             }
             if (lowestPrefix != null) {
-                LpData result = new LpData(TextUtil.legacyToMiniMessage(lowestPrefix), foundWeight);
+                LpData result = new LpData(TextUtil.legacyToMiniMessage(lowestPrefix), foundWeight, "");
                 return store(key, result);
             }
         } catch (Exception e) {
@@ -518,6 +526,24 @@ public final class LuckPermsHelper {
         // Fallback: cached metadata (may have already been processed by LP)
         try {
             return g.getCachedData().getMetaData(QueryOptions.nonContextual()).getPrefix();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts the highest-priority suffix from a group.
+     * Mirrors {@link #extractBestPrefix} but for suffix nodes.
+     */
+    private static String extractBestSuffix(Group g) {
+        String s = g.getNodes(NodeType.SUFFIX)
+                .stream()
+                .max(Comparator.comparingInt(SuffixNode::getPriority))
+                .map(SuffixNode::getMetaValue)
+                .orElse(null);
+        if (s != null && !s.isBlank()) return s;
+        try {
+            return g.getCachedData().getMetaData(QueryOptions.nonContextual()).getSuffix();
         } catch (Exception ignored) {
             return null;
         }

@@ -58,8 +58,8 @@ public final class FakePlayerBody {
         try {
             return loc.getWorld().spawn(loc, Mannequin.class, m -> {
                 m.setGravity(true);
-                m.setInvulnerable(false);
-                m.setImmovable(false);
+                m.setInvulnerable(!Config.bodyDamageable());
+                m.setImmovable(!Config.bodyPushable());
                 m.setCollidable(true);
                 m.setRemoveWhenFarAway(false);
                 m.setSilent(true);

@@ -1,7 +1,3 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · **Configuration** · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # Configuration
 
 FPP is configured through `plugins/FakePlayerPlugin/config.yml`.  
@@ -15,9 +11,10 @@ All changes take effect immediately after running `/fpp reload` — no server re
 |---------|---------|
 | [`language`](#language) | Active language file |
 | [`debug`](#debug) | Verbose console logging |
+| [`bot-name`](#bot-display-names) | Admin/user format templates and tab-list format |
 | [`fake-player`](#fake-player) | Core bot behaviour |
 | [`fake-player.skin`](#skin) | Skin system mode |
-| [`fake-player.spawn-body`](#body) | Physical Mannequin entity |
+| [`body`](#body) | Physical Mannequin entity, pushable & damageable toggles |
 | [`fake-player.persist-on-restart`](#persistence) | Save/restore bots across restarts |
 | [`fake-player.join-delay`](#join-delay) | Staggered join timing |
 | [`fake-player.leave-delay`](#leave-delay) | Staggered leave timing |
@@ -28,7 +25,7 @@ All changes take effect immediately after running `/fpp reload` — no server re
 | [`fake-player.head-ai`](#head-ai) | Head-tracking AI |
 | [`fake-player.collision`](#collision--push) | Push physics |
 | [`fake-player.swap`](#swap-system) | Bot rotation settings |
-| [`fake-chat`](#fake-chat) | Bot chat AI |
+| [`fake-chat`](#fake-chat) | Bot chat AI + message format |
 | [`tab-list`](#tab-list) | Tab-list header/footer and bot visibility toggle |
 | [`database`](#database) | SQLite / MySQL storage |
 
@@ -95,6 +92,38 @@ Admin users see these presets. User-tier players always see only `1`.
 
 ---
 
+## Bot Display Names
+
+```yaml
+bot-name:
+  admin-format: '{bot_name}'
+  user-format:  'bot-{spawner}-{num}'
+  tab-list-format: '{prefix}{bot_name}{suffix}'
+```
+
+| Key | Description |
+|-----|-------------|
+| `admin-format` | Display-name template for bots spawned by admins (`fpp.spawn`). Placeholder: `{bot_name}` — the name drawn from `bot-names.yml`. |
+| `user-format` | Display-name template for bots spawned by non-admin users (`fpp.user.spawn`). Placeholders: `{bot_name}`, `{spawner}` (the player's name), `{num}` (sequential bot index). |
+| `tab-list-format` | **Full tab-list / nametag display format.** Applied as the final step after `admin-format` / `user-format` is resolved. |
+
+### `tab-list-format` placeholders
+
+| Placeholder | Value |
+|-------------|-------|
+| `{prefix}` | LuckPerms group prefix (empty when `luckperms.use-prefix: false`) |
+| `{bot_name}` | Resolved bot name after `admin-format` / `user-format` substitution |
+| `{suffix}` | LuckPerms group suffix (empty when `luckperms.use-prefix: false`) |
+| `%any_papi%` | Any PlaceholderAPI placeholder — evaluated server-wide (null player context) |
+
+**Examples:**
+
+| Format | Result |
+|--------|--------|
+| `"{prefix}{bot_name}{suffix}"` | Default — prefix + name + suffix |
+| `"&8[&7Bot&8] {bot_name}"` | Static gray `[Bot]` label before the name |
+| `"{prefix}{bot_name}{suffix} <gray>%server_uptime%"` | Appends server uptime via PAPI |
+
 ## Skin
 
 ```yaml
@@ -114,25 +143,22 @@ Controls how bots get their Minecraft player skin.
 
 `clear-cache-on-reload` — when `true` and `mode: fetch`, the skin texture cache is cleared every time `/fpp reload` is run.
 
-> See [Skin System](Skin-System.md) for a detailed explanation.
-
----
-
 ## Body
 
 ```yaml
-fake-player:
-  spawn-body: true
+body:
+  enabled: true
+  pushable: true
+  damageable: true
 ```
 
-Controls whether a physical **Mannequin** entity is spawned for each bot.
+Controls whether a physical **Mannequin** entity is spawned for each bot and how it interacts with the world.
 
-| Value | Effect |
-|-------|--------|
-| `true` | Bots are visible in the world, have a hitbox, can be pushed, and take damage. |
-| `false` | Bots only appear in the tab list with join/leave messages — no entity in the world. |
-
----
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | boolean | `true` | Spawn a visible Mannequin entity in the world. When `false`, bots appear only in the tab list with join/leave messages — no entity is placed. |
+| `pushable` | boolean | `true` | Allow players and other entities to physically push the bot's body. When `false`, the Mannequin is completely immovable — walk-into, hit-knockback, and bot-vs-bot separation forces are all ignored. Hot-reloadable via `/fpp reload`. |
+| `damageable` | boolean | `true` | Allow the bot's body to take damage and be killed. When `false`, the Mannequin is invulnerable — hits register the hurt sound (if `combat.hurt-sound: true`) but deal no damage. Hot-reloadable via `/fpp reload`. |
 
 ## Persistence
 
@@ -318,7 +344,36 @@ fake-chat:
   interval:
     min: 5
     max: 10
+  chat-format: "&7{bot_name}: {message}"
 ```
+
+| Key | Description |
+|-----|-------------|
+| `enabled` | Master toggle for the entire fake-chat system. |
+| `require-player-online` | Suppress bot messages when no real players are online. |
+| `chance` | Roll probability (0.0–1.0) per interval tick. |
+| `interval.min` / `interval.max` | Seconds between each bot's own messages (random range). |
+| `chat-format` | **Full chat line format.** Supports MiniMessage tags and legacy `&` codes. |
+
+**`chat-format` placeholders:**
+
+| Placeholder | Value |
+|-------------|-------|
+| `{prefix}` | LuckPerms group prefix (empty when `luckperms.use-prefix: false`) |
+| `{bot_name}` | Bot display name |
+| `{suffix}` | LuckPerms group suffix (empty when `luckperms.use-prefix: false`) |
+| `{message}` | Text drawn from `bot-messages.yml` |
+
+**`chat-format` examples:**
+
+| Format string | Result |
+|---------------|--------|
+| `"&7{bot_name}: {message}"` | Gray name, default colon style (default) |
+| `"&7{prefix}{bot_name}&7: {message}"` | LP prefix before name |
+| `"{prefix}{bot_name}{suffix}&7: {message}"` | Full prefix + suffix wrap |
+| `"<gray>{bot_name}</gray>: {message}"` | MiniMessage gray |
+| `"<{bot_name}> {message}"` | IRC-style `<BotName> hello` |
+| `"<gradient:#ff0000:#0000ff>{bot_name}</gradient>: {message}"` | Gradient name |
 
 See [Fake Chat](Fake-Chat.md) for a full explanation.
 
@@ -334,10 +389,6 @@ tab-list:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `enabled` | boolean | `true` | **Whether bots appear as entries in the player tab list.** `true` = bots show in the tab list. `false` = bots are invisible in the tab list; they still count toward the server player count shown in the multiplayer server-list screen. Hot-reloadable via `/fpp reload`. |
-
-> **For custom tab-list headers and footers**, use a dedicated tab-list plugin (e.g. TAB, BetterTabList). FPP no longer manages header/footer text.
-
----
 
 ## Database
 
@@ -367,8 +418,3 @@ When MySQL is disabled or unreachable, FPP automatically uses a local **SQLite**
 `plugins/FakePlayerPlugin/data/fpp.db`
 
 > See [Database](Database.md) for schema details and how to query records.
-
----
-
-| [◀ Permissions](Permissions.md) | [🏠 Home](Home.md) | [Language ▶](Language.md) |
-|:---|:---:|---:|

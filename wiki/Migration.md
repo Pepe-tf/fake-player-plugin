@@ -1,7 +1,3 @@
-> [Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Migration & Backups](Migration.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [FAQ](FAQ.md)
-
----
-
 # ᴍɪɢʀᴀᴛɪᴏɴ & ʙᴀᴄᴋᴜᴘꜱ
 
 > **Version:** 1.1.4 · **Platform:** Paper 1.21+
@@ -240,10 +236,6 @@ When you're ready to move from a local SQLite database to a shared MySQL instanc
 
 6. FPP reads the local `data/fpp.db`, merges all rows into MySQL, and reports the count.
 
-> **Note:** The SQLite file is not deleted automatically. Once you've verified the MySQL data is correct, you can delete `data/fpp.db` manually.
-
----
-
 ## Manual Rollback
 
 If something goes wrong after an update, you can restore from a backup:
@@ -263,10 +255,6 @@ If something goes wrong after an update, you can restore from a backup:
 > **Tip:** Keep at least one manual backup before every major version update:
 > ```
 > /fpp migrate backup
-> ```
-
----
-
 ## Config Version Reference
 
 | Config Version | Plugin Version | What changed |
@@ -281,10 +269,6 @@ If something goes wrong after an update, you can restore from a backup:
 | 8 | 1.0.13 | Added `collision` section |
 | 9 | 1.0.15 | Added `swap` and `fake-chat` sections |
 | **10** | **1.1.4** | Added `limits`, `bot-name`, `persistence`, `death`, `database` sections; normalised join/leave-delay keys |
-
-> **Current version:** `10`
-
----
 
 ## Troubleshooting
 

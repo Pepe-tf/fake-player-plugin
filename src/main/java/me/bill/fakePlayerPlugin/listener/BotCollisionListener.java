@@ -48,6 +48,7 @@ public class BotCollisionListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (!Config.bodyPushable()) return;
         if (!(event.getEntity() instanceof Mannequin target)) return;
         if (!isFakeBody(target)) return;
         if (!(event.getDamager() instanceof LivingEntity attacker)) return;
@@ -77,6 +78,7 @@ public class BotCollisionListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerMove(PlayerMoveEvent event) {
+        if (!Config.bodyPushable()) return;
         Location from = event.getFrom();
         Location to   = event.getTo();
         if (to == null) return;
@@ -115,6 +117,7 @@ public class BotCollisionListener implements Listener {
     // ── 3. Bot-vs-bot separation ──────────────────────────────────────────────
 
     private void tickBotSeparation() {
+        if (!Config.bodyPushable()) return;
         Collection<FakePlayer> all = manager.getActivePlayers();
         if (all.size() < 2) return;
 

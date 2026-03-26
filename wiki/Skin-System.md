@@ -1,7 +1,3 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · **Skin System** · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # Skin System
 
 FPP v1.1.0 ships a fully reworked skin pipeline with three modes and multiple
@@ -39,8 +35,57 @@ resolves the skin from Mojang automatically — exactly like a real player joini
 > **Tip:** If a bot name doesn't match any Mojang account the client falls back
 > to the default Steve / Alex skin. This is expected behaviour.
 
----
+#### Guaranteed Skin (auto mode)
 
+When `guaranteed-skin: true`, the plugin ensures every bot gets a valid skin
+even when the bot name doesn't exist on Mojang (generated names, user bots, etc.).
+
+**Fallback chain:**
+
+```
+1. skins/ folder → pick random PNG file
+2. skin.custom.pool → pick random entry (if any)
+3. skin.fallback-pool → pick random from 20 pre-loaded popular skins
+   ├─ Pre-loaded at startup (async, takes ~2-5 seconds)
+   └─ If bots spawn before preload completes, fetch on-demand randomly
+4. skin.fallback-name → single last-resort skin (default: Notch)
+```
+
+The `fallback-pool` **ensures skin diversity** even during rapid bot spawning
+at server startup. If the prewarm hasn't completed yet, the plugin will:
+- Randomly pick a name from the config list
+- Fetch it on-demand (fast, ~50-200ms)
+- Cache it for future bots
+
+This prevents the "all bots spawn as Notch" issue when many bots spawn quickly.
+
+**Config example:**
+
+```yaml
+skin:
+  mode: auto
+  guaranteed-skin: true
+  fallback-name: Notch
+  fallback-pool:
+    - Notch              # Minecraft creator
+    - jeb_               # Lead developer
+    - Dinnerbone         # Developer (upside-down)
+    - Grumm              # Developer (upside-down)
+    - MHF_Steve          # Default male player skin
+    - MHF_Alex           # Default female player skin
+    - MHF_Herobrine      # Herobrine skin
+    - MHF_Zombie         # Zombie mob skin
+    - MHF_Creeper        # Creeper mob skin
+    # ... 18 more MHF_* system accounts (default config includes 27 total)
+```
+
+The default pool includes:
+- **Mojang developers** (Notch, jeb_, Dinnerbone, Grumm)
+- **MHF_* system accounts** — Official Minecraft map marker accounts with mob/player skins
+
+> **Performance note:** The prewarm fetches all 27 skins asynchronously at
+> startup. This adds ~2-5 seconds to skin availability but doesn't block
+> server startup. Bots spawned during this window still get diverse skins
 ### `custom` *(Full control — works online & offline)*
 
 FPP runs a **5-step resolution pipeline** to find the best skin for each bot:
@@ -126,6 +171,32 @@ No skin is applied. Bots display the default Steve or Alex appearance
 skin:
   # Skin mode: auto | custom | off
   mode: auto
+
+  # Guarantee every bot gets a skin (never spawn as Steve)
+  # When enabled, falls back to folder/pool/fallback-pool/fallback-name
+  # if the bot's name doesn't exist on Mojang
+  guaranteed-skin: true
+
+  # Last-resort fallback skin (single Mojang account)
+  # Only used when all other fallback sources are empty/unavailable
+  fallback-name: Notch
+
+  # Random fallback pool (27 official Minecraft accounts by default)
+  # Provides skin diversity for bots with non-existent names
+  # Pre-loaded at startup (async); on-demand random fetch if needed during spawn
+  # Includes Mojang developers + MHF_* map marker system accounts
+  fallback-pool:
+    - Notch
+    - jeb_
+    - Dinnerbone
+    - Grumm
+    - MHF_Steve
+    - MHF_Alex
+    - MHF_Herobrine
+    - MHF_Zombie
+    - MHF_Creeper
+    - MHF_Skeleton
+    # ... add more real Minecraft usernames or MHF_* system accounts
 
   # Clear resolved skin cache on /fpp reload
   clear-cache-on-reload: true

@@ -1,12 +1,4 @@
-> **🏠 Home** · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Migration & Backups](Migration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · [FAQ & Troubleshooting](FAQ.md)
-
----
-
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ — Wiki
-
-> **Version:** 1.1.4 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
-
----
 
 ## Welcome
 
@@ -56,9 +48,12 @@ It spawns realistic fake players that appear in the **tab list**, **server list*
 - ✅ Per-player bot limits via `fpp.bot.<num>` permission nodes  
 - ✅ Bot **persistence** — bots leave on shutdown and rejoin after restart  
 - ✅ **Swap system** — bots rotate with realistic personalities and timing  
-- ✅ **Fake chat** — bots send configurable messages from `bot-messages.yml`  
+- ✅ **Fake chat** — bots send messages from `bot-messages.yml` with a fully customisable `chat-format` (MiniMessage / `&` codes, `{bot_name}` / `{message}` placeholders)  
+- ✅ **Customisable display names** — `tab-list-format` supports `{prefix}`, `{bot_name}`, `{suffix}` (LuckPerms) and any `%papi%` placeholder  
+- ✅ **Toggleable body interaction** — independently disable push (`body.pushable`) or damage (`body.damageable`) hot-reloadable per config  
 - ✅ **Database** — SQLite (default) or MySQL session history  
-- ✅ Full **LuckPerms** compatibility via Bukkit permission layer  
+- ✅ Full **PlaceholderAPI** expansion — 15 server-wide (`%fpp_count%`, `%fpp_real%`, `%fpp_total%`, `%fpp_pushable%`, `%fpp_damageable%`, ...) + 3 player-relative (`%fpp_user_count%`, `%fpp_user_max%`, `%fpp_user_names%`)  
+- ✅ Full **LuckPerms** compatibility — prefix, suffix, and weight ordering from LP groups  
 - ✅ MiniMessage colour formatting throughout  
 - ✅ **Auto-migration** — config upgrades automatically on update, never loses your data  
 - ✅ **Backup system** — timestamped backups before every migration, 10-set rolling window  
@@ -73,7 +68,3 @@ To request usage permissions or report issues, contact the owner on Discord: **B
 
 > See [LICENSE](../LICENSE) for the full terms.
 
----
-
-| ◀ *(first page)* | [🏠 Home](Home.md) | [Getting Started ▶](Getting-Started.md) |
-|:---|:---:|---:|
