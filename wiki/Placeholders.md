@@ -12,7 +12,7 @@ FPP provides **18 placeholders** organized into three categories: **Server-Wide*
 
 | Placeholder | Description | Example Output |
 |-------------|-------------|----------------|
-| `%fpp_count%` | Number of active fake players | `3` |
+| `%fpp_count%` | Number of active fake players (all worlds). Also supports per-world variant — see [Per-World Placeholders](#per-world-placeholders) | `3` |
 | `%fpp_max%` | Global bot limit (0 = unlimited) | `50` or `∞` |
 | `%fpp_real%` | Number of real players online | `12` |
 | `%fpp_total%` | Real players + fake players | `15` |

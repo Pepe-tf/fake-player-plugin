@@ -227,7 +227,7 @@ death:
 # ─────────────────────────────────────────────────────────────────────────────
 chunk-loading:
   enabled: true
-  radius: 6            # Chunk radius kept loaded. 0 = match server simulation-distance.
+  radius: 0            # Chunk radius kept loaded. 0 = match server simulation-distance.
   update-interval: 20  # Ticks between position checks (20 = 1 s). Lower = more responsive.
 
 # ─────────────────────────────────────────────────────────────────────────────

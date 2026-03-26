@@ -13,7 +13,7 @@ These are player-independent and return the same value regardless of who request
 
 | Placeholder | Returns | Description |
 |-------------|---------|-------------|
-| `%fpp_count%` | Number | Active bot count |
+| `%fpp_count%` | Number | Active bot count (all worlds). Also supports per-world: `%fpp_count_<world>%` — see [Per-World Placeholders](#per-world-placeholders) |
 | `%fpp_max%` | Number / `∞` | Global max-bots cap (`limits.max-bots`; `∞` when 0) |
 | `%fpp_real%` | Number | Real (non-bot) online player count |
 | **`%fpp_total%`** | **Number** | **Real players + bots combined** |
@@ -28,6 +28,27 @@ These are player-independent and return the same value regardless of who request
 | `%fpp_tab%` | `on` / `off` | Whether bots appear in the tab list |
 | `%fpp_max_health%` | Number | Configured bot max-health (`combat.max-health`) |
 | `%fpp_version%` | String | FPP plugin version |
+
+---
+
+## Per-World Placeholders
+
+Dynamic variants of the three count placeholders. Replace `<world>` with the actual world name (case-insensitive).
+
+| Placeholder | Returns | Description |
+|-------------|---------|-------------|
+| `%fpp_count_<world>%` | Number | Active bot count in the specified world |
+| `%fpp_real_<world>%` | Number | Real (non-bot) player count in the specified world |
+| `%fpp_total_<world>%` | Number | Real players + bots combined in the specified world |
+
+**Examples:**
+```
+%fpp_count_overworld%   → 2   (bots in the Overworld)
+%fpp_real_nether%       → 1   (real players in the Nether)
+%fpp_total_end%         → 3   (everyone in The End)
+```
+
+> **Note:** Bot world detection uses the live Mannequin position first, then falls back to `spawnLocation` for bodyless bots.
 
 ---
 
