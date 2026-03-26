@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Navigation Position Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .test-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .test-info {
+            background: #2196F3;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        /* Page Navigation Styles (copied from wiki-styles.css) */
+        .page-navigation {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 2px solid #ddd;
+        }
+
+        /* When there's only a next button (first page), position it on the right */
+        .page-navigation:has(.next-page:only-child) {
+            justify-content: flex-end;
+        }
+
+        /* Fallback for browsers that don't support :has() selector */
+        .page-navigation .next-page:only-child {
+            margin-left: auto;
+        }
+
+        .page-nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s ease;
+            flex: 1;
+            max-width: 48%;
+        }
+
+        .page-nav-btn:hover {
+            background: #e9ecef;
+            border-color: #2196F3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .page-nav-btn svg {
+            flex-shrink: 0;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+
+        .page-nav-btn:hover svg {
+            color: #2196F3;
+        }
+
+        .nav-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .nav-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #666;
+        }
+
+        .nav-title {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .prev-page {
+            justify-content: flex-start;
+        }
+
+        .next-page {
+            justify-content: flex-end;
+            text-align: right;
+        }
+
+        .page-nav-btn:only-child {
+            max-width: 100%;
+        }
+
+        .scenario {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .success {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-info">
+            <strong>✅ Page Navigation Position Fix Test</strong><br>
+            Testing the fix for positioning the "Next" button on the right side when it's the only navigation button (like on the Home page).
+        </div>
+
+        <h1>Page Navigation Position Test</h1>
+        <p>This page tests different navigation scenarios to ensure the "Next" button appears on the right side when it's the only button present.</p>
+
+        <div class="scenario">
+            <h3>Scenario 1: Only Next Button (Home Page)</h3>
+            <p>This should show the "Next" button positioned on the <strong>right side</strong>:</p>
+
+            <nav class="page-navigation">
+                <a href="#" class="page-nav-btn next-page">
+                    <span class="nav-text">
+                        <span class="nav-label">Next</span>
+                        <span class="nav-title">Getting Started</span>
+                    </span>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </a>
+            </nav>
+            <div class="success">✅ The Next button should be positioned on the RIGHT side</div>
+        </div>
+
+        <div class="scenario">
+            <h3>Scenario 2: Only Previous Button (Last Page)</h3>
+            <p>This should show the "Previous" button positioned on the <strong>left side</strong>:</p>
+
+            <nav class="page-navigation">
+                <a href="#" class="page-nav-btn prev-page">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                    <span class="nav-text">
+                        <span class="nav-label">Previous</span>
+                        <span class="nav-title">Configuration</span>
+                    </span>
+                </a>
+            </nav>
+            <div class="success">✅ The Previous button should be positioned on the LEFT side</div>
+        </div>
+
+        <div class="scenario">
+            <h3>Scenario 3: Both Previous and Next Buttons (Middle Page)</h3>
+            <p>This should show both buttons positioned on opposite sides:</p>
+
+            <nav class="page-navigation">
+                <a href="#" class="page-nav-btn prev-page">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                    <span class="nav-text">
+                        <span class="nav-label">Previous</span>
+                        <span class="nav-title">Getting Started</span>
+                    </span>
+                </a>
+                <a href="#" class="page-nav-btn next-page">
+                    <span class="nav-text">
+                        <span class="nav-label">Next</span>
+                        <span class="nav-title">Configuration</span>
+                    </span>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </a>
+            </nav>
+            <div class="success">✅ Previous on LEFT, Next on RIGHT with space between</div>
+        </div>
+
+        <h2>Expected Results</h2>
+        <ul>
+            <li><strong>Scenario 1 (Home Page)</strong>: Next button should be on the RIGHT side</li>
+            <li><strong>Scenario 2 (Last Page)</strong>: Previous button should be on the LEFT side</li>
+            <li><strong>Scenario 3 (Middle Pages)</strong>: Previous on left, Next on right, spaced apart</li>
+        </ul>
+
+        <div class="success">
+            <strong>✅ Fix Applied:</strong><br>
+            • Added `:has(.next-page:only-child)` selector for modern browsers<br>
+            • Added `margin-left: auto` fallback for older browsers<br>
+            • Maintains existing behavior for pages with both buttons
+        </div>
+    </div>
+</body>
+</html>

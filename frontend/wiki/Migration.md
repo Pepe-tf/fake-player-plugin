@@ -289,7 +289,4 @@ Make sure the file is in `plugins/FakePlayerPlugin/data/` and you're using just 
 
 The DatabaseManager failed to initialise. Check console logs for SQLite/MySQL connection errors and verify your `database:` config block.
 
----
-
-← [Database](Database.md) · [← Previous](Database.md) · [Next → FAQ](FAQ.md)
 

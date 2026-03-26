@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Position Fix Test - Updated</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .test-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .test-info {
+            background: #FF5722;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        /* Updated Page Navigation Styles */
+        .page-navigation {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 2px solid #ddd;
+        }
+
+        /* When only the next button is visible (first page), position it on the right */
+        .page-navigation.next-only {
+            justify-content: flex-end;
+        }
+
+        /* When only the previous button is visible (last page), position it on the left */
+        .page-navigation.prev-only {
+            justify-content: flex-start;
+        }
+
+        /* When both buttons are visible, maintain space-between behavior */
+        .page-navigation.both-visible {
+            justify-content: space-between;
+        }
+
+        .page-nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s ease;
+            flex: 1;
+            max-width: 48%;
+        }
+
+        .page-nav-btn:hover {
+            background: #e9ecef;
+            border-color: #FF5722;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .page-nav-btn svg {
+            flex-shrink: 0;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+
+        .page-nav-btn:hover svg {
+            color: #FF5722;
+        }
+
+        .nav-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .nav-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #666;
+        }
+
+        .nav-title {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .prev-page {
+            justify-content: flex-start;
+        }
+
+        .next-page {
+            justify-content: flex-end;
+            text-align: right;
+        }
+
+        .scenario {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #FF5722;
+        }
+
+        .success {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .fixed {
+            background: #FF9800;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-info">
+            <strong>🔧 UPDATED Navigation Position Fix Test</strong><br>
+            Testing the improved fix using JavaScript classes instead of CSS-only selectors.
+        </div>
+
+        <h1>Navigation Position Fix - Updated Approach</h1>
+        <p>The original CSS-only approach failed because both buttons exist in the DOM (one is hidden with display:none). The new approach uses JavaScript to add CSS classes.</p>
+
+        <div class="scenario">
+            <h3>Scenario 1: Home Page - Only Next Button (Class: next-only)</h3>
+            <p>Using <code>.page-navigation.next-only</code> with <code>justify-content: flex-end</code></p>
+
+            <nav class="page-navigation next-only">
+                <a href="#" class="page-nav-btn next-page">
+                    <span class="nav-text">
+                        <span class="nav-label">Next</span>
+                        <span class="nav-title">Getting Started</span>
+                    </span>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </a>
+            </nav>
+            <div class="success">✅ Next button should be on the RIGHT (using flex-end)</div>
+        </div>
+
+        <div class="scenario">
+            <h3>Scenario 2: Last Page - Only Previous Button (Class: prev-only)</h3>
+            <p>Using <code>.page-navigation.prev-only</code> with <code>justify-content: flex-start</code></p>
+
+            <nav class="page-navigation prev-only">
+                <a href="#" class="page-nav-btn prev-page">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                    <span class="nav-text">
+                        <span class="nav-label">Previous</span>
+                        <span class="nav-title">Configuration</span>
+                    </span>
+                </a>
+            </nav>
+            <div class="success">✅ Previous button should be on the LEFT (using flex-start)</div>
+        </div>
+
+        <div class="scenario">
+            <h3>Scenario 3: Middle Page - Both Buttons (Class: both-visible)</h3>
+            <p>Using <code>.page-navigation.both-visible</code> with <code>justify-content: space-between</code></p>
+
+            <nav class="page-navigation both-visible">
+                <a href="#" class="page-nav-btn prev-page">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                    <span class="nav-text">
+                        <span class="nav-label">Previous</span>
+                        <span class="nav-title">Getting Started</span>
+                    </span>
+                </a>
+                <a href="#" class="page-nav-btn next-page">
+                    <span class="nav-text">
+                        <span class="nav-label">Next</span>
+                        <span class="nav-title">Commands</span>
+                    </span>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </a>
+            </nav>
+            <div class="success">✅ Previous LEFT, Next RIGHT with space between</div>
+        </div>
+
+        <h2>Technical Approach</h2>
+        <div class="fixed">
+            <strong>🔧 New JavaScript-Based Solution:</strong><br>
+            • JavaScript adds CSS classes: <code>next-only</code>, <code>prev-only</code>, <code>both-visible</code><br>
+            • CSS uses these classes to set appropriate <code>justify-content</code> values<br>
+            • More reliable than CSS-only selectors trying to detect hidden elements
+        </div>
+
+        <h2>Why the Original Fix Failed</h2>
+        <div class="error">
+            <strong>❌ CSS Selector Issues:</strong><br>
+            • <code>:only-child</code> didn't work because both buttons always exist in DOM<br>
+            • <code>:has()</code> selector has limited browser support<br>
+            • Selecting inline styles is unreliable and not well-supported
+        </div>
+
+        <div class="success">
+            <strong>✅ JavaScript Solution Benefits:</strong><br>
+            • Reliable across all browsers<br>
+            • Clear semantic meaning with class names<br>
+            • Easy to debug and maintain<br>
+            • Handles all edge cases properly
+        </div>
+    </div>
+</body>
+</html>

@@ -10,8 +10,69 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 
-// Serve static files from frontend directory (CSS, JS, etc.)
-app.use(express.static(__dirname));
+// Middleware to redirect all non-API routes to wiki (except static assets needed by wiki)
+app.use((req, res, next) => {
+  // Allow API routes
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  // Allow wiki routes
+  if (req.path.startsWith('/wiki')) {
+    return next();
+  }
+
+  // Block HTML files specifically (except wiki.html)
+  if (req.path.match(/\.html?$/) && req.path !== '/wiki.html') {
+    return res.redirect('/wiki');
+  }
+
+  // Allow essential static files for wiki functionality
+  if (req.path.match(/\.(css|js|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|map)$/)) {
+    return next();
+  }
+
+  // Redirect everything else to wiki
+  return res.redirect('/wiki');
+});
+
+// Serve static files only for wiki assets (CSS, JS, etc.)
+app.use(express.static(__dirname, {
+  dotfiles: 'deny',
+  index: false, // Prevent serving index.html automatically
+  setHeaders: (res, path) => {
+    // Only serve essential static files
+    if (path.match(/\.html?$/) && !path.endsWith('wiki.html')) {
+      res.status(404);
+    }
+  }
+}));
+
+// Serve wiki markdown files for local development (now inside frontend folder)
+app.use('/wiki', express.static(path.join(__dirname, 'wiki')));
+
+// Middleware to check if request is from plugin (for API protection)
+function isPluginRequest(req) {
+  const userAgent = req.get('User-Agent') || '';
+  const pluginHeaders = req.get('X-Plugin-Request') || req.get('X-FPP-Request');
+
+  // Allow requests from Java HTTP clients (plugin) or with plugin headers
+  return userAgent.includes('Java') ||
+         userAgent.includes('Apache-HttpClient') ||
+         pluginHeaders === 'true' ||
+         req.ip === '127.0.0.1' ||
+         req.ip === '::1';
+}
+
+// API protection middleware
+function protectAPI(req, res, next) {
+  if (isPluginRequest(req)) {
+    next();
+  } else {
+    // Redirect browsers to wiki instead of showing API
+    res.redirect('/wiki');
+  }
+}
 
 function findProjectRoot(startDir) {
   if (process.env.PLUGIN_ROOT) return path.resolve(process.env.PLUGIN_ROOT);
@@ -111,7 +172,7 @@ function findBestObject(result) {
 const projectRoot = findProjectRoot(__dirname);
 console.log("Using project root:", projectRoot);
 
-app.get("/api/status", async (req, res) => {
+app.get("/api/status", protectAPI, async (req, res) => {
   const pluginYmlPath = path.join(
     projectRoot,
     "src",
@@ -334,7 +395,7 @@ function readLocalVersion(root) {
   return null;
 }
 
-app.get("/api/check-update", async (req, res) => {
+app.get("/api/check-update", protectAPI, async (req, res) => {
   const remote = await fetchRemoteUpdate();
   if (remote && remote.error)
     return res.status(502).json({ error: remote.error, checkedAt: new Date().toISOString() });
@@ -365,11 +426,17 @@ app.get("/wiki", (req, res) => {
   res.sendFile(path.join(__dirname, "wiki.html"));
 });
 
-// Root serves landing page
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+// Catch-all route - redirect everything else to wiki
+app.get("*", (req, res) => {
+  // Don't redirect API routes
+  if (req.path.startsWith("/api/")) {
+    res.status(404).json({ error: "API endpoint not found" });
+  } else {
+    // Everything else redirects to wiki
+    res.redirect("/wiki");
+  }
 });
 
 app.listen(port, () =>
-  console.log("FPP frontend API listening at http://localhost:" + port)
+  console.log("FPP frontend server listening at http://localhost:" + port)
 );

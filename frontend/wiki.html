@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FPP Wiki - Fake Player Plugin Documentation</title>
-    <link rel="stylesheet" href="wiki-styles.css">
+    <link rel="stylesheet" href="/wiki-styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎮</text></svg>">
 </head>
 <body>
@@ -131,13 +131,15 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
-        <main id="content" class="wiki-content">
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>Loading documentation...</p>
-            </div>
-        </main>
+        <!-- Main Content Wrapper -->
+        <div class="wiki-content-wrapper">
+            <main id="content" class="wiki-content">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading documentation...</p>
+                </div>
+            </main>
+        </div>
 
         <!-- Table of Contents (Right sidebar) -->
         <aside id="toc" class="wiki-toc">
@@ -162,7 +164,7 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="highlight-theme">
-    <script src="wiki-script.js"></script>
+    <script src="/wiki-script.js"></script>
 </body>
 </html>
 
