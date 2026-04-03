@@ -8,24 +8,28 @@ FPP provides **24+ PlaceholderAPI placeholders** organized into five categories.
 Requires [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) — FPP auto-registers on startup, no `/papi ecloud` needed.
 
 > For the full technical reference including integration examples and troubleshooting, see [PLACEHOLDERAPI.md](../PLACEHOLDERAPI.md).
-> **Version:** 1.5.4+ · **Total placeholders:** 26+ (8 server-wide · 9 config state · 3 network · 3 per-world dynamic · 3 player-relative)
+> **Version:** 1.5.8+ · **Total placeholders:** 29+ (10 server-wide · 9 config state · 3 network · 3 per-world dynamic · 3 player-relative)
 
 ---
 
 ## Server-Wide Placeholders
 
-Same value for all players — no player context required.
+Same value for all players — no player context required.  
+In **NETWORK mode**, count/name placeholders include bots from **all servers** in the proxy.
 
 | Placeholder | Return Type | Description | Example |
 |-------------|-------------|-------------|---------|
-| `%fpp_count%` | `integer` | Active fake player bots (all worlds) | `5` |
+| `%fpp_count%` | `integer` | Active bots — **all servers** in NETWORK mode, local only otherwise | `5` |
+| `%fpp_local_count%` | `integer` | Bots on **this server only** (always local, regardless of mode) | `3` |
+| `%fpp_network_count%` | `integer` | Bots on **other servers only** (0 in LOCAL mode) | `2` |
 | `%fpp_max%` | `integer` / `∞` | Global bot cap (`limits.max-bots`). `∞` when cap is `0` | `50` or `∞` |
 | `%fpp_real%` | `integer` | Real (non-bot) players online | `12` |
-| `%fpp_total%` | `integer` | Real players + bots combined | `17` |
+| `%fpp_total%` | `integer` | Real players + bots combined (network-wide) | `17` |
 | `%fpp_online%` | `integer` | Alias for `%fpp_total%` | `17` |
-| `%fpp_frozen%` | `integer` | Bots frozen via `/fpp freeze` | `2` |
-| `%fpp_names%` | `string` | Comma-separated bot display names | `Steve, Alex, Notch` |
-| `%fpp_version%` | `string` | Plugin version | `1.5.4` |
+| `%fpp_frozen%` | `integer` | Bots frozen via `/fpp freeze` (local only) | `2` |
+| `%fpp_names%` | `string` | Comma-separated bot display names — **all servers** in NETWORK mode | `Steve, Alex, Notch` |
+| `%fpp_network_names%` | `string` | Display names of bots on **other servers only** | `RemoteBot1, RemoteBot2` |
+| `%fpp_version%` | `string` | Plugin version | `1.5.8` |
 
 ---
 
@@ -56,6 +60,8 @@ Useful when running FPP in NETWORK mode across multiple backend servers.
 | `%fpp_network%` | `on` / `off` | `on` when `database.mode: NETWORK`; `off` otherwise |
 | `%fpp_server_id%` | `string` | Value of `database.server-id` for this server |
 | `%fpp_spawn_cooldown%` | `integer` | Configured spawn cooldown in seconds (`0` = off) |
+
+> **Proxy-aware placeholders:** When `database.mode: NETWORK`, `%fpp_count%`, `%fpp_total%`, `%fpp_online%`, and `%fpp_names%` automatically include bots from **all servers** in the network. Use `%fpp_local_count%` to always get only this server's bots, and `%fpp_network_count%` / `%fpp_network_names%` for remote-server bots only.
 
 ---
 
@@ -159,6 +165,7 @@ header:
 ```
 &7Network: %fpp_network%  &8│  &7Server: %fpp_server_id%
 &7Cooldown: %fpp_spawn_cooldown%s  &8│  &7Persist: %fpp_persistence%
+&7This server: %fpp_local_count%  &8│  &7Network total: %fpp_count%
 ```
 
 ### Using PAPI Placeholders in Tab-List Format
@@ -178,6 +185,8 @@ bot-name:
 | Symptom | Fix |
 |---------|-----|
 | `%fpp_count%` returns unparsed literal | PlaceholderAPI not installed or FPP failed to register — check console for `[FPP] PlaceholderAPI expansion registered` |
+| `%fpp_count%` only shows local bots | Ensure `database.mode: NETWORK` and `database.enabled: true` — remote bots require NETWORK mode |
+| `%fpp_network_count%` always `0` | Only non-zero in NETWORK mode with other servers sending `BOT_SPAWN` plugin messages |
 | `%fpp_user_count%` always `0` | Requires online player context — not usable in server-wide contexts |
 | `%fpp_max%` shows `∞` unexpectedly | `limits.max-bots: 0` means unlimited — set a number to get a numeric value |
 | Per-world placeholder always `0` | Check world name — case-insensitive but spelling must match; use underscores for spaces |

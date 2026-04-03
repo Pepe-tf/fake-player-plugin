@@ -64,6 +64,17 @@ public class ReloadCommand implements FppCommand {
         BotMessageConfig.reload();
         sendStep(sender, "Config, language, names & messages reloaded");
 
+        // ── 1a. AUTO_PUSH — push updated configs to the network after reload ──
+        if (Config.configSyncMode().equalsIgnoreCase("AUTO_PUSH")
+                && plugin.getConfigSyncManager() != null) {
+            var csm = plugin.getConfigSyncManager();
+            org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                int pushed = csm.pushAll(sender.getName());
+                org.bukkit.Bukkit.getScheduler().runTask(plugin, () ->
+                    sendStep(sender, "AUTO_PUSH: " + pushed + " config file(s) pushed to network"));
+            });
+        }
+
         // ── 2. Tab-list manager ───────────────────────────────────────────────
         if (plugin.getTabListManager() != null) plugin.getTabListManager().reload();
         sendStep(sender, "Tab-list  —  bots " + (Config.tabListEnabled() ? "visible" : "hidden"));

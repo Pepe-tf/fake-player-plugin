@@ -29,7 +29,7 @@ FPP adds fake players to your server that look and behave like real ones:
 - **LuckPerms** — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 - **Proxy/network support** — Velocity & BungeeCord cross-server chat, alerts, and shared database
 - **Config sync** — push/pull configuration files across your proxy network
-- **PlaceholderAPI** — 26+ placeholders including per-world bot counts, network state, and spawn cooldown
+- **PlaceholderAPI** — 29+ placeholders including per-world bot counts, network state, spawn cooldown, and new proxy-aware counts
 - Fully **hot-reloadable** — no restarts needed
 
 ---
@@ -42,11 +42,11 @@ FPP adds fake players to your server that look and behave like real ones:
 | Java | 21+ |
 | [PacketEvents](https://modrinth.com/plugin/packetevents) | 2.x |
 | [LuckPerms](https://luckperms.net) | Optional — auto-detected |
-| [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) | Optional — auto-detected (26+ placeholders) |
+| [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) | Optional — auto-detected (29+ placeholders) |
 
-> **PlaceholderAPI Integration:** FPP provides 26+ placeholders including per-world bot counts, player-relative stats, network state, and system status. See [PLACEHOLDERAPI.md](PLACEHOLDERAPI.md) for the complete reference.
+> **PlaceholderAPI Integration:** FPP provides 29+ placeholders including per-world bot counts, player-relative stats, network state, and system status. See [PLACEHOLDERAPI.md](PLACEHOLDERAPI.md) for the complete reference.
 
-> **Compatibility:** Semi-support for older 1.21 releases (1.21.0 to 1.21.8). On those servers some features may be disabled and FPP will run in a restricted compatibility mode — check the server console for warnings.
+> **Compatibility:** Supports all Paper 1.21.x versions (1.21.0 through 1.21.11). Check the server console after startup for any version-specific notes.
 
 > SQLite is bundled — no database setup required. MySQL is available for multi-server/proxy setups.
 
@@ -269,19 +269,22 @@ When [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) i
 
 > Full Documentation: [PLACEHOLDERAPI.md](PLACEHOLDERAPI.md)
 
-FPP provides **26+ placeholders** organized into five categories:
+FPP provides **29+ placeholders** organized into five categories:
 
 ### Server-Wide
 
 | Placeholder | Value |
 |-------------|-------|
-| `%fpp_count%` | Number of currently active bots |
+| `%fpp_count%` | Number of currently active bots (local + remote in NETWORK mode) |
+| `%fpp_local_count%` | Bots running on **this** server only |
+| `%fpp_network_count%` | Bots running on **other** proxy servers (NETWORK mode) |
 | `%fpp_max%` | Global max-bots limit (or `∞`) |
 | `%fpp_real%` | Real (non-bot) players online |
 | `%fpp_total%` | Total players (real + bots) |
 | `%fpp_online%` | Alias for `%fpp_total%` |
 | `%fpp_frozen%` | Number of currently frozen bots |
-| `%fpp_names%` | Comma-separated list of bot display names |
+| `%fpp_names%` | Comma-separated list of bot display names (local + remote in NETWORK mode) |
+| `%fpp_network_names%` | Display names of bots on **other** proxy servers only |
 | `%fpp_version%` | Plugin version string |
 
 ### Config State
@@ -345,6 +348,37 @@ Placeholders: `{prefix}` (LP prefix), `{bot_name}`, `{suffix}` (LP suffix), `{me
 ---
 
 ## Changelog
+
+### v1.5.8 *(2026-04-03)*
+
+**Ghost Player / "Anonymous User" Fix**
+- Replaced reflection-based `Connection` injection with a proper `FakeConnection` subclass whose `send()` methods are clean no-op overrides
+- Eliminated the phantom "Anonymous User" entry with UUID 0 that appeared in the tab list when bots connected
+- Eliminated `NullPointerException` and `ClassCastException` spam in server logs related to bot connections
+
+**`%fpp_real%` / `%fpp_total%` Accuracy Fix**
+- `%fpp_real%` now correctly subtracts bot count from `Bukkit.getOnlinePlayers()` — bots go through `placeNewPlayer()` and appear in the online list
+- `%fpp_real_<world>%` similarly now excludes bots from per-world real-player counts
+- `%fpp_total%` fixed to avoid double-counting; accurately reports real players + local bots (+ remote bots in NETWORK mode)
+
+**Proxy `/fpp list` Improvements (NETWORK mode)**
+- `/fpp list` now shows a `[server-id]` tag next to each local bot so admins can identify which server they belong to
+- Remote bots from other proxy servers are now listed in a dedicated "Remote bots" section showing their server, name, and skin status
+- Total counts include both local and remote bots
+
+**New Proxy Placeholders**
+- `%fpp_local_count%` — bots on this server only
+- `%fpp_network_count%` — bots on other proxy servers (NETWORK mode)
+- `%fpp_network_names%` — comma-separated display names from remote servers
+- `%fpp_count%` and `%fpp_names%` now include remote bots in NETWORK mode
+
+**LuckPerms ClassLoader Guard**
+- Fixed `NoClassDefFoundError: net/luckperms/api/node/Node` crash on servers without LuckPerms installed
+- All LP-dependent code is now properly gated behind `LuckPermsHelper.isAvailable()` checks; no LP classes are loaded unless LP is present
+
+**Config Migration**
+- Config version bumped to `37` (no structural key changes — version stamp only)
+- Automatic migration on first startup from any previous version
 
 ### v1.5.6 *(2026-04-03)*
 
@@ -485,4 +519,4 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.5.6 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.5.8 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz)*

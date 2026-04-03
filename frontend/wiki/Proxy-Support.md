@@ -2,6 +2,8 @@
 
 FakePlayerPlugin fully supports **multi-server proxy networks** using **Velocity** or **BungeeCord**.
 
+> **Version:** 1.5.8 · Requires `database.mode: "NETWORK"` + MySQL
+
 ---
 
 ## 🌐 Features
@@ -12,8 +14,10 @@ FakePlayerPlugin fully supports **multi-server proxy networks** using **Velocity
 | **Per-Server Isolation** | Each server only spawns/manages its own bots |
 | **Cross-Server Chat** | Bot messages broadcast to all connected servers |
 | **Global Alerts** | `/fpp alert` sends admin messages network-wide |
-| **Server Identity** | Each server has a unique ID for tracking |
+| **Server Identity** | Each server has a unique `server-id` for tracking and filtering |
 | **Network Stats** | View combined bot counts and stats across all servers |
+| **Remote Bot List** | `/fpp list` shows remote bots from other servers in NETWORK mode |
+| **Proxy Placeholders** | `%fpp_local_count%`, `%fpp_network_count%`, `%fpp_network_names%` for network-aware displays |
 
 ---
 
@@ -24,12 +28,10 @@ FakePlayerPlugin fully supports **multi-server proxy networks** using **Velocity
 On **every** backend server, edit `config.yml`:
 
 ```yaml
-server:
-  id: "survival"    # Unique per server: "survival", "skyblock", "creative", etc.
-
 database:
   enabled: true
   mode: "NETWORK"   # Enable multi-server mode
+  server-id: "survival"   # Unique per server: "survival", "skyblock", "creative", etc.
   mysql-enabled: true
   mysql:
     host: "mysql.example.com"

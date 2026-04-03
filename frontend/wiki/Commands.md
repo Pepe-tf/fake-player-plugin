@@ -148,13 +148,25 @@ All FPP commands use the root command `/fpp` with aliases `/fakeplayer` and `/fp
 /fpp list --frozen            # Show frozen bots only
 ```
 
-**Display Format:**
+**Display Format (LOCAL mode):**
 ```
-📊 Active Bots (5/50):
+📊 Active Bots (3/50):
 🎭 Steve      │ Owner: Notch    │ World: world    │ Status: Active
 🎭 Alex       │ Owner: @admin   │ World: nether   │ Status: Frozen
-🎭 Herobrine  │ Owner: Bill     │ World: world    │ Status: Swapped
 ```
+
+**Display Format (NETWORK mode):**
+```
+📊 Active Bots — survival (3 local · 5 remote):
+🎭 Steve      [survival] │ Owner: Notch  │ World: world  │ Active
+🎭 Alex       [survival] │ Owner: @admin │ World: nether │ Frozen
+
+Remote Bots (5):
+🌐 RemoteBot1 [skyblock]  │ skin: auto
+🌐 RemoteBot2 [creative]  │ no skin
+```
+
+> **NETWORK mode:** In NETWORK mode, remote bots from other proxy servers are shown in a separate "Remote Bots" section. Local bots are tagged with `[server-id]` for easy identification.
 
 ---
 

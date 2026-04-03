@@ -159,7 +159,7 @@ sync-push-all-success:   "{prefix}<#66CC66>✓</#66CC66> <gray>Pushed <#0079FF>a
 sync-pull-success:       "{prefix}<#66CC66>✓</#66CC66> <gray>Pulled <#0079FF>{file}</#0079FF> <gray>from database."
 sync-pull-failed:        "{prefix}<red>Failed to pull <white>{file}<red> from database."
 sync-pull-all-success:   "{prefix}<#66CC66>✓</#66CC66> <gray>Pulled <#0079FF>all config files</#0079FF> <gray>from database."
-sync-pull-no-updates:    "{prefix}<gray>No updates available for <#0079FF>{file}</#0079FF><gray>."
+sync-pull-no-updates:    "{prefix}<gray>All config files are already up to date."
 sync-pull-reload-hint:   "{prefix}<gray>Run <#0079FF>/fpp reload</#0079FF> <gray>to apply the changes."
 sync-check-has-changes:  "{prefix}<yellow>⚠<reset> <#0079FF>{file}</#0079FF> <gray>has local changes (different from database)."
 sync-check-no-changes:   "{prefix}<#66CC66>✓</#66CC66> <#0079FF>{file}</#0079FF> <gray>is up to date with database."

@@ -170,7 +170,7 @@ public final class BotChatAI {
             String prefix = "";
             String suffix = "";
             try {
-                if (me.bill.fakePlayerPlugin.util.LuckPermsHelper.isAvailable()) {
+                if (plugin.isLuckPermsAvailable()) {
                     String group = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getPrimaryGroup(bot.getUuid());
                     if (group != null && !group.equals("default")) {
                         // For network messaging we need to manually get prefix/suffix

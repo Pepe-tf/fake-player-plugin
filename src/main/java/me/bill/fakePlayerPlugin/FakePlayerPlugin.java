@@ -53,6 +53,17 @@ public final class FakePlayerPlugin extends JavaPlugin {
      * delivered to admins who log in after startup. */
     private Component updateNotificationMessage = null;
 
+    /**
+     * Cached flag: whether LuckPerms is installed and enabled on this server.
+     * Set once in {@code onEnable()} via a pure Bukkit check (no LP class loading)
+     * so that {@code LuckPermsHelper} is never loaded when LP is absent — prevents
+     * {@code NoClassDefFoundError} from LP-API classes that aren't on the classpath.
+     */
+    private boolean luckPermsAvailable = false;
+
+    /** @return {@code true} when LuckPerms is installed and enabled on this server. */
+    public boolean isLuckPermsAvailable() { return luckPermsAvailable; }
+
     /** System.currentTimeMillis() captured at the start of onEnable. */
     private long enabledAt;
 
@@ -161,7 +172,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager = new CommandManager(this);
         commandManager.register(new SpawnCommand(fakePlayerManager));
         commandManager.register(new DeleteCommand(fakePlayerManager));
-        commandManager.register(new ListCommand(fakePlayerManager));
+        commandManager.register(new ListCommand(this, fakePlayerManager));
         commandManager.register(new TphCommand(fakePlayerManager));
         commandManager.register(new TpCommand(fakePlayerManager));
         commandManager.register(new ChatCommand(this));
@@ -246,7 +257,12 @@ public final class FakePlayerPlugin extends JavaPlugin {
         // ── LuckPerms soft-dependency ─────────────────────────────────────────
         // Bots are real NMS ServerPlayer entities — LP auto-detects them as players.
         // We just log whether LP is available and apply the configured default group.
+        // luckPermsAvailable is cached here so that LuckPermsHelper is NEVER loaded
+        // when LP is absent — loading it without LP on the classpath throws
+        // NoClassDefFoundError because Paper's PluginClassLoader eagerly resolves
+        // LP API class references during bytecode verification.
         boolean luckPermsInstalled = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
+        luckPermsAvailable = luckPermsInstalled;
         if (luckPermsInstalled) {
             Config.debugLuckPerms("LuckPerms detected — bot group sync enabled.");
             String defaultGroup = me.bill.fakePlayerPlugin.config.Config.luckpermsDefaultGroup();
@@ -338,8 +354,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
         if (chunkLoader  != null) chunkLoader.releaseAll();
         // Cancel swap timers before sync removal to prevent ghost rejoin tasks
         if (botSwapAI    != null) botSwapAI.cancelAll();
-        // Unsubscribe from LP events to prevent memory leaks
-        me.bill.fakePlayerPlugin.util.LuckPermsHelper.unsubscribeLpEvents();
+        // Unsubscribe from LP events to prevent memory leaks (only if LP was loaded)
+        if (luckPermsAvailable) {
+            me.bill.fakePlayerPlugin.util.LuckPermsHelper.unsubscribeLpEvents();
+        }
         // removeAllSync sends leave messages + cleans up entities
         if (fakePlayerManager != null) fakePlayerManager.removeAllSync();
         // Shut down tab list header/footer

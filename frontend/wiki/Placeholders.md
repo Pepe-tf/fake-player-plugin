@@ -5,7 +5,7 @@ FPP registers a full **PlaceholderAPI** expansion (`%fpp_…%`) that is availabl
 **Requirement:** [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) must be installed.  
 No configuration is needed — the expansion registers automatically when PAPI is detected on startup.
 
-> **Version:** 1.5.4+ · **Total placeholders:** 26+ · **Auto-register:** Yes
+> **Version:** 1.5.8+ · **Total placeholders:** 29+ · **Auto-register:** Yes
 
 ---
 
@@ -15,13 +15,16 @@ These are player-independent and return the same value regardless of who request
 
 | Placeholder | Returns | Description |
 |-------------|---------|-------------|
-| `%fpp_count%` | Number | Active bot count (all worlds). Also supports per-world: `%fpp_count_<world>%` — see [Per-World Placeholders](#per-world-placeholders) |
+| `%fpp_count%` | Number | Active bot count (local + remote in NETWORK mode). Per-world: `%fpp_count_<world>%` |
+| `%fpp_local_count%` | Number | Bots running on **this** server only |
+| `%fpp_network_count%` | Number | Bots running on **other** proxy servers (NETWORK mode; `0` in LOCAL mode) |
 | `%fpp_max%` | Number / `∞` | Global max-bots cap (`limits.max-bots`; `∞` when 0) |
 | `%fpp_real%` | Number | Real (non-bot) online player count |
 | **`%fpp_total%`** | **Number** | **Real players + bots combined** |
 | `%fpp_online%` | Number | Alias for `%fpp_total%` |
 | `%fpp_frozen%` | Number | Number of currently frozen bots |
-| `%fpp_names%` | String | Comma-separated list of active bot display names |
+| `%fpp_names%` | String | Comma-separated list of active bot display names (local + remote in NETWORK mode) |
+| `%fpp_network_names%` | String | Display names of bots on **other** proxy servers only (NETWORK mode) |
 | `%fpp_chat%` | `on` / `off` | Whether fake-chat is enabled |
 | `%fpp_swap%` | `on` / `off` | Whether bot-swap/rotation is enabled |
 | `%fpp_skin%` | `auto` / `custom` / `off` | Current skin mode (`skin.mode` in config) |
@@ -44,6 +47,11 @@ Useful when running FPP in NETWORK mode across a Velocity or BungeeCord proxy.
 | `%fpp_network%` | `on` / `off` | `on` when `database.mode: NETWORK`; `off` in LOCAL mode |
 | `%fpp_server_id%` | String | Value of `database.server-id` for this server |
 | `%fpp_spawn_cooldown%` | Number | Configured spawn cooldown in seconds (`0` = disabled) |
+| `%fpp_local_count%` | Number | Bots running on this server only (same as `%fpp_count%` in LOCAL mode) |
+| `%fpp_network_count%` | Number | Bots on other proxy servers (`0` in LOCAL mode) |
+| `%fpp_network_names%` | String | Comma-separated display names from remote servers only |
+
+> **Tip:** Use `%fpp_local_count%` and `%fpp_network_count%` to display per-server breakdowns in your TAB header. In LOCAL mode these behave the same as `%fpp_count%` and `0` respectively.
 
 ---
 
@@ -131,7 +139,9 @@ fake-chat:
 
 ```
 %fpp_total%             → 27   (5 real players + 22 bots)
-%fpp_count%             → 22
+%fpp_count%             → 22   (local + remote bots in NETWORK mode)
+%fpp_local_count%       → 15   (bots on this server)
+%fpp_network_count%     → 7    (bots on other servers)
 %fpp_real%              → 5
 %fpp_skin%              → auto
 %fpp_network%           → on   (NETWORK mode active)
@@ -139,6 +149,7 @@ fake-chat:
 %fpp_spawn_cooldown%    → 30   (30 second cooldown)
 %fpp_user_count%        → 3    (this player owns 3 bots)
 %fpp_user_max%          → 5    (this player can own up to 5)
-%fpp_names%             → "Notch, Dream, Technoblade"
+%fpp_names%             → "Notch, Dream, Technoblade, RemoteBot1"
+%fpp_network_names%     → "RemoteBot1"
 ```
 

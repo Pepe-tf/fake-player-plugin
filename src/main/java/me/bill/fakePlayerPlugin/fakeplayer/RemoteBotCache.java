@@ -56,6 +56,11 @@ public final class RemoteBotCache {
 
     // ── Accessors ─────────────────────────────────────────────────────────────
 
+    /** Returns a single entry by UUID, or {@code null} if not present. */
+    public RemoteBotEntry get(UUID uuid) {
+        return entries.get(uuid);
+    }
+
     /** Returns an unmodifiable view of all cached remote bot entries. */
     public Collection<RemoteBotEntry> getAll() {
         return Collections.unmodifiableCollection(entries.values());

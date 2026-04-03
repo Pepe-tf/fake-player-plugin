@@ -36,8 +36,9 @@ These return the same value regardless of which player requests them.
 
 ### `%fpp_real%` vs `%fpp_total%` vs `%fpp_online%`
 
-`%fpp_real%` uses `Bukkit.getOnlinePlayers().size()`, which only counts **real** Bukkit `Player` objects.  
-Fake bots are **not** Bukkit players — they are NMS ServerPlayer entities not accessible via the Bukkit API.
+`%fpp_real%` returns the count of **real** (non-bot) online players.  
+Bots are NMS `ServerPlayer` entities that go through `placeNewPlayer()` and therefore **do** appear in `Bukkit.getOnlinePlayers()`.  
+FPP subtracts the local bot count from `getOnlinePlayers().size()` so that `%fpp_real%` reports only genuine players.
 
 ```
 %fpp_total%  =  %fpp_real%  +  %fpp_count%
@@ -315,6 +316,7 @@ FPP's internal bot registry uses a thread-safe data structure — no race condit
 |---------|-----|
 | All `%fpp_*%` return unparsed (e.g. `%fpp_count%`) | PlaceholderAPI is not installed or FPP failed to register — check console on startup for `[FPP] PlaceholderAPI expansion registered` |
 | `%fpp_user_count%` always returns `0` | The context player is offline or null — this placeholder requires an online player |
+| `%fpp_total%` is too high (e.g. 3 with 1 player + 1 bot) | Ensure you are running FPP v1.5.9+ which correctly subtracts bots from `%fpp_real%` |
 | `%fpp_max%` shows `∞` but you set a number | Make sure you saved the config and ran `/fpp reload` |
 | Per-world placeholder always returns `0` | Check world name spelling — it's case-insensitive but must match exactly (use underscores for spaces) |
 | Values are stale after `/fpp reload` | Config-state placeholders update instantly; count placeholders reflect live state and never need reload |

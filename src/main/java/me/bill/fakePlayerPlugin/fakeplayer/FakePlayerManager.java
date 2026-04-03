@@ -495,7 +495,7 @@ public class FakePlayerManager {
         //
         // ensureGroupBeforeSpawn() intelligently preserves a bot's existing rank
         // across restarts (unless overridden by luckperms.default-group).
-        if (me.bill.fakePlayerPlugin.util.LuckPermsHelper.isAvailable()) {
+        if (plugin.isLuckPermsAvailable()) {
             String cfgGroup = Config.luckpermsDefaultGroup();
             UUID botUuid = fp.getUuid();
 
@@ -624,7 +624,7 @@ public class FakePlayerManager {
             // 5. LP prefix — apply group directly to the online User object LP loaded at
             // PlayerJoinEvent, then save. saveUser() on an online User fires
             // UserDataRecalculateEvent which our subscriber handles to refresh the display name.
-            if (me.bill.fakePlayerPlugin.util.LuckPermsHelper.isAvailable()) {
+            if (plugin.isLuckPermsAvailable()) {
                 UUID botUuid = fp.getUuid();
                 String group  = fp.getLuckpermsGroup() != null && !fp.getLuckpermsGroup().isBlank()
                         ? fp.getLuckpermsGroup()
@@ -923,7 +923,7 @@ public class FakePlayerManager {
             if (vc != null) vc.broadcastLeaveToNetwork(target.getDisplayName());
             if (db != null) db.recordRemoval(target.getUuid(), "DELETED");
             // Clean up LuckPerms user data for this bot
-            if (me.bill.fakePlayerPlugin.util.LuckPermsHelper.isAvailable()) {
+            if (plugin.isLuckPermsAvailable()) {
                 me.bill.fakePlayerPlugin.util.LuckPermsHelper.setPlayerGroup(target.getUuid(), "default")
                     .thenRun(() -> Config.debug("Cleaned up LP data for bot: " + botName))
                     .exceptionally(throwable -> {
@@ -1415,7 +1415,7 @@ public class FakePlayerManager {
      */
     public void refreshLpDisplayName(FakePlayer fp) {
         if (!activePlayers.containsKey(fp.getUuid())) return;
-        if (!me.bill.fakePlayerPlugin.util.LuckPermsHelper.isAvailable()) return;
+        if (!plugin.isLuckPermsAvailable()) return;
 
         String prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(fp.getUuid());
         String suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(fp.getUuid());
@@ -1447,6 +1447,12 @@ public class FakePlayerManager {
             for (Player p : online) PacketHelper.sendTabListDisplayNameUpdate(p, fp);
         }
 
+        // Notify remote servers so their RemoteBotCache and tab-list entries update too
+        if (Config.isNetworkMode()) {
+            var vc = plugin.getVelocityChannel();
+            if (vc != null) vc.broadcastBotDisplayNameUpdate(fp);
+        }
+
         Config.debug("[LP] Refreshed display name for '" + fp.getName() + "': '" + display + "'");
     }
 
@@ -1460,7 +1466,7 @@ public class FakePlayerManager {
      */
     private void refreshLpDisplayNameWithRetry(FakePlayer fp, int attempt) {
         if (!activePlayers.containsKey(fp.getUuid())) return;
-        if (!me.bill.fakePlayerPlugin.util.LuckPermsHelper.isAvailable()) return;
+        if (!plugin.isLuckPermsAvailable()) return;
 
         String prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(fp.getUuid());
         String suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(fp.getUuid());

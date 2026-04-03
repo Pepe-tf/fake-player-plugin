@@ -2,7 +2,7 @@
 
 [SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.5.6  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.5.8  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]
@@ -28,7 +28,7 @@ FPP adds fake players to your server that look and behave like real ones:
 [*][B]LuckPerms[/B] — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 [*][B]Proxy/network support[/B] — Velocity & BungeeCord cross-server chat, alerts, and shared database
 [*][B]Config sync[/B] — push/pull configuration files across your proxy network
-[*][B]PlaceholderAPI[/B] — 26+ placeholders including per-world bot counts, network state, and spawn cooldown
+[*][B]PlaceholderAPI[/B] — 29+ placeholders including per-world bot counts, network state, proxy-aware counts, and spawn cooldown
 [*]Fully [B]hot-reloadable[/B] — no restarts needed
 [/LIST]
 
@@ -42,10 +42,10 @@ FPP adds fake players to your server that look and behave like real ones:
 [TR][TD]Java[/TD][TD]21+[/TD][/TR]
 [TR][TD][URL='https://modrinth.com/plugin/packetevents']PacketEvents[/URL][/TD][TD]2.x[/TD][/TR]
 [TR][TD][URL='https://luckperms.net']LuckPerms[/URL][/TD][TD]Optional — auto-detected[/TD][/TR]
-[TR][TD][URL='https://www.spigotmc.org/resources/placeholderapi.6245/']PlaceholderAPI[/URL][/TD][TD]Optional — auto-detected (26+ placeholders)[/TD][/TR]
+[TR][TD][URL='https://www.spigotmc.org/resources/placeholderapi.6245/']PlaceholderAPI[/URL][/TD][TD]Optional — auto-detected (29+ placeholders)[/TD][/TR]
 [/TABLE]
 
-[B]Note:[/B] Semi-support for older 1.21 releases (1.21.0 → 1.21.8). FPP will run in restricted compatibility mode — check console for warnings.
+[B]Note:[/B] Supports all Paper 1.21.x versions (1.21.0 through 1.21.11). Check the server console after startup for any version-specific notes.
 
 [I]SQLite is bundled — no database setup required. MySQL is available for multi-server/proxy setups.[/I]
 
@@ -287,19 +287,22 @@ When [URL='https://www.spigotmc.org/resources/placeholderapi.6245/']PlaceholderA
 
 Full documentation available on [URL='https://github.com/Pepe-tf/Fake-Player-Plugin-Public-/blob/main/PLACEHOLDERAPI.md']GitHub[/URL].
 
-FPP provides [B]26+ placeholders[/B] in five categories:
+FPP provides [B]29+ placeholders[/B] in five categories:
 
 [SIZE=5][B]Server-Wide[/B][/SIZE]
 
 [TABLE="width: 100%"]
 [TR][TD][B]Placeholder[/B][/TD][TD][B]Value[/B][/TD][/TR]
-[TR][TD][FONT=monospace]%fpp_count%[/FONT][/TD][TD]Number of currently active bots[/TD][/TR]
+[TR][TD][FONT=monospace]%fpp_count%[/FONT][/TD][TD]Active bots (local + remote in NETWORK mode)[/TD][/TR]
+[TR][TD][FONT=monospace]%fpp_local_count%[/FONT][/TD][TD]Bots on this server only[/TD][/TR]
+[TR][TD][FONT=monospace]%fpp_network_count%[/FONT][/TD][TD]Bots on other proxy servers (NETWORK mode)[/TD][/TR]
 [TR][TD][FONT=monospace]%fpp_max%[/FONT][/TD][TD]Global max-bots limit (or ∞)[/TD][/TR]
 [TR][TD][FONT=monospace]%fpp_real%[/FONT][/TD][TD]Real (non-bot) players online[/TD][/TR]
 [TR][TD][FONT=monospace]%fpp_total%[/FONT][/TD][TD]Total players (real + bots)[/TD][/TR]
 [TR][TD][FONT=monospace]%fpp_online%[/FONT][/TD][TD]Alias for %fpp_total%[/TD][/TR]
 [TR][TD][FONT=monospace]%fpp_frozen%[/FONT][/TD][TD]Number of currently frozen bots[/TD][/TR]
-[TR][TD][FONT=monospace]%fpp_names%[/FONT][/TD][TD]Comma-separated list of bot display names[/TD][/TR]
+[TR][TD][FONT=monospace]%fpp_names%[/FONT][/TD][TD]Comma-separated bot display names (local + remote in NETWORK mode)[/TD][/TR]
+[TR][TD][FONT=monospace]%fpp_network_names%[/FONT][/TD][TD]Display names of bots on other proxy servers only[/TD][/TR]
 [TR][TD][FONT=monospace]%fpp_version%[/FONT][/TD][TD]Plugin version string[/TD][/TR]
 [/TABLE]
 
@@ -391,6 +394,50 @@ Placeholders: [FONT=monospace]{prefix}[/FONT] (LP prefix), [FONT=monospace]{bot_
 [HR][/HR]
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
+
+[SIZE=5][B]v1.5.8[/B][/SIZE] [I](2026-04-03)[/I]
+
+[B]Ghost Player / "Anonymous User" Fix[/B]
+[LIST]
+[*]Replaced reflection-based Connection injection with a proper FakeConnection subclass — no-op send() overrides
+[*]Eliminated the phantom "Anonymous User" entry with UUID 0 appearing in the tab list when bots connect
+[*]Eliminated NullPointerException and ClassCastException log spam related to bot connections
+[/LIST]
+
+[B]%fpp_real% / %fpp_total% Accuracy Fix[/B]
+[LIST]
+[*]%fpp_real% now correctly subtracts bot count — bots appear in Bukkit.getOnlinePlayers() via placeNewPlayer()
+[*]%fpp_real_<world>% similarly excludes bots from per-world real-player counts
+[*]%fpp_total% fixed to avoid double-counting: real players + local bots (+ remote bots in NETWORK mode)
+[/LIST]
+
+[B]Proxy /fpp list Improvements (NETWORK mode)[/B]
+[LIST]
+[*]/fpp list shows [server-id] tags for local bots so admins know which server each bot belongs to
+[*]Remote bots from other proxy servers shown in a dedicated "Remote bots" section with server, name, and skin info
+[*]Total counts include both local and remote bots
+[/LIST]
+
+[B]New Proxy Placeholders[/B]
+[LIST]
+[*]%fpp_local_count% — bots on this server only
+[*]%fpp_network_count% — bots on other proxy servers (NETWORK mode)
+[*]%fpp_network_names% — comma-separated display names from remote servers
+[*]%fpp_count% and %fpp_names% now include remote bots in NETWORK mode (29+ total placeholders)
+[/LIST]
+
+[B]LuckPerms ClassLoader Guard[/B]
+[LIST]
+[*]Fixed NoClassDefFoundError: net/luckperms/api/node/Node crash on servers without LuckPerms
+[*]All LP-dependent code gated behind LuckPermsHelper.isAvailable() — no LP classes loaded unless LP is present
+[/LIST]
+
+[B]Technical[/B]
+[LIST]
+[*]Config version bumped to 37 (no structural key changes — version stamp only)
+[*]Automatic migration on first startup from any previous version
+[*]Fully backward compatible
+[/LIST]
 
 [SIZE=5][B]v1.5.6[/B][/SIZE] [I](2026-04-03)[/I]
 

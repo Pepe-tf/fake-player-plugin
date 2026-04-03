@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 36;
+    public static final int CURRENT_VERSION = 37;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -128,6 +128,7 @@ public final class ConfigMigrator {
         if (stored < 34) anyChange |= v33to34(cfg);
         if (stored < 35) anyChange |= v34to35(cfg);
         if (stored < 36) anyChange |= v35to36(cfg);
+        if (stored < 37) anyChange |= v36to37(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -919,6 +920,21 @@ public final class ConfigMigrator {
         }
 
         return changed;
+    }
+
+    /**
+     * v36 → v37 (FPP 1.5.8):
+     * <ul>
+     *   <li>No structural config changes — this is a version stamp migration.</li>
+     *   <li>Fixes included in this release: LP ClassLoader guard, ghost "Anonymous
+     *       User" fix via FakeConnection subclass, %fpp_real% / %fpp_total% accuracy,
+     *       NETWORK-mode /fpp list improvements, new proxy placeholders.</li>
+     * </ul>
+     */
+    private static boolean v36to37(YamlConfiguration cfg) {
+        // No config keys changed in this release — stamp only.
+        log("v36→v37", "version stamp updated to 37 (FPP 1.5.8 — no structural config changes)");
+        return false;
     }
 
     /**

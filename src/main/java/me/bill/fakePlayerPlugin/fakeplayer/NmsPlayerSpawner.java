@@ -1,6 +1,6 @@
 package me.bill.fakePlayerPlugin.fakeplayer;
 
-import me.bill.fakePlayerPlugin.fakeplayer.network.FakeChannel;
+import me.bill.fakePlayerPlugin.fakeplayer.network.FakeConnection;
 import me.bill.fakePlayerPlugin.fakeplayer.network.FakeServerGamePacketListenerImpl;
 import me.bill.fakePlayerPlugin.util.FppLogger;
 import org.bukkit.Bukkit;
@@ -11,7 +11,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.*;
 
 /**
@@ -678,47 +677,19 @@ public final class NmsPlayerSpawner {
     }
 
     /**
-     * Creates a {@link FakeChannel}-backed NMS {@code Connection} via reflection.
-     * The channel silently discards all writes.
+     * Creates a {@link FakeConnection}-backed NMS connection.
+     *
+     * <p>{@link FakeConnection} extends {@code Connection} directly and overrides
+     * all {@code send()} overloads as no-ops.  This prevents vanilla
+     * {@code Connection.send()}'s side-effects (protocol-state registers,
+     * pending-packet queues, callback notifications) from running during
+     * {@code placeNewPlayer()}, which is what creates the phantom
+     * "Anonymous User" / UUID-0 ghost entry in server player-list tools.
      */
     private static Object createFakeConnection() {
-        if (connectionClass == null || packetFlowClass == null) {
-            FppLogger.debug("NmsPlayerSpawner: connection classes unavailable");
-            return null;
-        }
         try {
-            FakeChannel fakeChannel = new FakeChannel(InetAddress.getLoopbackAddress());
-
-            Object serverbound = packetFlowClass.getEnumConstants()[0];
-            Constructor<?> connCtor = connectionClass.getDeclaredConstructor(packetFlowClass);
-            connCtor.setAccessible(true);
-            Object conn = connCtor.newInstance(serverbound);
-
-            // Inject FakeChannel into Connection.channel field
-            for (Field f : getAllDeclaredFields(connectionClass)) {
-                String typeName = f.getType().getName();
-                if (typeName.equals("io.netty.channel.Channel")
-                        || f.getType().getSimpleName().equals("Channel")) {
-                    f.setAccessible(true);
-                    f.set(conn, fakeChannel);
-                    FppLogger.debug("NmsPlayerSpawner: FakeChannel injected into Connection." + f.getName());
-                    break;
-                }
-            }
-
-            // Inject loopback address into Connection.address field
-            for (Field f : getAllDeclaredFields(connectionClass)) {
-                if (java.net.SocketAddress.class.isAssignableFrom(f.getType())) {
-                    try {
-                        f.setAccessible(true);
-                        if (f.get(conn) == null) {
-                            f.set(conn, new InetSocketAddress(InetAddress.getLoopbackAddress(), 25565));
-                        }
-                    } catch (Exception ignored) {}
-                    break;
-                }
-            }
-
+            FakeConnection conn = new FakeConnection(InetAddress.getLoopbackAddress());
+            FppLogger.debug("NmsPlayerSpawner: FakeConnection created (direct Connection subclass)");
             return conn;
 
         } catch (Exception e) {

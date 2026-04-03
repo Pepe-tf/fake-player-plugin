@@ -579,6 +579,46 @@ public final class PacketHelper {
         }
     }
 
+    /**
+     * Sends only the {@code UPDATE_DISPLAY_NAME} action for a remote bot (identified by
+     * raw UUID and MiniMessage display-name string) to {@code receiver}.
+     * Used by {@link me.bill.fakePlayerPlugin.messaging.VelocityChannel} when a
+     * {@code BOT_UPDATE} message arrives for a remote bot that is not locally active.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void sendTabListDisplayNameUpdate(Player receiver, UUID uuid, String rawDisplayName) {
+        if (!ensureReady()) return;
+        try {
+            Object nms = getHandle(receiver);
+            Object profile = gameProfileCtor != null
+                    ? gameProfileCtor.newInstance(uuid, uuid.toString().substring(0, 8))
+                    : gameProfileClass.getDeclaredConstructors()[0].newInstance(uuid, uuid.toString().substring(0, 8));
+
+            Component adventureComponent = MiniMessage.miniMessage().deserialize(rawDisplayName);
+            Object displayName = adventureToNms(adventureComponent);
+
+            Object entry = buildEntry(uuid, profile, displayName);
+
+            Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
+            Object actions = EnumSet.of(Enum.valueOf(e, "UPDATE_DISPLAY_NAME"));
+
+            Object secondArg;
+            Class<?> secondParamType = playerInfoUpdateCtor.getParameterTypes()[1];
+            if (secondParamType == playerInfoUpdateEntryClass) {
+                secondArg = entry;
+            } else if (secondParamType.isArray()) {
+                Object arr = java.lang.reflect.Array.newInstance(secondParamType.getComponentType(), 1);
+                java.lang.reflect.Array.set(arr, 0, entry);
+                secondArg = arr;
+            } else {
+                secondArg = List.of(entry);
+            }
+            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, secondArg));
+        } catch (Exception e) {
+            // Silent
+        }
+    }
+
     public static void spawnFakePlayer(Player receiver, FakePlayer fp, Location loc) {
         if (!ensureReady()) return;
         try {

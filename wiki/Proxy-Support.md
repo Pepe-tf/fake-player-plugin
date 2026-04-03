@@ -14,6 +14,11 @@ FakePlayerPlugin fully supports **multi-server proxy networks** using **Velocity
 | **Global Alerts** | `/fpp alert` sends admin messages network-wide |
 | **Server Identity** | Each server has a unique ID for tracking |
 | **Network Stats** | View combined bot counts and stats across all servers |
+| **Remote Bot List** | `/fpp list` shows remote bots from other servers with `[server-id]` tags in NETWORK mode |
+| **Proxy Placeholders** | `%fpp_local_count%`, `%fpp_network_count%`, `%fpp_network_names%` for network-aware displays |
+| **Bot Tab Sync** | Remote bots appear in all servers' tab lists with correct skins |
+| **Display-Name Sync** | Bot display names update live across all servers after `/fpp rank` |
+| **Config Sync** | Push/pull config files across servers via `/fpp sync`; AUTO_PULL reacts instantly |
 
 ---
 
@@ -24,12 +29,10 @@ FakePlayerPlugin fully supports **multi-server proxy networks** using **Velocity
 On **every** backend server, edit `config.yml`:
 
 ```yaml
-server:
-  id: "survival"    # Unique per server: "survival", "skyblock", "creative", etc.
-
 database:
   enabled: true
   mode: "NETWORK"   # Enable multi-server mode
+  server-id: "survival"    # Unique per server: "survival", "skyblock", "creative", etc.
   mysql-enabled: true
   mysql:
     host: "mysql.example.com"
@@ -244,39 +247,97 @@ View combined stats across all servers with `/fpp info`:
 |---------|-----------|---------|
 | `fpp:main` | Bidirectional | Main plugin messaging channel |
 
+### Subchannel: BOT_SPAWN
+
+**Format:**
+```
+[BOT_SPAWN] [msgId] [serverId] [uuid] [name] [displayName] [packetProfileName] [skinValue] [skinSignature]
+```
+
+Sent when a bot spawns on a server. Remote servers cache the entry and add a virtual tab-list entry with the bot's skin.
+
+### Subchannel: BOT_DESPAWN
+
+**Format:**
+```
+[BOT_DESPAWN] [msgId] [serverId] [uuid]
+```
+
+Sent when a bot is removed. Remote servers evict the cache entry and send tab-remove packets.
+
+### Subchannel: BOT_UPDATE
+
+**Format:**
+```
+[BOT_UPDATE] [msgId] [serverId] [uuid] [newDisplayName]
+```
+
+Sent when a bot's display name changes (e.g. after `/fpp rank`). Remote servers update their cached entry and resend tab display-name packets.
+
 ### Subchannel: CHAT
 
 **Format:**
 ```
-[CHAT] [botName] [botDisplayName] [message] [prefix] [suffix]
+[CHAT] [msgId] [botName] [botDisplayName] [message] [prefix] [suffix]
 ```
 
 **Example:**
 ```java
 VelocityChannel vc = plugin.getVelocityChannel();
-vc.sendPluginMessage("CHAT", "Notch", "§7[§bVIP§7] Notch", "Hello!", "§7[§bVIP§7] ", "");
+vc.sendChatToNetwork("Notch", "§7[§bVIP§7] Notch", "Hello!", "§7[§bVIP§7] ", "");
 ```
 
 ### Subchannel: ALERT
 
 **Format:**
 ```
-[ALERT] [messageId] [message]
-```
-
-**Example:**
-```java
-vc.sendPluginMessage("ALERT", "1234567890-12345", "Server restart!");
+[ALERT] [msgId] [message]
 ```
 
 ### Subchannel: SYNC
 
 **Format:**
 ```
-[SYNC] [key] [value]
+[SYNC] [msgId] [serverId] [key] [value]
 ```
 
-**Future use:** State synchronization, bot counts, etc.
+**Supported keys:**
+
+| Key | Value | Effect |
+|-----|-------|--------|
+| `config_updated` | relative file name (e.g. `config.yml`) | Triggers an immediate pull on AUTO_PULL servers and reloads the subsystem |
+
+### 4. Config Sync
+
+Keep plugin configuration consistent across all servers automatically.
+
+**Modes:**
+
+| Mode | Behaviour |
+|------|-----------|
+| `DISABLED` | No syncing (default for LOCAL mode) |
+| `MANUAL` | Only sync via `/fpp sync push/pull` commands |
+| `AUTO_PULL` | Pull the latest config from DB on startup/reload, and instantly when another server pushes |
+| `AUTO_PUSH` | Push local config to DB after every `/fpp reload` |
+
+**Setup:**
+```yaml
+config-sync:
+  mode: "AUTO_PULL"   # or AUTO_PUSH / MANUAL / DISABLED
+```
+
+**Commands:**
+```
+/fpp sync push [file]     # Push config(s) to shared DB
+/fpp sync pull [file]     # Pull config(s) from shared DB
+/fpp sync status [file]   # Show network version info
+/fpp sync check [file]    # Detect uncommitted local changes
+```
+
+**Reactive pull:** When `AUTO_PUSH` is set on a server and it pushes after `/fpp reload`, every `AUTO_PULL` server is notified instantly via the `SYNC/config_updated` subchannel and pulls + reloads the changed file immediately — no manual `/fpp sync pull` or restart required.
+
+**Server-specific keys** (never synced):
+- `database.server-id`, `database.mysql.*`, `debug`
 
 ---
 
@@ -331,8 +392,8 @@ If you see duplicates:
 - Bots from Server A appear in Server B's `/fpp list`
 
 **Fix:**
-1. Each server must have a **different** `server.id`
-2. Run `/fpp reload` after changing `server.id`
+1. Each server must have a **different** `database.server-id`
+2. Run `/fpp reload` after changing `database.server-id`
 3. Restart all servers
 
 ---

@@ -56,6 +56,7 @@ public final class VelocityChannel implements PluginMessageListener {
 
     public static final String SUBCHANNEL_BOT_SPAWN   = "BOT_SPAWN";
     public static final String SUBCHANNEL_BOT_DESPAWN = "BOT_DESPAWN";
+    public static final String SUBCHANNEL_BOT_UPDATE  = "BOT_UPDATE";
     public static final String SUBCHANNEL_CHAT        = "CHAT";
     public static final String SUBCHANNEL_ALERT       = "ALERT";
     public static final String SUBCHANNEL_JOIN        = "JOIN";
@@ -148,10 +149,12 @@ public final class VelocityChannel implements PluginMessageListener {
      * a virtual tab-list entry for this bot.
      *
      * <p>Wire: {@code [msgId][serverId][uuid][name][displayName][packetProfileName][skinValue][skinSignature]}
-     * The final two fields are now sent empty for backwards wire compatibility.
      */
     public void broadcastBotSpawn(FakePlayer fp) {
         if (!Config.isNetworkMode()) return;
+        me.bill.fakePlayerPlugin.fakeplayer.SkinProfile skin = fp.getResolvedSkin();
+        String skinValue     = (skin != null) ? skin.getValue()     : "";
+        String skinSignature = (skin != null) ? skin.getSignature() : "";
         String msgId = generateAndTrackId();
         sendPluginMessage(SUBCHANNEL_BOT_SPAWN,
                 msgId,
@@ -160,9 +163,44 @@ public final class VelocityChannel implements PluginMessageListener {
                 fp.getName(),
                 fp.getDisplayName(),
                 fp.getPacketProfileName(),
-                "",
-                "");
-        Config.debugNetwork("[VelocityChannel] BOT_SPAWN sent for '" + fp.getName() + "'.");
+                skinValue,
+                skinSignature);
+        Config.debugNetwork("[VelocityChannel] BOT_SPAWN sent for '" + fp.getName()
+                + "' (skin=" + !skinValue.isEmpty() + ").");
+    }
+
+    /**
+     * Notifies all other servers that a bot's display name has changed so they
+     * update their {@link RemoteBotCache} entry and refresh tab-list packets.
+     *
+     * <p>Wire: {@code [msgId][serverId][uuid][newDisplayName]}
+     */
+    public void broadcastBotDisplayNameUpdate(FakePlayer fp) {
+        if (!Config.isNetworkMode()) return;
+        String msgId = generateAndTrackId();
+        sendPluginMessage(SUBCHANNEL_BOT_UPDATE,
+                msgId,
+                Config.serverId(),
+                fp.getUuid().toString(),
+                fp.getDisplayName());
+        Config.debugNetwork("[VelocityChannel] BOT_UPDATE sent for '" + fp.getName() + "'.");
+    }
+
+    /**
+     * Broadcasts a config-updated notification so AUTO_PULL servers can react
+     * without waiting for their next scheduled pull cycle.
+     *
+     * <p>Wire: {@code [msgId][serverId][config_updated][fileName]}
+     */
+    public void broadcastConfigUpdated(String fileName) {
+        if (!Config.isNetworkMode()) return;
+        String msgId = generateAndTrackId();
+        sendPluginMessage(SUBCHANNEL_SYNC,
+                msgId,
+                Config.serverId(),
+                "config_updated",
+                fileName);
+        Config.debugNetwork("[VelocityChannel] SYNC/config_updated sent for '" + fileName + "'.");
     }
 
     /**
@@ -223,6 +261,7 @@ public final class VelocityChannel implements PluginMessageListener {
             switch (subchannel) {
                 case SUBCHANNEL_BOT_SPAWN   -> handleBotSpawn(in);
                 case SUBCHANNEL_BOT_DESPAWN -> handleBotDespawn(in);
+                case SUBCHANNEL_BOT_UPDATE  -> handleBotUpdate(in);
                 case SUBCHANNEL_CHAT        -> handleChat(in);
                 case SUBCHANNEL_ALERT       -> handleAlert(in);
                 case SUBCHANNEL_JOIN        -> handleJoin(in);
@@ -362,11 +401,115 @@ public final class VelocityChannel implements PluginMessageListener {
         BotBroadcast.broadcastLeaveByDisplayName(displayName);
     }
 
-    /** {@code SYNC} — wire: {@code [key][value]} */
+    /**
+     * {@code BOT_UPDATE} — a remote bot's display name changed.
+     * Updates the cached entry and resends tab-list display-name packets.
+     *
+     * <p>Wire: {@code [msgId][serverId][uuid][newDisplayName]}
+     */
+    private void handleBotUpdate(DataInputStream in) throws IOException {
+        String msgId          = in.readUTF();
+        String originServer   = in.readUTF();
+        UUID   uuid           = UUID.fromString(in.readUTF());
+        String newDisplayName = in.readUTF();
+
+        if (isDuplicate(msgId, originServer)) {
+            Config.debugNetwork("[VelocityChannel] BOT_UPDATE echo suppressed: " + uuid);
+            return;
+        }
+        trackIncoming(msgId);
+
+        Config.debugNetwork("[VelocityChannel] BOT_UPDATE " + uuid
+                + " displayName='" + newDisplayName + "' from '" + originServer + "'.");
+
+        RemoteBotCache cache = plugin.getRemoteBotCache();
+        if (cache == null) return;
+
+        RemoteBotEntry existing = cache.get(uuid);
+        if (existing == null) return; // unknown bot — ignore
+
+        // Rebuild entry with the new display name (all other fields unchanged)
+        RemoteBotEntry updated = new RemoteBotEntry(
+                existing.serverId(), existing.uuid(), existing.name(),
+                newDisplayName, existing.packetProfileName(),
+                existing.skinValue(), existing.skinSignature());
+        cache.add(updated);
+
+        // Resend tab-list display-name packet to all online players
+        if (Config.tabListEnabled()) {
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                PacketHelper.sendTabListDisplayNameUpdate(online, uuid, newDisplayName);
+            }
+        }
+    }
+
+    /**
+     * {@code SYNC} — generic state update from another server.
+     *
+     * <p>Wire: {@code [msgId][serverId][key][value]}
+     *
+     * <p>Supported keys:
+     * <ul>
+     *   <li>{@code config_updated} — value is the relative file name; if this server
+     *       is in AUTO_PULL mode, pulls the file reactively and reloads.</li>
+     * </ul>
+     */
     private void handleSync(DataInputStream in) throws IOException {
-        String key   = in.readUTF();
-        String value = in.readUTF();
-        Config.debugNetwork("[VelocityChannel] SYNC — " + key + "='" + value + "'.");
+        String msgId        = in.readUTF();
+        String originServer = in.readUTF();
+        String key          = in.readUTF();
+        String value        = in.readUTF();
+
+        if (isDuplicate(msgId, originServer)) {
+            Config.debugNetwork("[VelocityChannel] SYNC echo suppressed.");
+            return;
+        }
+        trackIncoming(msgId);
+
+        Config.debugNetwork("[VelocityChannel] SYNC — " + key + "='" + value
+                + "' from '" + originServer + "'.");
+
+        if ("config_updated".equals(key) && Config.configSyncMode().equalsIgnoreCase("AUTO_PULL")) {
+            var csm = plugin.getConfigSyncManager();
+            if (csm != null) {
+                // Pull must run async; reload (if needed) must run on the main thread.
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    boolean pulled = csm.pull(value, false);
+                    if (pulled) {
+                        FppLogger.info("[ConfigSync] Reactive pull applied for '" + value
+                                + "' (pushed by " + originServer + ").");
+                        // Reload the specific subsystem on the main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> reloadSubsystemForFile(value));
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Reloads the appropriate in-memory subsystem after an AUTO_PULL reactive config pull.
+     * Must be called on the main server thread.
+     */
+    private void reloadSubsystemForFile(String fileName) {
+        switch (fileName) {
+            case "config.yml" -> {
+                me.bill.fakePlayerPlugin.config.Config.reload();
+                Config.debugConfigSync("[ConfigSync] config.yml reloaded after reactive pull.");
+            }
+            case "bot-names.yml" -> {
+                me.bill.fakePlayerPlugin.config.BotNameConfig.reload();
+                Config.debugConfigSync("[ConfigSync] bot-names.yml reloaded after reactive pull.");
+            }
+            case "bot-messages.yml" -> {
+                me.bill.fakePlayerPlugin.config.BotMessageConfig.reload();
+                Config.debugConfigSync("[ConfigSync] bot-messages.yml reloaded after reactive pull.");
+            }
+            case "language/en.yml" -> {
+                me.bill.fakePlayerPlugin.lang.Lang.reload();
+                Config.debugConfigSync("[ConfigSync] language/en.yml reloaded after reactive pull.");
+            }
+            default -> Config.debugConfigSync("[ConfigSync] Unknown file for reactive reload: " + fileName);
+        }
     }
 
     private void broadcastAlertLocally(String message) {

@@ -190,6 +190,14 @@ public final class ConfigSyncManager {
 
             knownVersions.put(fileName, now);
             FppLogger.info("Config sync: pushed '" + fileName + "'.");
+
+            // Notify AUTO_PULL peers via plugin messaging so they can react immediately
+            // rather than waiting for their next startup/reload pull cycle.
+            var vc = plugin.getVelocityChannel();
+            if (vc != null) {
+                Bukkit.getScheduler().runTask(plugin, () -> vc.broadcastConfigUpdated(fileName));
+            }
+
             return true;
 
         } catch (Exception e) {

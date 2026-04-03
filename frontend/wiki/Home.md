@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin — Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.5.6 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
+> **Version:** 1.5.8 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
 
 ---
 
@@ -18,7 +18,7 @@
 - 🔄 **Dynamic swapping** — Replace offline players seamlessly  
 - ⚙️ **Highly configurable** — Hundreds of customization options
 - 🔐 **Permission system** — Full control over who can do what
-- 📊 **PlaceholderAPI** — 26+ placeholders for other plugins
+- 📊 **PlaceholderAPI** — 29+ placeholders for other plugins
 - 🎯 **LuckPerms integration** — Prefix/suffix support with gradients
 
 ---
@@ -110,42 +110,43 @@
 - **Whitelist Support** — Protect VIP players
 
 ### ⚙️ **Configuration**
-- **36 Config Versions** — Automatic migration system
+- **37 Config Versions** — Automatic migration system
 - **Hot Reload** — Change settings without restart
 - **Backup System** — Automatic config backups
 - **Validation** — Prevents invalid configurations
 
 ---
 
-## 🆕 What's New in v1.5.6
+## 🆕 What's New in v1.5.8
 
-### 🛡️ **Bot Protection System**
+### 🔧 **Ghost Player / "Anonymous User" Fix**
 
-**Complete Command Blocking**
-- 🚫 Bots can **no longer execute any commands** from any source
-- 4-layer protection system (LOWEST + HIGHEST + MONITOR + CommandSend events)
-- Blocks: direct typing, `Player.performCommand()`, `Bukkit.dispatchCommand()`
-- **Protected against:**
-  - First-join command plugins giving items to bots
-  - Auto-command schedulers running commands on bots
-  - Permission-based command executors
-  - Any plugin trying to force-execute commands
-- Command suggestion blocking prevents discovery
-- Debug logging: `logging.debug.nms: true`
+**FakeConnection Subclass**
+- 🚫 Eliminated the phantom **"Anonymous User"** entry with UUID `0` that appeared in the tab list whenever a bot connected
+- Replaced the old reflection-based `Connection` injection with a clean `FakeConnection` subclass that overrides `send()` as proper no-ops
+- Eliminated `NullPointerException` / `ClassCastException` spam in server logs from bot connection handling
 
-**Lobby Spawn Protection**
-- 🏠 Bots now **stay at player's spawn location**
-- 5-tick (250ms) grace period prevents lobby plugin interference
-- **Blocks:** EssentialsX spawn, Multiverse respawn anchors, custom lobby teleports
-- **Allows:** Admin commands (`/tp`, `/fpp tp`, `/fpp tph`)
-- Smart teleport cause filtering (PLUGIN/UNKNOWN blocked, COMMAND allowed)
-- Self-cleaning protection (no memory leaks)
+### 📊 **Placeholder Accuracy & New Proxy Placeholders**
 
-**Technical Details**
-- Enhanced event handling with proper priority chains
-- Zero breaking changes — 100% backward compatible
-- No configuration needed — works automatically
-- Production-tested and ready
+**`%fpp_real%` / `%fpp_total%` Accuracy**
+- `%fpp_real%` now correctly subtracts the bot count — bots go through `placeNewPlayer()` and appear in `Bukkit.getOnlinePlayers()`
+- `%fpp_real_<world>%` similarly excludes bots from per-world real-player counts
+- `%fpp_total%` fixed to avoid double-counting
+
+**New Proxy-Aware Placeholders (29+ total)**
+- `%fpp_local_count%` — bots on this server only
+- `%fpp_network_count%` — bots on other proxy servers (NETWORK mode)
+- `%fpp_network_names%` — comma-separated names from remote servers
+- `%fpp_count%` and `%fpp_names%` now include remote bots in NETWORK mode
+
+### 🌐 **NETWORK Mode `/fpp list` Improvements**
+- `/fpp list` shows `[server-id]` tags for local bots
+- Remote bots from other proxy servers listed in a dedicated section
+- Total counts include both local and remote bots
+
+### 🔐 **LuckPerms ClassLoader Guard**
+- Fixed `NoClassDefFoundError: net/luckperms/api/node/Node` crash on servers without LuckPerms
+- All LP-dependent code now properly gated — no LP classes loaded unless LP is present
 
 ---
 
@@ -176,10 +177,12 @@ fpp.*                    # Full access (admin)
 
 ## 📊 PlaceholderAPI Integration
 
-FPP provides **26+ placeholders** for use with other plugins:
+FPP provides **29+ placeholders** for use with other plugins:
 
 **Server-Wide:**
-- `%fpp_count%` — Number of bots
+- `%fpp_count%` — Number of bots (local + remote in NETWORK mode)
+- `%fpp_local_count%` — Bots on this server only
+- `%fpp_network_count%` — Bots on other proxy servers
 - `%fpp_real%` — Real players online  
 - `%fpp_total%` — Total players (real + bots)
 - `%fpp_names%` — Comma-separated bot names
