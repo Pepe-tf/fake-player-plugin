@@ -34,12 +34,6 @@
       ]
     },
     {
-      "source": "/(.*\\.(css|js))",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    },
-    {
       "source": "/Icon/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
@@ -60,7 +54,7 @@
       ]
     },
     {
-      "source": "/(index|wiki)\\.html",
+      "source": "/(index|wiki).html",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
