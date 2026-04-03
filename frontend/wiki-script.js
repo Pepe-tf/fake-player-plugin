@@ -8,7 +8,7 @@ const DEFAULT_PAGE = 'Home';
 const VALID_PAGES = [
     'Home', 'Getting-Started', 'FAQ', 'Commands', 'Permissions', 'Configuration',
     'Language', 'Bot-Names', 'Bot-Messages', 'Bot-Behaviour', 'Skin-System',
-    'Swap-System', 'Fake-Chat', 'Placeholders', 'Database', 'Migration'
+    'Swap-System', 'Fake-Chat', 'Placeholders', 'Database', 'Migration', 'Changelog'
 ];
 
 
@@ -267,7 +267,8 @@ function showAllPages() {
         'Getting Started': ['Home', 'Getting-Started', 'FAQ'],
         'Core Features': ['Commands', 'Permissions', 'Configuration', 'Language'],
         'Bot Systems': ['Bot-Names', 'Bot-Messages', 'Bot-Behaviour', 'Skin-System'],
-        'Advanced': ['Swap-System', 'Fake-Chat', 'Placeholders', 'Database', 'Migration']
+        'Advanced': ['Swap-System', 'Fake-Chat', 'Placeholders', 'Database', 'Migration'],
+        'Release Notes': ['Changelog']
     };
 
     let html = `
@@ -844,7 +845,7 @@ async function buildSearchIndex() {
         'Home', 'Getting-Started', 'FAQ', 'Commands', 'Permissions',
         'Configuration', 'Language', 'Bot-Names', 'Bot-Messages',
         'Bot-Behaviour', 'Skin-System', 'Swap-System', 'Fake-Chat',
-        'Placeholders', 'Database', 'Migration'
+        'Placeholders', 'Database', 'Migration', 'Changelog'
     ];
 
     for (const page of pages) {
@@ -1114,7 +1115,8 @@ const PAGE_ORDER = [
     'Fake-Chat',
     'Placeholders',
     'Database',
-    'Migration'
+    'Migration',
+    'Changelog'
 ];
 
 function updatePageNavigation() {

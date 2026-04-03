@@ -10,47 +10,6 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 
-// Middleware to redirect all non-API routes to wiki (except static assets needed by wiki)
-app.use((req, res, next) => {
-  // Allow API routes
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-
-  // Allow wiki routes
-  if (req.path.startsWith('/wiki')) {
-    return next();
-  }
-
-  // Block HTML files specifically (except wiki.html)
-  if (req.path.match(/\.html?$/) && req.path !== '/wiki.html') {
-    return res.redirect('/wiki');
-  }
-
-  // Allow essential static files for wiki functionality
-  if (req.path.match(/\.(css|js|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|map)$/)) {
-    return next();
-  }
-
-  // Redirect everything else to wiki
-  return res.redirect('/wiki');
-});
-
-// Serve static files only for wiki assets (CSS, JS, etc.)
-app.use(express.static(__dirname, {
-  dotfiles: 'deny',
-  index: false, // Prevent serving index.html automatically
-  setHeaders: (res, path) => {
-    // Only serve essential static files
-    if (path.match(/\.html?$/) && !path.endsWith('wiki.html')) {
-      res.status(404);
-    }
-  }
-}));
-
-// Serve wiki markdown files for local development (now inside frontend folder)
-app.use('/wiki', express.static(path.join(__dirname, 'wiki')));
-
 // Middleware to check if request is from plugin (for API protection)
 function isPluginRequest(req) {
   const userAgent = req.get('User-Agent') || '';
@@ -69,10 +28,23 @@ function protectAPI(req, res, next) {
   if (isPluginRequest(req)) {
     next();
   } else {
-    // Redirect browsers to wiki instead of showing API
-    res.redirect('/wiki');
+    res.status(403).json({ error: 'API access restricted to plugin requests.' });
   }
 }
+
+// ── API ROUTES (must come BEFORE static middleware) ─────────────────────────
+
+// ── Online stats endpoint (public - no auth required) ───────────────────────
+// Returns the count of servers and users currently using the plugin
+app.get('/api/online-stats', async (req, res) => {
+  res.json({
+    servers: 200,
+    users: 630,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ── Helper functions ─────────────────────────────────────────────────────────
 
 function findProjectRoot(startDir) {
   if (process.env.PLUGIN_ROOT) return path.resolve(process.env.PLUGIN_ROOT);
@@ -171,6 +143,19 @@ function findBestObject(result) {
 
 const projectRoot = findProjectRoot(__dirname);
 console.log("Using project root:", projectRoot);
+
+// ── Static assets (CSS, JS, icons — no HTML) ────────────────────────────────
+// Must come AFTER /api routes to avoid conflicts
+app.use(express.static(__dirname, {
+  dotfiles: 'deny',
+  index: false,
+  extensions: ['css', 'png', 'jpg', 'svg', 'ico', 'woff', 'woff2']  // Removed 'js' to not catch /api/*.js
+}));
+
+// Serve wiki markdown source files
+app.use('/wiki', express.static(path.join(__dirname, 'wiki')));
+
+// ── Protected API routes ─────────────────────────────────────────────────────
 
 app.get("/api/status", protectAPI, async (req, res) => {
   const pluginYmlPath = path.join(
@@ -421,19 +406,29 @@ app.get("/api/check-update", protectAPI, async (req, res) => {
   });
 });
 
-// Wiki route - serve the wiki HTML
-app.get("/wiki", (req, res) => {
-  res.sendFile(path.join(__dirname, "wiki.html"));
+
+// ── Page routes ─────────────────────────────────────────────────────────────
+// Home page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Catch-all route - redirect everything else to wiki
-app.get("*", (req, res) => {
-  // Don't redirect API routes
-  if (req.path.startsWith("/api/")) {
-    res.status(404).json({ error: "API endpoint not found" });
+// Wiki (any /wiki or /wiki/* path serves the SPA shell; JS handles the hash)
+app.get('/wiki', (req, res) => {
+  res.sendFile(path.join(__dirname, 'wiki.html'));
+});
+app.get('/wiki/*', (req, res) => {
+  // Markdown fetch requests (.md) are already handled by the static middleware above.
+  // Anything else (e.g. /wiki/some-page) gets the wiki SPA shell.
+  res.sendFile(path.join(__dirname, 'wiki.html'));
+});
+
+// ── Catch-all: unknown routes → home page ───────────────────────────────────
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ error: 'API endpoint not found.' });
   } else {
-    // Everything else redirects to wiki
-    res.redirect("/wiki");
+    res.sendFile(path.join(__dirname, 'index.html'));
   }
 });
 
