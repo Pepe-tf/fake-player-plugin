@@ -56,12 +56,12 @@ public final class SyncCommand implements FppCommand {
 
     @Override
     public String getPermission() {
-        return Perm.ALL;
+        return Perm.SYNC;
     }
 
     @Override
     public boolean canUse(CommandSender sender) {
-        return Perm.has(sender, Perm.ALL);
+        return Perm.has(sender, Perm.SYNC);
     }
 
     @Override

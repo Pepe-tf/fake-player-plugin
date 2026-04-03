@@ -2,7 +2,7 @@
 
 [SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.5.4  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.5.6  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]
@@ -392,6 +392,49 @@ Placeholders: [FONT=monospace]{prefix}[/FONT] (LP prefix), [FONT=monospace]{bot_
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
 
+[SIZE=5][B]v1.5.6[/B][/SIZE] [I](2026-04-03)[/I]
+
+[B]Knockback fix (1.21.9 – 1.21.11)[/B]
+[LIST]
+[*]Bots now correctly receive knockback on 1.21.9+ servers
+[*]In MC 1.21.9 Mojang replaced the individual getXa/Ya/Za() packet accessors with a single getMovement() → Vec3; the old code silently skipped knockback because all accessors returned null
+[*]New tiered strategy system resolves the correct API once at startup and caches it — zero reflection overhead per hit:
+[LIST]
+[*]GET_MOVEMENT (1.21.9+): packet.getMovement() → Vec3 → player.lerpMotion(Vec3) (matches hello09x/fakeplayer reference plugin)
+[*]GET_XA (≤ 1.21.8): packet.getXa/Ya/Za() → lerpMotion(double,double,double) or setDeltaMovement(Vec3) fallback
+[*]NONE: no compatible API found — silently skipped, debug-logged
+[/LIST]
+[*]Enable logging.debug.nms: true to see which strategy was selected on first use
+[/LIST]
+
+[B]Double-disconnect crash fix (Paper 1.21+)[/B]
+[LIST]
+[*]Fixed IllegalStateException: Already retired spam in server logs when a bot is slain
+[*]Root cause: injectFakeListener was replacing ServerPlayer.connection but not Connection.packetListener — the field Connection.handleDisconnection() uses to call onDisconnect(); the vanilla SGPL (with no double-retirement guard) was being called instead of our override
+[*]Fix: injectPacketListenerIntoConnection() now scans the Connection object's field hierarchy at spawn time and replaces the vanilla listener reference with our FakeServerGamePacketListenerImpl; the existing onDisconnect try-catch then correctly suppresses the second "Already retired" error
+[*]Side-effect improvement: Connection.tick() now calls our fake listener's tick() instead of the vanilla SGPL, eliminating any lingering awaitingPositionFromClient processing
+[/LIST]
+
+[B]Bot Protection System[/B]
+[LIST]
+[*][B]Command blocking[/B] — bots can no longer execute commands from ANY source (4-layer protection system)
+[*][B]Lobby spawn fix[/B] — 5-tick grace period prevents lobby plugins from teleporting bots during spawn
+[*]New BotCommandBlocker listener blocks commands at LOWEST, HIGHEST, and MONITOR priorities
+[*]New BotSpawnProtectionListener prevents lobby/spawn plugin teleports
+[*]Command suggestion blocking prevents auto-command discovery
+[*]Blocks all execution paths: typing, Player.performCommand(), Bukkit.dispatchCommand()
+[*]Works with first-join command plugins, auto-command schedulers, and permission-based executors
+[/LIST]
+
+[B]Technical[/B]
+[LIST]
+[*]Enhanced event handling with ignoreCancelled checks
+[*]Smart teleport cause filtering (blocks PLUGIN/UNKNOWN, allows COMMAND)
+[*]Debug logging via logging.debug.nms: true
+[*]Self-cleaning protection sets (no memory leaks)
+[*]100% backward compatible
+[/LIST]
+
 [SIZE=5][B]v1.5.4[/B][/SIZE] [I](2026-04-03)[/I]
 
 [B]PlaceholderAPI Expansion[/B]
@@ -553,6 +596,6 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.5.4[/I]
+[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.5.6[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fakeplayerplugin.xyz']Wiki[/URL][/CENTER]

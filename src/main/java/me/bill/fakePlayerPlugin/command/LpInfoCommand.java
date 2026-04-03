@@ -33,7 +33,7 @@ public final class LpInfoCommand implements FppCommand {
     @Override public String getName()        { return "lpinfo"; }
     @Override public String getUsage()       { return ""; }
     @Override public String getDescription() { return "Show LuckPerms integration status for bots."; }
-    @Override public String getPermission()  { return Perm.ALL; }
+    @Override public String getPermission()  { return Perm.LP_INFO; }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {

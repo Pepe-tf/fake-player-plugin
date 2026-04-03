@@ -595,6 +595,12 @@ public final class NmsPlayerSpawner {
      * and its {@code send()} override discards all packets, so that field can never
      * be populated.  This means the server's {@code connection.tick()} runs harmlessly
      * and bots have proper physics instead of floating.
+     *
+     * <p>Critically, the {@code Connection}'s own {@code packetListener} field (used by
+     * {@code Connection.handleDisconnection()} to call {@code onDisconnect()}) is also
+     * updated to the fake listener.  Without this second update, double-disconnect on bot
+     * death routes through the vanilla SGPL — which has no "Already retired" guard — and
+     * causes an {@link IllegalStateException} crash on Paper 1.21+.
      */
     private static void injectFakeListener(Object minecraftServer, Object conn,
                                            Object serverPlayer,
@@ -614,12 +620,60 @@ public final class NmsPlayerSpawner {
                     FakeServerGamePacketListenerImpl.create(
                             minecraftServer, conn, serverPlayer, cookie);
 
+            // 1. Replace serverPlayer.connection (prevents awaitingPositionFromClient snap)
             connectionFieldInPlayer.set(serverPlayer, fakeListener);
-            FppLogger.debug("NmsPlayerSpawner: FakeServerGamePacketListenerImpl injected");
+            FppLogger.debug("NmsPlayerSpawner: FakeServerGamePacketListenerImpl injected into serverPlayer.connection");
+
+            // 2. Replace Connection.packetListener with the same fake listener so that
+            //    Connection.handleDisconnection() calls OUR onDisconnect() override (which
+            //    suppresses the "Already retired" ISE on double-disconnect) rather than the
+            //    vanilla SGPL's onDisconnect() (which has no such guard).
+            //    placeNewPlayer() set conn.packetListener = vanillaSGPL; we scan the Connection
+            //    object's fields at runtime to find and replace that exact reference.
+            injectPacketListenerIntoConnection(conn, fakeListener);
 
         } catch (Exception e) {
             FppLogger.warn("NmsPlayerSpawner: fake listener injection failed: " + e.getMessage());
             FppLogger.debug(Arrays.toString(e.getStackTrace()));
+        }
+    }
+
+    /**
+     * Finds the field inside the NMS {@code Connection} object that currently holds the
+     * vanilla {@code ServerGamePacketListenerImpl} set by {@code placeNewPlayer()} and
+     * replaces it with {@code fakeListener}.
+     *
+     * <p>This is required so that {@code Connection.handleDisconnection()} routes
+     * {@code onDisconnect()} calls through our override (which silences the
+     * "Already retired" crash on double-disconnect when a bot is slain).
+     *
+     * <p>Detection strategy: scan all non-static fields in the full {@code Connection}
+     * class hierarchy and replace the first one whose current value is an instance of
+     * {@code ServerGamePacketListenerImpl}.  This is version-agnostic and works even
+     * when the field is renamed across MC versions.
+     */
+    private static void injectPacketListenerIntoConnection(Object conn,
+                                                            FakeServerGamePacketListenerImpl fakeListener) {
+        if (conn == null || serverGamePacketListenerClass == null) return;
+        try {
+            for (Field f : getAllDeclaredFields(conn.getClass())) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+                try {
+                    f.setAccessible(true);
+                    Object val = f.get(conn);
+                    if (val != null && serverGamePacketListenerClass.isInstance(val)) {
+                        f.set(conn, fakeListener);
+                        FppLogger.debug("NmsPlayerSpawner: Connection." + f.getName()
+                                + " updated to FakeServerGamePacketListenerImpl"
+                                + " (was " + val.getClass().getSimpleName() + ")");
+                        return; // only one such field should exist
+                    }
+                } catch (Exception ignored) {}
+            }
+            FppLogger.debug("NmsPlayerSpawner: Connection packetListener field not found"
+                    + " — onDisconnect override may not fire on double-disconnect");
+        } catch (Exception e) {
+            FppLogger.debug("NmsPlayerSpawner: injectPacketListenerIntoConnection failed: " + e.getMessage());
         }
     }
 

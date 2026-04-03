@@ -191,6 +191,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new ServerListListener(fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new FakePlayerKickListener(fakePlayerManager), this);
+        getServer().getPluginManager().registerEvents(new me.bill.fakePlayerPlugin.listener.BotCommandBlocker(), this);
+        getServer().getPluginManager().registerEvents(new me.bill.fakePlayerPlugin.listener.BotSpawnProtectionListener(this), this);
         new BotChatAI(this, fakePlayerManager);
 
         // ── Plugin messaging (Velocity / BungeeCord) ─────────────────────────

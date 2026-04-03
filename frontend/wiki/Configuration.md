@@ -47,12 +47,53 @@ To add a new language, copy `en.yml`, translate it, and set this value to the ne
 ## debug
 
 ```yaml
-debug:
-  enabled: false
+debug: false  # Legacy master switch - enables all categories below
 ```
 
 When `true`, FPP prints verbose diagnostic messages to the console — useful for bug reports and development.  
 **Disable in production** — it is very noisy.
+
+### Granular Debug Logging *(v1.5.0+)*
+
+For more precise debugging, use per-subsystem toggles instead of the global `debug` flag:
+
+```yaml
+logging:
+  debug:
+    startup: false      # Startup flow, reloads, compatibility, general lifecycle
+    nms: false          # Reflection, fake connection setup, NMS internals
+    packets: false      # Tab-list/entity packet sending and packet constructor selection
+    luckperms: false    # LuckPerms group sync and prefix refresh details
+    network: false      # Velocity/Bungee plugin messaging and remote bot sync
+    config-sync: false  # Network config push/pull activity and YAML sync internals
+    skin: false         # Skin subsystem debugging
+    database: false     # Database init, migrations, flushes, and session persistence
+```
+
+**Usage Examples:**
+
+| Scenario | Enable |
+|----------|--------|
+| Bot command blocking verification | `nms: true` |
+| Lobby spawn protection verification | `nms: true` |
+| Troubleshooting skin loading | `skin: true` |
+| Diagnosing LuckPerms prefix issues | `luckperms: true` |
+| Debugging proxy network chat | `network: true` |
+| Config sync problems | `config-sync: true` |
+
+**Bot Protection Debug Output (v1.5.6+):**
+
+When `nms: true` is enabled, you'll see:
+
+```
+[FPP] BotCommandBlocker: blocked command (LOWEST) for BotName: /give BotName diamond_sword
+[FPP] BotCommandBlocker: cleared command suggestions for BotName
+[FPP] BotSpawnProtection: protecting BotName from teleports for 5 ticks
+[FPP] BotSpawnProtection: blocked PLUGIN teleport for BotName from world (100,64,200) to lobby (0,100,0)
+[FPP] BotSpawnProtection: removed protection for BotName
+```
+
+> **Tip:** Set only the category you need — this keeps logs clean and focused.
 
 ---
 

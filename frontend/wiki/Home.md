@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin — Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.5.4 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
+> **Version:** 1.5.6 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
 
 ---
 
@@ -114,6 +114,38 @@
 - **Hot Reload** — Change settings without restart
 - **Backup System** — Automatic config backups
 - **Validation** — Prevents invalid configurations
+
+---
+
+## 🆕 What's New in v1.5.6
+
+### 🛡️ **Bot Protection System**
+
+**Complete Command Blocking**
+- 🚫 Bots can **no longer execute any commands** from any source
+- 4-layer protection system (LOWEST + HIGHEST + MONITOR + CommandSend events)
+- Blocks: direct typing, `Player.performCommand()`, `Bukkit.dispatchCommand()`
+- **Protected against:**
+  - First-join command plugins giving items to bots
+  - Auto-command schedulers running commands on bots
+  - Permission-based command executors
+  - Any plugin trying to force-execute commands
+- Command suggestion blocking prevents discovery
+- Debug logging: `logging.debug.nms: true`
+
+**Lobby Spawn Protection**
+- 🏠 Bots now **stay at player's spawn location**
+- 5-tick (250ms) grace period prevents lobby plugin interference
+- **Blocks:** EssentialsX spawn, Multiverse respawn anchors, custom lobby teleports
+- **Allows:** Admin commands (`/tp`, `/fpp tp`, `/fpp tph`)
+- Smart teleport cause filtering (PLUGIN/UNKNOWN blocked, COMMAND allowed)
+- Self-cleaning protection (no memory leaks)
+
+**Technical Details**
+- Enhanced event handling with proper priority chains
+- Zero breaking changes — 100% backward compatible
+- No configuration needed — works automatically
+- Production-tested and ready
 
 ---
 

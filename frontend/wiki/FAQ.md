@@ -399,6 +399,88 @@ bot-combat:
 
 ---
 
+### ❌ **Bots Are Executing Commands** *(Fixed in v1.5.6)*
+
+**Symptoms:** First-join plugins giving items to bots, command plugins running on bots
+
+**✅ Automatic Protection (v1.5.6+):**
+FPP now includes **4-layer command blocking** that prevents bots from executing ANY commands from ANY source. This works automatically with no configuration needed.
+
+**Protected Against:**
+- First-join command plugins (`/give`, `/kit starter`)
+- Auto-command schedulers
+- Permission-based command executors
+- `Player.performCommand()` calls
+- `Bukkit.dispatchCommand()` calls
+- Command suggestions and tab-complete
+
+**Verify Protection:**
+```bash
+# Enable debug logging to see blocking in action
+logging:
+  debug:
+    nms: true
+```
+
+**Console Output:**
+```
+[FPP] BotCommandBlocker: blocked command (LOWEST) for BotName: /give BotName diamond_sword
+[FPP] BotCommandBlocker: cleared command suggestions for BotName
+```
+
+**If bots are still executing commands (v1.5.5 or earlier):**
+1. **Update to v1.5.6+** — automatic command blocking included
+2. **Check plugin version:** `/fpp` or `/plugins`
+3. **No configuration needed** — works out of the box
+
+---
+
+### ❌ **Lobby Plugins Teleporting Bots on Spawn** *(Fixed in v1.5.6)*
+
+**Symptoms:** Bots spawn at lobby/spawn instead of player location
+
+**✅ Automatic Protection (v1.5.6+):**
+FPP now includes **5-tick spawn protection** that prevents lobby plugins from teleporting bots during their initial spawn. This works automatically with no configuration needed.
+
+**Protected Against:**
+- EssentialsX spawn teleports
+- Multiverse respawn anchors
+- Custom lobby plugins
+- Any plugin using `PlayerTeleportEvent` with PLUGIN/UNKNOWN cause
+
+**Still Allows:**
+- Admin commands (`/tp`, `/fpp tp`, `/fpp tph`)
+- Manual teleports via commands
+
+**Verify Protection:**
+```bash
+# Enable debug logging to see protection in action
+logging:
+  debug:
+    nms: true
+```
+
+**Console Output:**
+```
+[FPP] BotSpawnProtection: protecting BotName from teleports for 5 ticks
+[FPP] BotSpawnProtection: blocked PLUGIN teleport for BotName from world (100,64,200) to lobby (0,100,0)
+[FPP] BotSpawnProtection: removed protection for BotName
+```
+
+**If bots are still being teleported (v1.5.5 or earlier):**
+1. **Update to v1.5.6+** — automatic spawn protection included
+2. **Check plugin version:** `/fpp` or `/plugins`
+3. **No configuration needed** — works out of the box
+
+**Manual Workaround (older versions):**
+```yaml
+# Disable lobby teleport for bots in lobby plugin's config
+essentials:
+  spawn-on-join: false
+```
+
+---
+
 ## 🎨 **Skin Problems**
 
 ### ❌ **All Bots Have Notch Skin**

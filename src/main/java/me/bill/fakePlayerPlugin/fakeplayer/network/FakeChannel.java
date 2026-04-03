@@ -24,6 +24,10 @@ public final class FakeChannel extends AbstractChannel {
     private final ChannelPipeline pipeline = new FakeChannelPipeline(this);
     private final InetAddress address;
 
+    // Track channel state to prevent Netty IllegalStateException on close
+    private volatile boolean open = true;
+    private volatile boolean active = true;
+
     /**
      * Optional listener called in {@link FakeChannelPipeline} before a
      * written packet is discarded.  Used to intercept knockback velocity packets.
@@ -64,12 +68,12 @@ public final class FakeChannel extends AbstractChannel {
 
     @Override
     public boolean isOpen() {
-        return true;
+        return open;
     }
 
     @Override
     public boolean isActive() {
-        return true;
+        return active;
     }
 
     @Override
@@ -117,10 +121,15 @@ public final class FakeChannel extends AbstractChannel {
 
     @Override
     protected void doDisconnect() {
+        // Mark channel as inactive when disconnected
+        active = false;
     }
 
     @Override
     protected void doClose() {
+        // Mark channel as closed to prevent Netty IllegalStateException
+        active = false;
+        open = false;
     }
 
     @Override

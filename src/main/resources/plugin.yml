@@ -1,5 +1,5 @@
 name: FakePlayerPlugin
-version: '1.5.4'
+version: '1.5.6'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
@@ -12,6 +12,26 @@ commands:
     description: Fake Player Plugin main command
     usage: /fpp [sub-command]
     aliases: [ fakeplayer, fp ]
+
+# ══════════════════════════════════════════════════════════════════════════════
+#                           PERMISSION SYSTEM
+# ══════════════════════════════════════════════════════════════════════════════
+# All permissions are auto-discovered by LuckPerms for tab-completion.
+# To grant permissions:
+#   /lp user <username> permission set <permission> true
+#   /lp group <groupname> permission set <permission> true
+#
+# Examples:
+#   Grant admin access:      /lp group admin permission set fpp.* true
+#   Grant user access:       /lp user PlayerName permission set fpp.user.* true
+#   Set bot limit to 5:      /lp user PlayerName permission set fpp.bot.5 true
+#   Bypass spawn cooldown:   /lp user VIP permission set fpp.bypass.cooldown true
+#
+# Permission hierarchy:
+#   fpp.*         → Full admin (includes all commands below)
+#   fpp.user.*    → User tier (spawn, tph, info-self) — default: everyone
+#   fpp.bot.<num> → Personal bot limit (1-100) — default: fpp.bot.1
+# ══════════════════════════════════════════════════════════════════════════════
 
 permissions:
 
@@ -40,6 +60,8 @@ permissions:
       fpp.freeze:           true
       fpp.lpinfo:           true
       fpp.rank:             true
+      fpp.alert:            true
+      fpp.sync:             true
       fpp.user.*:           true
 
   # ── User wildcard ──────────────────────────────────────────────────────────
@@ -240,10 +262,29 @@ permissions:
       Useful for debugging tab-list ordering issues.
     default: op
 
-  # ── Rank (LuckPerms Group Assignment) ─────────────────────────────────────
+  # ── Rank (LuckPerms Group Assignment) ─────────────────────────────────
   fpp.rank:
     description: >
       Assign LuckPerms groups to individual bots with /fpp rank.
       Subcommands: <bot> <group>, <bot> clear, random <group> [num], list.
       Allows mixing bot ranks (admin bots, VIP bots, default bots) on the same server.
     default: op
+
+  # ── Alert (Network Broadcast) ─────────────────────────────────────────
+  fpp.alert:
+    description: >
+      Broadcast network-wide alerts to all servers via /fpp alert <message>.
+      Sends the alert to Velocity proxy which echoes it back to every backend server.
+      Players and console on all connected servers will see the broadcast.
+      Requires NETWORK mode and plugin messaging to be active.
+    default: op
+
+  # ── Sync (Config Synchronization) ─────────────────────────────────────
+  fpp.sync:
+    description: >
+      Sync config files across network with /fpp sync <push|pull|status|check> [file].
+      Push or pull config.yml, bot-names.yml, bot-messages.yml, and language files
+      to/from the MySQL database. Requires NETWORK mode and config-sync.mode to be enabled.
+      Automatically creates backups before any pull operation.
+    default: op
+

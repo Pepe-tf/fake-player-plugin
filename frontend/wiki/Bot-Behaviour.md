@@ -28,6 +28,97 @@ FPP bots are sophisticated entities that combine **realistic tab list presence**
 
 ---
 
+## 🛡️ **Bot Protection System** *(v1.5.6+)*
+
+FPP includes automatic protection systems to prevent common issues with plugin interference and bot abuse.
+
+### 🚫 **Command Blocking**
+
+**Automatic 4-Layer Protection**
+
+Bots are **completely command-proof** — they cannot execute commands from any source:
+
+```
+Layer 1: LOWEST Priority   → Catch commands first
+Layer 2: HIGHEST Priority  → Safety net for edge cases
+Layer 3: MONITOR Priority  → Final safeguard, re-cancel if needed
+Layer 4: CommandSend Event → Clear command suggestions
+```
+
+**Protected Against:**
+- ✅ First-join command plugins (e.g., giving starter kits to bots)
+- ✅ Auto-command schedulers running commands on bots
+- ✅ Permission-based command executors
+- ✅ `Player.performCommand()` calls from other plugins
+- ✅ `Bukkit.dispatchCommand()` calls
+- ✅ Command suggestions and tab-completion
+
+**Works Automatically:**
+- ❌ No configuration needed
+- ❌ No permissions needed
+- ✅ Completely transparent
+- ✅ Zero performance impact
+
+**Debug Logging:**
+
+```yaml
+logging:
+  debug:
+    nms: true  # Shows command blocking in action
+```
+
+**Console Output:**
+```
+[FPP] BotCommandBlocker: blocked command (LOWEST) for Bot123: /give Bot123 diamond_sword
+[FPP] BotCommandBlocker: cleared command suggestions for Bot123
+```
+
+---
+
+### 🏠 **Lobby Spawn Protection**
+
+**5-Tick Grace Period**
+
+Bots are **protected from lobby plugin teleports** during their initial spawn (250ms):
+
+**What It Blocks:**
+- ✅ EssentialsX spawn-on-join
+- ✅ Multiverse respawn anchors
+- ✅ Custom lobby teleport plugins
+- ✅ Any `PlayerTeleportEvent` with PLUGIN or UNKNOWN cause
+
+**What It Allows:**
+- ✅ Admin commands (`/tp`, `/fpp tp`, `/fpp tph`)
+- ✅ Manual teleports
+- ✅ Teleports after the grace period expires
+
+**How It Works:**
+
+```
+1. Bot spawns at player's location
+2. Protection activated (5 ticks / 250ms)
+3. Lobby plugins' teleport attempts are blocked
+4. Protection expires after 5 ticks
+5. Bot remains at correct location
+```
+
+**Debug Logging:**
+
+```yaml
+logging:
+  debug:
+    nms: true  # Shows spawn protection in action
+```
+
+**Console Output:**
+```
+[FPP] BotSpawnProtection: protecting Bot123 from teleports for 5 ticks
+[FPP] BotSpawnProtection: blocked PLUGIN teleport for Bot123 from world (100,64,200) to lobby (0,100,0)
+[FPP] BotSpawnProtection: removed protection for Bot123
+```
+
+---
+
 ## 🏃 **Physical Bodies (Mannequins)**
 
 ### 🎮 **Entity Structure**

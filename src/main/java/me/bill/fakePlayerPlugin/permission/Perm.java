@@ -159,6 +159,12 @@ public final class Perm {
     /** Bypass the spawn cooldown timer. */
     public static final String BYPASS_COOLDOWN = "fpp.bypass.cooldown";
 
+    /** Broadcast network-wide alerts via /fpp alert. */
+    public static final String ALERT         = "fpp.alert";
+
+    /** Sync configs across network via /fpp sync. */
+    public static final String SYNC          = "fpp.sync";
+
     // ── Static helpers ────────────────────────────────────────────────────────
 
     /** Returns {@code true} if {@code sender} has the given permission node. */
