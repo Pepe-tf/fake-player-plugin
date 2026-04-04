@@ -53,7 +53,7 @@ function initNavigation() {
             const page = link.getAttribute('data-page');
             if (page) {
                 loadPage(page);
-                setActivePage(page);
+                setActivePage(page); // user-initiated → pushState
                 closeMobileMenu();
             }
         });
@@ -105,7 +105,7 @@ function closeMobileMenu() {
     if (backdrop) backdrop.classList.remove('active');
 }
 
-function setActivePage(page) {
+function setActivePage(page, { replaceHistory = false, updateUrl = true } = {}) {
     // Validate page parameter
     if (!page || !VALID_PAGES.includes(page)) {
         console.warn('Attempted to set invalid active page:', page);
@@ -119,19 +119,24 @@ function setActivePage(page) {
         }
     });
     currentPage = page;
-    updateURL(page);
+    if (updateUrl) {
+        updateURL(page, replaceHistory);
+    }
 }
 
-function updateURL(page) {
+function updateURL(page, replace = false) {
     // Validate page before updating URL
     if (!page || !VALID_PAGES.includes(page)) {
         console.warn('Invalid page for URL update:', page);
         page = DEFAULT_PAGE;
     }
 
-    const url = new URL(window.location);
-    url.hash = page;
-    window.history.pushState({}, '', url);
+    const newPath = `/wiki/${page}`;
+    if (replace) {
+        window.history.replaceState({ page }, '', newPath);
+    } else {
+        window.history.pushState({ page }, '', newPath);
+    }
 }
 
 // ==================== PAGE LOADING ====================
@@ -217,7 +222,7 @@ function showPageNotFound(pageName, content) {
                 <h3>Did you mean?</h3>
                 <ul class="suggestion-list">
                     ${suggestions.map(page => `
-                        <li><a href="#${page}" onclick="loadPage('${page}')">${formatPageTitle(page)}</a></li>
+                        <li><a href="/wiki/${page}" onclick="loadPage('${page}')">${formatPageTitle(page)}</a></li>
                     `).join('')}
                 </ul>
             </div>
@@ -304,7 +309,7 @@ function showAllPages() {
                 <h2>${category}</h2>
                 <div class="page-grid">
                     ${pages.map(page => `
-                        <a href="#${page}" onclick="loadPage('${page}')" class="page-card">
+                        <a href="/wiki/${page}" onclick="loadPage('${page}')" class="page-card">
                             <h3>${formatPageTitle(page)}</h3>
                         </a>
                     `).join('')}
@@ -984,7 +989,7 @@ function highlightMatch(text, query) {
 function navigateToResult(page) {
     closeSearchModal();
     loadPage(page);
-    setActivePage(page);
+    setActivePage(page); // user-initiated → pushState (default)
 }
 
 function formatPageTitle(page) {
@@ -1169,12 +1174,12 @@ function updatePageNavigation() {
     if (currentIndex > 0) {
         const prevPage = PAGE_ORDER[currentIndex - 1];
         prevBtn.style.display = 'flex';
-        prevBtn.href = `#${prevPage}`;
+        prevBtn.href = `/wiki/${prevPage}`;
         prevBtn.querySelector('.nav-title').textContent = formatPageTitle(prevPage);
         prevBtn.onclick = (e) => {
             e.preventDefault();
             loadPage(prevPage);
-            setActivePage(prevPage);
+            setActivePage(prevPage); // user-initiated → pushState
         };
     }
 
@@ -1182,12 +1187,12 @@ function updatePageNavigation() {
     if (currentIndex < PAGE_ORDER.length - 1) {
         const nextPage = PAGE_ORDER[currentIndex + 1];
         nextBtn.style.display = 'flex';
-        nextBtn.href = `#${nextPage}`;
+        nextBtn.href = `/wiki/${nextPage}`;
         nextBtn.querySelector('.nav-title').textContent = formatPageTitle(nextPage);
         nextBtn.onclick = (e) => {
             e.preventDefault();
             loadPage(nextPage);
-            setActivePage(nextPage);
+            setActivePage(nextPage); // user-initiated → pushState
         };
     }
 
@@ -1220,54 +1225,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize mobile TOC
     initMobileTOC();
 
-    // Load initial page from URL hash or default
-    const hash = window.location.hash.substring(1);
-    let initialPage = hash || DEFAULT_PAGE;
-
-    // Validate the initial page - if invalid, redirect to home
-    if (!VALID_PAGES.includes(initialPage)) {
-        console.warn('Invalid page in URL hash:', initialPage);
-        initialPage = DEFAULT_PAGE;
-        // Update URL to remove invalid hash
-        window.history.replaceState({}, '', window.location.pathname + '#' + DEFAULT_PAGE);
+    // Helper to extract page from path
+    function getPageFromPath() {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        // Expected format: /wiki/PageName
+        if (parts[0] === 'wiki' && parts.length > 1) {
+            const candidate = parts[1];
+            return VALID_PAGES.includes(candidate) ? candidate : DEFAULT_PAGE;
+        }
+        return DEFAULT_PAGE;
     }
 
+    // Load initial page from URL path or default
+    let initialPage = getPageFromPath();
+
+    // Validate the initial page - if invalid, replace to home
+    if (!VALID_PAGES.includes(initialPage)) {
+        console.warn('Invalid page in URL path:', initialPage);
+        initialPage = DEFAULT_PAGE;
+    }
+
+    // Use replaceState so the initial load doesn't add a duplicate history entry.
+    // Without this, pressing Back once would stay on the wiki (hitting the duplicate),
+    // requiring a second click to actually leave.
+    window.history.replaceState({ page: initialPage }, '', `/wiki/${initialPage}`);
+
     loadPage(initialPage);
-    setActivePage(initialPage);
+    setActivePage(initialPage, { updateUrl: false }); // URL already set above
 
-    // Handle browser back/forward with validation
-    window.addEventListener('popstate', () => {
-        const hash = window.location.hash.substring(1);
-        let page = hash || DEFAULT_PAGE;
+    // Handle browser back/forward — browser updates the URL itself, so we only
+    // need to load the content and highlight the sidebar. No pushState here.
+    window.addEventListener('popstate', (e) => {
+        // Prefer the state object (faster) but fall back to parsing the path
+        const page = (e.state && e.state.page && VALID_PAGES.includes(e.state.page))
+            ? e.state.page
+            : getPageFromPath();
 
-        // Validate page from browser navigation
+        const validPage = VALID_PAGES.includes(page) ? page : DEFAULT_PAGE;
+
         if (!VALID_PAGES.includes(page)) {
-            console.warn('Invalid page from browser navigation:', page);
-            page = DEFAULT_PAGE;
-            // Silently correct the URL
-            window.history.replaceState({}, '', window.location.pathname + '#' + DEFAULT_PAGE);
+            // Silently correct URL for invalid pages
+            window.history.replaceState({ page: DEFAULT_PAGE }, '', `/wiki/${DEFAULT_PAGE}`);
         }
 
-        loadPage(page);
-        setActivePage(page);
-    });
-
-    // Handle hash changes (for direct hash modifications)
-    window.addEventListener('hashchange', () => {
-        const hash = window.location.hash.substring(1);
-        let page = hash || DEFAULT_PAGE;
-
-        // Validate page from hash change
-        if (!VALID_PAGES.includes(page)) {
-            console.warn('Invalid page from hash change:', page);
-            page = DEFAULT_PAGE;
-            // Redirect to home page
-            window.location.hash = DEFAULT_PAGE;
-            return;
-        }
-
-        loadPage(page);
-        setActivePage(page);
+        loadPage(validPage);
+        setActivePage(validPage, { updateUrl: false }); // browser already updated URL
     });
 });
 

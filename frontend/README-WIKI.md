@@ -286,13 +286,13 @@ All frontend dependencies loaded via CDN (no npm install needed for HTML/CSS/JS)
 ### Link to Specific Section
 
 ```
-https://your-wiki.com/wiki#Commands
+https://your-wiki.com/wiki/Commands
 ```
 
 ### Link to Specific Heading
 
 ```
-https://your-wiki.com/wiki#Commands#admin-commands
+https://your-wiki.com/wiki/Commands#admin-commands
 ```
 
 ### Embed in iframe

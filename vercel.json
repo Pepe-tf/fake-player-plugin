@@ -29,7 +29,8 @@
     { "src": "/legal/(privacy-policy|terms-of-service|copyright)", "dest": "/frontend/legal.html" },
     { "src": "/legal/(.*)",        "status": 301, "headers": { "Location": "/legal/privacy-policy" } },
 
-    { "src": "/wiki(.*)",          "dest": "/frontend/wiki.html"           },
+    { "src": "/wiki/?$",           "dest": "/frontend/wiki.html"           },
+    { "src": "/wiki/(Home|Getting-Started|FAQ|Commands|Permissions|Configuration|Language|Bot-Names|Bot-Messages|Bot-Behaviour|Skin-System|Swap-System|Fake-Chat|Placeholders|Database|Migration|Changelog)", "dest": "/frontend/wiki.html" },
 
     { "src": "/",                  "dest": "/frontend/index.html"          },
     { "src": "/(.*)",              "dest": "/frontend/index.html"          }

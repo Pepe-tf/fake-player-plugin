@@ -417,8 +417,17 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Wiki SPA shell — /wiki and /wiki/<anything that isn't a .md file>
-app.get(['/wiki', '/wiki/*'], (req, res) => {
+// Wiki SPA shell — /wiki and /wiki/<pagename> (but not .md files)
+app.get('/wiki', (req, res) => {
+  res.sendFile(path.join(__dirname, 'wiki.html'));
+});
+
+app.get('/wiki/:page', (req, res) => {
+  // If it's a .md file request, let static middleware handle it
+  if (req.params.page.endsWith('.md')) {
+    return res.sendFile(path.join(__dirname, 'wiki', req.params.page));
+  }
+  // Otherwise serve the wiki SPA shell
   res.sendFile(path.join(__dirname, 'wiki.html'));
 });
 
@@ -428,7 +437,12 @@ app.get('/legal', (req, res) => {
 });
 
 // Legal SPA shell — /legal/<page>  (.md files already handled by static middleware above)
-app.get('/legal/*', (req, res) => {
+app.get('/legal/:page', (req, res) => {
+  // If it's a .md file request, let static middleware handle it
+  if (req.params.page.endsWith('.md')) {
+    return res.sendFile(path.join(__dirname, 'legal', req.params.page));
+  }
+  // Otherwise serve the legal SPA shell
   res.sendFile(path.join(__dirname, 'legal.html'));
 });
 
