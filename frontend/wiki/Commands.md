@@ -89,7 +89,7 @@ All FPP commands use the root command `/fpp` with aliases `/fakeplayer` and `/fp
 **Bot Limits:**
 - **User bots:** Limited by `fpp.bot.<number>` permission (e.g., `fpp.bot.10` = max 10 bots)
 - **Admin bots:** No limit with `fpp.admin.spawn`
-- **Global limit:** `global-bot-limit` in config (applies to all bots)
+- **Global limit:** `limits.max-bots` in config (applies to all bots)
 
 **Cooldown:**
 - Configurable via `spawn-cooldown` (default: disabled)

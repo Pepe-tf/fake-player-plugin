@@ -78,10 +78,6 @@ fake-chat:
   # How many of a bot's own recent messages to remember and avoid repeating
   history-size: 5
 
-  # Chat line format. Supports MiniMessage tags and legacy & codes.
-  # Placeholders: {prefix}  {bot_name}  {suffix}  {message}
-  chat-format: "&7{bot_name}: {message}"
-
   # Format for bodyless or proxy-remote bot broadcasts
   remote-format: "<yellow>{name}<dark_gray>: <white>{message}"
 ```
@@ -102,30 +98,11 @@ fake-chat:
 | `stagger-interval` | Minimum gap (s) between any two bots chatting. 0 = disabled |
 | `activity-variation` | Random per-bot chat frequency tier (quiet/normal/active/very-active) |
 | `history-size` | Recent messages to remember and avoid repeating |
-| `chat-format` | Format of every chat line. Supports MiniMessage and `&` codes. Placeholders: `{prefix}`, `{bot_name}`, `{suffix}`, `{message}`. |
 | `remote-format` | MiniMessage format for bodyless / proxy-remote bot broadcasts. Placeholders: `{name}`, `{message}`. |
 
 > **Hot Reload:** Changes to `interval`, `chance`, and `stagger-interval` take effect immediately when you run `/fpp reload` — all bot chat loops are restarted with the new values. (Fixed in v1.5.10)
 
-### `chat-format` placeholders
-
-| Placeholder | Value |
-|-------------|-------|
-| `{prefix}` | LuckPerms group prefix for this bot (empty when LuckPerms is not installed or no prefix is set) |
-| `{bot_name}` | Bot display name |
-| `{suffix}` | LuckPerms group suffix for this bot (empty when LuckPerms is not installed or no suffix is set) |
-| `{message}` | Message text drawn from `bot-messages.yml` |
-
-### `chat-format` examples
-
-| Format string | Output style |
-|---------------|-------------|
-| `"&7{bot_name}: {message}"` | Gray name with colon (default) |
-| `"&7{prefix}{bot_name}&7: {message}"` | LP prefix before name |
-| `"{prefix}{bot_name}{suffix}&7: {message}"` | Full prefix + suffix wrap |
-| `"<{bot_name}> {message}"` | IRC-style `<BotName> hello` |
-| `"<gray>[Bot]</gray> {bot_name}: {message}"` | Gray `[Bot]` label |
-| `"<gradient:#ff0000:#0000ff>{bot_name}</gradient>: {message}"` | Gradient-colored name |
+> **Chat Format:** Bots send chat through the server's real chat pipeline (`Player.chat()`), so the format is controlled by your server's chat plugin (e.g. LuckPerms, EssentialsX chat). The `remote-format` key handles formatting only for bodyless and proxy-remote bot broadcasts.
 
 ---
 

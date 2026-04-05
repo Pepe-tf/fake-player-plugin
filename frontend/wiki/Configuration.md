@@ -12,7 +12,7 @@ All changes take effect immediately after running `/fpp reload` — no server re
 | [`language`](#language) | Active language file |
 | [`debug`](#debug) | Verbose console logging |
 | [`logging.debug.*`](#debug) | Per-subsystem debug toggles (startup, nms, packets, luckperms, network, config-sync, skin, database) |
-| [`bot-name`](#bot-display-names) | Admin/user format templates and tab-list format |
+| [`bot-name`](#bot-display-names) | Admin/user display name format templates |
 | [`skin`](#skin) | Skin system mode (`auto` / `custom` / `off`) |
 | [`body`](#body) | Physical entity, pushable & damageable toggles |
 | [`persistence`](#persistence) | Save/restore bots across restarts |
@@ -25,7 +25,7 @@ All changes take effect immediately after running `/fpp reload` — no server re
 | [`swim-ai`](#swim-ai) | Automatic swimming in water/lava |
 | [`collision`](#collision--push) | Push physics |
 | [`swap`](#swap-system) | Bot session rotation settings |
-| [`fake-chat`](#fake-chat) | Bot chat AI + message format |
+| [`fake-chat`](#fake-chat) | Bot chat AI, realism enhancements, event triggers |
 | [`tab-list`](#tab-list) | Tab-list header/footer and bot visibility toggle |
 | [`database`](#database) | SQLite / MySQL storage |
 | [`config-sync`](#config-sync) | Cross-server config push/pull mode |
@@ -139,31 +139,14 @@ Admin users see these presets. User-tier players always see only `1`.
 bot-name:
   admin-format: '{bot_name}'
   user-format:  'bot-{spawner}-{num}'
-  tab-list-format: '{prefix}{bot_name}{suffix}'
 ```
 
 | Key | Description |
 |-----|-------------|
 | `admin-format` | Display-name template for bots spawned by admins (`fpp.spawn`). Placeholder: `{bot_name}` — the name drawn from `bot-names.yml`. |
 | `user-format` | Display-name template for bots spawned by non-admin users (`fpp.user.spawn`). Placeholders: `{bot_name}`, `{spawner}` (the player's name), `{num}` (sequential bot index). |
-| `tab-list-format` | **Full tab-list / nametag display format.** Applied as the final step after `admin-format` / `user-format` is resolved. |
 
-### `tab-list-format` placeholders
-
-| Placeholder | Value |
-|-------------|-------|
-| `{prefix}` | LuckPerms group prefix (empty when LuckPerms is not installed or no prefix is set) |
-| `{bot_name}` | Resolved bot name after `admin-format` / `user-format` substitution |
-| `{suffix}` | LuckPerms group suffix (empty when LuckPerms is not installed or no suffix is set) |
-| `%any_papi%` | Any PlaceholderAPI placeholder — evaluated server-wide (null player context) |
-
-**Examples:**
-
-| Format | Result |
-|--------|--------|
-| `"{prefix}{bot_name}{suffix}"` | Default — prefix + name + suffix |
-| `"&8[&7Bot&8] {bot_name}"` | Static gray `[Bot]` label before the name |
-| `"{prefix}{bot_name}{suffix} <gray>%server_uptime%"` | Appends server uptime via PAPI |
+> **Note:** The `bot-name.tab-list-format` key was removed in v1.5.10 (config v38). LuckPerms now manages prefix/suffix natively for all bots as real NMS ServerPlayer entities — the server's own chat and tab-list pipeline handles formatting automatically.
 
 ## Skin
 
@@ -413,6 +396,24 @@ fake-chat:
   activity-variation: true
   history-size: 5
   remote-format: "<yellow>{name}<dark_gray>: <white>{message}"
+  event-triggers:
+    enabled: true
+    on-player-join:
+      enabled: true
+      chance: 0.40
+      delay: { min: 2, max: 6 }
+    on-death:
+      enabled: true
+      players-only: false
+      chance: 0.30
+      delay: { min: 1, max: 4 }
+    on-player-leave:
+      enabled: true
+      chance: 0.30
+      delay: { min: 1, max: 4 }
+  keyword-reactions:
+    enabled: false
+    keywords: {}
 ```
 
 | Key | Description |
@@ -431,27 +432,14 @@ fake-chat:
 | `activity-variation` | Give each bot a random chat-frequency multiplier (quiet/normal/active/very-active). |
 | `history-size` | How many of a bot's own recent messages to remember and avoid repeating. |
 | `remote-format` | MiniMessage format for bodyless or proxy-remote bot broadcasts. Placeholders: `{name}`, `{message}`. |
-| `chat-format` | **Full chat line format.** Supports MiniMessage tags and legacy `&` codes. Placeholders: `{prefix}`, `{bot_name}`, `{suffix}`, `{message}`. |
+| `event-triggers.enabled` | Master switch for all event-triggered reactions. |
+| `event-triggers.on-player-join` | A bot greets real players when they join. Uses `join-reactions` pool in `bot-messages.yml`. |
+| `event-triggers.on-death` | A bot reacts when an entity dies. `players-only: true` = ignore mob deaths. Uses `death-reactions` pool. |
+| `event-triggers.on-player-leave` | A bot says goodbye when a real player leaves. Uses `leave-reactions` pool. |
+| `keyword-reactions.enabled` | When a player's message contains a keyword, a bot replies from the matching message pool. |
+| `keyword-reactions.keywords` | Map of `keyword: pool-key` pairs (e.g. `trade: "trade-reactions"`). |
 
-**`chat-format` placeholders:**
-
-| Placeholder | Value |
-|-------------|-------|
-| `{prefix}` | LuckPerms group prefix (empty when LuckPerms is not installed or no prefix is set) |
-| `{bot_name}` | Bot display name |
-| `{suffix}` | LuckPerms group suffix (empty when LuckPerms is not installed or no suffix is set) |
-| `{message}` | Text drawn from `bot-messages.yml` |
-
-**`chat-format` examples:**
-
-| Format string | Result |
-|---------------|--------|
-| `"&7{bot_name}: {message}"` | Gray name, default colon style (default) |
-| `"&7{prefix}{bot_name}&7: {message}"` | LP prefix before name |
-| `"{prefix}{bot_name}{suffix}&7: {message}"` | Full prefix + suffix wrap |
-| `"<gray>{bot_name}</gray>: {message}"` | MiniMessage gray |
-| `"<{bot_name}> {message}"` | IRC-style `<BotName> hello` |
-| `"<gradient:#ff0000:#0000ff>{bot_name}</gradient>: {message}"` | Gradient name |
+> **Chat format:** Bots send messages through the server's real chat pipeline (`Player.chat()`), so chat appearance is handled by your server's chat plugin (LuckPerms, EssentialsX, etc.). The `remote-format` key handles formatting for bodyless and proxy-remote bots only.
 
 See [Fake Chat](Fake-Chat.md) for a full explanation.
 

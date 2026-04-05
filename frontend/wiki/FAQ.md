@@ -58,9 +58,10 @@
    /fpp stats --detailed
    ```
 3. **Reduce limits in config.yml:**
-   ```yaml
-   global-bot-limit: 20  # Reduce from higher number
-   ```
+    ```yaml
+    limits:
+      max-bots: 20  # Reduce from higher number
+    ```
 4. **Restart server**
 
 **Prevention:**
@@ -236,9 +237,10 @@
 
 **Admin Solutions:**
 1. **Increase global limit (config.yml):**
-   ```yaml
-   global-bot-limit: 100  # Increase from current value
-   ```
+    ```yaml
+    limits:
+      max-bots: 100  # Increase from current value
+    ```
 
 2. **Clean up unused bots:**
    ```bash
@@ -292,7 +294,7 @@
 **Check Configuration (config.yml):**
 ```yaml
 body:
-  spawn-body: true           # Must be true for physical bodies
+  enabled: true   # Must be true for physical bodies
 ```
 
 **Verify Compatibility:**
@@ -337,13 +339,13 @@ body:
 
 **Check Settings (config.yml):**
 ```yaml
-bot-head-ai:
+head-ai:
   enabled: true              # Enable head rotation
-  range: 8                   # Detection range
-  update-interval: 10        # Update frequency (ticks)
+  look-range: 8.0            # Detection range (blocks)
+  turn-speed: 0.3            # Smoothing (0.0 = frozen, 1.0 = instant snap)
 
 body:
-  spawn-body: true           # Physical bodies required
+  enabled: true              # Physical bodies required
 ```
 
 **Reload Configuration:**
@@ -365,10 +367,9 @@ body:
   pushable: true             # Enable push physics
   damageable: false          # Optional: prevent damage
 
-bot-collision:
-  enabled: true              # Enable collision detection
-  walk-radius: 1.5           # Push radius
-  walk-strength: 0.3         # Push force
+collision:
+  walk-radius: 0.85          # Push radius
+  walk-strength: 0.22        # Push force
 ```
 
 **Apply Changes:**
@@ -386,10 +387,12 @@ bot-collision:
 ```yaml
 body:
   damageable: false          # Prevent all damage
-  max-health: 20             # Or increase health
 
-bot-combat:
-  death-enabled: false       # Disable death entirely
+combat:
+  max-health: 20.0           # Or increase health
+
+death:
+  respawn-on-death: false    # Disable respawn (bot leaves on death)
 ```
 
 **Check for Damage Sources:**
@@ -489,10 +492,9 @@ essentials:
 
 **Check Skin Mode (config.yml):**
 ```yaml
-skins:
+skin:
   mode: "auto"               # Try "custom" if auto fails
-  guaranteed-skin: false     # Prevent fallback overuse
-  fallback-name: ""          # Remove Notch fallback
+  guaranteed-skin: false     # false = Steve/Alex for non-Mojang names
 ```
 
 **For Custom Mode:**
@@ -513,7 +515,7 @@ skins:
 
 **Switch to Custom Mode:**
 ```yaml
-skins:
+skin:
   mode: "custom"
   guaranteed-skin: true
 ```
@@ -561,22 +563,23 @@ skins:
 **Optimization Steps:**
 
 1. **Reduce Bot Counts:**
-   ```yaml
-   global-bot-limit: 30      # Start conservative
-   user-bot-limit: 3         # Reduce per-user limits
-   ```
+    ```yaml
+    limits:
+      max-bots: 30        # Start conservative
+      user-bot-limit: 3   # Reduce per-user limits
+    ```
 
 2. **Optimize Bot AI:**
-   ```yaml
-   bot-head-ai:
-     enabled: false          # Disable if not needed
-   
-   bot-collision:
-     enabled: false          # Disable collision physics
-   
-   fake-chat:
-     enabled: false          # Disable chat AI
-   ```
+    ```yaml
+    head-ai:
+      enabled: false          # Disable if not needed
+
+    body:
+      pushable: false         # Disable collision physics
+
+    fake-chat:
+      enabled: false          # Disable chat AI
+    ```
 
 3. **Database Optimization:**
    ```yaml
@@ -736,8 +739,7 @@ Some settings require full restart:
 **Enable LP Integration (config.yml):**
 ```yaml
 luckperms:
-  use-prefix: true           # Enable prefix support
-  bot-group: "default"       # Default group for bots
+  default-group: "default"   # LP group assigned to every new bot at spawn
 ```
 
 **Verify LuckPerms Groups:**
@@ -758,19 +760,9 @@ luckperms:
 
 **Symptoms:** Bots appear in wrong order in tab list
 
-**Configure Tab Ordering (config.yml):**
-```yaml
-luckperms:
-  weight-ordering-enabled: true      # Enable weight-based ordering
-  packet-prefix-char: "{"            # Sorting character
-  weight-offset: 0                   # Weight calculation offset
-```
+**Configure Tab Ordering:**
 
-**Verify LuckPerms Weights:**
-```bash
-/lp group admin info               # Check group weight
-/lp group default meta setweight 1 # Set weight if missing
-```
+FPP automatically places all bots in the `~fpp` scoreboard team, ensuring they appear below real players in the tab list regardless of LP group weight. No configuration required.
 
 ---
 
@@ -850,10 +842,10 @@ database:
 **Prevention (config.yml):**
 ```yaml
 body:
-  spawn-body: true
+  enabled: true
   
-# This is handled automatically by the plugin
-# Bots are prevented from using portals
+# Portal handling is automatic — FPP uses PDC-based entity recovery
+# to restore bots pushed through portals.
 ```
 
 **If Already Stuck:**

@@ -154,21 +154,24 @@
 
 2. **Set Global Bot Limit** (`config.yml`):
    ```yaml
-   global-bot-limit: 50  # Max bots on server
-   user-bot-limit: 5     # Max per regular player
+   limits:
+     max-bots: 50          # Max bots on server (0 = unlimited)
+     user-bot-limit: 5     # Max per regular player
    ```
 
 3. **Enable Fake Chat** (`config.yml`):
    ```yaml
    fake-chat:
      enabled: true
-     interval: 300-900     # 5-15 minutes
+     interval:
+       min: 300
+       max: 900
    ```
 
 4. **Configure Physical Bodies** (`config.yml`):
    ```yaml
    body:
-     spawn-body: true      # Physical Mannequin entities
+     enabled: true         # Physical NMS player entities
      pushable: true        # Players can push bots
      damageable: false     # Bots take no damage
    ```

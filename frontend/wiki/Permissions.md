@@ -109,13 +109,13 @@ fpp.*                           # 🎖️ Full access (superuser)
 FPP uses a **dual-limit system**:
 
 1. **Personal Limits:** `fpp.bot.<number>` permissions
-2. **Global Limit:** `global-bot-limit` in config.yml
+2. **Global Limit:** `limits.max-bots` in config.yml
 
 **Resolution Order:**
 ```
 1. Check fpp.bot.* permissions (highest number wins)
-2. Fall back to config.yml user-bot-limit
-3. Apply global-bot-limit as absolute maximum
+2. Fall back to config.yml limits.user-bot-limit
+3. Apply limits.max-bots as absolute maximum
 ```
 
 ### 🎯 **Bot Limit Permissions**
@@ -142,7 +142,7 @@ FPP uses a **dual-limit system**:
 
 - **Highest wins:** If a user has both `fpp.bot.5` and `fpp.bot.10`, they get 10 bots
 - **Admin bypass:** `fpp.admin.spawn` ignores personal limits entirely  
-- **Global enforcement:** `global-bot-limit` applies to total server bots
+- **Global enforcement:** `limits.max-bots` applies to total server bots
 - **Real-time updates:** Limit changes apply immediately (no restart needed)
 
 ---
@@ -325,16 +325,12 @@ FPP integrates seamlessly with LuckPerms for advanced permission management:
 
 ### 🎨 **Bot LuckPerms Integration**
 
-FPP can assign LuckPerms groups to bots for prefixes and tab list ordering:
+FPP treats bots as real NMS ServerPlayer entities — LuckPerms detects them as online players and applies prefixes, suffixes, and group weights automatically. No extra configuration is needed beyond setting the default group.
 
 #### **Configuration** (config.yml)
 ```yaml
 luckperms:
-  use-prefix: true              # Enable LP prefixes for bots
-  bot-group: "default"          # Default group for all bots
-  weight-ordering-enabled: true # Order bots by LP weight
-  packet-prefix-char: "{"       # Tab list sorting character
-  weight-offset: 0              # Weight calculation offset
+  default-group: ""   # LP group assigned to every new bot at spawn (blank = "default")
 ```
 
 #### **Bot Group Commands**
@@ -343,7 +339,8 @@ luckperms:
 /fpp rank Steve admin         # Make Steve use admin group
 /fpp rank Alex moderator      # Make Alex use moderator group
 /fpp rank Guard security      # Make Guard use security group
-/fpp rank Steve none          # Remove custom group (use default)
+/fpp rank Steve clear         # Reset bot to default group
+/fpp rank list                # Show each bot's current LP group
 ```
 
 #### **Group Setup for Bots**
@@ -437,7 +434,7 @@ luckperms:
 2. **Monitor Bot Limits:** High limits can impact server performance
 3. **Regular Audits:** Review permissions periodically
 4. **Bypass Permissions:** Use `fpp.bypass.*` sparingly and for trusted users only
-5. **Global Limits:** Always set reasonable `global-bot-limit` in config
+5. **Global Limits:** Always set reasonable `limits.max-bots` in config
 
 ### 🎯 **Performance Guidelines**
 
@@ -511,14 +508,13 @@ groups:
 - ✅ Remove existing bots if needed
 
 **"Bot creation failed due to server limits"**
-- ✅ Check `global-bot-limit` in config.yml
+- ✅ Check `limits.max-bots` in config.yml
 - ✅ Use `/fpp list` to see current bot count
 - ✅ Remove unused bots or increase global limit
 - ✅ Monitor server performance before increasing
 
 **LuckPerms integration not working**
 - ✅ Verify LuckPerms is installed and loaded
-- ✅ Check `luckperms.use-prefix` is enabled
 - ✅ Use `/fpp lpinfo` for diagnostic information
 - ✅ Restart server after major LP changes
 

@@ -162,7 +162,7 @@ Located at [FONT=monospace]plugins/FakePlayerPlugin/config.yml[/FONT]. Run [FONT
 [TR][TD][FONT=monospace]metrics[/FONT][/TD][TD]Opt-out toggle for anonymous FastStats usage statistics[/TD][/TR]
 [TR][TD][FONT=monospace]limits[/FONT][/TD][TD]Global bot cap, per-user limit, spawn tab-complete presets[/TD][/TR]
 [TR][TD][FONT=monospace]spawn-cooldown[/FONT][/TD][TD]Seconds between /fpp spawn uses per player (0 = off)[/TD][/TR]
-[TR][TD][FONT=monospace]bot-name[/FONT][/TD][TD]Admin/user display name format; tab-list-format with {prefix}/{bot_name}/{suffix}[/TD][/TR]
+[TR][TD][FONT=monospace]bot-name[/FONT][/TD][TD]Admin/user display name format (admin-format, user-format)[/TD][/TR]
 [TR][TD][FONT=monospace]luckperms[/FONT][/TD][TD]default-group — LP group assigned to every new bot at spawn[/TD][/TR]
 [TR][TD][FONT=monospace]skin[/FONT][/TD][TD]Skin mode (auto/custom/off), guaranteed skin, fallback chain and pool[/TD][/TR]
 [TR][TD][FONT=monospace]body[/FONT][/TD][TD]Physical entity (enabled), pushable, damageable — all live-reloadable[/TD][/TR]
@@ -176,7 +176,7 @@ Located at [FONT=monospace]plugins/FakePlayerPlugin/config.yml[/FONT]. Run [FONT
 [TR][TD][FONT=monospace]swim-ai[/FONT][/TD][TD]Automatic swimming in water/lava (enabled, default true)[/TD][/TR]
 [TR][TD][FONT=monospace]collision[/FONT][/TD][TD]Push physics — walk strength, hit strength, bot separation[/TD][/TR]
 [TR][TD][FONT=monospace]swap[/FONT][/TD][TD]Auto rotation — session length, farewell/greeting chat, AFK simulation[/TD][/TR]
-[TR][TD][FONT=monospace]fake-chat[/FONT][/TD][TD]Enable, chance, interval, typing delays, burst messages, mention replies, event reactions, chat-format ({prefix}/{bot_name}/{suffix}/{message})[/TD][/TR]
+[TR][TD][FONT=monospace]fake-chat[/FONT][/TD][TD]Enable, chance, interval, typing delays, burst messages, mention replies, event reactions, keyword reactions[/TD][/TR]
 [TR][TD][FONT=monospace]tab-list[/FONT][/TD][TD]Show/hide bots in the player tab list[/TD][/TR]
 [TR][TD][FONT=monospace]config-sync[/FONT][/TD][TD]Cross-server config push/pull mode (DISABLED/MANUAL/AUTO_PULL/AUTO_PUSH)[/TD][/TR]
 [TR][TD][FONT=monospace]database[/FONT][/TD][TD]mode (LOCAL/NETWORK), server-id, SQLite (default) or MySQL[/TD][/TR]
@@ -212,8 +212,7 @@ FPP treats bots as real NMS ServerPlayer entities — LuckPerms detects them as 
 [*][FONT=monospace]/fpp rank list[/FONT] — see each bot's current group at a glance
 [*][FONT=monospace]/fpp lpinfo [bot][/FONT] — diagnose prefix, weight, rank index, and packet profile name
 [*][B]Tab-list ordering[/B] — ~fpp scoreboard team keeps all bots below real players regardless of LP weight
-[*][B]Prefix/suffix[/B] — bot nametags and chat format support {prefix} and {suffix} placeholders
-[*][B]Display name format[/B] — bot-name.tab-list-format supports {prefix}, {bot_name}, {suffix}, and PAPI placeholders
+[*][B]Prefix/suffix[/B] — bots use LuckPerms prefix/suffix automatically (real NMS entities — LP detects them natively)
 [/LIST]
 
 [CODE]
@@ -385,13 +384,7 @@ World names are case-insensitive. Use underscores for worlds with spaces.
 
 When the name pool runs out, FPP generates names automatically ([FONT=monospace]Bot1234[/FONT], etc.).
 
-[B]Chat format[/B] ([FONT=monospace]fake-chat.chat-format[/FONT]) supports MiniMessage and legacy & codes:
-[CODE]
-fake-chat:
-  chat-format: "&7{prefix}{bot_name}&7: {message}"
-[/CODE]
-
-Placeholders: [FONT=monospace]{prefix}[/FONT] (LP prefix), [FONT=monospace]{bot_name}[/FONT], [FONT=monospace]{suffix}[/FONT] (LP suffix), [FONT=monospace]{message}[/FONT]
+Bot chat uses the server's real chat pipeline, so formatting is handled by your existing chat plugin (LuckPerms, EssentialsX, etc.). For bodyless or proxy-remote bots, the [FONT=monospace]fake-chat.remote-format[/FONT] key controls how messages appear (supports [FONT=monospace]{name}[/FONT] and [FONT=monospace]{message}[/FONT] placeholders).
 
 [HR][/HR]
 
@@ -434,6 +427,7 @@ Placeholders: [FONT=monospace]{prefix}[/FONT] (LP prefix), [FONT=monospace]{bot_
 [*]sync-usage and swap-now-usage messages now end with a period for consistency
 [*]Startup banner now shows Bot swap status in the Features section
 [*]Startup banner now shows actual Skin mode (auto/custom/off) instead of "disabled"
+[*]Config version bumped to 41 — adds fake-chat realism keys, remote-format, event-triggers, keyword-reactions; removes tab-list-format and chat-format
 [/LIST]
 
 [SIZE=5][B]v1.5.8[/B][/SIZE] [I](2026-04-03)[/I]

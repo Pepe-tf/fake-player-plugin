@@ -309,7 +309,7 @@ fake-chat:
 **Chat Features:**
 - **Random selection** — Messages chosen from `bot-messages.yml` randomly
 - **Timing variation** — Per-bot independent intervals prevent predictable patterns
-- **LuckPerms integration** — `{prefix}` and `{suffix}` in `chat-format`
+- **LuckPerms integration** — bots are real NMS entities; LP detects them as online players and applies prefix/suffix automatically
 - **Full color support** — MiniMessage and legacy `&` codes
 - **Event reactions** — Bots react to player joins, leaves, and deaths
 - **Mention replies** — Bots reply when a player says their name in chat

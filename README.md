@@ -158,7 +158,7 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` after any ch
 | `metrics` | Opt-out toggle for anonymous FastStats usage statistics |
 | `limits` | Global bot cap, per-user limit, spawn tab-complete presets |
 | `spawn-cooldown` | Seconds between `/fpp spawn` uses per player (`0` = off) |
-| `bot-name` | Display name format for admin/user bots; `tab-list-format` with `{prefix}` / `{bot_name}` / `{suffix}` |
+| `bot-name` | Display name format for admin/user bots (`admin-format`, `user-format`) |
 | `luckperms` | `default-group` — LP group assigned to every new bot at spawn |
 | `skin` | Skin mode (`auto` / `custom` / `off`), `guaranteed-skin` toggle, pool, `skins/` folder |
 | `body` | Physical entity (`enabled`), `pushable`, `damageable` |
@@ -172,7 +172,7 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` after any ch
 | `swim-ai` | Automatic swimming in water/lava (`enabled`, default `true`) |
 | `collision` | Push physics — walk strength, hit strength, bot separation |
 | `swap` | Auto rotation — session length, farewell/greeting chat, AFK simulation |
-| `fake-chat` | Enable, message chance, interval, typing delays, burst messages, mention replies, event reactions, `chat-format` (supports `{prefix}` / `{bot_name}` / `{suffix}`) |
+| `fake-chat` | Enable, message chance, interval, typing delays, burst messages, mention replies, event reactions, keyword reactions |
 | `tab-list` | Show/hide bots in the player tab list |
 | `config-sync` | Cross-server config push/pull mode (`DISABLED` / `MANUAL` / `AUTO_PULL` / `AUTO_PUSH`) |
 | `database` | `mode` (`LOCAL` / `NETWORK`), `server-id`, SQLite (default) or MySQL |
@@ -205,8 +205,7 @@ FPP treats bots as real NMS ServerPlayer entities — LuckPerms detects them as 
 - **`/fpp rank list`** — see each bot's current group at a glance
 - **`/fpp lpinfo [bot]`** — diagnose prefix, weight, rank index, and packet profile name
 - **Tab-list ordering** — `~fpp` scoreboard team keeps all bots below real players regardless of LP weight
-- **Prefix/suffix** — bot nametags and chat format support `{prefix}` and `{suffix}` placeholders
-- **Display name format** — `bot-name.tab-list-format` supports `{prefix}`, `{bot_name}`, `{suffix}`, and PAPI placeholders
+- **Prefix/suffix** — bots use LuckPerms prefix/suffix automatically (real NMS entities — LP detects them natively)
 
 ```yaml
 luckperms:
@@ -338,14 +337,7 @@ FPP provides **29+ placeholders** organized into five categories:
 
 When the name pool runs out, FPP generates names automatically (`Bot1234`, etc.).
 
-**Chat format** (`fake-chat.chat-format`):
-
-```yaml
-fake-chat:
-  chat-format: "&7{prefix}{bot_name}&7: {message}"
-```
-
-Placeholders: `{prefix}` (LP prefix), `{bot_name}`, `{suffix}` (LP suffix), `{message}`
+Bot chat uses the server's real chat pipeline (`Player.chat()`), so formatting is handled by your existing chat plugin (LuckPerms, EssentialsX, etc.). For bodyless or proxy-remote bots, the `fake-chat.remote-format` key controls how messages appear (MiniMessage, supports `{name}` and `{message}` placeholders).
 
 ---
 
@@ -378,6 +370,7 @@ Placeholders: `{prefix}` (LP prefix), `{bot_name}`, `{suffix}` (LP suffix), `{me
 - `sync-usage` and `swap-now-usage` messages now end with a period for consistency
 - Startup banner now shows **Bot swap** status in the Features section
 - Startup banner now shows actual **Skin mode** (`auto`/`custom`/`off`) instead of `disabled`
+- Config version bumped to `41` — adds fake-chat realism keys, remote-format, event-triggers, keyword-reactions; removes `tab-list-format` and `chat-format` (now handled by server chat pipeline)
 
 ### v1.5.8 *(2026-04-03)*
 

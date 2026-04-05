@@ -114,26 +114,11 @@ Players: %fpp_total% (%fpp_count% bots)
 
 ## Using PAPI Placeholders Inside FPP Config
 
-FPP itself expands PlaceholderAPI tokens in these config strings:
+FPP expands PlaceholderAPI tokens in the `tab-list` header/footer templates. As of v1.5.10, the `bot-name.tab-list-format` and `fake-chat.chat-format` config keys have been removed — bots now route through the server's real chat pipeline, so chat formatting is handled by your existing chat plugin.
 
-| Location | Config key | Notes |
-|----------|-----------|-------|
-| Bot tab-list / nametag display | `bot-name.tab-list-format` | Expanded with server-wide context |
-| Fake-chat line format | `fake-chat.chat-format` | Expanded with server-wide context |
+> **PAPI in tab-list headers/footers:** Configure your tab-list plugin to use `%fpp_count%`, `%fpp_real%`, etc. in its header/footer templates. FPP registers all placeholders automatically when PlaceholderAPI is installed.
 
-**Example — show combined count in every bot's nametag:**
-```yaml
-bot-name:
-  tab-list-format: '{prefix}{bot_name}{suffix} <dark_gray>[%fpp_total%]'
-```
-
-**Example — show bot count in chat messages:**
-```yaml
-fake-chat:
-  chat-format: "&7{bot_name}: {message} &8[%fpp_count% bots online]"
-```
-
-> **Note:** Player-relative placeholders (`%fpp_user_count%` etc.) used inside `tab-list-format` or `chat-format` are resolved with a **null** (server-wide) player context, so they return "0" / the global default.
+> **Note:** Player-relative placeholders (`%fpp_user_count%` etc.) are resolved with a server-wide context when used outside of per-player templates, so they return the global value.
 
 ## Quick Examples
 
