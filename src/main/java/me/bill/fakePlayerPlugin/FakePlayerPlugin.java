@@ -1,6 +1,7 @@
 package me.bill.fakePlayerPlugin;
 
 import me.bill.fakePlayerPlugin.command.*;
+import me.bill.fakePlayerPlugin.gui.SettingGui;
 import me.bill.fakePlayerPlugin.config.BotMessageConfig;
 import me.bill.fakePlayerPlugin.config.BotNameConfig;
 import me.bill.fakePlayerPlugin.config.Config;
@@ -46,8 +47,11 @@ public final class FakePlayerPlugin extends JavaPlugin {
     private VelocityChannel   velocityChannel;
     private BotChatAI         botChatAI;
     private me.bill.fakePlayerPlugin.fakeplayer.BotSwapAI botSwapAI;
+    private me.bill.fakePlayerPlugin.fakeplayer.PeakHoursManager peakHoursManager;
     private me.bill.fakePlayerPlugin.fakeplayer.RemoteBotCache remoteBotCache;
     private me.bill.fakePlayerPlugin.sync.ConfigSyncManager configSyncManager;
+    private SettingGui settingGui;
+    private me.bill.fakePlayerPlugin.fakeplayer.BotIdentityCache botIdentityCache;
 
     /** Update notification Component stored when an update is detected so it can be
      * delivered to admins who log in after startup. */
@@ -120,6 +124,13 @@ public final class FakePlayerPlugin extends JavaPlugin {
             databaseManager = null;
         }
 
+        // ── Bot identity cache ────────────────────────────────────────────────
+        // Maps (bot_name, server_id) → stable UUID so bots rejoin with the same UUID
+        // every time.  Uses the database when available; falls back to a local YAML file.
+        botIdentityCache = new me.bill.fakePlayerPlugin.fakeplayer.BotIdentityCache(this, databaseManager);
+        Config.debugDatabase("BotIdentityCache initialised (backend=" +
+                (databaseManager != null ? (Config.mysqlEnabled() ? "MySQL" : "SQLite") : "YAML") + ").");
+
         // ── Remote bot cache ──────────────────────────────────────────────────
         // Holds virtual tab-list entries for bots running on other proxy servers.
         // Always initialised (even in LOCAL mode) so the rest of the code never
@@ -158,6 +169,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         // ── Fake player manager + chunk loader ────────────────────────────────
         fakePlayerManager = new FakePlayerManager(this);
         if (databaseManager != null) fakePlayerManager.setDatabaseManager(databaseManager);
+        fakePlayerManager.setIdentityCache(botIdentityCache);
 
         chunkLoader = new ChunkLoader(this, fakePlayerManager);
         fakePlayerManager.setChunkLoader(chunkLoader);
@@ -184,6 +196,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager.register(new AlertCommand(this));
         commandManager.register(new SyncCommand(this));
         commandManager.register(new SwapCommand(this, fakePlayerManager));
+        commandManager.register(new PeaksCommand(this, fakePlayerManager));
+        // Settings GUI — create once, register as listener, share with command
+        settingGui = new SettingGui(this);
+        commandManager.register(new SettingCommand(settingGui));
         Config.debugStartup("Commands registered: " + commandManager.getCommands().size() + " total.");
 
         var fppCmd = getCommand("fpp");
@@ -202,9 +218,18 @@ public final class FakePlayerPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new FakePlayerKickListener(fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new me.bill.fakePlayerPlugin.listener.BotCommandBlocker(), this);
         getServer().getPluginManager().registerEvents(new me.bill.fakePlayerPlugin.listener.BotSpawnProtectionListener(this), this);
+        getServer().getPluginManager().registerEvents(settingGui, this);
         botChatAI = new BotChatAI(this, fakePlayerManager);
         botSwapAI = new me.bill.fakePlayerPlugin.fakeplayer.BotSwapAI(this, fakePlayerManager);
         fakePlayerManager.setBotSwapAI(botSwapAI);
+        peakHoursManager = new me.bill.fakePlayerPlugin.fakeplayer.PeakHoursManager(this, fakePlayerManager);
+        // Inject DB so sleeping-bot state survives crashes (crash-safe persistence).
+        if (databaseManager != null) {
+            peakHoursManager.setDatabaseManager(databaseManager);
+        }
+        if (Config.peakHoursEnabled() && Config.swapEnabled()) {
+            peakHoursManager.start();
+        }
 
         // ── Plugin messaging (Velocity / BungeeCord) ─────────────────────────
         // Registers fpp:main for inbound delivery and BungeeCord for outbound
@@ -322,6 +347,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 luckPermsInstalled,
                 Config.fakeChatEnabled(),
                 Config.swapEnabled(),
+                Config.peakHoursEnabled(),
                 effectiveChunkLoading,
                 Config.maxBots(),
                 fppMetrics.isActive(),
@@ -334,6 +360,13 @@ public final class FakePlayerPlugin extends JavaPlugin {
         // ── Bot persistence restore ───────────────────────────────────────────
         botPersistence.purgeOrphanedBodiesAndRestore(fakePlayerManager);
 
+        // ── Peak-hours crash recovery: restore sleeping bots from DB ─────────
+        // This is a lightweight deque-population (no entity spawning), safe to run
+        // synchronously here. Worlds are loaded; the peak-hours tick has not yet fired.
+        if (databaseManager != null && Config.persistOnRestart()) {
+            peakHoursManager.restoreSleepingBotsFromDatabase(databaseManager);
+        }
+
         Config.debugStartup("onEnable complete.");
     }
 
@@ -343,19 +376,23 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         int botsRemoved = fakePlayerManager != null ? fakePlayerManager.getCount() : 0;
 
-        // Save active bots BEFORE removing them so the file is written with real locations
+        if (chunkLoader     != null) chunkLoader.releaseAll();
+        // Cancel all pending BotChatAI tasks
+        if (botChatAI       != null) botChatAI.cancelAll();
+        // Shut down peak-hours FIRST — wakes all sleeping bots and clears the DB sleeping table.
+        // They are added back into fakePlayerManager.activePlayers so persistence captures them below.
+        if (peakHoursManager != null) peakHoursManager.shutdown();
+        // Cancel all pending BotSwapAI tasks
+        if (botSwapAI       != null) botSwapAI.cancelAll();
+
+        // Save active bots AFTER peak-hours woke sleeping bots, so the persistence
+        // file includes the full pool (online + formerly sleeping).
         if (botPersistence != null && fakePlayerManager != null) {
             if (Config.persistOnRestart()) {
-                Config.debugStartup("Saving " + botsRemoved + " bot(s) for persistence...");
+                Config.debugStartup("Saving " + fakePlayerManager.getCount() + " bot(s) for persistence...");
                 botPersistence.save(fakePlayerManager.getActivePlayers());
             }
         }
-
-        if (chunkLoader  != null) chunkLoader.releaseAll();
-        // Cancel all pending BotChatAI tasks
-        if (botChatAI    != null) botChatAI.cancelAll();
-        // Cancel all pending BotSwapAI tasks
-        if (botSwapAI    != null) botSwapAI.cancelAll();
         // Unsubscribe from LP events to prevent memory leaks (only if LP was loaded)
         if (luckPermsAvailable) {
             me.bill.fakePlayerPlugin.util.LuckPermsHelper.unsubscribeLpEvents();
@@ -377,6 +414,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         // ── Metrics shutdown ──────────────────────────────────────────────────
         if (fppMetrics != null) fppMetrics.shutdown();
+
 
         // ── Plugin messaging cleanup ──────────────────────────────────────────
         getServer().getMessenger().unregisterIncomingPluginChannel(this, VelocityChannel.CHANNEL);
@@ -400,10 +438,14 @@ public final class FakePlayerPlugin extends JavaPlugin {
     public BotChatAI         getBotChatAI()          { return botChatAI; }
     /** Returns the BotSwapAI instance, or {@code null} if not yet initialised. */
     public me.bill.fakePlayerPlugin.fakeplayer.BotSwapAI getBotSwapAI() { return botSwapAI; }
+    /** Returns the PeakHoursManager instance, or {@code null} if not yet initialised. */
+    public me.bill.fakePlayerPlugin.fakeplayer.PeakHoursManager getPeakHoursManager() { return peakHoursManager; }
     /** Returns the cache of bot entries received from other servers in the proxy network. Never null. */
     public me.bill.fakePlayerPlugin.fakeplayer.RemoteBotCache getRemoteBotCache() { return remoteBotCache; }
     /** Returns the ConfigSyncManager, or {@code null} if not in NETWORK mode or database unavailable. */
     public me.bill.fakePlayerPlugin.sync.ConfigSyncManager getConfigSyncManager() { return configSyncManager; }
+    /** Returns the stable name→UUID identity cache for this server's bots. Never null. */
+    public me.bill.fakePlayerPlugin.fakeplayer.BotIdentityCache getBotIdentityCache() { return botIdentityCache; }
 
 
     /** Returns the currently-stored update notification message, or null. */

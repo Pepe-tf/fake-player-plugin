@@ -596,6 +596,15 @@ public final class NmsPlayerSpawner {
         try {
             firstTickSet.remove(player.getUniqueId());
             if (player.isOnline()) {
+                // Persist playerdata to disk NOW, before the kick, so the file exists on the
+                // next spawn.  When placeNewPlayer() runs, it calls PlayerIo.load() — if the
+                // file is present, Paper sets isFirstJoin=false and hasPlayedBefore=true, which
+                // prevents third-party plugins (CMI, Essentials, etc.) from treating the
+                // re-spawned bot as a brand-new player.  The normal disconnect-path save via
+                // super.onDisconnect() → PlayerList.remove() also runs, but calling saveData()
+                // here guarantees the file is on disk before the next spawn even if the normal
+                // path is deferred to a later tick.
+                try { player.saveData(); } catch (Exception ignored) {}
                 // Empty reason bypasses FakePlayerKickListener's "cancel all kicks" guard.
                 player.kick(net.kyori.adventure.text.Component.empty());
             }

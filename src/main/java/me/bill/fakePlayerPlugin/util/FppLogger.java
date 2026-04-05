@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * <ul>
  *   <li>{@link #info}    — plain white  — general information</li>
  *   <li>{@link #success} — bright green — positive confirmation</li>
- *   <li>{@link #warn}    — gold/amber   — non-fatal warnings</li>
+ *   <li>{@link #warn}    — bright yellow — non-fatal warnings</li>
  *   <li>{@link #error}   — bright red   — errors that need attention</li>
  *   <li>{@link #debug}   — yellow+grey  — verbose, only when a matching debug toggle is enabled</li>
  *   <li>{@link #highlight} — cyan bold  — important state changes (enable/disable)</li>
@@ -39,11 +39,11 @@ public final class FppLogger {
     private static final String BLUE     = "\u001B[38;2;0;121;255m";
     // Bright white for normal info
     private static final String WHITE    = "\u001B[97m";
-    // Yellow for debug
+    // Bright yellow for warnings and debug
     private static final String YELLOW   = "\u001B[93m";
     // Green for success / OK
     private static final String GREEN    = "\u001B[92m";
-    // Gold/amber for warn
+    // Gold/amber — kept for legacy references, not used in logging
     private static final String GOLD     = "\u001B[33m";
     // Red for error / FAIL
     private static final String RED      = "\u001B[91m";
@@ -84,9 +84,9 @@ public final class FppLogger {
         logger.info(TAG + " " + GREEN + message + RESET);
     }
 
-    /** Warning — gold/amber. Appears in console as a WARNING-level entry. */
+    /** Warning — bright yellow. Appears in console as a WARNING-level entry. */
     public static void warn(String message) {
-        logger.warning(TAG + " " + GOLD + message + RESET);
+        logger.warning(TAG + " " + YELLOW + message + RESET);
     }
 
     /** Error — bright red. Appears in console as a SEVERE-level entry. */
@@ -196,8 +196,8 @@ public final class FppLogger {
                 valueColor = GREEN;
             }
             case WARN -> {
-                badge = GOLD + "[!]" + RESET;
-                valueColor = GOLD;
+                badge = YELLOW + "[!]" + RESET;
+                valueColor = YELLOW;
             }
             default -> {
                 badge = GRAY + "[-]" + RESET;
@@ -238,6 +238,7 @@ public final class FppLogger {
      * @param luckPermsFound   whether LuckPerms is installed
      * @param fakeChatEnable   whether fake chat is on
      * @param swapEnable       whether bot session rotation (swap) is on
+     * @param peakHoursEnable  whether peak hours scheduling is on
      * @param chunkLoading     whether chunk loading is on
      * @param maxBots          global bot limit (0 = unlimited)
      * @param metricsActive    whether FastStats metrics are running
@@ -257,6 +258,7 @@ public final class FppLogger {
             boolean luckPermsFound,
             boolean fakeChatEnable,
             boolean swapEnable,
+            boolean peakHoursEnable,
             boolean chunkLoading,
             int     maxBots,
             boolean metricsActive,
@@ -279,6 +281,7 @@ public final class FppLogger {
         stateRow(chunkLoading ? RowState.OK : RowState.OFF, "Chunk loading", onOff(chunkLoading));
         stateRow(fakeChatEnable ? RowState.OK : RowState.OFF, "Fake chat", onOff(fakeChatEnable));
         stateRow(swapEnable ? RowState.OK : RowState.OFF, "Bot swap", onOff(swapEnable));
+        stateRow(peakHoursEnable ? RowState.OK : RowState.OFF, "Peak hours", onOff(peakHoursEnable));
 
         section("Integrations");
         stateRow(luckPermsFound ? RowState.OK : RowState.OFF, "LuckPerms", onOff(luckPermsFound));

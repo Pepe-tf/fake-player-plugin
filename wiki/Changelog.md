@@ -1,7 +1,37 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.5.10** · Released: 2026-04-05
+> Latest version: **v1.5.12** · Released: 2026-04-05
+
+---
+
+## v1.5.12 *(2026-04-05)*
+
+### 🔒 Stable Bot UUID Identity
+- `BotIdentityCache` — each bot name is permanently tied to a stable UUID; LuckPerms data, inventory, and session history persist across restarts
+- Storage: in-memory cache → `fpp_bot_identities` DB table → `data/bot-identities.yml` YAML fallback
+
+### ⚙️ In-Game Settings GUI
+- `/fpp settings` opens a 3-row chest GUI; 5 categories (General, Body, Chat, Swap, Peak Hours)
+- Toggle booleans instantly; numeric values via chat-input prompt; reset page to JAR defaults; all changes apply live
+- Permission: `fpp.settings`
+
+### ⏰ Peak Hours Scheduler
+- `PeakHoursManager` scales the bot pool by time-of-day windows (`peak-hours.schedule`, `day-overrides`, `stagger-seconds`)
+- Crash-safe: sleeping-bot state persisted in `fpp_sleeping_bots` DB table, restored at startup
+- New command: `/fpp peaks [on|off|status|next|force|list|wake <name>|sleep <name>]` — requires `swap.enabled: true`
+
+### 💬 Per-Bot Chat Control
+- Random activity tier per bot: quiet / passive / normal / active / chatty
+- `/fpp chat <bot> tier|mute|info` per-bot controls; `/fpp chat all <on|off|tier|mute>` for bulk operations
+- Event-triggered chat (`event-triggers.*`) and keyword reactions (`keyword-reactions.*`)
+
+### 👻 Bodyless Bot Mode & Bot Types
+- `bodyless` flag — bots without a world location exist in tab-list/chat only, no world entity
+- `BotType`: `AFK` (passive) and `PVP` (combat via `BotPvpAI`)
+
+### 🔧 Config Migration v41 → v44
+- v41→v42: Added `peak-hours` section · v42→v43: Added `min-online`, `notify-transitions` · v43→v44: Removed `auto-enable-swap`
 
 ---
 

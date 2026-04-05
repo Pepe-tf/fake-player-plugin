@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed by the migration system. Do NOT edit.
-config-version: 41
+config-version: 45
 # Internal migration version — updated automatically. Do not edit.
 
 language: en         # Language file to use (language/<lang>.yml)
@@ -147,7 +147,7 @@ combat:
 # ─────────────────────────────────────────────────────────────────────────────
 death:
   respawn-on-death: false   # Respawn the bot after death instead of removing it
-  respawn-delay: 60         # Ticks before respawn (60 = 3 seconds)
+  respawn-delay: 15          # Ticks before respawn (1 = near-instant, 20 = 1 second)
   suppress-drops: true      # Prevent bots from dropping items on death
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -240,6 +240,89 @@ swap:
   farewell-chat: true         # Bots say goodbye before leaving
   greeting-chat: true         # Bots say hi when rejoining
   same-name-on-rejoin: true   # Reuse the same name if available on rejoin
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  PEAK HOURS
+#  Automatically adjusts how many bots are online based on real-world time
+#  windows, mimicking natural player activity patterns (busy mornings, quiet
+#  nights, weekend surges, etc.).
+#
+#  REQUIRES: swap.enabled: true  — bots are put to sleep / woken via the swap
+#  system so they leave and rejoin naturally.
+#
+#  How it works:
+#  ─ Every 60 seconds the scheduler checks the current server time.
+#  ─ The matching time window's `fraction` is applied to the total bot pool
+#    (online + sleeping). E.g. fraction: 0.75 = 75% of bots should be online.
+#  ─ Excess bots are gradually put to sleep (removed); sleeping bots are
+#    gradually woken (respawned) when the fraction rises.
+#  ─ Transitions are staggered so joins/leaves look natural.
+#
+#  Tips:
+#  ─ Use /fpp peaks status to see the current window and sleeping-bot count.
+#  ─ Use /fpp peaks next to see when the next window change happens.
+#  ─ Day-of-week overrides let weekends have different peak patterns.
+#  ─ Times are HH:mm (24-hour). Windows crossing midnight (e.g. 22:00→06:00)
+#    are handled automatically.
+# ─────────────────────────────────────────────────────────────────────────────
+peak-hours:
+  enabled: false
+  timezone: "UTC"            # Any java.time.ZoneId string, e.g. "America/New_York"
+  stagger-seconds: 30        # Spread joins / leaves over this many seconds
+
+  # ── Behaviour ──────────────────────────────────────────────────────────────
+  # Absolute minimum bots that must stay online, regardless of fraction.
+  # 0 = no floor (fraction alone controls the pool size).
+  min-online: 0
+
+
+  # When true, online admins with fpp.peaks receive a chat notification each
+  # time the server moves into a new peak-hours window.
+  notify-transitions: false
+
+  # ── Daily schedule ─────────────────────────────────────────────────────────
+  # Each entry defines a time window and the fraction of bots that should be
+  # online during that window.  fraction 1.0 = all bots, 0.0 = no bots.
+  # Windows are checked top-to-bottom; the first match wins.
+  # Midnight-crossing windows (e.g. 22:00 → 06:00) are supported.
+  schedule:
+    - start: "06:00"
+      end:   "09:00"
+      fraction: 0.30       # Early morning — server waking up
+
+    - start: "09:00"
+      end:   "18:00"
+      fraction: 0.75       # Daytime — moderate activity
+
+    - start: "18:00"
+      end:   "22:00"
+      fraction: 1.00       # Peak evening — all bots online
+
+    - start: "22:00"
+      end:   "06:00"
+      fraction: 0.05       # Night — almost all bots sleeping
+
+  # ── Day-of-week overrides ──────────────────────────────────────────────────
+  # Override the daily schedule for specific days.  Key must be a valid
+  # Java DayOfWeek name in UPPERCASE: MONDAY, TUESDAY, WEDNESDAY, THURSDAY,
+  # FRIDAY, SATURDAY, SUNDAY.
+  # Remove or comment out entries to fall back to the default schedule above.
+  day-overrides:
+    SATURDAY:
+      - start: "10:00"
+        end:   "23:00"
+        fraction: 1.00     # Weekend peak — full server all day
+      - start: "23:00"
+        end:   "10:00"
+        fraction: 0.10     # Late night — most bots sleeping
+
+    SUNDAY:
+      - start: "10:00"
+        end:   "22:00"
+        fraction: 0.90     # Sunday — slightly quieter peak
+      - start: "22:00"
+        end:   "10:00"
+        fraction: 0.10
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ All changes take effect immediately after running `/fpp reload` — no server re
 |---------|---------|
 | [`language`](#language) | Active language file |
 | [`debug`](#debug) | Verbose console logging |
-| [`logging.debug.*`](#debug) | Per-subsystem debug toggles (startup, nms, packets, luckperms, network, config-sync, skin, database) |
+| [`logging.debug.*`](#debug) | Per-subsystem debug toggles (startup, nms, packets, luckperms, network, config-sync, skin, database, chat) |
 | [`bot-name`](#bot-display-names) | Admin/user display name format templates |
 | [`skin`](#skin) | Skin system mode (`auto` / `custom` / `off`) |
 | [`body`](#body) | Physical entity, pushable & damageable toggles |
@@ -97,6 +97,7 @@ When `nms: true` is enabled, you'll see:
 > **Tip:** Set only the category you need — this keeps logs clean and focused.
 
 ---
+
 
 ## Limits
 

@@ -1,8 +1,10 @@
 package me.bill.fakePlayerPlugin.listener;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -25,8 +27,17 @@ public class PlayerJoinListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        // Skip NMS bot players — they show vanilla join messages automatically
-        if (manager.getByName(event.getPlayer().getName()) != null) return;
+        FakePlayer fp = manager.getByName(event.getPlayer().getName());
+        if (fp != null) {
+            if (fp.isRespawning()) {
+                // Suppress the vanilla join message — the bot never actually disconnected.
+                // Entity re-registration (setPlayer, entityIndex, PDC, health) is handled
+                // by the 2-tick follow-up task in FakePlayerEntityListener.onEntityDeath.
+                event.joinMessage(null);
+            }
+            // Skip normal join-sync for bots.
+            return;
+        }
 
 
         // Send any stored update notification to admins/ops who join after startup
@@ -87,8 +98,15 @@ public class PlayerJoinListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         if (manager.getCount() == 0) return;
 
-        // Skip NMS bot players — vanilla quit message shows automatically
-        if (manager.getByName(event.getPlayer().getName()) != null) return;
+        FakePlayer fp = manager.getByName(event.getPlayer().getName());
+        if (fp != null) {
+            if (fp.isRespawning()) {
+                // Suppress quit message during in-place respawn — bot is not really leaving.
+                event.quitMessage(null);
+            }
+            // Skip NMS bot players — vanilla quit message shows automatically
+            return;
+        }
 
         java.util.UUID uuid = event.getPlayer().getUniqueId();
         String name         = event.getPlayer().getName();

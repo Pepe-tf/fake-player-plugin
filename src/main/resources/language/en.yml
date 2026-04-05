@@ -211,3 +211,31 @@ swap-list-empty:     "{prefix}<gray>ɴᴏ ʙᴏᴛꜱ ᴄᴜʀʀᴇɴᴛʟʏ ꜱ
 swap-list-header:    "{prefix}<gray>ꜱᴄʜᴇᴅᴜʟᴇᴅ ʙᴏᴛꜱ<gray>: <#0079FF>{count}</#0079FF>"
 swap-list-entry:     "  <dark_gray>• <#0079FF>{name}</#0079FF> <dark_gray>│ <gray>{personality} <dark_gray>│ <gray>ᴄʏᴄʟᴇꜱ: <white>{swaps}"
 
+# ── Peak Hours (time-based bot pool scheduling) ────────────────────────────────
+# {window}   — active time window label (e.g. 18:00–22:00)
+# {fraction} — current target fraction as a % (e.g. 75%)
+# {target}   — target number of bots online
+# {sleeping} — bots currently sleeping in the peak-hours pool
+# {online}   — AFK bots currently online
+# {swapping} — bots temporarily offline via BotSwapAI session rotation
+# {total}    — total pool size (online + sleeping + swapping)
+# {time}     — human-readable time until next window (e.g. 1h 20m)
+# {next_fraction} — fraction of the next window (e.g. 5%)
+peaks-enabled:          "{prefix}<#0079FF>ᴘᴇᴀᴋ ʜᴏᴜʀꜱ</#0079FF> <gray>ᴇɴᴀʙʟᴇᴅ<gray>."
+peaks-disabled:         "{prefix}<#0079FF>ᴘᴇᴀᴋ ʜᴏᴜʀꜱ</#0079FF> <gray>ᴅɪꜱᴀʙʟᴇᴅ — ᴀʟʟ ꜱʟᴇᴇᴘɪɴɢ ʙᴏᴛꜱ ᴡᴏᴋᴇɴ<gray>."
+peaks-status-on:        "{prefix}<#0079FF>ᴘᴇᴀᴋ ʜᴏᴜʀꜱ</#0079FF> <dark_gray>│ <gray>ᴡɪɴᴅᴏᴡ: <white>{window} <dark_gray>│ <gray>ꜰʀᴀᴄᴛɪᴏɴ: <#0079FF>{fraction}</#0079FF> <dark_gray>│ <gray>ᴛᴀʀɢᴇᴛ: <#0079FF>{target}</#0079FF> <dark_gray>│ <gray>ᴏɴʟɪɴᴇ: <#0079FF>{online}</#0079FF> <dark_gray>│ <gray>ꜱᴡᴀᴘᴘɪɴɢ: <#0079FF>{swapping}</#0079FF> <dark_gray>│ <gray>ꜱʟᴇᴇᴘɪɴɢ: <#0079FF>{sleeping}</#0079FF> <dark_gray>│ <gray>ᴛᴏᴛᴀʟ: <#0079FF>{total}</#0079FF> <dark_gray>│ <gray>ᴛᴢ: <white>{timezone}"
+peaks-status-off:       "{prefix}<#0079FF>ᴘᴇᴀᴋ ʜᴏᴜʀꜱ</#0079FF> <gray>ɪꜱ <white>ᴅɪꜱᴀʙʟᴇᴅ<gray>."
+peaks-next-window:      "{prefix}<gray>ɴᴇxᴛ ᴡɪɴᴅᴏᴡ ɪɴ <#0079FF>{time}</#0079FF> <dark_gray>→ <#0079FF>{next_fraction}</#0079FF> <gray>ᴏꜰ ʙᴏᴛꜱ ᴡɪʟʟ ʙᴇ ᴏɴʟɪɴᴇ<gray>."
+peaks-no-windows:       "{prefix}<gray>ɴᴏ ᴡɪɴᴅᴏᴡꜱ ᴄᴏɴꜰɪɢᴜʀᴇᴅ — ᴇᴅɪᴛ <white>peak-hours.schedule<gray> ɪɴ config.yml."
+peaks-requires-swap:    "{prefix}<red>ᴘᴇᴀᴋ ʜᴏᴜʀꜱ ʀᴇQᴜɪʀᴇꜱ <white>swap.enabled: true<red>. ʀᴜɴ <white>/fpp swap on<red> ꜰɪʀꜱᴛ."
+peaks-invalid:          "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp peaks <on|off|status|next|force|list|wake|sleep></#0079FF><gray>."
+peaks-force-check:      "{prefix}<gray>ᴘᴇᴀᴋ-ʜᴏᴜʀꜱ ᴇᴠᴀʟᴜᴀᴛɪᴏɴ ᴛʀɪɢɢᴇʀᴇᴅ."
+peaks-list-header:      "{prefix}<gray>ꜱʟᴇᴇᴘɪɴɢ ʙᴏᴛꜱ <dark_gray>(<#0079FF>{count}</#0079FF>)<gray>:"
+peaks-list-entry:       "  <dark_gray>┃ <white>{name} <dark_gray>@ <gray>{world} <dark_gray>[<gray>{x}<dark_gray>, <gray>{y}<dark_gray>, <gray>{z}<dark_gray>]"
+peaks-list-empty:       "{prefix}<gray>ɴᴏ ʙᴏᴛꜱ ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ꜱʟᴇᴇᴘɪɴɢ."
+peaks-wake-success:     "{prefix}<gray>ᴡᴏᴋᴇ <white>{name}<gray>."
+peaks-wake-all:         "{prefix}<gray>ᴡᴏᴋᴇ <#0079FF>{count}</#0079FF> ꜱʟᴇᴇᴘɪɴɢ ʙᴏᴛ(ꜱ)."
+peaks-sleep-success:    "{prefix}<gray>ᴘᴜᴛ <white>{name}<gray> ᴛᴏ ꜱʟᴇᴇᴘ."
+peaks-sleep-failed:     "{prefix}<red>ʙᴏᴛ '<white>{name}<red>' ɴᴏᴛ ꜰᴏᴜɴᴅ ᴏʀ ɴᴏᴛ ᴇʟɪɢɪʙʟᴇ."
+peaks-transition:       "{prefix}<#0079FF>ᴘᴇᴀᴋ ᴡɪɴᴅᴏᴡ</#0079FF><gray>: <white>{window} <dark_gray>({fraction} <gray>ᴏꜰ ʙᴏᴛꜱ ᴏɴʟɪɴᴇ<dark_gray>)<gray>."
+

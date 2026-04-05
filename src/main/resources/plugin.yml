@@ -1,5 +1,5 @@
 name: FakePlayerPlugin
-version: '1.5.10'
+version: '1.5.12'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
@@ -54,6 +54,7 @@ permissions:
       fpp.tp:               true
       fpp.bypass.maxbots:   true
       fpp.bypass.cooldown:  true
+      fpp.bypass.*:         true
       fpp.admin.migrate:    true
       fpp.stats:            true
       fpp.freeze:           true
@@ -62,6 +63,8 @@ permissions:
       fpp.alert:            true
       fpp.sync:             true
       fpp.swap:             true
+      fpp.peaks:            true
+      fpp.settings:         true
       fpp.user.*:           true
 
   # ── User wildcard ──────────────────────────────────────────────────────────
@@ -208,11 +211,30 @@ permissions:
     default: op
 
   # ── Bypass ────────────────────────────────────────────────────────────────
+  # Grant fpp.bypass.* to give both bypass nodes at once (e.g. VIP/Staff groups).
+  fpp.bypass.*:
+    description: >
+      Grants all FPP bypass permissions at once.
+      Useful for VIP/Staff groups that should bypass both the global bot cap
+      and the spawn cooldown. Automatically granted via fpp.*.
+    default: op
+    children:
+      fpp.bypass.maxbots:  true
+      fpp.bypass.cooldown: true
+
   fpp.bypass.maxbots:
     description: >
       Bypass the global max-bots cap in config.yml during /fpp spawn.
       Grant with care — no upper bound when active.
     default: op
+
+  fpp.bypass.cooldown:
+    description: >
+      Bypass the spawn-cooldown delay for /fpp spawn.
+      Grant to VIP players or staff who should not be rate-limited.
+      Automatically granted to admins via fpp.* and fpp.bypass.*.
+    default: op
+
 
   # ── Migration & Backup ────────────────────────────────────────────────────
   fpp.admin.migrate:
@@ -242,12 +264,6 @@ permissions:
     default: op
 
 
-  # ── Bypass cooldown ───────────────────────────────────────────────────────
-  fpp.bypass.cooldown:
-    description: >
-      Bypass the spawn-cooldown delay for /fpp spawn.
-      Automatically granted to admins via fpp.*.
-    default: op
 
   # ── LuckPerms Info ────────────────────────────────────────────────────────
   fpp.lpinfo:
@@ -282,7 +298,7 @@ permissions:
       Subcommands: push <file|all>, pull <file|all>, check <file|all>, status.
     default: op
 
-  # ── Swap (Session Rotation) ────────────────────────────────────────────
+  # ── Swap (Session Rotation) ────────────────────────────────────────────────
   fpp.swap:
     description: >
       Control bot session rotation (swap in/out) with /fpp swap.
@@ -290,8 +306,24 @@ permissions:
       mimicking real player behaviour with random session + absence durations.
       Subcommands: on, off, status, now <bot>, list.
     default: op
-      Push or pull config.yml, bot-names.yml, bot-messages.yml, and language files
-      to/from the MySQL database. Requires NETWORK mode and config-sync.mode to be enabled.
-      Automatically creates backups before any pull operation.
+
+  # ── Peak Hours (Time-based Pool Scheduling) ────────────────────────────────
+  fpp.peaks:
+    description: >
+      Control peak-hours bot pool management with /fpp peaks.
+      When enabled, the plugin automatically adjusts how many bots are online
+      based on real-world time windows (morning, evening, night, weekends, etc.),
+      mimicking natural player activity patterns.
+      Requires swap.enabled: true (auto-enabled by default).
+      Subcommands: on, off, status, next, force, list, wake [name], sleep <name>.
+    default: op
+
+  # ── Settings GUI ────────────────────────────────────────────────────────────
+  fpp.settings:
+    description: >
+      Open the interactive settings GUI with /fpp settings.
+      Lets admins toggle and configure plugin settings in-game
+      without editing config.yml directly.
+      Changes are applied and saved immediately on click.
     default: op
 

@@ -2,7 +2,7 @@
 
 [SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.5.10  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.5.12  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]
@@ -390,6 +390,46 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
 
+[SIZE=5][B]v1.5.12[/B][/SIZE] [I](2026-04-05)[/I]
+
+[B]🔒 Stable Bot UUID Identity[/B]
+[LIST]
+[*][FONT=monospace]BotIdentityCache[/FONT] — each bot name is permanently tied to a stable UUID; LuckPerms data, inventory, and session history persist across restarts
+[*]Storage: in-memory cache → [FONT=monospace]fpp_bot_identities[/FONT] DB table → [FONT=monospace]data/bot-identities.yml[/FONT] YAML fallback
+[/LIST]
+
+[B]⚙️ In-Game Settings GUI[/B]
+[LIST]
+[*][FONT=monospace]/fpp settings[/FONT] opens a 3-row chest GUI; 5 categories (General, Body, Chat, Swap, Peak Hours)
+[*]Toggle booleans instantly; numeric values via chat-input prompt; reset page to JAR defaults; all changes apply live
+[*]Permission: [FONT=monospace]fpp.settings[/FONT]
+[/LIST]
+
+[B]⏰ Peak Hours Scheduler[/B]
+[LIST]
+[*][FONT=monospace]PeakHoursManager[/FONT] scales the bot pool by time-of-day windows ([FONT=monospace]peak-hours.schedule[/FONT], [FONT=monospace]day-overrides[/FONT], [FONT=monospace]stagger-seconds[/FONT])
+[*]Crash-safe: sleeping-bot state persisted in [FONT=monospace]fpp_sleeping_bots[/FONT] DB table, restored at startup
+[*]New command: [FONT=monospace]/fpp peaks [on|off|status|next|force|list|wake <name>|sleep <name>][/FONT] — requires [FONT=monospace]swap.enabled: true[/FONT]
+[/LIST]
+
+[B]💬 Per-Bot Chat Control[/B]
+[LIST]
+[*]Random activity tier per bot: quiet / passive / normal / active / chatty
+[*][FONT=monospace]/fpp chat <bot> tier|mute|info[/FONT] per-bot controls; [FONT=monospace]/fpp chat all <on|off|tier|mute>[/FONT] for bulk operations
+[*]Event-triggered chat ([FONT=monospace]event-triggers.*[/FONT]) and keyword reactions ([FONT=monospace]keyword-reactions.*[/FONT])
+[/LIST]
+
+[B]👻 Bodyless Bot Mode & Bot Types[/B]
+[LIST]
+[*][FONT=monospace]bodyless[/FONT] flag — bots without a world location exist in tab-list/chat only, no world entity
+[*]BotType: AFK (passive) and PVP (combat via BotPvpAI)
+[/LIST]
+
+[B]🔧 Config Migration v41 → v44[/B]
+[LIST]
+[*]v41→v42: Added [FONT=monospace]peak-hours[/FONT] section · v42→v43: Added [FONT=monospace]min-online[/FONT], [FONT=monospace]notify-transitions[/FONT] · v43→v44: Removed [FONT=monospace]auto-enable-swap[/FONT]
+[/LIST]
+
 [SIZE=5][B]v1.5.10[/B][/SIZE] [I](2026-04-05)[/I]
 
 [B]/fpp swap Toggle Fix[/B]
@@ -659,6 +699,6 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.5.10[/I]
+[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.5.12[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fakeplayerplugin.xyz']Wiki[/URL][/CENTER]

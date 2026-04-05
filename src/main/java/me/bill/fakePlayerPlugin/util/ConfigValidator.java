@@ -24,6 +24,9 @@ import org.bukkit.Bukkit;
  *   <li>Head AI look range > 0</li>
  *   <li>Head AI turn speed in (0, 1]</li>
  *   <li>Max health > 0</li>
+ *   <li>Peak-hours: enabled requires swap enabled</li>
+ *   <li>Peak-hours: stagger-seconds > 0</li>
+ *   <li>Peak-hours: timezone is a valid ZoneId</li>
  * </ul>
  */
 public final class ConfigValidator {
@@ -136,6 +139,26 @@ public final class ConfigValidator {
         }
         if (Config.collisionBotStrength() < 0) {
             FppLogger.warn("[Config] collision.bot-strength must be >= 0.");
+            issues++;
+        }
+
+        // ── Peak hours ────────────────────────────────────────────────────────
+        if (Config.peakHoursEnabled() && !Config.swapEnabled()) {
+            FppLogger.warn("[Config] peak-hours.enabled is true but swap.enabled is false — "
+                    + "peak-hours will not run until swap is enabled (/fpp swap on).");
+            issues++;
+        }
+        if (Config.peakHoursStaggerSeconds() <= 0) {
+            FppLogger.warn("[Config] peak-hours.stagger-seconds must be > 0 (got "
+                    + Config.peakHoursStaggerSeconds() + ").");
+            issues++;
+        }
+        String phTz = Config.peakHoursTimezone();
+        try {
+            var ignored = java.time.ZoneId.of(phTz);
+        } catch (java.time.DateTimeException e) {
+            FppLogger.warn("[Config] peak-hours.timezone \"" + phTz + "\" is not a valid ZoneId "
+                    + "(e.g. \"UTC\", \"America/New_York\") — falling back to UTC at runtime.");
             issues++;
         }
 

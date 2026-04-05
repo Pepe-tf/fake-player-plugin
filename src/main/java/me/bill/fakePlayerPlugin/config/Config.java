@@ -79,6 +79,7 @@ public final class Config {
         return cfg.getBoolean("metrics.enabled", true);
     }
 
+
     // ── Spawn cooldown  (spawn-cooldown) ──────────────────────────────────────
 
     /**
@@ -331,6 +332,73 @@ public final class Config {
 
     /** Whether bots attempt to reuse their same name on rejoin. */
     public static boolean swapSameNameOnRejoin() { return cfg.getBoolean("swap.same-name-on-rejoin", true); }
+
+    // ── Peak Hours  (peak-hours.*) ────────────────────────────────────────────
+
+    /**
+     * Master toggle for the peak-hours bot pool scheduling system.
+     * When {@code true} the system periodically adjusts how many bots are online
+     * based on real-world time windows.  Requires {@link #swapEnabled()}.
+     * Maps to {@code peak-hours.enabled}.
+     */
+    public static boolean peakHoursEnabled() {
+        return cfg.getBoolean("peak-hours.enabled", false);
+    }
+
+    /**
+     * Java {@link java.time.ZoneId} string used to interpret schedule times.
+     * Defaults to {@code "UTC"}.  Maps to {@code peak-hours.timezone}.
+     */
+    public static String peakHoursTimezone() {
+        return cfg.getString("peak-hours.timezone", "UTC");
+    }
+
+    /**
+     * Seconds over which bot join/leave transitions are staggered.
+     * Maps to {@code peak-hours.stagger-seconds}.
+     */
+    public static int peakHoursStaggerSeconds() {
+        return cfg.getInt("peak-hours.stagger-seconds", 30);
+    }
+
+    /**
+     * Default daily schedule — list of {@code {start, end, fraction}} maps.
+     * Maps to {@code peak-hours.schedule}.
+     */
+    public static java.util.List<java.util.Map<?, ?>> peakHoursSchedule() {
+        return cfg.getMapList("peak-hours.schedule");
+    }
+
+    /**
+     * Day-of-week schedule overrides.
+     * Keys are uppercase {@link java.time.DayOfWeek} names (e.g. {@code "SATURDAY"}).
+     * Each value is the same {@code [{start, end, fraction}]} list as the default schedule.
+     * Returns {@code null} when the section is absent.
+     * Maps to {@code peak-hours.day-overrides}.
+     */
+    public static org.bukkit.configuration.ConfigurationSection peakHoursDayOverrides() {
+        return cfg.getConfigurationSection("peak-hours.day-overrides");
+    }
+
+    /**
+     * Absolute minimum number of AFK bots that must remain online at all times,
+     * regardless of the computed fraction. {@code 0} = no floor (disabled).
+     * Maps to {@code peak-hours.min-online}.
+     */
+    public static int peakHoursMinOnline() {
+        return Math.max(0, cfg.getInt("peak-hours.min-online", 0));
+    }
+
+
+    /**
+     * When {@code true}, broadcasts a notification to all online players with
+     * the {@code fpp.peaks} permission whenever the active time window changes.
+     * Default: {@code false}.
+     * Maps to {@code peak-hours.notify-transitions}.
+     */
+    public static boolean peakHoursNotifyTransitions() {
+        return cfg.getBoolean("peak-hours.notify-transitions", false);
+    }
 
     // ── Messages  (messages.*) ────────────────────────────────────────────────
 

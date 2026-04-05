@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DatabaseManager {
 
     // ── Schema version ────────────────────────────────────────────────────────
-    private static final int SCHEMA_VERSION = 6;
+    private static final int SCHEMA_VERSION = 8;
 
     /** Returns the latest DB schema version this build requires. */
     public static int getCurrentSchemaVersion() { return SCHEMA_VERSION; }
@@ -135,6 +135,54 @@ public class DatabaseManager {
             "  server_id       VARCHAR(64)  NOT NULL DEFAULT 'default'" +
             ")";
 
+    // ── DDL — sleeping bots (peak-hours crash-safe persistence) ──────────────
+    private static final String CREATE_SLEEPING_SQLITE =
+            "CREATE TABLE IF NOT EXISTS fpp_sleeping_bots (" +
+            "  sleep_order INTEGER NOT NULL," +
+            "  bot_name    VARCHAR(16)  NOT NULL," +
+            "  world_name  VARCHAR(64)  NOT NULL," +
+            "  pos_x       DOUBLE NOT NULL," +
+            "  pos_y       DOUBLE NOT NULL," +
+            "  pos_z       DOUBLE NOT NULL," +
+            "  pos_yaw     FLOAT  NOT NULL DEFAULT 0," +
+            "  pos_pitch   FLOAT  NOT NULL DEFAULT 0," +
+            "  server_id   VARCHAR(64)  NOT NULL DEFAULT 'default'," +
+            "  PRIMARY KEY (server_id, sleep_order)" +
+            ")";
+
+    private static final String CREATE_SLEEPING_MYSQL =
+            "CREATE TABLE IF NOT EXISTS fpp_sleeping_bots (" +
+            "  sleep_order INT NOT NULL," +
+            "  bot_name    VARCHAR(16)  NOT NULL," +
+            "  world_name  VARCHAR(64)  NOT NULL," +
+            "  pos_x       DOUBLE NOT NULL," +
+            "  pos_y       DOUBLE NOT NULL," +
+            "  pos_z       DOUBLE NOT NULL," +
+            "  pos_yaw     FLOAT  NOT NULL DEFAULT 0," +
+            "  pos_pitch   FLOAT  NOT NULL DEFAULT 0," +
+            "  server_id   VARCHAR(64)  NOT NULL DEFAULT 'default'," +
+            "  PRIMARY KEY (server_id, sleep_order)" +
+            ")";
+
+    // ── DDL — bot identity (stable name→UUID mapping per server) ─────────────
+    private static final String CREATE_IDENTITIES_SQLITE =
+            "CREATE TABLE IF NOT EXISTS fpp_bot_identities (" +
+            "  bot_name   VARCHAR(16) NOT NULL," +
+            "  server_id  VARCHAR(64) NOT NULL DEFAULT 'default'," +
+            "  bot_uuid   VARCHAR(36) NOT NULL," +
+            "  created_at BIGINT      NOT NULL," +
+            "  PRIMARY KEY (bot_name, server_id)" +
+            ")";
+
+    private static final String CREATE_IDENTITIES_MYSQL =
+            "CREATE TABLE IF NOT EXISTS fpp_bot_identities (" +
+            "  bot_name   VARCHAR(16) NOT NULL," +
+            "  server_id  VARCHAR(64) NOT NULL DEFAULT 'default'," +
+            "  bot_uuid   VARCHAR(36) NOT NULL," +
+            "  created_at BIGINT      NOT NULL," +
+            "  PRIMARY KEY (bot_name, server_id)" +
+            ")";
+
     // ── DDL — schema version ──────────────────────────────────────────────────
     private static final String CREATE_META =
             "CREATE TABLE IF NOT EXISTS fpp_meta (" +
@@ -165,7 +213,31 @@ public class DatabaseManager {
         { "ALTER TABLE fpp_bot_sessions ADD COLUMN server_id VARCHAR(64) NOT NULL DEFAULT 'default'",
           "ALTER TABLE fpp_active_bots  ADD COLUMN server_id VARCHAR(64) NOT NULL DEFAULT 'default'",
           "CREATE INDEX IF NOT EXISTS idx_sessions_server_id ON fpp_bot_sessions(server_id)",
-          "CREATE INDEX IF NOT EXISTS idx_active_server_id   ON fpp_active_bots(server_id)" }
+          "CREATE INDEX IF NOT EXISTS idx_active_server_id   ON fpp_active_bots(server_id)" },
+        // v6 → v7: add fpp_sleeping_bots table for peak-hours crash-safe persistence
+        // CREATE TABLE IF NOT EXISTS is used so it is safe whether or not createTables() already ran it.
+        { "CREATE TABLE IF NOT EXISTS fpp_sleeping_bots (" +
+          "  sleep_order INTEGER NOT NULL," +
+          "  bot_name    VARCHAR(16)  NOT NULL," +
+          "  world_name  VARCHAR(64)  NOT NULL," +
+          "  pos_x       DOUBLE NOT NULL," +
+          "  pos_y       DOUBLE NOT NULL," +
+          "  pos_z       DOUBLE NOT NULL," +
+          "  pos_yaw     FLOAT  NOT NULL DEFAULT 0," +
+          "  pos_pitch   FLOAT  NOT NULL DEFAULT 0," +
+          "  server_id   VARCHAR(64)  NOT NULL DEFAULT 'default'," +
+          "  PRIMARY KEY (server_id, sleep_order)" +
+          ")" },
+        // v7 → v8: add fpp_bot_identities for stable name→UUID mapping per server.
+        // Bots with the same name on the same server will always reuse the same UUID across
+        // restarts, keeping LuckPerms data, inventory files, and session history consistent.
+        { "CREATE TABLE IF NOT EXISTS fpp_bot_identities (" +
+          "  bot_name   VARCHAR(16) NOT NULL," +
+          "  server_id  VARCHAR(64) NOT NULL DEFAULT 'default'," +
+          "  bot_uuid   VARCHAR(36) NOT NULL," +
+          "  created_at BIGINT      NOT NULL," +
+          "  PRIMARY KEY (bot_name, server_id)" +
+          ")" }
     };
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -189,6 +261,7 @@ public class DatabaseManager {
         if (!connect()) return false;
         createTables();
         migrate();
+        backfillIdentities();
         startWriteLoop();
         startHealthCheck();
         return true;
@@ -251,6 +324,8 @@ public class DatabaseManager {
     private void createTables() {
         exec(isMysql ? CREATE_SESSIONS_MYSQL : CREATE_SESSIONS_SQLITE);
         exec(isMysql ? CREATE_ACTIVE_MYSQL   : CREATE_ACTIVE_SQLITE);
+        exec(isMysql ? CREATE_SLEEPING_MYSQL : CREATE_SLEEPING_SQLITE);
+        exec(isMysql ? CREATE_IDENTITIES_MYSQL : CREATE_IDENTITIES_SQLITE);
         exec(CREATE_META);
     }
 
@@ -923,6 +998,181 @@ public class DatabaseManager {
         );
     }
 
+    // ── Bot identity API (stable name→UUID per server) ───────────────────────
+
+    /**
+     * Backfills {@code fpp_bot_identities} from {@code fpp_bot_sessions} on first
+     * startup after upgrading to schema v8, so existing bots keep their original UUID.
+     * Uses the earliest recorded UUID for each {@code (bot_name, server_id)} pair.
+     * Safe to re-run — INSERT OR IGNORE / INSERT IGNORE is a no-op when the row exists.
+     */
+    private void backfillIdentities() {
+        if (!isAlive()) return;
+        String sql = isMysql
+                ? "INSERT IGNORE INTO fpp_bot_identities(bot_name,server_id,bot_uuid,created_at) " +
+                  "SELECT bot_name, server_id, " +
+                  "(SELECT s2.bot_uuid FROM fpp_bot_sessions s2 " +
+                  " WHERE s2.bot_name=s1.bot_name AND s2.server_id=s1.server_id " +
+                  " ORDER BY s2.spawned_at ASC LIMIT 1), " +
+                  "MIN(spawned_at) FROM fpp_bot_sessions s1 GROUP BY bot_name, server_id"
+                : "INSERT OR IGNORE INTO fpp_bot_identities(bot_name,server_id,bot_uuid,created_at) " +
+                  "SELECT bot_name, server_id, " +
+                  "(SELECT s2.bot_uuid FROM fpp_bot_sessions s2 " +
+                  " WHERE s2.bot_name=s1.bot_name AND s2.server_id=s1.server_id " +
+                  " ORDER BY s2.spawned_at ASC LIMIT 1), " +
+                  "MIN(spawned_at) FROM fpp_bot_sessions s1 GROUP BY bot_name, server_id";
+        try (Statement st = connection.createStatement()) {
+            int rows = st.executeUpdate(sql);
+            if (rows > 0) {
+                FppLogger.info("Bot identity registry: backfilled " + rows
+                        + " identit" + (rows == 1 ? "y" : "ies") + " from session history.");
+            }
+        } catch (SQLException e) {
+            // Non-fatal — identity registry builds up naturally as bots spawn
+            FppLogger.debug("Bot identity backfill skipped (no session history yet): " + e.getMessage());
+        }
+    }
+
+    /**
+     * Looks up the stored UUID for {@code botName} on the given server.
+     * Returns {@code null} when no mapping exists yet.
+     *
+     * <p>Synchronous read — safe to call on the main thread for single-bot spawns.
+     */
+    public UUID lookupBotUuid(String botName, String serverId) {
+        if (!isAlive()) return null;
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT bot_uuid FROM fpp_bot_identities WHERE bot_name=? AND server_id=?")) {
+            ps.setString(1, botName);
+            ps.setString(2, serverId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String raw = rs.getString(1);
+                    if (raw != null && !raw.isBlank()) return UUID.fromString(raw);
+                }
+            }
+        } catch (SQLException e) {
+            FppLogger.error("DB lookupBotUuid(" + botName + "): " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Persists a new {@code botName → uuid} mapping for the given server.
+     * Uses INSERT OR IGNORE / INSERT IGNORE so the first UUID registered for a name
+     * is always the one that sticks — re-registering with a different UUID is a no-op.
+     * Enqueued to the write thread (non-blocking from the caller's perspective).
+     */
+    public void registerBotUuid(String botName, UUID uuid, String serverId) {
+        final String sid = serverId;
+        final long   now = Instant.now().toEpochMilli();
+        enqueue(() -> {
+            if (!isAlive()) return;
+            String sql = isMysql
+                    ? "INSERT IGNORE INTO fpp_bot_identities(bot_name,server_id,bot_uuid,created_at) VALUES(?,?,?,?)"
+                    : "INSERT OR IGNORE INTO fpp_bot_identities(bot_name,server_id,bot_uuid,created_at) VALUES(?,?,?,?)";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setString(1, botName);
+                ps.setString(2, sid);
+                ps.setString(3, uuid.toString());
+                ps.setLong(4,   now);
+                ps.executeUpdate();
+                Config.debug("DB registered identity: " + botName + " → " + uuid + " (server=" + sid + ")");
+            } catch (SQLException e) {
+                FppLogger.error("DB registerBotUuid(" + botName + "): " + e.getMessage());
+            }
+        });
+    }
+
+    // ── Sleeping bots API (peak-hours crash-safe persistence) ────────────────
+
+    /**
+     * Replaces all sleeping-bot rows for the current server with the supplied list.
+     * Called from the main thread whenever the peak-hours sleep queue changes;
+     * the actual SQL is enqueued to the write thread (non-blocking).
+     *
+     * @param bots ordered list of sleeping bots (index = sleep_order); may be empty to clear.
+     */
+    public void saveSleepingBots(List<SleepingBotRow> bots) {
+        final List<SleepingBotRow> snap = new ArrayList<>(bots);
+        final String sid = Config.serverId();
+        enqueue(() -> {
+            if (!isAlive()) return;
+            // Atomic replace: delete old rows then insert current queue
+            try (PreparedStatement del = connection.prepareStatement(
+                    "DELETE FROM fpp_sleeping_bots WHERE server_id=?")) {
+                del.setString(1, sid);
+                del.executeUpdate();
+            } catch (SQLException e) {
+                FppLogger.error("DB saveSleepingBots (delete): " + e.getMessage()); return;
+            }
+            if (snap.isEmpty()) return;
+            String sql = "INSERT INTO fpp_sleeping_bots" +
+                    "(sleep_order,bot_name,world_name,pos_x,pos_y,pos_z,pos_yaw,pos_pitch,server_id)" +
+                    " VALUES(?,?,?,?,?,?,?,?,?)";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                for (SleepingBotRow row : snap) {
+                    ps.setInt(1,    row.sleepOrder());
+                    ps.setString(2, row.botName());
+                    ps.setString(3, row.world());
+                    ps.setDouble(4, row.x());
+                    ps.setDouble(5, row.y());
+                    ps.setDouble(6, row.z());
+                    ps.setFloat(7,  row.yaw());
+                    ps.setFloat(8,  row.pitch());
+                    ps.setString(9, sid);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                Config.debug("DB saved " + snap.size() + " sleeping bot(s) for server='" + sid + "'.");
+            } catch (SQLException e) { FppLogger.error("DB saveSleepingBots (insert): " + e.getMessage()); }
+        });
+    }
+
+    /**
+     * Loads sleeping-bot rows for the current server.
+     * Intended for startup restore — called synchronously on the main thread.
+     *
+     * @return ordered list (by sleep_order ASC) of sleeping bot snapshots, never null.
+     */
+    public List<SleepingBotRow> loadSleepingBots() {
+        List<SleepingBotRow> list = new ArrayList<>();
+        if (!isAlive()) return list;
+        String sql = "SELECT * FROM fpp_sleeping_bots WHERE server_id=? ORDER BY sleep_order ASC";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, Config.serverId());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new SleepingBotRow(
+                            rs.getInt("sleep_order"),
+                            rs.getString("bot_name"),
+                            rs.getString("world_name"),
+                            rs.getDouble("pos_x"), rs.getDouble("pos_y"), rs.getDouble("pos_z"),
+                            rs.getFloat("pos_yaw"), rs.getFloat("pos_pitch")
+                    ));
+                }
+            }
+        } catch (SQLException e) { FppLogger.error("DB loadSleepingBots: " + e.getMessage()); }
+        return list;
+    }
+
+    /**
+     * Removes all sleeping-bot rows for the current server.
+     * Enqueued to the write thread (non-blocking).
+     */
+    public void clearSleepingBots() {
+        final String sid = Config.serverId();
+        enqueue(() -> {
+            if (!isAlive()) return;
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "DELETE FROM fpp_sleeping_bots WHERE server_id=?")) {
+                ps.setString(1, sid);
+                int rows = ps.executeUpdate();
+                Config.debug("DB cleared " + rows + " sleeping bot(s) for server='" + sid + "'.");
+            } catch (SQLException e) { FppLogger.error("DB clearSleepingBots: " + e.getMessage()); }
+        });
+    }
+
     // ── Merge API (used by DataMigrator) ─────────────────────────────────────
 
     /**
@@ -1052,6 +1302,26 @@ public class DatabaseManager {
             float yaw, float pitch,
             String luckpermsGroup,
             String serverId
+    ) {}
+
+    /**
+     * Row from {@code fpp_sleeping_bots} — used for peak-hours crash-recovery restore.
+     *
+     * @param sleepOrder insertion order (FIFO index, 0-based)
+     * @param botName    internal bot name
+     * @param world      world name
+     * @param x          X coordinate
+     * @param y          Y coordinate
+     * @param z          Z coordinate
+     * @param yaw        yaw (degrees)
+     * @param pitch      pitch (degrees)
+     */
+    public record SleepingBotRow(
+            int    sleepOrder,
+            String botName,
+            String world,
+            double x, double y, double z,
+            float  yaw, float pitch
     ) {}
 
     /**

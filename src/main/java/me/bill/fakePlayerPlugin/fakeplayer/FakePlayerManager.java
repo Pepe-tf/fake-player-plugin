@@ -54,12 +54,20 @@ public class FakePlayerManager {
     private final BotPvpAI  pvpAI;
     /** Swap AI — session rotation system for all {@link BotType#AFK} bots. */
     private BotSwapAI       botSwapAI;
+    /**
+     * Stable name→UUID registry.  When set, replaces {@link UUID#randomUUID()} so every
+     * bot with a given name on this server always gets the same UUID across restarts.
+     * Injected by {@link me.bill.fakePlayerPlugin.FakePlayerPlugin} after DB init.
+     */
+    private BotIdentityCache identityCache;
 
     public void setChunkLoader(ChunkLoader cl) { this.chunkLoader = cl; }
     public void setDatabaseManager(DatabaseManager db) { this.db = db; }
     public void setBotPersistence(BotPersistence p) { this.persistence = p; }
     public void setBotTabTeam(BotTabTeam t) { this.botTabTeam = t; }
     public void setBotSwapAI(BotSwapAI ai) { this.botSwapAI = ai; }
+    /** Injects the identity cache so UUID generation uses the stable registry. */
+    public void setIdentityCache(BotIdentityCache ic) { this.identityCache = ic; }
 
     /** Returns the {@link BotChatAI} instance, or {@code null} if not yet initialised. */
     public BotChatAI getBotChatAI() { return plugin.getBotChatAI(); }
@@ -328,7 +336,7 @@ public class FakePlayerManager {
         List<FakePlayer> batch = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             UserBotName ubn = generateUserBotName(spawnerName, alreadyOwned + i);
-            UUID uuid = UUID.randomUUID();
+            UUID uuid = resolveUuid(ubn.internalName());
             PlayerProfile profile = Bukkit.createProfile(uuid, ubn.internalName());
             FakePlayer fp = new FakePlayer(uuid, ubn.internalName(), profile);
             fp.setBotType(botType);
@@ -430,7 +438,7 @@ public class FakePlayerManager {
             }
 
             if (name == null) break;
-            UUID uuid = UUID.randomUUID();
+            UUID uuid = resolveUuid(name);
             PlayerProfile profile = Bukkit.createProfile(uuid, name);
             FakePlayer fp = new FakePlayer(uuid, name, profile);
             fp.setBotType(botType);
@@ -620,6 +628,18 @@ public class FakePlayerManager {
                     fp.setPhysicsEntity(body);
                     entityIdIndex.put(body.getEntityId(), fp);
                     fp.setPacketProfileName(fp.getName());
+                    // Persist playerdata 2 ticks after spawn.  This writes
+                    // world/playerdata/<uuid>.dat to disk immediately so that
+                    // PlayerIo.load() inside the next placeNewPlayer() finds it
+                    // and Paper sets isFirstJoin=false — preventing CMI, Essentials,
+                    // and other plugins from flagging the bot as a new player every
+                    // time it is despawned and respawned with the same name/UUID.
+                    final Player savedBody = body;
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        try {
+                            if (savedBody.isOnline()) savedBody.saveData();
+                        } catch (Exception ignored) {}
+                    }, 2L);
                 }
             } else if (fp.isBodyless()) {
                 // Bodyless spawn: no physical body, tab-list only
@@ -760,6 +780,10 @@ public class FakePlayerManager {
                               String spawnedBy, UUID spawnedByUuid, Location location, BotType botType) {
         // Skip if name already active (e.g. duplicate in save file)
         if (usedNames.contains(name)) return;
+
+        // Register this UUID in the identity cache so future fresh spawns of the same
+        // name reuse it — even if the bot is later explicitly despawned and re-spawned.
+        if (identityCache != null) identityCache.prime(name, uuid);
 
         // Auto-detect PVP type from MC name prefix if not explicitly provided
         if (botType == BotType.AFK && name.startsWith("pvp_")) botType = BotType.PVP;
@@ -1112,8 +1136,22 @@ public class FakePlayerManager {
                 if (body != null && body.isValid()) {
                     body.setInvulnerable(!Config.bodyDamageable());
                     body.setCollidable(Config.bodyPushable());
+                    // Apply max-health change to existing bots
+                    try {
+                        var maxHpAttr = body.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                        if (maxHpAttr != null) {
+                            double hp = Config.maxHealth();
+                            maxHpAttr.setBaseValue(hp);
+                            if (body.getHealth() > hp) body.setHealth(hp);
+                        }
+                    } catch (Exception ignored) {}
                 }
             }
+            // Update the scoreboard team's collision rule.
+            // setCollidable() alone has no effect on players that are already in a team —
+            // the team's COLLISION_RULE is what Minecraft actually uses for player-player physics.
+            var btt = plugin.getBotTabTeam();
+            if (btt != null) btt.applyCollisionRule(Config.bodyPushable());
             return;
         }
         // Bodies disabled — remove all physical entities
@@ -1585,6 +1623,24 @@ public class FakePlayerManager {
         List<String> pool = Config.namePool();
         if (pool.isEmpty()) return "Steve";
         return pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
+    }
+
+    // ── UUID resolution ───────────────────────────────────────────────────────
+
+    /**
+     * Returns the stable UUID for {@code botName} on this server.
+     *
+     * <p>Delegates to {@link BotIdentityCache#lookupOrCreate(String)} when the cache
+     * is available; falls back to {@link UUID#randomUUID()} when the cache has not yet
+     * been injected (should not happen in normal usage, but guards against ordering issues
+     * during tests or incomplete initialisation).
+     *
+     * <p>This replaces every bare {@code UUID.randomUUID()} call at spawn sites so bots
+     * always reconnect with the same UUID they had on previous sessions.
+     */
+    private UUID resolveUuid(String botName) {
+        if (identityCache != null) return identityCache.lookupOrCreate(botName);
+        return UUID.randomUUID();
     }
 
     private String generateName() {

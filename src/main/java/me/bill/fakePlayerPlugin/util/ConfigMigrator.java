@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 41;
+    public static final int CURRENT_VERSION = 45;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -133,6 +133,9 @@ public final class ConfigMigrator {
         if (stored < 39) anyChange |= v38to39(cfg);
         if (stored < 40) anyChange |= v39to40(cfg);
         if (stored < 41) anyChange |= v40to41(cfg);
+        if (stored < 42) anyChange |= v41to42(cfg);
+        if (stored < 43) anyChange |= v42to43(cfg);
+        if (stored < 44) anyChange |= v43to44(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -1084,6 +1087,92 @@ public final class ConfigMigrator {
         }
         return changed;
     }
+
+    /**
+     * v41 → v42: Add peak-hours configuration section.
+     * All keys default to safe, opt-in values so existing servers are unaffected.
+     */
+    private static boolean v41to42(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("peak-hours.enabled")) {
+            cfg.set("peak-hours.enabled", false);
+            log("v41→v42", "added peak-hours.enabled = false");
+            changed = true;
+        }
+        if (!cfg.contains("peak-hours.timezone")) {
+            cfg.set("peak-hours.timezone", "UTC");
+            log("v41→v42", "added peak-hours.timezone = UTC");
+            changed = true;
+        }
+        if (!cfg.contains("peak-hours.stagger-seconds")) {
+            cfg.set("peak-hours.stagger-seconds", 30);
+            log("v41→v42", "added peak-hours.stagger-seconds = 30");
+            changed = true;
+        }
+        if (!cfg.contains("peak-hours.schedule")) {
+            // Default schedule: early morning → day → evening peak → night sleep
+            java.util.List<java.util.Map<String, Object>> schedule = new java.util.ArrayList<>();
+
+            java.util.Map<String, Object> morning = new java.util.LinkedHashMap<>();
+            morning.put("start", "06:00"); morning.put("end", "09:00"); morning.put("fraction", 0.30);
+            schedule.add(morning);
+
+            java.util.Map<String, Object> day = new java.util.LinkedHashMap<>();
+            day.put("start", "09:00"); day.put("end", "18:00"); day.put("fraction", 0.75);
+            schedule.add(day);
+
+            java.util.Map<String, Object> peak = new java.util.LinkedHashMap<>();
+            peak.put("start", "18:00"); peak.put("end", "22:00"); peak.put("fraction", 1.00);
+            schedule.add(peak);
+
+            java.util.Map<String, Object> night = new java.util.LinkedHashMap<>();
+            night.put("start", "22:00"); night.put("end", "06:00"); night.put("fraction", 0.05);
+            schedule.add(night);
+
+            cfg.set("peak-hours.schedule", schedule);
+            log("v41→v42", "added peak-hours.schedule with 4 default windows");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * v42 → v43: Add peak-hours behaviour keys (min-online, auto-enable-swap,
+     * notify-transitions) introduced in the dynamic swap integration update.
+     */
+    private static boolean v42to43(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("peak-hours.min-online")) {
+            cfg.set("peak-hours.min-online", 0);
+            log("v42→v43", "added peak-hours.min-online = 0");
+            changed = true;
+        }
+        if (!cfg.contains("peak-hours.auto-enable-swap")) {
+            cfg.set("peak-hours.auto-enable-swap", true);
+            log("v42→v43", "added peak-hours.auto-enable-swap = true");
+            changed = true;
+        }
+        if (!cfg.contains("peak-hours.notify-transitions")) {
+            cfg.set("peak-hours.notify-transitions", false);
+            log("v42→v43", "added peak-hours.notify-transitions = false");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * v43 → v44: Remove peak-hours.auto-enable-swap (feature removed — users
+     * must enable swap manually before using peak-hours).
+     */
+    private static boolean v43to44(YamlConfiguration cfg) {
+        if (cfg.contains("peak-hours.auto-enable-swap")) {
+            cfg.set("peak-hours.auto-enable-swap", null); // null = remove key
+            log("v43→v44", "removed peak-hours.auto-enable-swap (feature removed)");
+            return true;
+        }
+        return false;
+    }
+
 
     /**
      * Logs a migration step message.

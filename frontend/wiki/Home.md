@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin — Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.5.10 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
+> **Version:** 1.5.12 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
 
 ---
 
@@ -111,38 +111,30 @@
 - **Whitelist Support** — Protect VIP players
 
 ### ⚙️ **Configuration**
-- **41 Config Versions** — Automatic migration system
+- **44 Config Versions** — Automatic migration system
 - **Hot Reload** — Change settings without restart
 - **Backup System** — Automatic config backups
 - **Validation** — Prevents invalid configurations
 
 ---
 
-## 🆕 What's New in v1.5.10
+## 🆕 What's New in v1.5.12
 
-### 🔄 **`/fpp swap` Toggle Fix**
-- Running `/fpp swap` bare now **toggles swap on/off** — exactly like `/fpp chat`
-- Toggle messages redesigned to be consistent: `session rotation has been enabled/disabled`
-- Status messages (`swap status`) follow the same `is enabled / is disabled` pattern
+### 🔒 **Stable Bot UUID Identity**
+- Each bot name is permanently tied to a stable UUID — bots always rejoin with the same UUID after restarts, keeping LuckPerms data and session history intact
 
-### 💬 **Bot Chat Interval — Live Reload Fix**
-- Changing `fake-chat.interval`, `fake-chat.chance`, or `fake-chat.stagger-interval` and running `/fpp reload` now takes effect **immediately**
-- Previously bots kept the old (longer) delay until their current scheduled task naturally expired
-- `/fpp reload` output now confirms the new interval range
+### ⚙️ **In-Game Settings GUI**
+- `/fpp settings` opens a 3-row chest GUI to toggle and adjust config values live, no file editing required
 
-### 🤖 **Fake Chat Realism Enhancements**
-- `typing-delay` — bots simulate a typing pause before sending messages
-- `burst-chance` / `burst-delay` — occasional quick follow-up messages
-- `reply-to-mentions` — bots reply when a player says their name in chat
-- `activity-variation` — each bot gets a random chat frequency tier
-- `history-size` — bots avoid repeating their recent messages
+### ⏰ **Peak Hours Scheduler**
+- Automatically scales the bot pool up or down based on time-of-day windows; crash-safe via DB persistence
+- New command: `/fpp peaks [on|off|status|next|force|list|wake|sleep]`
 
-### 🏊 **Swim AI**
-- New `swim-ai.enabled` config key — bots automatically swim in water and lava
+### 💬 **Per-Bot Chat Control**
+- Activity tiers (quiet → chatty), timed mutes, per-bot info, and bulk operations via `/fpp chat <bot> tier|mute|info` and `/fpp chat all`
 
-### 🛠️ **Compatibility & Polish**
-- `Biome.name()` deprecation fixed — now uses `Biome.getKey().getKey()`, compatible with Paper 1.22+
-- Startup banner now shows **Bot swap** and correct **Skin mode** in the Features section
+### 🔧 **Config Migration v41 → v44**
+- Config version bumped to **44** — automatic migration runs on first startup
 
 ---
 

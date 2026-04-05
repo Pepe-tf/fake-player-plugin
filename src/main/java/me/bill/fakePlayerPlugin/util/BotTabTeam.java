@@ -86,6 +86,8 @@ public final class BotTabTeam {
         for (Player p : Bukkit.getOnlinePlayers()) {
             ensureTeamExists(p);
         }
+        // Apply pushable/collision rule to all newly-created teams.
+        applyCollisionRule(Config.bodyPushable());
         FppLogger.debug("[BotTabTeam] Initialized team '" + TEAM_NAME
                 + "' on " + Bukkit.getOnlinePlayers().size() + " player scoreboard(s).");
     }
@@ -99,12 +101,46 @@ public final class BotTabTeam {
         try {
             Scoreboard board = player.getScoreboard();
             if (board.getTeam(TEAM_NAME) == null) {
-                board.registerNewTeam(TEAM_NAME);
+                Team t = board.registerNewTeam(TEAM_NAME);
+                // Apply current pushable setting immediately on creation.
+                applyCollisionRuleToTeam(t);
                 Config.debug("[BotTabTeam] Created team '" + TEAM_NAME + "' on " + player.getName() + "'s scoreboard");
             }
         } catch (Exception e) {
             Config.debug("[BotTabTeam] Error creating team for " + player.getName() + ": " + e.getMessage());
         }
+    }
+
+    // ── Collision rule ────────────────────────────────────────────────────────
+
+    /**
+     * Updates the {@code COLLISION_RULE} option on the {@value #TEAM_NAME} team
+     * on ALL online players' scoreboards to match the current {@code body.pushable}
+     * config setting.
+     *
+     * <p>Calling {@code body.setCollidable(false)} has no effect on bots already
+     * in a scoreboard team — the team option is what Minecraft actually uses.
+     * Call this whenever {@code body.pushable} changes (e.g. from
+     * {@code FakePlayerManager.applyBodyConfig()}).
+     *
+     * @param pushable {@code true} → {@code ALWAYS}; {@code false} → {@code NEVER}
+     */
+    public void applyCollisionRule(boolean pushable) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Team team = p.getScoreboard().getTeam(TEAM_NAME);
+            if (team != null) applyCollisionRuleToTeam(team);
+        }
+        FppLogger.debug("[BotTabTeam] Collision rule set to "
+                + (pushable ? "ALWAYS" : "NEVER") + " on "
+                + Bukkit.getOnlinePlayers().size() + " scoreboard(s).");
+    }
+
+    private static void applyCollisionRuleToTeam(Team team) {
+        boolean pushable = Config.bodyPushable();
+        team.setOption(
+            Team.Option.COLLISION_RULE,
+            pushable ? Team.OptionStatus.ALWAYS : Team.OptionStatus.NEVER
+        );
     }
 
     // ── Bot registration ──────────────────────────────────────────────────────
@@ -220,6 +256,8 @@ public final class BotTabTeam {
             ensureTeamExists(player);
             Team team = player.getScoreboard().getTeam(TEAM_NAME);
             if (team == null) return;
+            // Ensure collision rule is correct on this player's scoreboard.
+            applyCollisionRuleToTeam(team);
             int added = 0;
             for (String entry : botEntries) {
                 if (!team.hasEntry(entry)) { team.addEntry(entry); added++; }

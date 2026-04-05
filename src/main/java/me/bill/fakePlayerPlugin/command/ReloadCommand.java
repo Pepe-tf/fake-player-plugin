@@ -96,6 +96,17 @@ public class ReloadCommand implements FppCommand {
             if (active > 0) sendStep(sender, active + " active bot(s) runtime state updated");
         }
 
+        // ── 3b. Peak-hours reload — wakes sleeping bots then re-evaluates ──────
+        me.bill.fakePlayerPlugin.fakeplayer.PeakHoursManager phm = plugin.getPeakHoursManager();
+        if (phm != null) {
+            phm.reload();
+            String phState = me.bill.fakePlayerPlugin.config.Config.peakHoursEnabled()
+                    ? "on — " + phm.getSleepingCount() + " sleeping, "
+                      + phm.getTotalPool() + " total pool"
+                    : "off";
+            sendStep(sender, "Peak-hours reloaded  (" + phState + ")");
+        }
+
         // ── 4. LuckPerms — bots are real NMS players, LP handles natively ─────
         // No manual cache invalidation needed. Display names auto-update via
         // UserDataRecalculateEvent subscription (see LuckPermsHelper.subscribeLpEvents).

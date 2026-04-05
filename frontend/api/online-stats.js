@@ -44,9 +44,16 @@ module.exports = async (req, res) => {
    *   WHERE last_seen > NOW() - INTERVAL 5 MINUTE
    * `);
    *
+   * const totalBots = await db.query(`
+   *   SELECT SUM(bot_count) as total
+   *   FROM server_heartbeats
+   *   WHERE last_seen > NOW() - INTERVAL 5 MINUTE
+   * `);
+   *
    * res.status(200).json({
    *   servers: activeServers[0].count || 0,
    *   users: totalPlayers[0].total || 0,
+   *   bots: totalBots[0].total || 0,
    *   timestamp: new Date().toISOString()
    * });
    */

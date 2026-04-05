@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -23,7 +24,10 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntityTeleportEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.persistence.PersistentDataType;
+
+import java.util.UUID;
 
 public class FakePlayerEntityListener implements Listener {
 
@@ -161,67 +165,107 @@ public class FakePlayerEntityListener implements Listener {
         fp.incrementDeathCount();
         fp.setAlive(false);
 
-        final Location respawnLoc = fp.getSpawnLocation() != null
-                ? fp.getSpawnLocation().clone()
-                : event.getEntity().getLocation().clone();
-        final String name        = fp.getName();
-        final String displayName = fp.getDisplayName();
+        final String name = fp.getName();
 
-        // Remove the dead player entity after the death animation (~1 second)
-        if (event.getEntity() instanceof Player deadPlayer) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
-            }, 20L);
-        }
-
-        // Clear references
+        // Clear entity-index references immediately — the body is dead
         fp.setPlayer(null);
         manager.removeFromEntityIndex(event.getEntity().getEntityId());
 
         if (Config.respawnOnDeath()) {
-            int delay = Math.max(20, Config.respawnDelay()); // Minimum 1 second
+            // ── In-place respawn (no disconnect / reconnect) ──────────────────
+            // spigot().respawn() fires PlayerQuitEvent (old entity removed),
+            // PlayerRespawnEvent (location override handled by onBotRespawn),
+            // and PlayerJoinEvent (join message suppressed by PlayerJoinListener).
+            // ALL entity re-registration is done in the 2-tick follow-up task
+            // below — this eliminates the race condition where a 5-tick delayed
+            // setRespawning(false) could be overwritten by a quick second death.
+            int delay = Math.max(1, Config.respawnDelay());
             if (chunkLoader != null) chunkLoader.releaseForBot(fp);
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                // Remove from tab list while dead
-                for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
+            fp.setRespawning(true);
+            final Player deadPlayer = (event.getEntity() instanceof Player p2) ? p2 : null;
+            final UUID   botUuid    = fp.getUuid();
 
-                // Respawn the bot with a new NMS ServerPlayer entity
-                if (Config.spawnBody()) {
-                    Player newBody = FakePlayerBody.spawn(fp, respawnLoc);
-                    if (newBody == null) {
-                        // Spawn failed — bot already kicked, vanilla quit message shown
-                        manager.removeByName(name);
-                        return;
-                    }
-                    fp.setPlayer(newBody);
-                    fp.setAlive(true);
-                    manager.registerEntityIndex(newBody.getEntityId(), fp);
-                    
-                    // Re-add to tab list after respawn
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (Config.tabListEnabled())
-                            for (Player p : Bukkit.getOnlinePlayers())
-                                PacketHelper.sendTabListAdd(p, fp);
-                    }, 5L);
-                } else {
-                    // Body disabled but bot should "respawn" — re-add to tab list
-                    fp.setAlive(true);
-                    if (Config.tabListEnabled())
-                        for (Player p : Bukkit.getOnlinePlayers())
-                            PacketHelper.sendTabListAdd(p, fp);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (deadPlayer == null || !deadPlayer.isOnline()) {
+                    fp.setRespawning(false);
+                    manager.removeByName(name);
+                    return;
                 }
 
-                fp.setSpawnLocation(respawnLoc);
+                // Trigger server-side respawn.  PlayerJoinListener only suppresses
+                // the join message; all entity setup is done in the task below.
+                deadPlayer.spigot().respawn();
+
+                // 2 ticks later: find the NEW entity created by spigot().respawn()
+                // and fully re-register it so future death/damage events work.
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    Player newEntity = Bukkit.getPlayer(botUuid);
+                    if (newEntity == null || newEntity.isDead()) {
+                        // respawn failed or bot died again immediately
+                        fp.setRespawning(false);
+                        if (newEntity == null) manager.removeByName(name);
+                        return;
+                    }
+
+                    // Re-register the new NMS entity
+                    fp.setPlayer(newEntity);
+                    fp.setAlive(true);
+                    manager.registerEntityIndex(newEntity.getEntityId(), fp);
+
+                    // Re-apply PDC identification tag (lost when new ServerPlayer is created)
+                    try {
+                        if (FakePlayerManager.FAKE_PLAYER_KEY != null) {
+                            newEntity.getPersistentDataContainer().set(
+                                FakePlayerManager.FAKE_PLAYER_KEY,
+                                PersistentDataType.STRING,
+                                FakePlayerBody.VISUAL_PDC_VALUE + ":" + fp.getName());
+                        }
+                    } catch (Exception ignored) {}
+
+                    // Restore configured max health (vanilla respawn resets to 20 HP)
+                    try {
+                        var attr = newEntity.getAttribute(Attribute.MAX_HEALTH);
+                        if (attr != null) {
+                            double hp = Config.maxHealth();
+                            attr.setBaseValue(hp);
+                            newEntity.setHealth(hp);
+                        }
+                    } catch (Exception ignored) {}
+
+                    // Clear the flag IMMEDIATELY — not in a delayed task — so a
+                    // rapid second death won't see a stale flag and break the cycle.
+                    fp.setRespawning(false);
+                }, 2L);
             }, delay);
 
         } else {
+            // ── Permanent removal (default) ────────────────────────────────────
             if (chunkLoader != null) chunkLoader.releaseForBot(fp);
+            if (event.getEntity() instanceof Player deadPlayer) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
+                }, 20L);
+            }
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
                 // NMS player's quit event fired naturally — no custom leave message needed
                 manager.removeByName(name);
             }, 20L); // 1 second delay
+        }
+    }
+
+    /**
+     * Sets the respawn location for a bot that is mid in-place respawn.
+     * Runs at HIGH priority so it overrides any default (world spawn / bed).
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onBotRespawn(PlayerRespawnEvent event) {
+        FakePlayer fp = manager.getByName(event.getPlayer().getName());
+        if (fp == null || !fp.isRespawning()) return;
+        Location spawnLoc = fp.getSpawnLocation();
+        if (spawnLoc != null && spawnLoc.getWorld() != null) {
+            event.setRespawnLocation(spawnLoc);
         }
     }
 

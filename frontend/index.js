@@ -40,6 +40,7 @@ app.get('/api/online-stats', async (req, res) => {
   res.json({
     servers: 200,
     users: 630,
+    bots: 847,
     timestamp: new Date().toISOString()
   });
 });

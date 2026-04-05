@@ -72,6 +72,16 @@ public final class FakePlayerBody {
             player.setInvulnerable(!Config.bodyDamageable());
             player.setCollidable(true);
 
+            // Apply configured max health (combat.max-health)
+            try {
+                var maxHpAttr = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                if (maxHpAttr != null) {
+                    double hp = Config.maxHealth();
+                    maxHpAttr.setBaseValue(hp);
+                    player.setHealth(hp);
+                }
+            } catch (Exception ignored) {}
+
             // Explicitly disable flying abilities to prevent fly animation
             player.setAllowFlight(false);
             player.setFlying(false);

@@ -166,6 +166,12 @@ public final class Perm {
     /** Control bot session rotation (swap in/out) via /fpp swap. */
     public static final String SWAP          = "fpp.swap";
 
+    /** Control peak-hours bot pool scheduling via /fpp peaks. */
+    public static final String PEAKS         = "fpp.peaks";
+
+    /** Open the interactive in-game settings GUI via /fpp settings. */
+    public static final String SETTINGS      = "fpp.settings";
+
     // ── Static helpers ────────────────────────────────────────────────────────
 
     /** Returns {@code true} if {@code sender} has the given permission node. */

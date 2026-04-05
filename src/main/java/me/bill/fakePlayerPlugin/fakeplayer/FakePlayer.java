@@ -98,6 +98,14 @@ public final class FakePlayer {
     /** Whether the bot is currently alive (false after death, until respawn). */
     private boolean alive = true;
 
+    /**
+     * {@code true} while the bot is in the middle of a server-side respawn
+     * (died with {@code respawn-on-death: true} and is waiting for
+     * {@code spigot().respawn()} to complete). Used to suppress the join/quit
+     * messages that the vanilla pipeline would otherwise broadcast.
+     */
+    private boolean respawning = false;
+
     /** How many times this bot has been "tag list refreshed" (diagnostic). */
     private int tabRefreshCount = 0;
 
@@ -259,6 +267,10 @@ public final class FakePlayer {
     /** The archetype this bot was spawned as ({@link BotType#AFK} by default). */
     public BotType getBotType()                   { return botType != null ? botType : BotType.AFK; }
     public void    setBotType(BotType type)       { this.botType = type; }
+
+    /** Whether the bot is mid-respawn (suppress join/quit messages). */
+    public boolean isRespawning()               { return respawning; }
+    public void    setRespawning(boolean v)     { this.respawning = v; }
 
     /** Whether this bot participates in auto-chat. {@code false} = silenced. */
     public boolean isChatEnabled()               { return chatEnabled; }
