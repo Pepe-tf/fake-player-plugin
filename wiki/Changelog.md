@@ -1,7 +1,53 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.5.15** · Released: 2026-04-06
+> Latest version: **v1.5.17** · Released: 2026-04-07
+
+---
+
+## v1.5.17 *(2026-04-07)*
+
+### 🔄 Swap System — Critical Fix & Major Enhancements
+
+**Critical Bug Fix — Bots Now Rejoin**
+
+The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid)` on the way out. Bots left but the rejoin task was destroyed before it could fire — they never came back. Fixed by registering the rejoin task **after** `delete()` runs so `cancel()` finds nothing to cancel.
+
+**New Config Keys**
+| Key | Default | Description |
+|-----|---------|-------------|
+| `swap.min-online` | `0` | Minimum bots that must stay online (0 = no floor). Swap skips if removing one would drop below this. |
+| `swap.retry-rejoin` | `true` | Auto-retry failed rejoin spawns (e.g. max-bots cap temporarily full). |
+| `swap.retry-delay` | `60` | Seconds to wait before retrying a failed rejoin. |
+| `logging.debug.swap` | `false` | Dedicated swap lifecycle debug channel (leave + rejoin events). |
+
+**Other Improvements**
+- Better bot identification on rejoin: same-name rejoins use `getByName()` (stable even with identity cache); random-name rejoins use UUID diff
+- New `Personality.SPORADIC` type — wide random variance for truly unpredictable session patterns
+- Expanded farewell/greeting message pools (~50 entries each)
+- New `/fpp swap info <bot>` — shows personality, cycle count, time until next leave, and offline-waiting count
+- `/fpp swap list` now shows **time remaining** in each bot's session
+- `/fpp swap status` now shows the `min-online` floor setting
+
+### ⚡ Performance Optimizations
+- **O(1) bot name lookup** — secondary `nameIndex` map added to `FakePlayerManager`; `getByName()` was O(n) linear scan, now O(1) `ConcurrentHashMap` lookup maintained at all add/remove sites (spawn, restore, delete, removeByName, removeAllSync)
+- **Position sync distance culling** — position packets are only broadcast to players within `performance.position-sync-distance` blocks (new config key, default `128.0`; `0` = unlimited); saves significant packet overhead on large servers with many players
+
+### 🔕 Log Cleanup
+- NmsPlayerSpawner per-spawn/despawn log lines demoted from INFO → DEBUG:
+  - `"saved playerdata for 'X' uuid=…"` (fires on every despawn)
+  - `"removed 'X' via PlayerList.remove() uuid=…"` (fires on every despawn)
+  - `"playerdata found for 'X' uuid=…"` (fires on every spawn)
+  - `"created initial playerdata for 'X' uuid=…"` (first spawn only)
+- One-time startup banner (`NmsPlayerSpawner initialised…`) kept as INFO
+
+### 📋 Config Reorganization
+- `config.yml` fully restructured into 9 clearly labelled numbered sections for easier navigation:
+  1. Spawning · 2. Appearance · 3. Body & Combat · 4. AI Systems · 5. Bot Chat · 6. Scheduling · 7. Database & Network · 8. Performance · 9. Debug & Logging
+- Debug/metrics/update-checker moved to bottom (section 9)
+- `config-sync` co-located with `database` (section 7)
+- Peak-hours schedule condensed to single-line `{start, end, fraction}` format
+- Config version → **v47**
 
 ---
 
@@ -286,5 +332,6 @@
 ---
 
 > 📥 **Download the latest version:** [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [Hangar](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/)  
-> 💬 **Support:** [Discord](https://discord.gg/QSN7f67nkJ)
+> 💬 **Support:** [Discord](https://discord.gg/QSN7f67nkJ)  
+> 🔖 **Latest:** v1.5.17 — Swap system critical fix & enhancements
 

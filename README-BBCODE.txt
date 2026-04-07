@@ -2,7 +2,7 @@
 
 [SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.5.15  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.5.17  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]
@@ -79,7 +79,8 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]/fpp list[/FONT][/TD][TD]List all active bots with uptime and location[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp freeze <name|all> [on|off][/FONT][/TD][TD]Freeze or unfreeze bots — frozen bots are immovable; shown with ❄ in list/stats[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp chat [on|off|status][/FONT][/TD][TD]Toggle the fake chat system[/TD][/TR]
-[TR][TD][FONT=monospace]/fpp swap [on|off|status][/FONT][/TD][TD]Toggle the bot swap/rotation system[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp swap [on|off|status|now <bot>|list|info <bot>][/FONT][/TD][TD]Toggle / manage the bot swap/rotation system[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp peaks [on|off|status|next|force|list|wake <name>|sleep <name>][/FONT][/TD][TD]Time-based bot pool scheduler[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp rank <bot> <group>[/FONT][/TD][TD]Assign a specific bot to a LuckPerms group[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp rank random <group> [num|all][/FONT][/TD][TD]Assign random bots to a LuckPerms group[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp rank list[/FONT][/TD][TD]List all active bots with their current LuckPerms group[/TD][/TR]
@@ -124,6 +125,8 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]fpp.bypass.maxbots[/FONT][/TD][TD]Bypass the global bot cap[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.bypass.cooldown[/FONT][/TD][TD]Bypass the per-player spawn cooldown[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.admin.migrate[/FONT][/TD][TD]Backup, migrate, and export database[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.peaks[/FONT][/TD][TD]Manage the peak-hours bot pool scheduler[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.settings[/FONT][/TD][TD]Open the in-game settings GUI[/TD][/TR]
 [/TABLE]
 
 [SIZE=5][B]User[/B][/SIZE] [I](enabled for all players by default)[/I]
@@ -175,7 +178,9 @@ Located at [FONT=monospace]plugins/FakePlayerPlugin/config.yml[/FONT]. Run [FONT
 [TR][TD][FONT=monospace]head-ai[/FONT][/TD][TD]Enable/disable, look range, turn speed[/TD][/TR]
 [TR][TD][FONT=monospace]swim-ai[/FONT][/TD][TD]Automatic swimming in water/lava (enabled, default true)[/TD][/TR]
 [TR][TD][FONT=monospace]collision[/FONT][/TD][TD]Push physics — walk strength, hit strength, bot separation[/TD][/TR]
-[TR][TD][FONT=monospace]swap[/FONT][/TD][TD]Auto rotation — session length, farewell/greeting chat, AFK simulation[/TD][/TR]
+[TR][TD][FONT=monospace]swap[/FONT][/TD][TD]Auto rotation — session length, absence duration, min-online floor, retry-on-fail, farewell/greeting chat[/TD][/TR]
+[TR][TD][FONT=monospace]peak-hours[/FONT][/TD][TD]Time-based bot pool scheduler — schedule, day-overrides, stagger-seconds, min-online[/TD][/TR]
+[TR][TD][FONT=monospace]performance[/FONT][/TD][TD]Position sync distance culling (position-sync-distance)[/TD][/TR]
 [TR][TD][FONT=monospace]fake-chat[/FONT][/TD][TD]Enable, chance, interval, typing delays, burst messages, mention replies, event reactions, keyword reactions[/TD][/TR]
 [TR][TD][FONT=monospace]tab-list[/FONT][/TD][TD]Show/hide bots in the player tab list[/TD][/TR]
 [TR][TD][FONT=monospace]config-sync[/FONT][/TD][TD]Cross-server config push/pull mode (DISABLED/MANUAL/AUTO_PULL/AUTO_PUSH)[/TD][/TR]
@@ -389,6 +394,39 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 [HR][/HR]
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
+
+[SIZE=5][B]v1.5.17[/B][/SIZE] [I](2026-04-07)[/I]
+
+[B]🔄 Swap System — Critical Fix & Major Enhancements[/B]
+[LIST]
+[*][B]Critical bug fix:[/B] bots now actually rejoin after swapping out. The rejoin timer was being silently cancelled by [FONT=monospace]delete()[/FONT] calling [FONT=monospace]cancel(uuid)[/FONT] — bots left but never came back. Fixed by registering the rejoin task [I]after[/I] [FONT=monospace]delete()[/FONT] runs so [FONT=monospace]cancel()[/FONT] finds nothing to cancel.
+[*]New [FONT=monospace]swap.min-online: 0[/FONT] — minimum bots that must stay online; swap skips if removing one would drop below this floor
+[*]New [FONT=monospace]swap.retry-rejoin: true[/FONT] / [FONT=monospace]swap.retry-delay: 60[/FONT] — auto-retry failed rejoins (e.g. max-bots cap temporarily full)
+[*]Better bot identification on rejoin: same-name rejoins use [FONT=monospace]getByName()[/FONT]; random-name rejoins use UUID diff
+[*]New [FONT=monospace]Personality.SPORADIC[/FONT] type — unpredictable session variance for more natural patterns
+[*]Expanded farewell/greeting message pools (~50 entries each)
+[*]New [FONT=monospace]/fpp swap info <bot>[/FONT] — shows personality, cycle count, time until next leave, and offline-waiting count
+[*][FONT=monospace]/fpp swap list[/FONT] now shows [B]time remaining[/B] in each session
+[*][FONT=monospace]/fpp swap status[/FONT] now shows the [FONT=monospace]min-online[/FONT] floor setting
+[*]New [FONT=monospace]logging.debug.swap: false[/FONT] — dedicated swap lifecycle debug channel
+[/LIST]
+
+[B]⚡ Performance Optimizations[/B]
+[LIST]
+[*]O(1) bot name lookup via secondary [FONT=monospace]nameIndex[/FONT] map — [FONT=monospace]getByName()[/FONT] was O(n) linear scan, now O(1) ConcurrentHashMap lookup maintained at all add/remove sites
+[*]Position sync distance culling — position packets only broadcast to players within [FONT=monospace]performance.position-sync-distance: 128.0[/FONT] blocks (0 = unlimited); saves significant packet overhead on large servers
+[/LIST]
+
+[B]🔕 Log Cleanup[/B]
+[LIST]
+[*]NmsPlayerSpawner per-spawn/despawn log messages demoted from INFO → DEBUG; no more log spam on every bot cycle
+[/LIST]
+
+[B]📋 Config Reorganization[/B]
+[LIST]
+[*][FONT=monospace]config.yml[/FONT] restructured into 9 clearly labelled sections: Spawning · Appearance · Body & Combat · AI Systems · Bot Chat · Scheduling · Database & Network · Performance · Debug & Logging
+[*]Config version → [B]v47[/B]
+[/LIST]
 
 [SIZE=5][B]v1.5.15[/B][/SIZE] [I](2026-04-06)[/I]
 
@@ -717,6 +755,6 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.5.15[/I]
+[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.5.17[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fakeplayerplugin.xyz']Wiki[/URL][/CENTER]

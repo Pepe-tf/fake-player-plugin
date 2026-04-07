@@ -78,7 +78,8 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp list` | List all active bots with uptime and location |
 | `/fpp freeze <name\|all> [on\|off]` | Freeze or unfreeze bots — frozen bots are immovable; shown with an ice icon in list/stats |
 | `/fpp chat [on\|off\|status]` | Toggle the fake chat system |
-| `/fpp swap [on\|off\|status]` | Toggle the bot swap/rotation system |
+| `/fpp swap [on\|off\|status\|now <bot>\|list\|info <bot>]` | Toggle / manage the bot swap/rotation system |
+| `/fpp peaks [on\|off\|status\|next\|force\|list\|wake <name>\|sleep <name>]` | Time-based bot pool scheduler |
 | `/fpp rank <bot> <group>` | Assign a specific bot to a LuckPerms group |
 | `/fpp rank random <group> [num\|all]` | Assign random bots to a LuckPerms group |
 | `/fpp rank list` | List all active bots with their current LuckPerms group |
@@ -120,8 +121,8 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `fpp.reload` | Reload configuration |
 | `fpp.tp` | Teleport to bots |
 | `fpp.bypass.maxbots` | Bypass the global bot cap |
-| `fpp.bypass.cooldown` | Bypass the per-player spawn cooldown |
-| `fpp.admin.migrate` | Backup, migrate, and export database |
+| `fpp.peaks` | Manage the peak-hours bot pool scheduler |
+| `fpp.settings` | Open the in-game settings GUI |
 
 ### User (enabled for all players by default)
 
@@ -171,7 +172,9 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` after any ch
 | `head-ai` | Enable/disable, look range, turn speed |
 | `swim-ai` | Automatic swimming in water/lava (`enabled`, default `true`) |
 | `collision` | Push physics — walk strength, hit strength, bot separation |
-| `swap` | Auto rotation — session length, farewell/greeting chat, AFK simulation |
+| `swap` | Auto rotation — session length, absence duration, min-online floor, retry-on-fail, farewell/greeting chat |
+| `peak-hours` | Time-based bot pool scheduler — schedule, day-overrides, stagger-seconds, min-online |
+| `performance` | Position sync distance culling (`position-sync-distance`) |
 | `fake-chat` | Enable, message chance, interval, typing delays, burst messages, mention replies, event reactions, keyword reactions |
 | `tab-list` | Show/hide bots in the player tab list |
 | `config-sync` | Cross-server config push/pull mode (`DISABLED` / `MANUAL` / `AUTO_PULL` / `AUTO_PUSH`) |
@@ -342,6 +345,31 @@ Bot chat uses the server's real chat pipeline (`Player.chat()`), so formatting i
 ---
 
 ## Changelog
+
+### v1.5.17 *(2026-04-07)*
+
+**Swap System — Critical Fix & Major Enhancements**
+- **Critical bug fix:** bots now actually rejoin after swapping out. The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid)` — bots left but never came back. Fixed by registering the rejoin task *after* `delete()` runs so `cancel()` finds nothing to cancel.
+- New `swap.min-online: 0` — minimum bots that must stay online; swap skips if removing one would go below this floor
+- New `swap.retry-rejoin: true` / `swap.retry-delay: 60` — auto-retry failed rejoins (e.g. when max-bots cap is temporarily full)
+- Better bot identification on rejoin: same-name rejoins use `getByName()` (reliable even with stable UUIDs); random-name rejoins use UUID diff
+- New `Personality.SPORADIC` type — unpredictable session variance for more natural patterns
+- Expanded farewell/greeting message pools (~50 entries each)
+- New `/fpp swap info <bot>` — shows personality, cycle count, time until next leave, and offline-waiting count
+- `/fpp swap list` now shows **time remaining** in each session
+- `/fpp swap status` now shows the `min-online` floor setting
+- New `logging.debug.swap: false` — dedicated swap lifecycle debug channel
+
+**Performance Optimizations**
+- O(1) bot name lookup via secondary `nameIndex` map — `getByName()` was O(n) linear scan, now O(1) `ConcurrentHashMap` lookup maintained at all add/remove sites
+- Position sync distance culling — position packets only broadcast to players within `performance.position-sync-distance: 128.0` blocks (0 = unlimited); saves significant packet overhead on large servers
+
+**Log Cleanup**
+- NmsPlayerSpawner per-spawn/despawn log messages demoted from INFO → DEBUG; no more log spam on every bot cycle
+
+**Config Reorganization**
+- `config.yml` restructured into 9 clearly labelled sections: Spawning · Appearance · Body & Combat · AI Systems · Bot Chat · Scheduling · Database & Network · Performance · Debug & Logging
+- Config version → **v47**
 
 ### v1.5.15 *(2026-04-06)*
 
@@ -584,4 +612,4 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.5.15 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.5.17 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz)*

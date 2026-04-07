@@ -81,14 +81,17 @@ public class FakePlayerEntityListener implements Listener {
      * Plays the hurt sound for bots only when damage is confirmed (not cancelled).
      * Running at MONITOR with ignoreCancelled=true ensures WorldGuard-cancelled events
      * (and any other plugin that cancels damage) do not trigger a phantom hurt sound.
+     * Uses world-level sound emission so the server handles range culling automatically,
+     * avoiding an O(players) loop.
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageConfirmed(EntityDamageEvent event) {
         if (!isFakeBotBody(event.getEntity())) return;
         if (!Config.hurtSound()) return;
         Location loc = event.getEntity().getLocation();
-        for (Player p : Bukkit.getOnlinePlayers())
-            p.playSound(loc, Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
+        if (loc.getWorld() != null) {
+            loc.getWorld().playSound(loc, Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
+        }
     }
 
     // ── PVP Bot Damage Tracking (for defensive mode) ──────────────────────────

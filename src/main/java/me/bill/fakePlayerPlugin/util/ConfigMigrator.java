@@ -42,7 +42,7 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 45;
+    public static final int CURRENT_VERSION = 47;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
@@ -136,6 +136,8 @@ public final class ConfigMigrator {
         if (stored < 42) anyChange |= v41to42(cfg);
         if (stored < 43) anyChange |= v42to43(cfg);
         if (stored < 44) anyChange |= v43to44(cfg);
+        if (stored < 46) anyChange |= v45to46(cfg);
+        if (stored < 47) anyChange |= v46to47(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -1171,6 +1173,50 @@ public final class ConfigMigrator {
             return true;
         }
         return false;
+    }
+
+    /**
+     * v45 → v46: Add the {@code performance.position-sync-distance} key.
+     * This enables per-tick position-packet distance culling (default 128 blocks).
+     * Setting the key to 0 restores the old behaviour (send to all players).
+     */
+    private static boolean v45to46(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("performance.position-sync-distance")) {
+            cfg.set("performance.position-sync-distance", 128.0);
+            log("v45→v46", "added performance.position-sync-distance = 128.0");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * v46 → v47: adds swap system enhancements — min-online floor, retry config,
+     * and a new swap debug category.
+     */
+    private static boolean v46to47(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("swap.min-online")) {
+            cfg.set("swap.min-online", 0);
+            log("v46→v47", "added swap.min-online = 0");
+            changed = true;
+        }
+        if (!cfg.contains("swap.retry-rejoin")) {
+            cfg.set("swap.retry-rejoin", true);
+            log("v46→v47", "added swap.retry-rejoin = true");
+            changed = true;
+        }
+        if (!cfg.contains("swap.retry-delay")) {
+            cfg.set("swap.retry-delay", 60);
+            log("v46→v47", "added swap.retry-delay = 60");
+            changed = true;
+        }
+        if (!cfg.contains("logging.debug.swap")) {
+            cfg.set("logging.debug.swap", false);
+            log("v46→v47", "added logging.debug.swap = false");
+            changed = true;
+        }
+        return changed;
     }
 
 

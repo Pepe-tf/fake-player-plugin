@@ -76,6 +76,7 @@ public final class Config {
     public static boolean debugSkin()       { return isDebug() || debugFlag("logging.debug.skin"); }
     public static boolean debugDatabase()   { return isDebug() || debugFlag("logging.debug.database"); }
     public static boolean debugChat()       { return isDebug() || debugFlag("logging.debug.chat"); }
+    public static boolean debugSwap()      { return isDebug() || debugFlag("logging.debug.swap"); }
 
     /** Whether the startup update checker is enabled. Maps to {@code update-checker.enabled}. */
     public static boolean updateCheckerEnabled() {
@@ -341,6 +342,15 @@ public final class Config {
     /** Whether bots attempt to reuse their same name on rejoin. */
     public static boolean swapSameNameOnRejoin() { return cfg.getBoolean("swap.same-name-on-rejoin", true); }
 
+    /** Minimum bots that must remain online — swap skips if removing one would go below. 0 = disabled. */
+    public static int swapMinOnline() { return cfg.getInt("swap.min-online", 0); }
+
+    /** Whether a failed rejoin spawn is automatically retried after a delay. */
+    public static boolean swapRetryRejoin() { return cfg.getBoolean("swap.retry-rejoin", true); }
+
+    /** Seconds to wait before retrying a failed rejoin spawn. */
+    public static int swapRetryDelay() { return cfg.getInt("swap.retry-delay", 60); }
+
     // ── Peak Hours  (peak-hours.*) ────────────────────────────────────────────
 
     /**
@@ -475,6 +485,16 @@ public final class Config {
 
     /** Head rotation interpolation speed (0.0–1.0). */
     public static float headAiTurnSpeed()  { return (float) cfg.getDouble("head-ai.turn-speed", 0.3); }
+
+    /**
+     * Run the head-AI player-scan and raycast every N game ticks instead of every tick.
+     * Higher values reduce the O(bots × players) raycast budget at the cost of slightly
+     * less snappy head tracking.  Default: {@code 3} (every 3rd tick = ~6.7 scans/s).
+     * Maps to {@code head-ai.tick-rate}.
+     */
+    public static int headAiTickRate() {
+        return Math.max(1, cfg.getInt("head-ai.tick-rate", 3));
+    }
 
     // ── Swim AI  (swim-ai.*) ──────────────────────────────────────────────────
 
@@ -833,6 +853,23 @@ public final class Config {
 
     // ── Utility ───────────────────────────────────────────────────────────────
 
+    // ── Performance  (performance.*) ─────────────────────────────────────────
+
+    /**
+     * Maximum distance (in blocks) at which a moving bot sends position-sync packets
+     * to a real player.  Players farther than this value will not receive per-tick
+     * movement updates — they cannot render the bot anyway beyond their view distance.
+     *
+     * <p>Set to {@code 0} to disable distance culling (legacy behaviour — sends to all
+     * online players regardless of distance).  The recommended value is {@code 128},
+     * which covers the standard Minecraft player-entity tracking range.</p>
+     *
+     * Maps to {@code performance.position-sync-distance}.
+     */
+    public static double positionSyncDistance() {
+        return cfg.getDouble("performance.position-sync-distance", 128.0);
+    }
+
     /** Log a message to console only when the legacy global debug mode is on. */
     public static void debug(String message) { FppLogger.debug(message); }
 
@@ -845,4 +882,5 @@ public final class Config {
     public static void debugSkin(String message)       { FppLogger.debug("SKIN", debugSkin(), message); }
     public static void debugDatabase(String message)   { FppLogger.debug("DATABASE", debugDatabase(), message); }
     public static void debugChat(String message)       { FppLogger.debug("CHAT", debugChat(), message); }
+    public static void debugSwap(String message)      { FppLogger.debug("SWAP", debugSwap(), message); }
 }

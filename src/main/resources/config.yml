@@ -1,505 +1,354 @@
 # ─────────────────────────────────────────────────────────────────────────────
 #  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  ·  config.yml  ·  v1.5.15
-#  Run /fpp reload to apply changes without restarting the server.
-#  Colors use MiniMessage: <#0079FF>text</#0079FF>  <gray>text</gray>
+#  Run /fpp reload to apply most changes without restarting the server.
+#  Colors use MiniMessage: <#0079FF>text</#0079FF>  or  <gray>text</gray>
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Internal — managed by the migration system. Do NOT edit.
-config-version: 45
-# Internal migration version — updated automatically. Do not edit.
+# Internal — managed automatically. Do NOT edit.
+config-version: 47
+language: en
 
-language: en         # Language file to use (language/<lang>.yml)
-debug: false         # Legacy master switch: true = enable every debug category below
+# ═════════════════════════════════════════════════════════════════════════════
+#  1 · SPAWNING
+# ═════════════════════════════════════════════════════════════════════════════
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  LOGGING / DEBUG
-#  All toggles below are false by default so normal logs stay clean and user-friendly.
-#  Set only the subsystem you want to inspect to true.
-#  The top-level `debug: true` switch above still enables every category at once.
-# ─────────────────────────────────────────────────────────────────────────────
-logging:
-  debug:
-    startup: false      # Startup flow, reloads, compatibility, general lifecycle
-    nms: false          # Reflection, fake connection setup, NMS internals
-    packets: false      # Tab-list/entity packet sending and packet constructor selection
-    luckperms: false    # LuckPerms group sync and prefix refresh details
-    network: false      # Velocity/Bungee plugin messaging and remote bot sync
-    config-sync: false  # Network config push/pull activity and YAML sync internals
-    skin: false         # Reserved for skin subsystem debugging
-    database: false     # Database init, migrations, flushes, and session persistence
-    chat: false         # Bot chat AI scheduling, reactions, and event triggers
-
-update-checker:
-  enabled: true      # Check for new versions on startup and /fpp reload
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  METRICS
-#  Anonymous usage statistics sent to FastStats. Helps the developer understand
-#  which features are used most. No personal data is ever collected.
-#  Set false to opt out completely.
-# ─────────────────────────────────────────────────────────────────────────────
-metrics:
-  enabled: true
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT LIMITS
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Bot Limits ────────────────────────────────────────────────────────────────
 limits:
-  max-bots: 1000           # Global cap across all spawners. 0 = unlimited.
-  user-bot-limit: 1        # Default personal limit for fpp.user.spawn players.
-  spawn-presets: [1, 5, 10, 15, 20]  # Tab-complete suggestions for /fpp spawn
+  max-bots: 1000                    # Global cap across all spawners. 0 = unlimited.
+  user-bot-limit: 1                 # Personal limit for fpp.user.spawn players.
+  spawn-presets: [1, 5, 10, 15, 20] # Tab-complete count suggestions for /fpp spawn
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  SPAWN COOLDOWN
-#  How many seconds a player must wait between /fpp spawn commands.
-#  0 = no cooldown. Admins with fpp.bypass.cooldown are always exempt.
-# ─────────────────────────────────────────────────────────────────────────────
+# How many seconds a player must wait between /fpp spawn uses.
+# 0 = disabled. Players with fpp.bypass.cooldown are always exempt.
 spawn-cooldown: 0
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT DISPLAY NAMES
-#  Placeholders: {bot_name}  {spawner}  {num}
-#  Colors: <#0079FF>{bot_name}</#0079FF>  or  <gray>{bot_name}</gray>
-# ─────────────────────────────────────────────────────────────────────────────
-bot-name:
-  admin-format: '{bot_name}'             # /fpp spawn (admin)
-  user-format:  'bot-{spawner}-{num}'   # /fpp spawn (user tier)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  LUCKPERMS INTEGRATION
-#  Bots are now real NMS ServerPlayer entities. LuckPerms detects them as real
-#  players and applies prefix, suffix, and tab-list ordering automatically.
-# ─────────────────────────────────────────────────────────────────────────────
-luckperms:
-  # Optional: assign this LP group to every new bot at spawn time.
-  # When blank, bots receive LuckPerms' built-in "default" group.
-  # Use "/fpp rank <bot> <group>" to change individual bot groups.
-  default-group: ""
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  SKIN
-#
-#  mode: auto   — Mojang skin matching the bot's name. Best for online-mode.
-#                 Bots with generated names appear as default Steve / Alex.
-#  mode: custom — Full control: per-bot overrides, pool, and skins/ folder.
-#  mode: off    — No skin. All bots use default Steve / Alex appearance.
-# ─────────────────────────────────────────────────────────────────────────────
-skin:
-  mode: auto
-  guaranteed-skin: false   # false = bots with no Mojang account use default Steve / Alex
-  clear-cache-on-reload: true
-
-  # ── custom mode only ──────────────────────────────────────────────────────
-  overrides: {}           # Per-bot skin override: bot-name: minecraft-username
-  pool: []                # Random skin pool — list of Minecraft usernames
-  use-skin-folder: true   # Scan plugins/FakePlayerPlugin/skins/ for PNG files
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT BODY
-# ─────────────────────────────────────────────────────────────────────────────
-body:
-  enabled: true    # false = tab-list / server-count only, no visible entity
-  pushable: true   # true = players/bots can push the body; false = body is immovable
-  damageable: true # true = body takes damage and can die; false = body is invulnerable
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  PERSISTENCE
-#  Bots leave on server shutdown and rejoin at their last position on restart.
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Persistence ───────────────────────────────────────────────────────────────
+# Bots save their position on shutdown and rejoin at that location on restart.
 persistence:
   enabled: true
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  JOIN / LEAVE TIMING
-#  Values are in TICKS — 20 ticks = 1 second.
-#  Each bot joins/leaves after a random delay in this range, staggering batch
-#  spawns so they look like natural player joins rather than an instant flood.
-#  Quick reference:  0 = instant · 20 = 1 s · 40 = 2 s · 100 = 5 s · 200 = 10 s
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Join & Leave Timing ───────────────────────────────────────────────────────
+# Stagger batch spawns/despawns over a random delay so they look like natural
+# player activity rather than an instant flood.
+# Values are in TICKS — 20 ticks = 1 second.
+# Quick reference:  0 = instant · 20 = 1 s · 40 = 2 s · 100 = 5 s
 join-delay:
-  min: 0    # ticks  (20 ticks = 1 second)
-  max: 1    # ticks  (e.g. 40 = 2 s, 100 = 5 s)
+  min: 0   # ticks
+  max: 1   # ticks
 
 leave-delay:
-  min: 0    # ticks  (20 ticks = 1 second)
-  max: 1    # ticks  (e.g. 40 = 2 s, 100 = 5 s)
+  min: 0   # ticks
+  max: 1   # ticks
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  MESSAGES
-# ─────────────────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  2 · APPEARANCE
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── Display Names ─────────────────────────────────────────────────────────────
+# Placeholders: {bot_name}  {spawner}  {num}
+# Colors:  <#0079FF>{bot_name}</#0079FF>  or  <gray>{bot_name}</gray>
+bot-name:
+  admin-format: '{bot_name}'           # Used for /fpp spawn (admin)
+  user-format:  'bot-{spawner}-{num}'  # Used for /fpp spawn (user tier)
+
+# ── Skins ─────────────────────────────────────────────────────────────────────
+# mode: auto   — Mojang skin matching the bot name. Best for online-mode servers.
+#               Bots with generated names show default Steve / Alex.
+# mode: custom — Full control: per-bot overrides, pool, and skins/ folder.
+# mode: off    — No skin. All bots use default Steve / Alex appearance.
+skin:
+  mode: auto
+  guaranteed-skin: false        # false = bots with no Mojang account use Steve/Alex
+  clear-cache-on-reload: true
+
+  # ── custom mode only ──────────────────────────────────────────────────────
+  overrides: {}                 # Per-bot override: bot-name: minecraft-username
+  pool: []                      # Random skin pool — list of Minecraft usernames
+  use-skin-folder: true         # Scan plugins/FakePlayerPlugin/skins/ for PNG files
+
+# ── Tab List ──────────────────────────────────────────────────────────────────
+# true  = bots show in the player tab list (default)
+# false = bots are hidden from the tab list (still counted in server player count)
+tab-list:
+  enabled: true
+
+# ── LuckPerms ─────────────────────────────────────────────────────────────────
+# Bots are real NMS ServerPlayer entities — LuckPerms handles them natively.
+# Prefix, suffix, and tab-list ordering are applied automatically.
+luckperms:
+  default-group: ""   # LP group assigned at spawn. Blank = LP "default" group.
+                      # Change individual bots with "/fpp rank <bot> <group>".
+
+# ── Messages ──────────────────────────────────────────────────────────────────
 messages:
-  join-message: true    # "<Name> joined the game" — vanilla-style broadcast
-  leave-message: true   # "<Name> left the game"
-  kill-message: false   # Broadcast when a real player kills a bot
-  # When true any compatibility warnings (version/API checks) are sent to
-  # server operators and players with admin permission when they join.
-  notify-admins-on-join: true
+  join-message: true          # Broadcast "<Name> joined the game"
+  leave-message: true         # Broadcast "<Name> left the game"
+  kill-message: false         # Broadcast when a real player kills a bot
+  notify-admins-on-join: true # Send compatibility warnings to online admins on join
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  COMBAT
-# ─────────────────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  3 · BODY & COMBAT
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── Bot Body ──────────────────────────────────────────────────────────────────
+# The physical entity that appears in the world.
+body:
+  enabled:    true   # false = tab-list / player-count only, no entity in world
+  pushable:   true   # true = players and explosions can push the body
+  damageable: true   # true = body can take damage and die; false = invulnerable
+
+# ── Combat ────────────────────────────────────────────────────────────────────
 combat:
-  max-health: 20.0   # Bot HP (20.0 = standard player health, 2 HP = 1 heart)
-  hurt-sound: true   # Play the player hurt sound when a bot takes damage
+  max-health: 20.0   # Bot max HP. 20.0 = standard player (2 HP = 1 heart).
+  hurt-sound: true   # Play the hurt sound when a bot takes damage.
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  DEATH & RESPAWN
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Death & Respawn ───────────────────────────────────────────────────────────
 death:
-  respawn-on-death: false   # Respawn the bot after death instead of removing it
-  respawn-delay: 15          # Ticks before respawn — 20 ticks = 1 second  (15 = 0.75 s · 60 = 3 s · 100 = 5 s)
+  respawn-on-death: false   # true = bot respawns at its spawn location after dying
+  respawn-delay: 15         # Ticks before respawn (20 = 1 s · 60 = 3 s · 100 = 5 s)
   suppress-drops: true      # Prevent bots from dropping items on death
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  CHUNK LOADING
-#  Bots keep surrounding chunks loaded exactly like a real player.
-#  Mobs spawn, redstone ticks, crops grow inside the loaded radius.
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Chunk Loading ─────────────────────────────────────────────────────────────
+# Bots keep surrounding chunks loaded exactly like a real player.
+# Mobs spawn, redstone ticks, and crops grow inside the loaded radius.
 chunk-loading:
   enabled: true
-  radius: 0            # Chunk radius kept loaded. 0 = match server simulation-distance.
-  update-interval: 20  # How often bot positions are re-checked, in ticks (20 ticks = 1 second). Lower = more responsive, higher = less overhead.
+  radius: 0            # Chunk radius to keep loaded. 0 = match server simulation-distance.
+  update-interval: 20  # Ticks between position re-checks. 20 = 1 second.
+                       # Lower = more responsive, higher = less overhead.
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  HEAD AI
-#  Bots smoothly rotate to look at the nearest player within range.
-# ─────────────────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  4 · AI SYSTEMS
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── Head AI ───────────────────────────────────────────────────────────────────
+# Bots smoothly rotate to look at the nearest visible player within range.
 head-ai:
   enabled: true
   look-range: 8.0   # Detection radius in blocks
-  turn-speed: 0.3   # Rotation smoothing (0.0 = frozen, 1.0 = instant snap)
+  turn-speed: 0.3   # Rotation smoothing — 0.0 = frozen · 1.0 = instant snap
+  tick-rate: 3      # Run the scan + raycast every N ticks instead of every tick.
+                    # Higher = lower CPU cost. 3 ≈ 7 scans/s, imperceptible to players.
+                    # Range: 1 (every tick) to 20 (once per second).
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  SWIM AI
-#  Bots automatically swim upward when submerged in water or lava, mimicking
-#  a real player holding the spacebar / jump key.  Disable to let bots sink.
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Swim AI ───────────────────────────────────────────────────────────────────
+# Bots automatically swim upward when submerged, mimicking a player holding Jump.
 swim-ai:
-  enabled: true   # Set false to let bots sink/drown instead of swimming up
+  enabled: true   # false = bots sink and drown instead of swimming up
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  PVP AI  ·  ⚠  COMING SOON — This feature is not yet finished.
-#              The pvp bot type is currently restricted to internal testing only.
-#              It will be available to all users in a future release.
-#  Controls combat behaviour for BotType.PVP bots.
-#  NOTE: All settings below are locked to their defaults by the plugin until
-#        the PVP system is publicly released.  Editing them has no effect.
-# ─────────────────────────────────────────────────────────────────────────────
-pvp-ai:
-  # Master enable switch for PVP bots.
-  # Forced to false by the plugin — PVP is dev-only until publicly released.
-  # Editing this has no effect; it is reset to false on every reload.
-  pvp: false
-
-  # ── Core behaviour ───────────────────────────────────────────────────────
-  # Difficulty — attack range, timing precision, crit / s-tap frequency.
-  #   easy   → 1.5 block reach, waits full cooldown, rare crits
-  #   medium → 2.0 block reach, moderate aggression   (default)
-  #   hard   → 2.5 block reach, sprint-resets & s-taps more often
-  #   tier1  → 3.0 block reach, near-optimal combo pressure
-  #   hacker → 4.6 block reach, always crits, never misses timing
-  difficulty: medium
-
-  # Combat mode: "crystal" = end-crystal PvP, "sword" = sword fighting
-  combat-mode: crystal
-
-  # Gear type: "diamond" or "netherite"
-  gear: netherite
-
-  # Defensive mode: bot only retaliates when a player hits it first.
-  # false = aggressive — bot attacks any player within detect-range.
-  defensive-mode: true
-
-  # Detection radius in blocks (how far the bot scans for targets).
-  detect-range: 32.0
-
-  # Kit preset loaded at spawn: kit1 / kit2 / kit3 / kit4
-  kit: kit1
-
-  # ── Combat techniques ────────────────────────────────────────────────────
-  critting: true           # Bot lands critical hits by falling during attacks
-  s-tapping: true          # Bot taps S during swing to reset attack cooldown
-  strafing: true           # Bot circles around the target while fighting
-  shielding: false         # Bot equips and uses a shield to block incoming hits
-  speed-buffs: true        # Bot has Speed & Strength potion effects active
-  jump-reset: true         # Bot jump-resets (W-tap knockback bonus on hits)
-  random: false            # Randomise techniques each round for unpredictability
-  sprint: true             # Bot sprints toward the target during combat
-  walk-backwards: false    # Bot backs away while swinging to control knockback
-
-  # ── Abilities ────────────────────────────────────────────────────────────
-  pearl: true              # Bot throws ender pearls to close the gap / escape
-  pearl-spam: false        # Bot spams pearls in bursts for aggressive gap-closing
-  hole-mode: false         # Bot pathfinds to an obsidian hole to protect itself
-  auto-refill: true        # Bot automatically re-equips a totem after popping one
-  auto-respawn: true       # Bot automatically respawns and rejoins after death
-  spawn-protection: true   # Bot stays invulnerable during a short grace period at spawn
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  COLLISION & PUSH  ·  Advanced — defaults work well for most servers.
-#  Controls how hard players/hits push bots, and how bots separate from each other.
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Collision & Push ──────────────────────────────────────────────────────────
+# Controls how hard players push bots on contact and how bots separate from each other.
+# Defaults work well for most servers — only change if you notice stacking issues.
 collision:
-  walk-radius: 0.85           # Radius in which walking into a bot pushes it
-  walk-strength: 0.22         # Push force when walking into a bot
-  hit-strength: 0.45          # Knockback force when hitting a bot (regular hit)
-  hit-max-horizontal-speed: 0.80  # Max horizontal speed for hit/explosion knockback
-  bot-radius: 0.90            # Radius for bot-vs-bot separation
-  bot-strength: 0.14          # Separation force between two bots
-  max-horizontal-speed: 0.30  # Maximum push speed cap for walk/separation sources
+  walk-radius: 0.85              # Radius (blocks) at which walking into a bot pushes it
+  walk-strength: 0.22            # Push force when a player walks into a bot
+  hit-strength: 0.45             # Knockback force on a direct hit
+  hit-max-horizontal-speed: 0.80 # Max horizontal speed from hit / explosion knockback
+  bot-radius: 0.90               # Radius for bot-vs-bot separation
+  bot-strength: 0.14             # Separation force applied between two bots
+  max-horizontal-speed: 0.30     # Push speed cap for walk and separation sources
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  SWAP / SESSION ROTATION
-#  Bots periodically leave and rejoin the server, mimicking real player
-#  behaviour. Each bot gets a randomised session countdown + personality
-#  that scales how long they stay online.
-# ─────────────────────────────────────────────────────────────────────────────
-swap:
-  enabled: false              # Master toggle: false = bots never swap out
+# ── PVP AI  ·  ⚠ COMING SOON ─────────────────────────────────────────────────
+# Restricted to internal testing — all settings below are locked to their defaults.
+# Editing them has no effect until the PVP system is publicly released.
+pvp-ai:
+  pvp: false          # Master switch. Forced false — dev-only until public release.
 
-  session:
-    min: 60                   # Minimum session duration in seconds (e.g. 60 = 1 min, 300 = 5 min)
-    max: 300                  # Maximum session duration in seconds (e.g. 300 = 5 min, 1800 = 30 min)
+  # Core
+  difficulty: medium  # easy · medium · hard · tier1 · hacker
+  combat-mode: crystal  # crystal = end-crystal PvP · sword = melee
+  gear: netherite     # diamond or netherite
+  defensive-mode: true  # true = retaliate only when attacked · false = aggressive
+  detect-range: 32.0  # How far (blocks) the bot scans for targets
+  kit: kit1           # Kit preset at spawn: kit1 / kit2 / kit3 / kit4
 
-  absence:
-    min: 30                   # Minimum offline time in seconds (e.g. 30 = 30 s, 120 = 2 min)
-    max: 120                  # Maximum offline time in seconds (e.g. 120 = 2 min, 600 = 10 min)
+  # Techniques
+  critting: true          # Land critical hits by falling during attacks
+  s-tapping: true         # Tap S mid-swing to reset attack cooldown
+  strafing: true          # Circle the target while fighting
+  shielding: false        # Equip and use a shield to block hits
+  speed-buffs: true       # Active Speed & Strength effects
+  jump-reset: true        # W-tap for knockback bonus on hits
+  random: false           # Randomise techniques each round
+  sprint: true            # Sprint toward the target during combat
+  walk-backwards: false   # Back away while swinging to control knockback
 
-  max-swapped-out: 0          # Max bots allowed offline simultaneously (0 = unlimited)
-  farewell-chat: true         # Bots say goodbye before leaving
-  greeting-chat: true         # Bots say hi when rejoining
-  same-name-on-rejoin: true   # Reuse the same name if available on rejoin
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  PEAK HOURS
-#  Automatically adjusts how many bots are online based on real-world time
-#  windows, mimicking natural player activity patterns (busy mornings, quiet
-#  nights, weekend surges, etc.).
-#
-#  REQUIRES: swap.enabled: true  — bots are put to sleep / woken via the swap
-#  system so they leave and rejoin naturally.
-#
-#  How it works:
-#  ─ Every 60 seconds the scheduler checks the current server time.
-#  ─ The matching time window's `fraction` is applied to the total bot pool
-#    (online + sleeping). E.g. fraction: 0.75 = 75% of bots should be online.
-#  ─ Excess bots are gradually put to sleep (removed); sleeping bots are
-#    gradually woken (respawned) when the fraction rises.
-#  ─ Transitions are staggered so joins/leaves look natural.
-#
-#  Tips:
-#  ─ Use /fpp peaks status to see the current window and sleeping-bot count.
-#  ─ Use /fpp peaks next to see when the next window change happens.
-#  ─ Day-of-week overrides let weekends have different peak patterns.
-#  ─ Times are HH:mm (24-hour). Windows crossing midnight (e.g. 22:00→06:00)
-#    are handled automatically.
-# ─────────────────────────────────────────────────────────────────────────────
-peak-hours:
-  enabled: false
-  timezone: "UTC"            # Any java.time.ZoneId string, e.g. "America/New_York"
-  stagger-seconds: 30        # Spread joins / leaves over this many seconds
-
-  # ── Behaviour ──────────────────────────────────────────────────────────────
-  # Absolute minimum bots that must stay online, regardless of fraction.
-  # 0 = no floor (fraction alone controls the pool size).
-  min-online: 0
+  # Abilities
+  pearl: true             # Throw ender pearls to close gaps / escape
+  pearl-spam: false       # Spam pearls in bursts for aggressive gap-closing
+  hole-mode: false        # Pathfind to an obsidian hole for cover
+  auto-refill: true       # Re-equip a totem after popping one
+  auto-respawn: true      # Automatically respawn and rejoin after death
+  spawn-protection: true  # Stay invulnerable during a short grace period at spawn
 
 
-  # When true, online admins with fpp.peaks receive a chat notification each
-  # time the server moves into a new peak-hours window.
-  notify-transitions: false
-
-  # ── Daily schedule ─────────────────────────────────────────────────────────
-  # Each entry defines a time window and the fraction of bots that should be
-  # online during that window.  fraction 1.0 = all bots, 0.0 = no bots.
-  # Windows are checked top-to-bottom; the first match wins.
-  # Midnight-crossing windows (e.g. 22:00 → 06:00) are supported.
-  schedule:
-    - start: "06:00"
-      end:   "09:00"
-      fraction: 0.30       # Early morning — server waking up
-
-    - start: "09:00"
-      end:   "18:00"
-      fraction: 0.75       # Daytime — moderate activity
-
-    - start: "18:00"
-      end:   "22:00"
-      fraction: 1.00       # Peak evening — all bots online
-
-    - start: "22:00"
-      end:   "06:00"
-      fraction: 0.05       # Night — almost all bots sleeping
-
-  # ── Day-of-week overrides ──────────────────────────────────────────────────
-  # Override the daily schedule for specific days.  Key must be a valid
-  # Java DayOfWeek name in UPPERCASE: MONDAY, TUESDAY, WEDNESDAY, THURSDAY,
-  # FRIDAY, SATURDAY, SUNDAY.
-  # Remove or comment out entries to fall back to the default schedule above.
-  day-overrides:
-    SATURDAY:
-      - start: "10:00"
-        end:   "23:00"
-        fraction: 1.00     # Weekend peak — full server all day
-      - start: "23:00"
-        end:   "10:00"
-        fraction: 0.10     # Late night — most bots sleeping
-
-    SUNDAY:
-      - start: "10:00"
-        end:   "22:00"
-        fraction: 0.90     # Sunday — slightly quieter peak
-      - start: "22:00"
-        end:   "10:00"
-        fraction: 0.10
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  BOT CHAT
-#  Bots send random messages from bot-messages.yml at random intervals.
-#  Each local bot fires AsyncChatEvent directly (no [Not Secure] label) so
-#  EssentialsChat, VentureChat, etc. format the message exactly as if a real
-#  player typed it.  Several realism features are configurable below.
-# ─────────────────────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════════
+#  5 · BOT CHAT
+#  Bots send random messages from bot-messages.yml at configurable intervals.
+#  Messages fire as real AsyncChatEvent — EssentialsChat, VentureChat, etc.
+#  format them exactly like a real player's message (no [Not Secure] label).
+# ═════════════════════════════════════════════════════════════════════════════
 fake-chat:
   enabled: false
   require-player-online: true  # Only chat when at least one real player is online
   chance: 0.75                 # Probability (0.0–1.0) a message fires each interval
   interval:
-    min: 5    # Seconds between a single bot's messages (min)
-    max: 10   # Seconds between a single bot's messages (max)
+    min: 5    # Minimum seconds between a bot's messages
+    max: 10   # Maximum seconds between a bot's messages
 
-  # ── Realism enhancements ───────────────────────────────────────────────────
-  # Simulate a typing pause (0–2.5 s) right before each message is sent.
-  typing-delay: true
+  # ── Realism ────────────────────────────────────────────────────────────────
+  typing-delay: true        # Simulate a typing pause (0–2.5 s) before each message
+  activity-variation: true  # Give each bot a random frequency tier (quiet → chatty)
+  history-size: 5           # How many of its own recent messages a bot avoids repeating
+  stagger-interval: 3       # Minimum seconds between any two bots chatting (0 = off)
 
-  # Chance (0.0–1.0) a bot sends a quick follow-up message a few seconds later.
-  burst-chance: 0.12
+  burst-chance: 0.12        # Chance a bot sends a quick follow-up message
   burst-delay:
-    min: 2   # Seconds before the follow-up fires (min)
-    max: 5   # Seconds before the follow-up fires (max)
+    min: 2
+    max: 5
 
-  # When a real player says a bot's name in chat, that bot may reply.
+  # ── Mention Replies ────────────────────────────────────────────────────────
+  # A bot may reply when a player says its name in chat.
   reply-to-mentions: true
-  # Probability (0.0–1.0) a named bot actually replies to a mention.
-  mention-reply-chance: 0.65
+  mention-reply-chance: 0.65  # Probability (0.0–1.0) the named bot replies
   reply-delay:
-    min: 2   # Seconds before the reply fires (min)
-    max: 8   # Seconds before the reply fires (max)
+    min: 2
+    max: 8
 
-  # Minimum gap (seconds) between any two bots chatting to prevent message floods.
-  # 0 = disabled (all bots may chat at the same tick).
-  stagger-interval: 3
-
-  # Give each bot a random chat-frequency multiplier so some bots talk more or
-  # less than others (quiet / normal / active / very-active tiers).
-  activity-variation: true
-
-  # How many of a bot's own recent messages to remember and avoid repeating.
-  history-size: 5
-
-  # ── Remote format ──────────────────────────────────────────────────────────
-  # MiniMessage format used when a bodyless or proxy-remote bot broadcasts.
-  # Supports {name} (display name) and {message} (resolved message text).
+  # ── Remote Format ──────────────────────────────────────────────────────────
+  # Format used when a bodyless or proxy-remote bot sends a chat message.
+  # Supports {name} (display name) and {message} (message text).
   remote-format: "<yellow>{name}<dark_gray>: <white>{message}"
 
-  # ── Event-triggered reactions ───────────────────────────────────────────────
-  # Bots can react to server events (player joins, deaths) by sending messages
-  # from the join-reactions / death-reactions pools in bot-messages.yml.
+  # ── Event-Triggered Reactions ──────────────────────────────────────────────
+  # Bots react to server events using message pools from bot-messages.yml.
   event-triggers:
-    enabled: true  # Master switch — disabling here also turns off on-player-join/on-death
+    enabled: true   # Master switch — also controls all sub-triggers below
 
     on-player-join:
-      enabled: true   # A bot greets real players when they join the server
-      chance: 0.40    # Probability (0.0–1.0) that a bot reacts to a join
+      enabled: true
+      chance: 0.40        # Probability a bot greets a joining player
       delay:
-        min: 2        # Seconds before the reaction fires (min)
-        max: 6        # Seconds before the reaction fires (max)
+        min: 2
+        max: 6
 
     on-death:
-      enabled: true   # A bot reacts when any entity dies
-      players-only: false  # true = only react to player deaths (mobs/animals ignored)
-      chance: 0.30    # Probability (0.0–1.0) that a bot reacts to a death
+      enabled: true
+      players-only: false  # true = only react to player deaths (ignore mobs/animals)
+      chance: 0.30
       delay:
-        min: 1        # Seconds before the reaction fires (min)
-        max: 4        # Seconds before the reaction fires (max)
+        min: 1
+        max: 4
 
     on-player-leave:
-      enabled: true   # A bot says goodbye when a real player leaves the server
-      chance: 0.30    # Probability (0.0–1.0) that a bot reacts to a player leaving
+      enabled: true
+      chance: 0.30
       delay:
-        min: 1        # Seconds before the reaction fires (min)
-        max: 4        # Seconds before the reaction fires (max)
+        min: 1
+        max: 4
 
-  # ── Keyword reactions ────────────────────────────────────────────────────────
-  # When a real player's message contains a keyword, a random bot replies using
-  # messages from the matching pool in bot-messages.yml (keyword-reactions section).
-  # Example: if a player says "pvp", a bot may reply using the "pvp-reactions" pool.
+  # ── Keyword Reactions ──────────────────────────────────────────────────────
+  # When a player's message contains a keyword a random bot replies using the
+  # matching pool from bot-messages.yml.
   keyword-reactions:
-    enabled: false  # Set true to activate keyword-triggered replies
-    keywords: {}    # keyword: pool-key pairs, e.g.  pvp: "pvp-reactions"
-    # keywords:
+    enabled: false
+    keywords: {}
+    # Example:
     #   pvp: "pvp-reactions"
     #   trade: "trade-reactions"
     #   help: "help-reactions"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  TAB LIST
-#  Controls whether bots appear as entries in the player tab list.
-#  true  = bots show in the tab list (default)
-#  false = bots are invisible in the tab list (server-count still counts them)
-# ─────────────────────────────────────────────────────────────────────────────
-tab-list:
-  enabled: true
+# ═════════════════════════════════════════════════════════════════════════════
+#  6 · SCHEDULING
+# ═════════════════════════════════════════════════════════════════════════════
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  DATABASE  &  PROXY / NETWORK SUPPORT  (Velocity · BungeeCord · Waterfall)
+# ── Swap / Session Rotation ───────────────────────────────────────────────────
+# Bots periodically leave and rejoin to mimic real player session patterns.
+# Each bot gets a randomised session duration and personality.
+swap:
+  enabled: false            # Master toggle — false = bots never swap out
+  max-swapped-out: 0        # Max bots offline at once (0 = unlimited)
+  min-online: 0             # Min bots that must stay online (0 = no floor); swap skips if removing one would go below
+  same-name-on-rejoin: true # Reuse the same bot name when rejoining (if available)
+  farewell-chat: true       # Bots say goodbye before leaving (requires fake-chat.enabled)
+  greeting-chat: true       # Bots say hello when rejoining  (requires fake-chat.enabled)
+  retry-rejoin: true        # Automatically retry if a rejoin spawn fails (e.g. max-bots hit)
+  retry-delay: 60           # Seconds to wait before retrying a failed rejoin
+
+  session:                  # How long a bot stays online
+    min: 60                 # Minimum seconds  (60 = 1 min)
+    max: 300                # Maximum seconds  (300 = 5 min)
+
+  absence:                  # How long a bot stays offline between sessions
+    min: 30                 # Minimum seconds
+    max: 120                # Maximum seconds
+
+# ── Peak Hours ────────────────────────────────────────────────────────────────
+# Automatically adjusts how many bots are online based on time-of-day windows,
+# mimicking natural player activity (busy evenings, quiet nights, weekend peaks).
 #
-#  Records every bot session for auditing and in-game queries (/fpp info).
-#  SQLite: zero-config — stored at plugins/FakePlayerPlugin/data/fpp.db
-#  MySQL:  required for multi-server / proxy setups
+# REQUIRES: swap.enabled: true
 #
-#  ── Modes ────────────────────────────────────────────────────────────────────
-#  mode: LOCAL   — single server (default). SQLite or MySQL, no server filtering.
+# How it works:
+#   · Every 60 s the scheduler compares the current server time to the schedule.
+#   · The matching window's fraction is applied to the total bot pool.
+#     Example: fraction 0.75 = 75 % of bots online, 25 % sleeping.
+#   · Transitions are staggered so joins/leaves look natural.
+#
+# Commands: /fpp peaks status | next | force | list | wake <name> | sleep <name>
+peak-hours:
+  enabled: false
+  timezone: "UTC"             # Any java.time.ZoneId string, e.g. "America/New_York"
+  stagger-seconds: 30         # Spread each transition over this many seconds
+  min-online: 0               # Absolute minimum bots online regardless of fraction
+  notify-transitions: false   # Notify admins with fpp.peaks when a window changes
+
+  # ── Daily Schedule ─────────────────────────────────────────────────────────
+  # First matching window wins. Midnight-crossing windows (e.g. 22:00→06:00) work.
+  # fraction: 1.0 = all bots online · 0.0 = no bots online
+  schedule:
+    - { start: "06:00", end: "09:00", fraction: 0.30 }  # Early morning
+    - { start: "09:00", end: "18:00", fraction: 0.75 }  # Daytime
+    - { start: "18:00", end: "22:00", fraction: 1.00 }  # Evening peak
+    - { start: "22:00", end: "06:00", fraction: 0.05 }  # Night
+
+  # ── Day-of-Week Overrides ──────────────────────────────────────────────────
+  # Key must be in UPPERCASE: MONDAY TUESDAY WEDNESDAY THURSDAY FRIDAY SATURDAY SUNDAY
+  # Remove an entry to fall back to the default schedule above.
+  day-overrides:
+    SATURDAY:
+      - { start: "10:00", end: "23:00", fraction: 1.00 }  # Weekend peak
+      - { start: "23:00", end: "10:00", fraction: 0.10 }  # Late night
+    SUNDAY:
+      - { start: "10:00", end: "22:00", fraction: 0.90 }
+      - { start: "22:00", end: "10:00", fraction: 0.10 }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  7 · DATABASE & NETWORK
+#  Records every bot session for auditing and /fpp info queries.
+#  SQLite: zero-config, stored at  plugins/FakePlayerPlugin/data/fpp.db
+#  MySQL:  required for multi-server (Velocity / BungeeCord) setups
+#
+#  mode: LOCAL   — single server. No cross-server filtering.
 #  mode: NETWORK — shared MySQL across multiple backend servers.
-#                  Each server tags its DB rows with server-id so bots stay
-#                  isolated per-server even on a shared database.
+#                  Each server tags its rows with server-id so bots stay isolated.
 #
-#  ── Cross-server features enabled in NETWORK mode ────────────────────────────
-#    • Fake chat   — broadcasts to every server on the proxy
-#    • Alerts      — /fpp alert reaches all servers instantly
-#    • Join/leave  — messages visible network-wide
-#    • Isolation   — bots only exist on the server that spawned them
-#
-#  ── Quick proxy setup ────────────────────────────────────────────────────────
-#  1. Set mode: "NETWORK"
-#  2. Give each backend server a unique server-id  (e.g. "survival", "skyblock")
-#  3. Enable mysql-enabled and fill in credentials below
-#  4. For Velocity: set  bungeecord-compat-mode: true  in velocity.toml
-#  5. Run /fpp reload on every server
-# ─────────────────────────────────────────────────────────────────────────────
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  CONFIG SYNC
-#  Cross-server configuration synchronization for network setups.
-#  Only active when mode: NETWORK and database is enabled.
-# ─────────────────────────────────────────────────────────────────────────────
-config-sync:
-  # DISABLED  - No config syncing (default)
-  # MANUAL    - Only sync via /fpp sync commands  
-  # AUTO_PULL - Pull latest config on startup/reload
-  # AUTO_PUSH - Push config changes automatically
-  mode: "DISABLED"
-
+#  Quick proxy setup:
+#    1. Set mode: "NETWORK"
+#    2. Assign a unique server-id to each backend (e.g. "survival", "skyblock")
+#    3. Enable mysql-enabled and fill in credentials
+#    4. Velocity: set bungeecord-compat-mode: true in velocity.toml
+#    5. Run /fpp reload on every server
+# ═════════════════════════════════════════════════════════════════════════════
 database:
-  enabled: true     # Master toggle: false = no DB operations, no persistence, no stats
-  mode: "LOCAL"     # LOCAL (single server) or NETWORK (proxy / multi-server)
-
-  # Unique name for THIS server — only matters when mode is NETWORK.
-  # Every backend server must have a different value (e.g. "survival", "skyblock").
-  server-id: "default"
+  enabled: true           # false = no DB I/O, no analytics, file-based persistence only
+  mode: "LOCAL"           # LOCAL or NETWORK
+  server-id: "default"    # Unique name for this server (only matters in NETWORK mode)
 
   mysql-enabled: false
   mysql:
@@ -512,6 +361,60 @@ database:
     pool-size: 5
     connection-timeout: 30000
 
-  location-flush-interval: 30  # Seconds between position flushes to DB
+  location-flush-interval: 30  # Seconds between bot-position flushes to the DB
   session-history:
     max-rows: 20               # Max rows returned per /fpp info query
+
+# ── Config Sync ───────────────────────────────────────────────────────────────
+# Push/pull config files across backend servers via the shared MySQL database.
+# Only active in NETWORK mode with database enabled.
+# DISABLED  — no syncing
+# MANUAL    — sync only via /fpp sync commands
+# AUTO_PULL — pull the latest config on startup and /fpp reload
+# AUTO_PUSH — push config changes automatically
+config-sync:
+  mode: "DISABLED"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  8 · PERFORMANCE
+#  Tuning knobs for high-bot-count deployments.
+#  These do not affect gameplay correctness — only main-thread tick budget.
+# ═════════════════════════════════════════════════════════════════════════════
+performance:
+  # Maximum distance (blocks) at which a moving bot sends per-tick position-sync
+  # packets to a real player. Players beyond this range cannot see the bot anyway.
+  # 0 = send to all online players regardless of distance (old behaviour).
+  # Recommended: 128 (matches the standard player entity-tracking range).
+  position-sync-distance: 128.0
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  9 · DEBUG & LOGGING
+#  All flags are false by default for clean production logs.
+#  Set only the subsystem you need to inspect — or flip debug: true to enable all.
+# ═════════════════════════════════════════════════════════════════════════════
+debug: false   # Master switch — true enables every category below at once
+
+logging:
+  debug:
+    startup: false      # Startup flow, reloads, and compatibility checks
+    nms: false          # NMS reflection, fake connection, and entity spawning
+    packets: false      # Tab-list and entity packet construction / sending
+    luckperms: false    # LuckPerms group sync and prefix refresh
+    network: false      # Velocity/Bungee plugin messaging and remote bot sync
+    config-sync: false  # Config push/pull activity
+    skin: false         # Skin loading and injection
+    database: false     # DB init, migrations, and session writes
+    chat: false         # Bot chat AI scheduling, reactions, and event triggers
+    swap: false         # Swap / session-rotation leave + rejoin lifecycle
+
+# ── Update Checker ────────────────────────────────────────────────────────────
+update-checker:
+  enabled: true   # Check for new plugin versions on startup and /fpp reload
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
+# Anonymous usage statistics via FastStats. No personal data collected.
+metrics:
+  enabled: true
+

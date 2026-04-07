@@ -42,6 +42,23 @@ public final class TextUtil {
         return sb.toString();
     }
 
+    // ── Pre-compiled patterns ─────────────────────────────────────────────────
+
+    /** Matches a trailing unclosed hex tag (possibly with trailing space) — stripped at string end. */
+    private static final Pattern TRAILING_HEX_TAG_SPACE = Pattern.compile("<#[0-9A-Fa-f]{6}>\\s*$");
+    /** Matches a trailing unclosed hex tag at the very end of a string (no space). */
+    private static final Pattern TRAILING_HEX_TAG       = Pattern.compile("<#[0-9A-Fa-f]{6}>$");
+    /** Detects any {@code <#RRGGBB>} tag anywhere in a string. */
+    private static final Pattern HEX_TAG_ANYWHERE       = Pattern.compile("<#[0-9A-Fa-f]{6}>");
+    /** Detects any lowercase MiniMessage name tag e.g. {@code <bold>}, {@code <red>}. */
+    private static final Pattern MINI_TAG_ANYWHERE      = Pattern.compile("<[a-z_]+>");
+    /** Matches bare solid-color LP shorthand: {@code {#RRGGBB}} → {@code <#RRGGBB>}. */
+    private static final Pattern BARE_HEX_SOLID         = Pattern.compile("\\{(#[0-9A-Fa-f]{6})}");
+    /** Opening 3-digit hex tag: {@code <#RGB>}. */
+    private static final Pattern OPEN_3DIGIT_HEX        = Pattern.compile("<#([0-9A-Fa-f]{3})>");
+    /** Closing 3-digit hex tag: {@code </#RGB>}. */
+    private static final Pattern CLOSE_3DIGIT_HEX       = Pattern.compile("</#([0-9A-Fa-f]{3})>");
+
     // ── Colour parsing ───────────────────────────────────────────────────────
 
     /**
@@ -87,33 +104,28 @@ public final class TextUtil {
     public static String legacyToMiniMessage(String s) {
         if (s == null || s.isEmpty()) return s;
         
-        // Step 0: Expand 3-digit hex codes to 6-digit format
-        // Example: <#000> → <#000000>, <#abc> → <#aabbcc>, </#f0f> → </#f0f0f0>
+        // Step 0: Expand 3-digit hex codes to 6-digit format using pre-compiled patterns
         s = expand3DigitHexCodes(s);
         
         // Step 1: Convert LuckPerms {#RRGGBB>}...{#RRGGBB<} gradient/hex shorthand
-        // to proper MiniMessage <gradient:...> tags
         if (s.contains("{#")) {
             s = convertLpColorTags(s);
         }
         
         // Step 1.5: Clean up unclosed/malformed hex tags at the end of the string
-        // Example: "&7[<#9782ff>Text</#9782ff>&7] <#9782ff>" becomes "&7[<#9782ff>Text</#9782ff>&7] "
-        s = s.replaceAll("<#[0-9A-Fa-f]{6}>\\s*$", ""); // Remove unclosed hex tag at end
-        s = s.replaceAll("<#[0-9A-Fa-f]{6}>$", ""); // Remove unclosed hex tag at end (no space)
-        
-        // Step 2: Check if string already contains MiniMessage tags
-        // If it does, we need to be careful not to break them when converting legacy codes
+        s = TRAILING_HEX_TAG_SPACE.matcher(s).replaceAll("");
+        s = TRAILING_HEX_TAG.matcher(s).replaceAll("");
+
+        // Step 2: Check if string already contains MiniMessage tags (pre-compiled, no .matches())
         boolean hasMiniMessageTags = s.indexOf('<') >= 0 && (
                 s.contains("<rainbow>") || 
                 s.contains("<gradient") || 
-                s.matches(".*<#[0-9A-Fa-f]{6}>.*") ||
-                s.matches(".*<[a-z_]+>.*") // other tags like <bold>, <red>, etc.
+                HEX_TAG_ANYWHERE.matcher(s).find() ||
+                MINI_TAG_ANYWHERE.matcher(s).find()
         );
         
         // Step 3: Handle mixed legacy + MiniMessage formats
         if (hasMiniMessageTags && (s.indexOf('&') >= 0 || s.indexOf('§') >= 0)) {
-            // Mixed format: convert only the legacy codes while preserving MiniMessage tags
             s = convertMixedFormat(s);
             return s;
         }
@@ -235,13 +247,11 @@ public final class TextUtil {
     private static String expand3DigitHexCodes(String s) {
         if (s == null || s.indexOf('#') < 0) return s;
         
-        // Pattern for 3-digit hex codes in opening tags: <#RGB>
-        Pattern openTag3Digit = Pattern.compile("<#([0-9A-Fa-f]{3})>");
-        Matcher m = openTag3Digit.matcher(s);
+        // Opening tags <#RGB> — use pre-compiled pattern
+        Matcher m = OPEN_3DIGIT_HEX.matcher(s);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
             String hex3 = m.group(1);
-            // Expand each digit: RGB → RRGGBB
             String hex6 = String.format("%c%c%c%c%c%c",
                     hex3.charAt(0), hex3.charAt(0),
                     hex3.charAt(1), hex3.charAt(1),
@@ -251,13 +261,11 @@ public final class TextUtil {
         m.appendTail(sb);
         s = sb.toString();
         
-        // Pattern for 3-digit hex codes in closing tags: </#RGB>
-        Pattern closeTag3Digit = Pattern.compile("</#([0-9A-Fa-f]{3})>");
-        m = closeTag3Digit.matcher(s);
+        // Closing tags </#RGB> — use pre-compiled pattern
+        m = CLOSE_3DIGIT_HEX.matcher(s);
         sb = new StringBuffer();
         while (m.find()) {
             String hex3 = m.group(1);
-            // Expand each digit: RGB → RRGGBB
             String hex6 = String.format("%c%c%c%c%c%c",
                     hex3.charAt(0), hex3.charAt(0),
                     hex3.charAt(1), hex3.charAt(1),
@@ -303,9 +311,9 @@ public final class TextUtil {
         // Convert valid gradients
         s = convertLpGradients(s);
         
-        // Any remaining bare {#RRGGBB} tags (solid color, no gradient) become <#RRGGBB>
-        s = s.replaceAll("\\{(#[0-9A-Fa-f]{6})}", "<$1>");
-        
+        // Any remaining bare {#RRGGBB} tags (solid color, no gradient) — pre-compiled pattern
+        s = BARE_HEX_SOLID.matcher(s).replaceAll("<$1>");
+
         return s;
     }
 

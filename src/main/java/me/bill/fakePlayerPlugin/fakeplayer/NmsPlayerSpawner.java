@@ -708,7 +708,7 @@ public final class NmsPlayerSpawner {
                 // for the next placeNewPlayer() regardless of what the removal path does.
                 try {
                     player.saveData();
-                    FppLogger.info("NmsPlayerSpawner: saved playerdata for '"
+                    FppLogger.debug("NmsPlayerSpawner: saved playerdata for '"
                             + name + "' uuid=" + uuid);
                 } catch (Exception e) {
                     FppLogger.warn("NmsPlayerSpawner: saveData failed for '"
@@ -731,7 +731,7 @@ public final class NmsPlayerSpawner {
                         Object playerList      = getPlayerListMethod.invoke(minecraftServer);
                         playerListRemoveMethod.invoke(playerList, nmsPlayer);
                         removedViaPlayerList = true;
-                        FppLogger.info("NmsPlayerSpawner: removed '" + name
+                        FppLogger.debug("NmsPlayerSpawner: removed '" + name
                                 + "' via PlayerList.remove() uuid=" + uuid);
                     } catch (Exception e) {
                         FppLogger.debug("NmsPlayerSpawner: PlayerList.remove failed for '"
@@ -809,7 +809,7 @@ public final class NmsPlayerSpawner {
                 java.io.File playerDir  = (java.io.File) getPlayerDirMethod.invoke(playerDataStorage);
                 java.io.File playerFile = new java.io.File(playerDir, uuid + ".dat");
                 if (playerFile.exists()) {
-                    FppLogger.info("NmsPlayerSpawner: playerdata found for '"
+                    FppLogger.debug("NmsPlayerSpawner: playerdata found for '"
                             + name + "' uuid=" + uuid + " — returning player");
                     return;
                 }
@@ -818,7 +818,7 @@ public final class NmsPlayerSpawner {
             // ── File does not exist — write initial data to prevent first-join ─
             if (playerDataSaveMethod != null) {
                 playerDataSaveMethod.invoke(playerDataStorage, serverPlayer);
-                FppLogger.info("NmsPlayerSpawner: created initial playerdata for '"
+                FppLogger.debug("NmsPlayerSpawner: created initial playerdata for '"
                         + name + "' uuid=" + uuid
                         + " — will be treated as returning player on next spawn");
             } else {

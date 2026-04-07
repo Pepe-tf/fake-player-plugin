@@ -29,6 +29,11 @@ public class FakePlayerManager {
     private final Map<UUID, FakePlayer> activePlayers = new ConcurrentHashMap<>();
     /** Secondary index: Bukkit entity id → FakePlayer for O(1) getByEntity(). */
     private final Map<Integer, FakePlayer> entityIdIndex = new ConcurrentHashMap<>();
+    /**
+     * Secondary index: lowercase bot name → FakePlayer for O(1) getByName().
+     * Maintained in sync with {@link #activePlayers} at every put/remove site.
+     */
+    private final Map<String, FakePlayer> nameIndex = new ConcurrentHashMap<>();
     private final Set<String> usedNames = new HashSet<>();
     /** Per-player spawn cooldown: UUID → last spawn timestamp (ms). */
     private final Map<UUID, Long> spawnCooldowns = new ConcurrentHashMap<>();
@@ -46,6 +51,22 @@ public class FakePlayerManager {
     private final Map<UUID, float[]> botSpawnRotation = new ConcurrentHashMap<>();
     /** Flag set to true during bot restoration, cleared after prefix refresh completes. */
     private volatile boolean restorationInProgress = false;
+
+    // ── Per-tick performance caches ───────────────────────────────────────────
+
+    /**
+     * Snapshot of online players taken at the start of every physics tick (1L,1L).
+     * Shared with the display-name timer (20L,20L) so both timers pay one
+     * {@code Bukkit.getOnlinePlayers()} copy per physics tick instead of two.
+     */
+    private List<Player> cachedOnlinePlayers = new ArrayList<>();
+
+    /**
+     * Incremented every physics tick.  Used to throttle the head-AI raycast loop
+     * to every {@link me.bill.fakePlayerPlugin.config.Config#headAiTickRate()} ticks
+     * instead of every game tick.
+     */
+    private int headAiTickCounter = 0;
     /**
      * UUIDs of bots currently mid body-transition (hide or show via applyBodyConfig).
      * Checked by {@link me.bill.fakePlayerPlugin.listener.PlayerJoinListener} to
@@ -119,10 +140,12 @@ public class FakePlayerManager {
 
         // Every 20 ticks (1 s) re-send display names for all bots to all players.
         // Uses the lighter UPDATE_DISPLAY_NAME-only packet to override TAB plugin resets.
+        // Reads cachedOnlinePlayers (populated by the 1-tick physics timer below) so no
+        // additional Bukkit.getOnlinePlayers() copy is needed here.
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (!Config.tabListEnabled()) return;
             if (activePlayers.isEmpty()) return;
-            List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+            List<Player> online = cachedOnlinePlayers;
             if (online.isEmpty()) return;
             for (FakePlayer fp : activePlayers.values()) {
                 for (Player p : online) {
@@ -137,7 +160,29 @@ public class FakePlayerManager {
         // on its own; without this loop bots float, ignore gravity, and can't be knocked back.
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (activePlayers.isEmpty()) return;
-            List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+
+            // ── Snapshot online players ONCE per tick ────────────────────────
+            // Shared with the display-name timer and all inner loops so we pay
+            // one ArrayList copy per game tick regardless of bot or player count.
+            cachedOnlinePlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
+            List<Player> online = cachedOnlinePlayers;
+
+            // ── Hoist all per-tick config reads outside the per-bot loop ─────
+            // Config reads involve YAML map lookups; hoisting them here cuts
+            // that cost from O(bots) to O(1) per tick.
+            headAiTickCounter++;
+            final boolean swimAi    = Config.swimAiEnabled();
+            final boolean headAiOn  = Config.headAiEnabled();
+            final int     headAiRate = Config.headAiTickRate();
+            // Only run the expensive raycast loop every N ticks.
+            final boolean doHeadAi  = headAiOn && (headAiTickCounter % headAiRate == 0);
+            final double  rangeSq   = doHeadAi ? Config.headAiLookRange() * Config.headAiLookRange() : 0;
+            final float   speed     = doHeadAi ? Config.headAiTurnSpeed() : 0f;
+            // Position-sync distance culling: only send to players within this range.
+            // 0 = disabled (send to all players). Saves O(distant_players) packets/tick.
+            final double  psd       = Config.positionSyncDistance();
+            final double  posSyncDistSq = psd > 0 ? psd * psd : -1;
+
             for (FakePlayer fp : activePlayers.values()) {
                 Player bot = fp.getPlayer();
                 // Skip bots that are dead, offline, or invalid — they cannot be ticked.
@@ -155,7 +200,7 @@ public class FakePlayerManager {
                     // The flag MUST be explicitly cleared when outside fluid — bots have no
                     // real client to reset it, so it would persist and cause endless jumping
                     // on land after exiting water.
-                    if (Config.swimAiEnabled()) {
+                    if (swimAi) {
                         NmsPlayerSpawner.setJumping(bot, bot.isInWater() || bot.isInLava());
                     }
 
@@ -168,36 +213,36 @@ public class FakePlayerManager {
                     NmsPlayerSpawner.tickPhysics(bot);
 
                     // Head AI: skip for PVP bots — pvpAI already handles rotation.
-                    if (Config.headAiEnabled() && fp.getBotType() != BotType.PVP) {
-                        double rangeSq = Config.headAiLookRange() * Config.headAiLookRange();
-                        float  speed   = Config.headAiTurnSpeed();
+                    // Only fires every headAiRate ticks to reduce O(bots×players) raycast cost.
+                    if (doHeadAi && fp.getBotType() != BotType.PVP) {
 
-                        // Find the nearest real (non-bot) player within range AND line-of-sight
+                        // Find the nearest real (non-bot) player within range AND line-of-sight.
+                        // Reuse `before` (already captured above) for the distance check so we
+                        // don't allocate an extra Location per player per bot per tick.
                         Player target = null;
                         double bestSq = rangeSq;
                         for (Player p : online) {
                             if (activePlayers.containsKey(p.getUniqueId())) continue; // skip bots
                             if (!p.getWorld().equals(bot.getWorld())) continue;
-                            double dSq = bot.getLocation().distanceSquared(p.getLocation());
+                            double dSq = before.distanceSquared(p.getLocation()); // reuse 'before'
                             if (dSq > bestSq) continue;              // outside range
                             if (!bot.hasLineOfSight(p)) continue;    // wall in the way
                             bestSq = dSq;
                             target = p;
                         }
 
-                        // Retrieve (or lazily initialise) this bot's current smooth rotation
-                        float[] rot = botHeadRotation.computeIfAbsent(fp.getUuid(), k -> {
-                            Location l = bot.getLocation();
-                            return new float[]{l.getYaw(), l.getPitch()};
-                        });
+                        // Retrieve (or lazily initialise) this bot's current smooth rotation.
+                        // Lambda captures 'before' (a Location captured above — effectively final).
+                        final Location beforeCapture = before;
+                        float[] rot = botHeadRotation.computeIfAbsent(fp.getUuid(), k ->
+                                new float[]{beforeCapture.getYaw(), beforeCapture.getPitch()});
 
                         // Capture the spawn (idle) rotation once per bot — used as the
                         // target when no visible player is within range.
                         float[] spawnRot = botSpawnRotation.computeIfAbsent(fp.getUuid(), k -> {
                             Location sl = fp.getSpawnLocation();
                             if (sl != null) return new float[]{sl.getYaw(), sl.getPitch()};
-                            Location l = bot.getLocation();
-                            return new float[]{l.getYaw(), l.getPitch()};
+                            return new float[]{beforeCapture.getYaw(), beforeCapture.getPitch()};
                         });
 
                         float prevYaw   = rot[0];
@@ -245,6 +290,13 @@ public class FakePlayerManager {
                     if (!online.isEmpty()) {
                         for (Player p : online) {
                             if (p.equals(bot)) continue;
+                            // Skip players in a different world or beyond the sync range.
+                            // This is the hottest per-player path in the entire tick loop, so
+                            // keeping the condition tight (no allocation, no sqrt) matters.
+                            if (posSyncDistSq > 0) {
+                                if (!p.getWorld().equals(after.getWorld())) continue;
+                                if (p.getLocation().distanceSquared(after) > posSyncDistSq) continue;
+                            }
                             PacketHelper.sendPositionSync(p, bot);
                         }
                     }
@@ -402,6 +454,7 @@ public class FakePlayerManager {
             fp.setSpawnLocation(location);
             fp.setSpawnedBy(spawnerName, spawnerUuid);
             activePlayers.put(uuid, fp);
+            nameIndex.put(ubn.internalName().toLowerCase(), fp);
             batch.add(fp);
 
             if (db != null) {
@@ -498,6 +551,7 @@ public class FakePlayerManager {
             fp.setSpawnLocation(location);
             fp.setSpawnedBy(spawnerName, spawnerUuid);
             activePlayers.put(uuid, fp);
+            nameIndex.put(name.toLowerCase(), fp);
             batch.add(fp);
 
             // Record to database immediately on spawn
@@ -936,6 +990,7 @@ public class FakePlayerManager {
         fp.setSpawnedBy(effectiveSpawner, spawnedByUuid);
         usedNames.add(name);
         activePlayers.put(uuid, fp);
+        nameIndex.put(name.toLowerCase(), fp);
 
         // Record to database
         if (db != null) {
@@ -1091,10 +1146,7 @@ public class FakePlayerManager {
      * @return true if a bot with that name was found and removed, false otherwise
      */
     public boolean delete(String name) {
-        FakePlayer fp = null;
-        for (FakePlayer candidate : activePlayers.values()) {
-            if (candidate.getName().equalsIgnoreCase(name)) { fp = candidate; break; }
-        }
+        FakePlayer fp = getByName(name);
         if (fp == null) return false;
 
         final FakePlayer target   = fp;
@@ -1102,6 +1154,7 @@ public class FakePlayerManager {
 
         // Remove from registry immediately — prevents double-delete and clears tab-complete
         activePlayers.remove(target.getUuid());
+        nameIndex.remove(botName.toLowerCase());
         usedNames.remove(botName);
         // Remove entity-id index entries now so no stale lookups remain
         if (target.getPhysicsEntity() != null)
@@ -1194,6 +1247,7 @@ public class FakePlayerManager {
 
         List<FakePlayer> toRemove = new ArrayList<>(activePlayers.values());
         activePlayers.clear();
+        nameIndex.clear();
         usedNames.clear();
         entityIdIndex.clear();
         pvpAI.cancelAll();
@@ -1333,6 +1387,7 @@ public class FakePlayerManager {
     public void removeByName(String name) {
         activePlayers.values().removeIf(fp -> {
             if (!fp.getName().equals(name)) return false;
+            nameIndex.remove(fp.getName().toLowerCase());
             usedNames.remove(fp.getName());
             botHeadRotation.remove(fp.getUuid());
             botSpawnRotation.remove(fp.getUuid());
@@ -1518,13 +1573,11 @@ public class FakePlayerManager {
     /**
      * Returns the active {@link FakePlayer} with the given UUID, or {@code null}
      * if no bot with that UUID is currently registered.
+     * O(1) — delegates directly to the UUID-keyed {@link #activePlayers} map.
      */
     public FakePlayer getByUuid(UUID uuid) {
         if (uuid == null) return null;
-        for (FakePlayer fp : activePlayers.values()) {
-            if (uuid.equals(fp.getUuid())) return fp;
-        }
-        return null;
+        return activePlayers.get(uuid);
     }
 
     /** Removes a stale entry from the entity-ID index. Called by the death handler. */
@@ -1560,14 +1613,12 @@ public class FakePlayerManager {
 
     /**
      * Returns the active {@link FakePlayer} with the given internal name (case-insensitive),
-     * or {@code null} if no matching bot is active. O(n) — use sparingly.
+     * or {@code null} if no matching bot is active.
+     * O(1) — delegates to the lowercase {@link #nameIndex} map.
      */
     public FakePlayer getByName(String name) {
         if (name == null || name.isBlank()) return null;
-        for (FakePlayer fp : activePlayers.values()) {
-            if (fp.getName().equalsIgnoreCase(name)) return fp;
-        }
-        return null;
+        return nameIndex.get(name.toLowerCase());
     }
 
     // ── Spawn cooldown helpers ────────────────────────────────────────────────

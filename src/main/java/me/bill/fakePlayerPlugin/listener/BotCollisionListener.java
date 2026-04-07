@@ -19,9 +19,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * Provides three layers of physical interaction for NMS ServerPlayer-based bots.
@@ -44,6 +42,9 @@ public class BotCollisionListener implements Listener {
 
     private static final double VANILLA_ATTACK_UPWARD = 0.40D;
     private static final double PLAYER_SPRINT_BONUS = 0.28D;
+
+    /** Counts game ticks. Bot-vs-bot separation only runs every 2nd tick to halve O(n²) cost. */
+    private int separationTickCounter = 0;
 
     public BotCollisionListener(FakePlayerPlugin plugin, FakePlayerManager manager) {
         this.plugin = plugin;
@@ -195,6 +196,7 @@ public class BotCollisionListener implements Listener {
         for (FakePlayer fp : manager.getActivePlayers()) {
             Player body = fp.getPlayer();
             if (body == null || !body.isValid()) continue;
+            // World check first — cheapest way to skip bots in other worlds
             if (!body.getWorld().equals(player.getWorld())) continue;
 
             Location bLoc = body.getLocation();
@@ -220,6 +222,9 @@ public class BotCollisionListener implements Listener {
 
     private void tickBotSeparation() {
         if (!Config.bodyPushable()) return;
+        // Run only every 2nd tick to halve O(n²) separation cost with no visible difference
+        if ((++separationTickCounter & 1) != 0) return;
+
         Collection<FakePlayer> all = manager.getActivePlayers();
         if (all.size() < 2) return;
 
@@ -227,14 +232,16 @@ public class BotCollisionListener implements Listener {
         double botStrength = Config.collisionBotStrength();
         double maxHoriz    = Config.collisionMaxHoriz();
 
-        List<FakePlayer> bots = new ArrayList<>(all);
-        for (int i = 0; i < bots.size(); i++) {
-            Player bodyA = bots.get(i).getPlayer();
+        // Use an array snapshot — avoids ArrayList overhead and gives O(1) indexed access
+        FakePlayer[] bots = all.toArray(new FakePlayer[0]);
+        int len = bots.length;
+        for (int i = 0; i < len; i++) {
+            Player bodyA = bots[i].getPlayer();
             if (bodyA == null || !bodyA.isValid()) continue;
             Location locA = bodyA.getLocation();
 
-            for (int j = i + 1; j < bots.size(); j++) {
-                Player bodyB = bots.get(j).getPlayer();
+            for (int j = i + 1; j < len; j++) {
+                Player bodyB = bots[j].getPlayer();
                 if (bodyB == null || !bodyB.isValid()) continue;
                 if (!bodyA.getWorld().equals(bodyB.getWorld())) continue;
 
@@ -254,8 +261,8 @@ public class BotCollisionListener implements Listener {
                 double strength = botStrength * overlap * 0.5;
 
                 // PVP bots: 75 % less separation impulse applied to/from them.
-                double factorA = bots.get(i).getBotType() == BotType.PVP ? 0.25 : 1.0;
-                double factorB = bots.get(j).getBotType() == BotType.PVP ? 0.25 : 1.0;
+                double factorA = bots[i].getBotType() == BotType.PVP ? 0.25 : 1.0;
+                double factorB = bots[j].getBotType() == BotType.PVP ? 0.25 : 1.0;
 
                 applyImpulse(bodyB,  nx * strength * factorB,  nz * strength * factorB, maxHoriz);
                 applyImpulse(bodyA, -nx * strength * factorA, -nz * strength * factorA, maxHoriz);

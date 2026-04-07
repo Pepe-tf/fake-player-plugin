@@ -109,6 +109,30 @@ public final class FakePlayer {
     /** How many times this bot has been "tag list refreshed" (diagnostic). */
     private int tabRefreshCount = 0;
 
+    // ── Tab-list packet caches (performance) ──────────────────────────────────
+
+    /**
+     * Cached NMS {@code net.minecraft.network.chat.Component} for the display name.
+     * Built by {@code PacketHelper.sendTabListDisplayNameUpdate} and reused for all
+     * subsequent players in the same refresh cycle.  Invalidated whenever
+     * {@link #setDisplayName(String)} is called.
+     */
+    private transient volatile Object cachedNmsDisplayComponent;
+
+    /**
+     * The {@link #displayName} string that was serialised into
+     * {@link #cachedNmsDisplayComponent}.  Used to detect stale cache entries.
+     */
+    private transient volatile String cachedNmsDisplaySource;
+
+    /**
+     * Cached authlib {@code GameProfile(uuid, name)} instance.
+     * The UUID and internal name never change, so this object is created once
+     * and reused for every tab-list UPDATE_DISPLAY_NAME packet.
+     * Populated lazily by {@code PacketHelper}.
+     */
+    private transient volatile Object cachedTabListGameProfile;
+
     /**
      * Whether this bot is currently frozen in place.
      * Frozen bots have {@code setImmovable(true)} and {@code setGravity(false)};
@@ -240,6 +264,23 @@ public final class FakePlayer {
     public void incrementTabRefresh()            { tabRefreshCount++; }
     public void setFrozen(boolean frozen)        { this.frozen = frozen; }
 
+    // ── Tab-list packet cache API (used by PacketHelper) ──────────────────────
+
+    /** Returns the cached NMS Component for the display name, or {@code null} if stale. */
+    public Object getCachedNmsDisplayComponent()  { return cachedNmsDisplayComponent; }
+    /** Returns the display-name string the cached component was built from. */
+    public String getCachedNmsDisplaySource()     { return cachedNmsDisplaySource; }
+    /** Stores a freshly-built NMS Component and the source string it was built from. */
+    public void   setCachedNmsDisplay(Object comp, String source) {
+        this.cachedNmsDisplayComponent = comp;
+        this.cachedNmsDisplaySource    = source;
+    }
+
+    /** Returns the cached {@code GameProfile(uuid, name)} object, or {@code null} on first call. */
+    public Object getCachedTabListGameProfile()               { return cachedTabListGameProfile; }
+    /** Stores the reusable {@code GameProfile(uuid, name)} object. */
+    public void   setCachedTabListGameProfile(Object profile) { this.cachedTabListGameProfile = profile; }
+
     // ── Chunk tracking (for ChunkLoader fast-path) ────────────────────────────
     public int getLastChunkX()                   { return lastChunkX; }
     public int getLastChunkZ()                   { return lastChunkZ; }
@@ -257,7 +298,13 @@ public final class FakePlayer {
         this.player = e instanceof org.bukkit.entity.Player ? (org.bukkit.entity.Player) e : null;
     }
     
-    public void setDisplayName(String name)       { this.displayName   = name; }
+    public void setDisplayName(String name) {
+        this.displayName = name;
+        // Invalidate packet caches so the next sendTabListDisplayNameUpdate
+        // re-serialises the new name before broadcasting.
+        this.cachedNmsDisplayComponent = null;
+        this.cachedNmsDisplaySource    = null;
+    }
     /** Raw display content (the {@code {bot_name}} part before LP prefix/suffix). */
     public String getRawDisplayName()             { return rawDisplayName; }
     public void setRawDisplayName(String name)    { this.rawDisplayName = name; }

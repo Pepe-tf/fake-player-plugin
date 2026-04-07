@@ -57,6 +57,31 @@ public final class PacketHelper {
     /** Set to {@code true} once the constructor lookup has been attempted (success or failure). */
     private static volatile boolean        posSyncCtorLookupDone    = false;
 
+    // ── sendRotation cache ────────────────────────────────────────────────────
+    /** Cached {@code ClientboundMoveEntityPacket$Rot(int, byte, byte, bool)} ctor. */
+    private static volatile Constructor<?> cachedMoveEntityRotCtor  = null;
+    /** Cached {@code ClientboundRotateHeadPacket(int, byte)} ctor — takes entity-id directly. */
+    private static volatile Constructor<?> cachedRotateHeadCtorInt  = null;
+    /** Cached {@code ClientboundRotateHeadPacket(Entity, byte)} ctor — takes NMS Entity. */
+    private static volatile Constructor<?> cachedRotateHeadCtorEntity = null;
+    /** {@code true} once the rotation-constructor lookup has been attempted. */
+    private static volatile boolean        rotCtorLookupDone        = false;
+
+    // ── Tab-list packet caches ─────────────────────────────────────────────────
+    /** Cached {@code EnumSet{UPDATE_DISPLAY_NAME}} used in the periodic refresh loop. */
+    private static volatile Object         cachedUpdateDisplayNameActions = null;
+    /** Cached winner constructor from {@link #buildEntry} — avoids per-call sort+scan. */
+    private static volatile Constructor<?> cachedEntryCtorWinner    = null;
+    /** Param types of {@link #cachedEntryCtorWinner} — avoids repeated reflection calls. */
+    private static volatile Class<?>[]     cachedEntryCtorParamTypes = null;
+    /**
+     * Cached second-arg strategy for {@code playerInfoUpdateCtor}:
+     * 0=unset, 1=direct Entry, 2=Entry[], 3=List.
+     */
+    private static volatile int            cachedInfoUpdateSecondArgStrategy = 0;
+    /** Component type when strategy == 2 (array). */
+    private static volatile Class<?>       cachedInfoUpdateArrayCompType = null;
+
     private static Constructor<?> gameProfileCtor;
     private static Method         componentLiteral;
     private static Method         craftPlayerGetHandle;
@@ -178,6 +203,12 @@ public final class PacketHelper {
         return ready;
     }
 
+    // ── Pre-compiled patterns ─────────────────────────────────────────────────
+    private static final Pattern PKT_HEX_OPEN  = Pattern.compile("<#([A-Fa-f0-9]{6})>");
+    private static final Pattern PKT_HEX_CLOSE = Pattern.compile("</#([A-Fa-f0-9]{6})>");
+    private static final Pattern PKT_3DIG_OPEN  = Pattern.compile("<#([0-9A-Fa-f]{3})>");
+    private static final Pattern PKT_3DIG_CLOSE = Pattern.compile("</#([0-9A-Fa-f]{3})>");
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**
@@ -190,9 +221,8 @@ public final class PacketHelper {
         // First, expand 3-digit hex codes to 6-digit format
         input = expand3DigitHexCodesForPacket(input);
         
-        // Now convert 6-digit hex codes to legacy format
-        Pattern open = Pattern.compile("<#([A-Fa-f0-9]{6})>");
-        Matcher m = open.matcher(input);
+        // Now convert 6-digit hex codes to legacy format using pre-compiled pattern
+        Matcher m = PKT_HEX_OPEN.matcher(input);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
             String hex = m.group(1);
@@ -202,8 +232,8 @@ public final class PacketHelper {
         }
         m.appendTail(sb);
         String result = sb.toString();
-        // Replace closing tags
-        result = result.replaceAll("</#([A-Fa-f0-9]{6})>", "§r");
+        // Replace closing tags using pre-compiled pattern
+        result = PKT_HEX_CLOSE.matcher(result).replaceAll("§r");
         return result;
     }
 
@@ -214,9 +244,8 @@ public final class PacketHelper {
     private static String expand3DigitHexCodesForPacket(String s) {
         if (s == null || s.indexOf('#') < 0) return s;
         
-        // Opening tags: <#RGB>
-        Pattern p3 = Pattern.compile("<#([0-9A-Fa-f]{3})>");
-        Matcher m = p3.matcher(s);
+        // Opening tags: <#RGB> — use pre-compiled pattern
+        Matcher m = PKT_3DIG_OPEN.matcher(s);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
             String hex3 = m.group(1);
@@ -229,9 +258,8 @@ public final class PacketHelper {
         m.appendTail(sb);
         s = sb.toString();
         
-        // Closing tags: </#RGB>
-        p3 = Pattern.compile("</#([0-9A-Fa-f]{3})>");
-        m = p3.matcher(s);
+        // Closing tags: </#RGB> — use pre-compiled pattern
+        m = PKT_3DIG_CLOSE.matcher(s);
         sb = new StringBuffer();
         while (m.find()) {
             String hex3 = m.group(1);
@@ -256,26 +284,18 @@ public final class PacketHelper {
             Object profile = buildProfileWithSkin(fp);
 
             // Parse display name: MiniMessage → Adventure Component → NMS Component
-            String displayNameMini = fp.getDisplayName();
-            Component adventureComponent = MiniMessage.miniMessage().deserialize(displayNameMini);
-            Object displayName = adventureToNms(adventureComponent);
+            String dispStr = fp.getDisplayName();
+            Object displayName = fp.getCachedNmsDisplayComponent();
+            if (displayName == null || !dispStr.equals(fp.getCachedNmsDisplaySource())) {
+                Component adv = MiniMessage.miniMessage().deserialize(dispStr);
+                displayName   = adventureToNms(adv);
+                fp.setCachedNmsDisplay(displayName, dispStr);
+            }
 
             Object entry   = buildEntry(fp.getUuid(), profile, displayName);
             Object actions = buildActionSet();
 
-            Object secondArg;
-            Class<?> secondParamType = playerInfoUpdateCtor.getParameterTypes()[1];
-            if (secondParamType == playerInfoUpdateEntryClass) {
-                secondArg = entry;
-            } else if (secondParamType.isArray()) {
-                Object arr = java.lang.reflect.Array.newInstance(secondParamType.getComponentType(), 1);
-                java.lang.reflect.Array.set(arr, 0, entry);
-                secondArg = arr;
-            } else {
-                secondArg = List.of(entry);
-            }
-
-            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, secondArg));
+            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, buildSecondArg(entry)));
             Config.debugPackets("Tab ADD → " + receiver.getName() + " for " + fp.getName());
         } catch (Exception e) {
             FppLogger.error("sendTabListAdd failed: " + e.getMessage());
@@ -509,7 +529,6 @@ public final class PacketHelper {
                 }
             }
 
-
             // Parse display name MiniMessage → Adventure → NMS
             Component adventureComponent = MiniMessage.miniMessage().deserialize(displayName);
             Object nmsDisplayName = adventureToNms(adventureComponent);
@@ -517,19 +536,7 @@ public final class PacketHelper {
             Object entry   = buildEntry(uuid, profile, nmsDisplayName);
             Object actions = buildActionSet();
 
-            Object secondArg;
-            Class<?> secondParamType = playerInfoUpdateCtor.getParameterTypes()[1];
-            if (secondParamType == playerInfoUpdateEntryClass) {
-                secondArg = entry;
-            } else if (secondParamType.isArray()) {
-                Object arr = java.lang.reflect.Array.newInstance(secondParamType.getComponentType(), 1);
-                java.lang.reflect.Array.set(arr, 0, entry);
-                secondArg = arr;
-            } else {
-                secondArg = List.of(entry);
-            }
-
-            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, secondArg));
+            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, buildSecondArg(entry)));
             Config.debugPackets("Tab ADD raw → " + receiver.getName() + " for " + packetProfileName
                     + (skinValue != null && !skinValue.isBlank() ? " [skinned]" : ""));
         } catch (Exception e) {
@@ -542,38 +549,50 @@ public final class PacketHelper {
      * Sends only the {@code UPDATE_DISPLAY_NAME} action for {@code fp} to {@code receiver}.
      * Lighter than {@link #sendTabListAdd} — use in the periodic refresh loop to override
      * TAB plugin resets without re-adding the player entry from scratch.
+     *
+     * <p><b>Performance:</b>
+     * <ul>
+     *   <li>The NMS {@code Component} for the display name is cached on {@code fp} and
+     *       rebuilt only when {@link FakePlayer#setDisplayName(String)} is called.</li>
+     *   <li>The {@code GameProfile(uuid, name)} object is cached on {@code fp} for lifetime.</li>
+     *   <li>The {@code UPDATE_DISPLAY_NAME} action set and the packet-constructor's
+     *       second-arg strategy are both cached after the first call.</li>
+     * </ul>
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static void sendTabListDisplayNameUpdate(Player receiver, FakePlayer fp) {
         if (!ensureReady()) return;
         try {
             Object nms = getHandle(receiver);
-            // Use the bot's real name for the profile — LP handles ordering natively.
-            Object profile = gameProfileCtor != null
-                    ? gameProfileCtor.newInstance(fp.getUuid(), fp.getName())
-                    : gameProfileClass.getDeclaredConstructors()[0].newInstance(fp.getUuid(), fp.getName());
 
-            Component adventureComponent = MiniMessage.miniMessage().deserialize(fp.getDisplayName());
-            Object displayName = adventureToNms(adventureComponent);
+            // ── Cached GameProfile(uuid, name) — created once per bot ─────────
+            Object profile = fp.getCachedTabListGameProfile();
+            if (profile == null) {
+                profile = gameProfileCtor != null
+                        ? gameProfileCtor.newInstance(fp.getUuid(), fp.getName())
+                        : gameProfileClass.getDeclaredConstructors()[0].newInstance(fp.getUuid(), fp.getName());
+                fp.setCachedTabListGameProfile(profile);
+            }
+
+            // ── Cached NMS display-name Component — rebuilt only on name change ─
+            String dispStr = fp.getDisplayName();
+            Object displayName = fp.getCachedNmsDisplayComponent();
+            if (displayName == null || !dispStr.equals(fp.getCachedNmsDisplaySource())) {
+                Component adv = MiniMessage.miniMessage().deserialize(dispStr);
+                displayName   = adventureToNms(adv);
+                fp.setCachedNmsDisplay(displayName, dispStr);
+            }
 
             Object entry = buildEntry(fp.getUuid(), profile, displayName);
 
-            // Only UPDATE_DISPLAY_NAME action
-            Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
-            Object actions = EnumSet.of(Enum.valueOf(e, "UPDATE_DISPLAY_NAME"));
-
-            Object secondArg;
-            Class<?> secondParamType = playerInfoUpdateCtor.getParameterTypes()[1];
-            if (secondParamType == playerInfoUpdateEntryClass) {
-                secondArg = entry;
-            } else if (secondParamType.isArray()) {
-                Object arr = java.lang.reflect.Array.newInstance(secondParamType.getComponentType(), 1);
-                java.lang.reflect.Array.set(arr, 0, entry);
-                secondArg = arr;
-            } else {
-                secondArg = List.of(entry);
+            // ── Cached UPDATE_DISPLAY_NAME action set ─────────────────────────
+            if (cachedUpdateDisplayNameActions == null) {
+                Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
+                cachedUpdateDisplayNameActions = EnumSet.of(Enum.valueOf(e, "UPDATE_DISPLAY_NAME"));
             }
-            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, secondArg));
+            Object actions = cachedUpdateDisplayNameActions;
+
+            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, buildSecondArg(entry)));
         } catch (Exception e) {
             // Silent — this is a background refresh, don't spam logs
         }
@@ -599,21 +618,12 @@ public final class PacketHelper {
 
             Object entry = buildEntry(uuid, profile, displayName);
 
-            Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
-            Object actions = EnumSet.of(Enum.valueOf(e, "UPDATE_DISPLAY_NAME"));
-
-            Object secondArg;
-            Class<?> secondParamType = playerInfoUpdateCtor.getParameterTypes()[1];
-            if (secondParamType == playerInfoUpdateEntryClass) {
-                secondArg = entry;
-            } else if (secondParamType.isArray()) {
-                Object arr = java.lang.reflect.Array.newInstance(secondParamType.getComponentType(), 1);
-                java.lang.reflect.Array.set(arr, 0, entry);
-                secondArg = arr;
-            } else {
-                secondArg = List.of(entry);
+            // Use cached action set
+            if (cachedUpdateDisplayNameActions == null) {
+                Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
+                cachedUpdateDisplayNameActions = EnumSet.of(Enum.valueOf(e, "UPDATE_DISPLAY_NAME"));
             }
-            sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, secondArg));
+            sendPacket(nms, playerInfoUpdateCtor.newInstance(cachedUpdateDisplayNameActions, buildSecondArg(entry)));
         } catch (Exception e) {
             // Silent
         }
@@ -759,25 +769,43 @@ public final class PacketHelper {
             byte encPitch = angleToByte(pitch);
             byte encHead  = angleToByte(headYaw);
 
-            for (Constructor<?> c : moveEntityRotPacketClass.getDeclaredConstructors()) {
-                Class<?>[] p = c.getParameterTypes();
-                if (p.length == 4 && p[0] == int.class && p[1] == byte.class) {
-                    c.setAccessible(true);
-                    sendPacket(nms, c.newInstance(entityId, encYaw, encPitch, true));
-                    break;
+            // ── One-time constructor lookup (cached after first attempt) ──────
+            if (!rotCtorLookupDone) {
+                synchronized (PacketHelper.class) {
+                    if (!rotCtorLookupDone) {
+                        for (Constructor<?> c : moveEntityRotPacketClass.getDeclaredConstructors()) {
+                            Class<?>[] p = c.getParameterTypes();
+                            if (p.length == 4 && p[0] == int.class && p[1] == byte.class) {
+                                c.setAccessible(true);
+                                cachedMoveEntityRotCtor = c;
+                                break;
+                            }
+                        }
+                        for (Constructor<?> c : rotateHeadPacketClass.getDeclaredConstructors()) {
+                            c.setAccessible(true);
+                            Class<?>[] p = c.getParameterTypes();
+                            if (p.length == 2 && p[0] == int.class) {
+                                cachedRotateHeadCtorInt = c;
+                                break;
+                            } else if (p.length == 2) {
+                                cachedRotateHeadCtorEntity = c;
+                            }
+                        }
+                        rotCtorLookupDone = true;
+                    }
                 }
             }
-            for (Constructor<?> c : rotateHeadPacketClass.getDeclaredConstructors()) {
-                c.setAccessible(true);
-                Class<?>[] p = c.getParameterTypes();
-                if (p.length == 2 && p[0] == int.class) {
-                    sendPacket(nms, c.newInstance(entityId, encHead));
-                } else if (p.length == 2 && fp.getPhysicsEntity() != null) {
-                    Object nmsEntity = fp.getPhysicsEntity().getClass()
-                            .getMethod("getHandle").invoke(fp.getPhysicsEntity());
-                    sendPacket(nms, c.newInstance(nmsEntity, encHead));
-                }
-                break;
+
+            // ── Send packets using cached constructors ─────────────────────────
+            if (cachedMoveEntityRotCtor != null) {
+                sendPacket(nms, cachedMoveEntityRotCtor.newInstance(entityId, encYaw, encPitch, true));
+            }
+            if (cachedRotateHeadCtorInt != null) {
+                sendPacket(nms, cachedRotateHeadCtorInt.newInstance(entityId, encHead));
+            } else if (cachedRotateHeadCtorEntity != null && fp.getPhysicsEntity() != null) {
+                // Use the already-cached craftPlayerGetHandle method instead of re-scanning
+                Object nmsEntity = craftPlayerGetHandle.invoke(fp.getPhysicsEntity());
+                sendPacket(nms, cachedRotateHeadCtorEntity.newInstance(nmsEntity, encHead));
             }
         } catch (Exception e) {
             Config.debugPackets("sendRotation failed: " + e.getMessage());
@@ -1016,19 +1044,63 @@ public final class PacketHelper {
                 Enum.valueOf(e, "UPDATE_DISPLAY_NAME"));
     }
 
+    /**
+     * Builds a {@code PlayerInfoUpdatePacket.Entry} using a cached constructor winner.
+     * The winning constructor is found once (descending param-count, first success)
+     * and reused for every subsequent call to avoid repeated
+     * {@code getDeclaredConstructors()} + {@code Arrays.sort()} + {@code setAccessible()}
+     * overhead.
+     */
     private static Object buildEntry(UUID uuid, Object profile, Object displayName) throws Exception {
+        if (cachedEntryCtorWinner != null) {
+            return cachedEntryCtorWinner.newInstance(
+                    mapEntryArgs(cachedEntryCtorParamTypes, uuid, profile, displayName));
+        }
         Constructor<?>[] ctors = playerInfoUpdateEntryClass.getDeclaredConstructors();
         Arrays.sort(ctors, (a, b) -> b.getParameterCount() - a.getParameterCount());
         Exception last = null;
         for (Constructor<?> ctor : ctors) {
             ctor.setAccessible(true);
             try {
-                return ctor.newInstance(mapEntryArgs(ctor.getParameterTypes(), uuid, profile, displayName));
+                Object result = ctor.newInstance(mapEntryArgs(ctor.getParameterTypes(), uuid, profile, displayName));
+                // Cache the winning constructor + its param types for all future calls
+                cachedEntryCtorParamTypes = ctor.getParameterTypes();
+                cachedEntryCtorWinner     = ctor;
+                return result;
             } catch (Exception ex) {
                 last = ex;
             }
         }
         throw new IllegalStateException("No Entry ctor matched. Last: " + (last != null ? last.getMessage() : "?"));
+    }
+
+    /**
+     * Builds the second argument for {@code ClientboundPlayerInfoUpdatePacket(actions, ?)}
+     * using a cached strategy so we never call {@code getParameterTypes()[1]} per-call.
+     * Strategy is determined once from the ctor's second param type:
+     * 1 = direct {@code Entry}, 2 = {@code Entry[]}, 3 = {@code List<Entry>}.
+     */
+    private static Object buildSecondArg(Object entry) throws Exception {
+        if (cachedInfoUpdateSecondArgStrategy == 0) {
+            Class<?> spt = playerInfoUpdateCtor.getParameterTypes()[1];
+            if (spt == playerInfoUpdateEntryClass) {
+                cachedInfoUpdateSecondArgStrategy = 1;
+            } else if (spt.isArray()) {
+                cachedInfoUpdateSecondArgStrategy = 2;
+                cachedInfoUpdateArrayCompType     = spt.getComponentType();
+            } else {
+                cachedInfoUpdateSecondArgStrategy = 3;
+            }
+        }
+        return switch (cachedInfoUpdateSecondArgStrategy) {
+            case 1 -> entry;
+            case 2 -> {
+                Object arr = java.lang.reflect.Array.newInstance(cachedInfoUpdateArrayCompType, 1);
+                java.lang.reflect.Array.set(arr, 0, entry);
+                yield arr;
+            }
+            default -> List.of(entry);
+        };
     }
 
     private static Object[] mapEntryArgs(Class<?>[] types, UUID uuid, Object profile, Object displayName) {
@@ -1050,4 +1122,10 @@ public final class PacketHelper {
         return args;
     }
 }
+
+
+
+
+
+
 

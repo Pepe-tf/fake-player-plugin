@@ -41,7 +41,7 @@ public class SwapCommand implements FppCommand {
     }
 
     @Override public String getName()        { return "swap"; }
-    @Override public String getUsage()       { return "[on|off|status|now <bot>|list]"; }
+    @Override public String getUsage()       { return "[on|off|status|now <bot>|list|info <bot>]"; }
     @Override public String getDescription() { return "Toggle bot session rotation (swap in / out)."; }
     @Override public String getPermission()  { return Perm.SWAP; }
 
@@ -83,6 +83,14 @@ public class SwapCommand implements FppCommand {
             }
 
             case "list" -> sendList(sender);
+
+            case "info" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Lang.get("swap-info-usage"));
+                    return true;
+                }
+                sendBotInfo(sender, args[1]);
+            }
 
             default -> sender.sendMessage(Lang.get("swap-invalid"));
         }
@@ -129,10 +137,13 @@ public class SwapCommand implements FppCommand {
             String nextLabel = nextSec >= 0
                     ? (nextSec >= 60 ? (nextSec / 60) + "m " + (nextSec % 60) + "s" : nextSec + "s")
                     : "none";
+            int minOnline = Config.swapMinOnline();
+            String minLabel = minOnline > 0 ? String.valueOf(minOnline) : "off";
             sender.sendMessage(Lang.get("swap-status-on",
                     "sessions", String.valueOf(ai.getActiveSessionCount()),
                     "offline",  String.valueOf(ai.getSwappedOutCount()),
-                    "next",     nextLabel));
+                    "next",     nextLabel,
+                    "min",      minLabel));
         } else {
             sender.sendMessage(Lang.get("swap-status-off"));
         }
@@ -158,12 +169,48 @@ public class SwapCommand implements FppCommand {
         sender.sendMessage(Lang.get("swap-list-header",
                 "count", String.valueOf(scheduled.size())));
 
+        long now = System.currentTimeMillis();
         for (FakePlayer fp : scheduled) {
+            long expiry = ai.getSessionExpiry(fp.getUuid());
+            long remainSec = expiry > 0 ? Math.max(0, (expiry - now) / 1000L) : -1;
+            String timeLabel = remainSec >= 0
+                    ? (remainSec >= 60 ? (remainSec / 60) + "m" + (remainSec % 60) + "s" : remainSec + "s")
+                    : "?";
             sender.sendMessage(Lang.get("swap-list-entry",
                     "name",        fp.getDisplayName(),
                     "personality", ai.getPersonalityLabel(fp.getUuid()),
-                    "swaps",       String.valueOf(ai.getSwapCount(fp.getUuid()))));
+                    "swaps",       String.valueOf(ai.getSwapCount(fp.getUuid())),
+                    "time",        timeLabel));
         }
+    }
+
+    private void sendBotInfo(CommandSender sender, String botName) {
+        FakePlayer fp = manager.getByName(botName);
+        BotSwapAI ai = plugin.getBotSwapAI();
+
+        if (fp == null) {
+            sender.sendMessage(Lang.get("swap-info-not-found", "name", botName));
+            return;
+        }
+        if (ai == null) {
+            sender.sendMessage(Lang.get("swap-not-available"));
+            return;
+        }
+
+        UUID id = fp.getUuid();
+        long expiry = ai.getSessionExpiry(id);
+        long now = System.currentTimeMillis();
+        long remainSec = expiry > 0 ? Math.max(0, (expiry - now) / 1000L) : -1;
+        String timeLabel = remainSec >= 0
+                ? (remainSec >= 60 ? (remainSec / 60) + "m " + (remainSec % 60) + "s" : remainSec + "s")
+                : "not scheduled";
+
+        sender.sendMessage(Lang.get("swap-info",
+                "name",        fp.getDisplayName(),
+                "personality", ai.getPersonalityLabel(id),
+                "swaps",       String.valueOf(ai.getSwapCount(id)),
+                "time",        timeLabel,
+                "offline",     String.valueOf(ai.getSwappedOutCount())));
     }
 
     // ── Tab-complete ──────────────────────────────────────────────────────────
@@ -172,12 +219,12 @@ public class SwapCommand implements FppCommand {
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 1) {
             String pfx = args[0].toLowerCase();
-            return List.of("on", "off", "status", "now", "list")
+            return List.of("on", "off", "status", "now", "list", "info")
                     .stream()
                     .filter(s -> s.startsWith(pfx))
                     .collect(Collectors.toList());
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("now")) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("now") || args[0].equalsIgnoreCase("info"))) {
             String pfx = args[1].toLowerCase();
             return manager.getActiveNames().stream()
                     .filter(n -> n.toLowerCase().startsWith(pfx))
