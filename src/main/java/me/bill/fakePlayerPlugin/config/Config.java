@@ -13,7 +13,7 @@ import java.util.Map;
  * All methods read live from the cached {@link FileConfiguration} so values
  * are always up-to-date after {@code /fpp reload}.
  *
- * <p>Key paths mirror the structure of {@code config.yml} exactly — every
+ * <p>Key paths mirror the structure of {@code config.yml} exactly - every
  * section header in the YAML maps to the prefix used here.
  */
 public final class Config {
@@ -36,9 +36,9 @@ public final class Config {
         cfg = plugin.getConfig();
         cfg.options().copyDefaults(true);
         // ── Locked / Coming-Soon features ─────────────────────────────────────
-        // body.enabled is always forced true — bodyless mode is not yet available.
-        // skin.guaranteed-skin is always forced false — skin system is coming soon.
-        // pvp-ai.pvp is always forced false — PVP bots are dev-only for now.
+        // body.enabled is always forced true - bodyless mode is not yet available.
+        // skin.guaranteed-skin is always forced false - skin system is coming soon.
+        // pvp-ai.pvp is always forced false - PVP bots are dev-only for now.
         // If a user edits these manually, the next reload auto-reverts them.
         cfg.set("body.enabled", true);
         cfg.set("skin.guaranteed-skin", false);
@@ -87,6 +87,7 @@ public final class Config {
     public static boolean metricsEnabled() {
         return cfg.getBoolean("metrics.enabled", true);
     }
+
 
 
     // ── Spawn cooldown  (spawn-cooldown) ──────────────────────────────────────
@@ -162,12 +163,12 @@ public final class Config {
     /**
      * Skin rendering mode:
      * <ul>
-     *   <li>{@code "auto"}   — Paper resolves skin from Mojang automatically (recommended).
+     *   <li>{@code "auto"}   - Paper resolves skin from Mojang automatically (recommended).
      *                          When {@code skin.guaranteed-skin} is true, bots whose names
      *                          have no Mojang account receive a fallback skin instead of Steve.</li>
-     *   <li>{@code "custom"} — Plugin manages skin resolution via SkinRepository
+     *   <li>{@code "custom"} - Plugin manages skin resolution via SkinRepository
      *                          (name-overrides, skin folder, config pool, Mojang fallback).</li>
-     *   <li>{@code "off"}    — No skin; bots display the default Steve / Alex appearance.</li>
+     *   <li>{@code "off"}    - No skin; bots display the default Steve / Alex appearance.</li>
      * </ul>
      */
     public static String skinMode() {
@@ -180,7 +181,7 @@ public final class Config {
     }
 
     /**
-     * When {@code true}, bots always receive a skin — even if their name has no
+     * When {@code true}, bots always receive a skin - even if their name has no
      * Mojang account (generated names, user bots, etc.).
      * When {@code false} (default), bots with no matching Mojang account display
      * the default Steve / Alex Minecraft skin.
@@ -223,7 +224,7 @@ public final class Config {
      * Config path: {@code skin.pool}
      */
     public static List<String> skinCustomPool() {
-        // new key: skin.pool — fallback to old skin.custom.pool for compatibility
+        // new key: skin.pool - fallback to old skin.custom.pool for compatibility
         Object raw = cfg.get("skin.pool");
         if (raw == null) raw = cfg.get("skin.custom.pool");
         if (raw instanceof List<?> list) {
@@ -241,7 +242,7 @@ public final class Config {
      * Config path: {@code skin.overrides}
      */
     public static Map<String, String> skinCustomByName() {
-        // new key: skin.overrides — fallback to old skin.custom.by-name
+        // new key: skin.overrides - fallback to old skin.custom.by-name
         Object section = cfg.get("skin.overrides");
         if (section == null) section = cfg.get("skin.custom.by-name");
         if (section instanceof Map<?, ?> raw) {
@@ -277,12 +278,33 @@ public final class Config {
     }
 
     /**
-     * Whether bot bodies can take damage.
-     * {@code false} = NMS ServerPlayer is invulnerable; the damage event still fires
-     * (for hit-knockback if pushable is true) but HP is never reduced.
+     * Whether bot bodies can take damage from players and entities.
+     * {@code false} = bot is immune to entity/player-sourced damage but
+     * still takes environmental damage (fall, fire, drowning, lava, etc.).
+     * {@code true} = bot takes all damage types like a real player.
      */
     public static boolean bodyDamageable() {
         return cfg.getBoolean("body.damageable", true);
+    }
+
+    /**
+     * Whether bot bodies can pick up items from the ground.
+     * {@code false} (default) = bots do not pick up items; all item entities pass through.
+     * {@code true} = bots pick up items exactly like a real player.
+     * Config path: {@code body.pick-up-items}.
+     */
+    public static boolean bodyPickUpItems() {
+        return cfg.getBoolean("body.pick-up-items", false);
+    }
+
+    /**
+     * Whether bot bodies can pick up XP orbs from the ground.
+     * {@code false} (default) = bots do not pick up XP; all XP orbs pass through.
+     * {@code true} = bots pick up XP orbs exactly like a real player.
+     * Config path: {@code body.pick-up-xp}.
+     */
+    public static boolean bodyPickUpXp() {
+        return cfg.getBoolean("body.pick-up-xp", true);
     }
 
     // ── Persistence  (persistence.*) ─────────────────────────────────────────
@@ -342,7 +364,7 @@ public final class Config {
     /** Whether bots attempt to reuse their same name on rejoin. */
     public static boolean swapSameNameOnRejoin() { return cfg.getBoolean("swap.same-name-on-rejoin", true); }
 
-    /** Minimum bots that must remain online — swap skips if removing one would go below. 0 = disabled. */
+    /** Minimum bots that must remain online - swap skips if removing one would go below. 0 = disabled. */
     public static int swapMinOnline() { return cfg.getInt("swap.min-online", 0); }
 
     /** Whether a failed rejoin spawn is automatically retried after a delay. */
@@ -380,7 +402,7 @@ public final class Config {
     }
 
     /**
-     * Default daily schedule — list of {@code {start, end, fraction}} maps.
+     * Default daily schedule - list of {@code {start, end, fraction}} maps.
      * Maps to {@code peak-hours.schedule}.
      */
     public static java.util.List<java.util.Map<?, ?>> peakHoursSchedule() {
@@ -449,7 +471,7 @@ public final class Config {
     public static int respawnDelay()       { return cfg.getInt("death.respawn-delay", 60); }
 
     /** Suppress item drops on bot death. */
-    public static boolean suppressDrops()  { return cfg.getBoolean("death.suppress-drops", true); }
+    public static boolean suppressDrops()  { return cfg.getBoolean("death.suppress-drops", false); }
 
     // ── Chunk Loading  (chunk-loading.*) ─────────────────────────────────────
 
@@ -468,7 +490,7 @@ public final class Config {
 
     /**
      * How often (in ticks) the chunk-loader refreshes tickets.
-     * Default 20 (once per second) — lower = more responsive to bot movement,
+     * Default 20 (once per second) - lower = more responsive to bot movement,
      * higher = less overhead for static bots.
      */
     public static int chunkLoadingUpdateInterval() { return cfg.getInt("chunk-loading.update-interval", 20); }
@@ -505,10 +527,35 @@ public final class Config {
      */
     public static boolean swimAiEnabled() { return cfg.getBoolean("swim-ai.enabled", true); }
 
+    // ── Pathfinding  (pathfinding.*) - used by /fpp move ─────────────────────
+
+    /** Allow bots to perform sprint-jumps across 1–2 block gaps during navigation. */
+    public static boolean pathfindingParkour() {
+        return cfg.getBoolean("pathfinding.parkour", false);
+    }
+
+    /** Allow bots to break blocking solid blocks that obstruct their navigation path. */
+    public static boolean pathfindingBreakBlocks() {
+        return cfg.getBoolean("pathfinding.break-blocks", false);
+    }
+
+    /** Allow bots to place blocks to bridge 1-block gaps during navigation. */
+    public static boolean pathfindingPlaceBlocks() {
+        return cfg.getBoolean("pathfinding.place-blocks", false);
+    }
+
+    /**
+     * Material name used when placing bridge blocks (requires {@code pathfinding.place-blocks=true}).
+     * Falls back to {@code DIRT} if the configured value is not a valid solid block.
+     */
+    public static String pathfindingPlaceMaterial() {
+        return cfg.getString("pathfinding.place-material", "DIRT");
+    }
+
     // ── PVP AI  (pvp-ai.*) ────────────────────────────────────────────────────
 
     /**
-     * Master PVP enable flag. Always {@code false} — forced by {@link #reload()}.
+     * Master PVP enable flag. Always {@code false} - forced by {@link #reload()}.
      * While {@code false}, only the designated developer UUID may spawn PVP bots.
      * Maps to {@code pvp-ai.pvp}.
      */
@@ -518,7 +565,7 @@ public final class Config {
 
     /**
      * Difficulty level for the PVP AI.
-     * Maps to {@code pvp-ai.difficulty} — one of {@code "easy"}, {@code "medium"},
+     * Maps to {@code pvp-ai.difficulty} - one of {@code "easy"}, {@code "medium"},
      * {@code "hard"}, {@code "tier1"}, or {@code "hacker"}.
      * Controls attack reach, timing precision, and crit/s-tap frequency.
      */
@@ -544,7 +591,7 @@ public final class Config {
 
     /**
      * Whether PVP bots start in defensive mode (retaliate only when attacked first).
-     * {@code false} = aggressive — bot immediately attacks any player within detect-range.
+     * {@code false} = aggressive - bot immediately attacks any player within detect-range.
      * Maps to {@code pvp-ai.defensive-mode}.
      */
     public static boolean pvpAiDefensiveMode() {
@@ -552,7 +599,7 @@ public final class Config {
     }
 
     /**
-     * Detection radius in blocks — how far the bot scans for player targets.
+     * Detection radius in blocks - how far the bot scans for player targets.
      * Maps to {@code pvp-ai.detect-range}.
      */
     public static double pvpAiDetectRange() {
@@ -658,7 +705,7 @@ public final class Config {
     public static int     fakeChatHistorySize()      { return cfg.getInt("fake-chat.history-size", 5); }
 
 
-    /** Messages bots can randomly send — loaded from bot-messages.yml. */
+    /** Messages bots can randomly send - loaded from bot-messages.yml. */
     public static List<String> fakeChatMessages()   { return BotMessageConfig.getMessages(); }
     /** Reply messages used when a player mentions a bot's name. */
     public static List<String> chatReplyMessages()  { return BotMessageConfig.getReplyMessages(); }
@@ -804,10 +851,10 @@ public final class Config {
      * Controls how config files are synchronized across network servers.
      * Valid values:
      * <ul>
-     *   <li>{@code DISABLED} — No syncing (default for LOCAL mode)</li>
-     *   <li>{@code MANUAL} — Only sync via /fpp sync commands</li>
-     *   <li>{@code AUTO_PULL} — Pull latest on startup/reload</li>
-     *   <li>{@code AUTO_PUSH} — Push changes automatically</li>
+     *   <li>{@code DISABLED} - No syncing (default for LOCAL mode)</li>
+     *   <li>{@code MANUAL} - Only sync via /fpp sync commands</li>
+     *   <li>{@code AUTO_PULL} - Pull latest on startup/reload</li>
+     *   <li>{@code AUTO_PUSH} - Push changes automatically</li>
      * </ul>
      */
     public static String configSyncMode() {
@@ -858,9 +905,9 @@ public final class Config {
     /**
      * Maximum distance (in blocks) at which a moving bot sends position-sync packets
      * to a real player.  Players farther than this value will not receive per-tick
-     * movement updates — they cannot render the bot anyway beyond their view distance.
+     * movement updates - they cannot render the bot anyway beyond their view distance.
      *
-     * <p>Set to {@code 0} to disable distance culling (legacy behaviour — sends to all
+     * <p>Set to {@code 0} to disable distance culling (legacy behaviour - sends to all
      * online players regardless of distance).  The recommended value is {@code 128},
      * which covers the standard Minecraft player-entity tracking range.</p>
      *
@@ -884,3 +931,4 @@ public final class Config {
     public static void debugChat(String message)       { FppLogger.debug("CHAT", debugChat(), message); }
     public static void debugSwap(String message)      { FppLogger.debug("SWAP", debugSwap(), message); }
 }
+

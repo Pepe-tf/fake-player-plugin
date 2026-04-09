@@ -39,17 +39,17 @@ import java.util.stream.Stream;
  *   <tr><td>{@code %fpp_frozen%}</td><td>Number of frozen bots (local only)</td></tr>
  *   <tr><td>{@code %fpp_names%}</td><td>Comma-joined display names (local + remote in NETWORK mode)</td></tr>
  *   <tr><td>{@code %fpp_network_names%}</td><td>Comma-joined display names of remote-server bots only</td></tr>
- *   <tr><td>{@code %fpp_chat%}</td><td>{@code on}/{@code off} — fake-chat</td></tr>
- *   <tr><td>{@code %fpp_skin%}</td><td>{@code auto}/{@code custom}/{@code off} — active skin mode</td></tr>
- *   <tr><td>{@code %fpp_body%}</td><td>{@code on}/{@code off} — physical body</td></tr>
- *   <tr><td>{@code %fpp_pushable%}</td><td>{@code on}/{@code off} — body pushable</td></tr>
- *   <tr><td>{@code %fpp_damageable%}</td><td>{@code on}/{@code off} — body damageable</td></tr>
- *   <tr><td>{@code %fpp_tab%}</td><td>{@code on}/{@code off} — tab-list visibility</td></tr>
+ *   <tr><td>{@code %fpp_chat%}</td><td>{@code on}/{@code off} - fake-chat</td></tr>
+ *   <tr><td>{@code %fpp_skin%}</td><td>{@code auto}/{@code custom}/{@code off} - active skin mode</td></tr>
+ *   <tr><td>{@code %fpp_body%}</td><td>{@code on}/{@code off} - physical body</td></tr>
+ *   <tr><td>{@code %fpp_pushable%}</td><td>{@code on}/{@code off} - body pushable</td></tr>
+ *   <tr><td>{@code %fpp_damageable%}</td><td>{@code on}/{@code off} - body damageable</td></tr>
+ *   <tr><td>{@code %fpp_tab%}</td><td>{@code on}/{@code off} - tab-list visibility</td></tr>
  *   <tr><td>{@code %fpp_max_health%}</td><td>Bot max-health setting</td></tr>
  *   <tr><td>{@code %fpp_version%}</td><td>Plugin version</td></tr>
- *   <tr><td>{@code %fpp_network%}</td><td>{@code on}/{@code off} — NETWORK database mode active</td></tr>
+ *   <tr><td>{@code %fpp_network%}</td><td>{@code on}/{@code off} - NETWORK database mode active</td></tr>
  *   <tr><td>{@code %fpp_server_id%}</td><td>This server's {@code database.server-id} value</td></tr>
- *   <tr><td>{@code %fpp_persistence%}</td><td>{@code on}/{@code off} — bot persistence on restart</td></tr>
+ *   <tr><td>{@code %fpp_persistence%}</td><td>{@code on}/{@code off} - bot persistence on restart</td></tr>
  *   <tr><td>{@code %fpp_spawn_cooldown%}</td><td>Configured spawn cooldown in seconds (0 = off)</td></tr>
  * </table>
  *
@@ -215,3 +215,4 @@ public final class FppPlaceholderExpansion extends PlaceholderExpansion {
         return Math.max(0, world.getPlayers().size() - botsInWorld);
     }
 }
+

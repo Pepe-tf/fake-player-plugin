@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * {@code /fpp list [page]} — paginated active-bot list with freeze indicator,
+ * {@code /fpp list [page]} - paginated active-bot list with freeze indicator,
  * uptime, location, and spawner info. 10 bots per page.
  * In NETWORK mode also shows remote bots from other proxy servers with their server ID.
  */
@@ -109,10 +109,10 @@ public class ListCommand implements FppCommand {
         // ── Pagination nav ───────────────────────────────────────────────────
         if (totalPages > 1) {
             Component prev = page > 1
-                    ? Component.text("  ◀ ᴘʀᴇᴠ").color(ACCENT)
+                    ? Component.text("  ◄ ᴘʀᴇᴠ").color(ACCENT)
                             .clickEvent(ClickEvent.runCommand("/fpp list " + (page - 1)))
                             .hoverEvent(HoverEvent.showText(Component.text("Page " + (page - 1))))
-                    : Component.text("  ◀").color(MUTED);
+                    : Component.text("  ◄").color(MUTED);
 
             Component pageNum = Component.text("  " + page + "/" + totalPages + "  ").color(LABEL);
 
@@ -140,7 +140,7 @@ public class ListCommand implements FppCommand {
 
         boolean isFrozen = fp.isFrozen();
         String frozenTag = isFrozen ? " <#66CCFF>❄</#66CCFF>" : "";
-        // Server ID tag — only shown in NETWORK mode
+        // Server ID tag - only shown in NETWORK mode
         String serverTag = Config.isNetworkMode()
                 ? " <#FFD700>[" + Config.serverId() + "]</#FFD700>" : "";
 
@@ -223,4 +223,5 @@ public class ListCommand implements FppCommand {
         return List.of();
     }
 }
+
 

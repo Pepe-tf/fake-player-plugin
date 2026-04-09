@@ -63,7 +63,7 @@ public final class BotNameConfig {
      */
     public static List<String> getNames() {
         if (cfg == null) return Arrays.asList("Alex", "Steve", "Notch");
-        // YAML key is "name" (singular) — not "names"
+        // YAML key is "name" (singular) - not "names"
         List<String> names = cfg.getStringList("name");
         if (names.isEmpty()) {
             // fallback: try "names" in case user renamed the key
@@ -75,4 +75,5 @@ public final class BotNameConfig {
         return names;
     }
 }
+
 

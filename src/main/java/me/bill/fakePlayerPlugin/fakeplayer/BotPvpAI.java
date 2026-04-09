@@ -34,14 +34,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * PVP bot AI — drives movement and melee attacks for all {@link BotType#PVP} bots.
+ * PVP bot AI - drives movement and melee attacks for all {@link BotType#PVP} bots.
  *
  * <h3>State machine</h3>
  * <ul>
- *   <li><b>CHASE</b> — sprint at target when {@literal >} {@link #COMBAT_RANGE} away.</li>
- *   <li><b>COMBAT</b> — strafe, W-tap / S-tap (drag-back), jump-crit, angle-arc, combo
+ *   <li><b>CHASE</b> - sprint at target when {@literal >} {@link #COMBAT_RANGE} away.</li>
+ *   <li><b>COMBAT</b> - strafe, W-tap / S-tap (drag-back), jump-crit, angle-arc, combo
  *       aggression, target-flee boost, elevation awareness.</li>
- *   <li><b>RETREAT</b> — back-pedal 3–5 ticks after a hit (70 % of hits);
+ *   <li><b>RETREAT</b> - back-pedal 3–5 ticks after a hit (70 % of hits);
  *       30 % chance of aggressive follow-through instead for combo pressure.</li>
  * </ul>
  *
@@ -58,11 +58,11 @@ public final class BotPvpAI {
      * Maps {@code pvp-ai.difficulty} to datapack-equivalent combat parameters.
      *
      * <pre>
-     *   easy   — 1.5 block reach, full-cooldown only, rare crits/s-taps
-     *   medium — 2.0 block reach, slight early-attack window          (default)
-     *   hard   — 2.5 block reach, sprint-resets and s-taps more often
-     *   tier1  — 3.0 block reach, near-optimal, aggressive combo
-     *   hacker — 4.6 block reach, always crits, never misses timing
+     *   easy   - 1.5 block reach, full-cooldown only, rare crits/s-taps
+     *   medium - 2.0 block reach, slight early-attack window          (default)
+     *   hard   - 2.5 block reach, sprint-resets and s-taps more often
+     *   tier1  - 3.0 block reach, near-optimal, aggressive combo
+     *   hacker - 4.6 block reach, always crits, never misses timing
      * </pre>
      */
     public enum Difficulty {
@@ -76,7 +76,7 @@ public final class BotPvpAI {
         public final double attackRange;
         /**
          * When {@code true} the bot always waits for a full weapon cooldown
-         * before swinging (Easy — reduces attack rate significantly).
+         * before swinging (Easy - reduces attack rate significantly).
          */
         public final boolean waitFullCooldown;
         /**
@@ -117,11 +117,11 @@ public final class BotPvpAI {
 
     // ── Distance management ───────────────────────────────────────────────────
 
-    /** Ideal combat distance — bot tries to maintain this range. */
+    /** Ideal combat distance - bot tries to maintain this range. */
     private static final double PREFERRED_DISTANCE = 2.0;
-    /** Back-pedal threshold — matches datapack {@code distanceH=..1.2}. */
+    /** Back-pedal threshold - matches datapack {@code distanceH=..1.2}. */
     private static final double MIN_DISTANCE = 1.2;
-    /** Chase threshold in combat — matches datapack {@code distanceH=3.2..}. */
+    /** Chase threshold in combat - matches datapack {@code distanceH=3.2..}. */
     private static final double MAX_DISTANCE = 3.2;
 
     // ── Randomization (datapack: randomize.mcfunction re-rolls every 9–14 ticks) ──
@@ -372,7 +372,7 @@ public final class BotPvpAI {
         int     potionCooldown   = 0;     // ticks until can throw potion again
         boolean isEating         = false; // true when actively eating
         int     eatingTicks      = 0;     // ticks remaining to finish eating
-        Material pendingFoodType = null;  // food being eaten — benefits applied when timer hits 0
+        Material pendingFoodType = null;  // food being eaten - benefits applied when timer hits 0
 
         // ── Potion-phase state machine ────────────────────────────────────────
         PotionPhase potionPhase    = PotionPhase.IDLE;
@@ -524,7 +524,7 @@ public final class BotPvpAI {
 
         // ── Safety fallback: if somehow eating without flee flag, just stop ────
         // In practice this block is dead code because startEating always sets
-        // isFleeing = true — the bot will always run away while eating healing food.
+        // isFleeing = true - the bot will always run away while eating healing food.
         if (s.isEating && !s.isFleeing) {
             bot.setSprinting(false);
             // Zero out horizontal velocity so bot stands still
@@ -634,7 +634,7 @@ public final class BotPvpAI {
             s.kbFreezeTicks = 4; // freeze AI movement for 4 ticks to let knockback play out
         }
 
-        // Skip AI movement while knockback is active — let physics handle it
+        // Skip AI movement while knockback is active - let physics handle it
         if (s.kbFreezeTicks > 0) {
             faceTarget(fp, bot, s, target, rawDx, rawDz, horizDist,
                     tgtLoc.getY() - botLoc.getY(), 0f); // still face target, no juke
@@ -686,11 +686,11 @@ public final class BotPvpAI {
                 tgtLoc.getY() - botLoc.getY(), juke);
 
         // ── Sprint-reset: briefly pause sprinting 1 tick before swinging ────────
-        // Mimics human combat rhythm — 55 % of attacks are preceded by a 1-tick sprint pause.
+        // Mimics human combat rhythm - 55 % of attacks are preceded by a 1-tick sprint pause.
         // Clears the pendingSprintReset flag once the pause window expires.
         if (s.pendingSprintReset) {
             if (s.sprintResetTicks == 0) {
-                s.pendingSprintReset = false; // Pause expired — allow the attack this tick
+                s.pendingSprintReset = false; // Pause expired - allow the attack this tick
             } else {
                 // Still pausing: face target, hold position, then return
                 faceTarget(fp, bot, s, target, rawDx, rawDz, horizDist,
@@ -726,14 +726,14 @@ public final class BotPvpAI {
      *
      * <h3>Key improvements vs. naive implementation (reference-mod inspired):</h3>
      * <ul>
-     *   <li><b>Fall-distance crits</b> — uses {@code bot.getFallDistance() > 0.2f}
+     *   <li><b>Fall-distance crits</b> - uses {@code bot.getFallDistance() > 0.2f}
      *       (same signal the reference mod's delayed-attack preserves with saved
      *       {@code fallDistance}) rather than only tracking a boolean jump flag.</li>
-     *   <li><b>Weapon charge window</b> — like the reference's
+     *   <li><b>Weapon charge window</b> - like the reference's
      *       {@code getAttackStrengthScale(0.5F) < 1.0F} guard, the bot has a small
      *       random window (0–2 ticks before full charge) where it may swing slightly
      *       early.  Early attacks deal proportionally less damage, matching vanilla.</li>
-     *   <li><b>Aggression scaling</b> — combo damage boost now also scaled by
+     *   <li><b>Aggression scaling</b> - combo damage boost now also scaled by
      *       {@code s.aggression} (higher when target is low HP).</li>
      * </ul>
      */
@@ -753,7 +753,7 @@ public final class BotPvpAI {
         // ── Random miss (human inaccuracy) ────────────────────────────────────
         // Sometimes swing the arm but don't actually land the hit (8% chance)
         if (rng.nextDouble() < MISS_CHANCE) {
-            // Whiffed attack — animation plays but no damage/effects
+            // Whiffed attack - animation plays but no damage/effects
             applyWeaponCooldown(s, rng);
             s.comboCount     = 0; // Reset combo on miss
             // Still queue a retreat to make it look natural
@@ -775,7 +775,7 @@ public final class BotPvpAI {
         // Base damage from weapon or fist
         double dmg = getWeaponDamage(s.currentWeapon);
 
-        // Apply charge ratio (early attacks deal less damage — vanilla-accurate)
+        // Apply charge ratio (early attacks deal less damage - vanilla-accurate)
         dmg *= chargeRatio;
 
         // Critical hit: 1.5× multiplier (vanilla mechanic)
@@ -814,7 +814,7 @@ public final class BotPvpAI {
             s.followThrough = true;   // sprint forward instead of back
         } else {
             // Retreat duration varies by weapon speed:
-            // Slow weapons (axe ≥ 20 tick cooldown) need shorter retreat — attacks are infrequent anyway.
+            // Slow weapons (axe ≥ 20 tick cooldown) need shorter retreat - attacks are infrequent anyway.
             // Fast weapons (sword 12 tick cooldown) use a longer retreat window to create hit-and-run rhythm.
             boolean slowWeapon = (s.currentWeapon != null
                     && WEAPON_COOLDOWN.getOrDefault(s.currentWeapon, 12) >= 20);
@@ -873,7 +873,7 @@ public final class BotPvpAI {
      * Instead of purely perpendicular left/right strafing, the bot maintains an
      * <em>orbit</em> around the target at {@link #PREFERRED_DISTANCE}.  Each tick
      * the orbit angle advances by ~3.2° (adjustable by aggression), so the bot
-     * naturally spirals around the target — matching the reference mod's
+     * naturally spirals around the target - matching the reference mod's
      * angle-based {@code forward = cos(relAngle)} / {@code strafe = -sin(relAngle)}
      * walking direction, but translated to our direct-velocity API.
      *
@@ -920,7 +920,7 @@ public final class BotPvpAI {
             s.jukeTicks   = s.strafeTicks;
         }
 
-        // Advance orbit angle this tick (modulated by aggression — more aggressive = orbit faster)
+        // Advance orbit angle this tick (modulated by aggression - more aggressive = orbit faster)
         double orbitSpeed = 0.053 * s.aggression; // ~3.0–3.8° / tick
         s.orbitAngle += orbitSpeed * s.strafeDir;
 
@@ -934,7 +934,7 @@ public final class BotPvpAI {
         double toOrbitZ  = orbitTargetZ - botLoc.getZ();
         double orbitDist = Math.sqrt(toOrbitX * toOrbitX + toOrbitZ * toOrbitZ);
 
-        // Perpendicular strafe (traditional) — keeps working when orbit dist is tiny
+        // Perpendicular strafe (traditional) - keeps working when orbit dist is tiny
         double jitter = (rng.nextDouble() - 0.5) * VEL_JITTER_MAG;
         double sx = -nz * s.strafeDir + jitter;
         double sz =  nx * s.strafeDir - jitter;
@@ -1139,7 +1139,7 @@ public final class BotPvpAI {
 
     /**
      * If the bot has a shield in its offhand (or inventory), start using it.
-     * Only activates when no totem is occupying the offhand — totems take priority.
+     * Only activates when no totem is occupying the offhand - totems take priority.
      */
     private static void raiseShieldIfAvailable(Player bot) {
         PlayerInventory inv = bot.getInventory();
@@ -1170,11 +1170,11 @@ public final class BotPvpAI {
      *
      * <h3>Improvements over naive "run straight away"</h3>
      * <ul>
-     *   <li><b>Oscillating side-strafe</b> — a sin-wave lateral component makes the
+     *   <li><b>Oscillating side-strafe</b> - a sin-wave lateral component makes the
      *       escape path unpredictable, similar to how experienced players dodge
      *       while retreating.  Amplitude scales with distance so at very close
      *       range the bot runs more directly away.</li>
-     *   <li><b>Speed scales with aggression inversely</b> — when the bot is
+     *   <li><b>Speed scales with aggression inversely</b> - when the bot is
      *       critically low it sprints at 130% speed (desperation); when only
      *       slightly low it uses normal flee speed.</li>
      * </ul>
@@ -1188,7 +1188,7 @@ public final class BotPvpAI {
         double px = -nz;
         double pz =  nx;
 
-        // Oscillating side-strafe — sin wave driven by s.fleeTick counter
+        // Oscillating side-strafe - sin wave driven by s.fleeTick counter
         s.fleeTick++;
         double strafeAmp   = Math.max(0.0, 1.0 - horizDist / 12.0) * 0.5; // fades at long range
         double sineStrafe  = Math.sin(s.fleeTick * 0.28) * strafeAmp;
@@ -1210,10 +1210,10 @@ public final class BotPvpAI {
         bot.setSprinting(true);
 
         // Face the direction we're running (away from target)
-        // Use a direct snap here — during flee we want the bot to look where it's going,
+        // Use a direct snap here - during flee we want the bot to look where it's going,
         // not be limited by the smooth lerp (which would lag behind during fast escapes).
         float yaw   = (float)(-Math.toDegrees(Math.atan2(-dx, -dz)));
-        float pitch = -5f; // Slight downward tilt — looking at the escape path ahead
+        float pitch = -5f; // Slight downward tilt - looking at the escape path ahead
 
         if (Float.isFinite(yaw)) {
             // Sync smooth state so lerp doesn't snap when fight resumes
@@ -1302,7 +1302,7 @@ public final class BotPvpAI {
     }
 
     /**
-     * Enhanced obstacle detection — checks if the bot should jump to navigate terrain.
+     * Enhanced obstacle detection - checks if the bot should jump to navigate terrain.
      * 
      * <p>Checks multiple points ahead for better pathfinding:
      * <ul>
@@ -1361,7 +1361,7 @@ public final class BotPvpAI {
         // Check for gap/hole ahead (prevent falling)
         Block groundAhead = checkLoc1.getBlock().getRelative(0, -1, 0);
         if (!groundAhead.getType().isSolid() && !bot.isInWater()) {
-            // There's a gap — check if we need to jump across
+            // There's a gap - check if we need to jump across
             Block twoAhead = checkLoc2.getBlock().getRelative(0, -1, 0);
             if (twoAhead.getType().isSolid()) {
                 // Gap is jumpable (1-block wide)
@@ -1380,7 +1380,7 @@ public final class BotPvpAI {
      */
     private static void safeSetVelocity(Player bot, Vector vel) {
         if (!Double.isFinite(vel.getX()) || !Double.isFinite(vel.getY()) || !Double.isFinite(vel.getZ())) {
-            return; // discard — avoids IllegalArgumentException from Bukkit
+            return; // discard - avoids IllegalArgumentException from Bukkit
         }
         bot.setVelocity(vel);
     }
@@ -1408,14 +1408,14 @@ public final class BotPvpAI {
     /**
      * Face target with 1-tick predictive aim, an optional yaw juke offset, and
      * <b>smooth look interpolation</b> that lerps the bot's head toward the target
-     * angle instead of snapping — matching the reference mod's
+     * angle instead of snapping - matching the reference mod's
      * {@code BotPlayerActionPack.lookInterpolated()} behaviour.
      *
      * <p>Lerp speed adapts to the required turn angle:
      * <ul>
-     *   <li>{@literal > 60°} — fast (0.72 / tick) for large corrections</li>
-     *   <li>{@literal > 20°} — medium (0.52 / tick) for normal tracking</li>
-     *   <li>{@literal ≤ 20°} — slow (0.40 / tick) for fine micro-adjustments</li>
+     *   <li>{@literal > 60°} - fast (0.72 / tick) for large corrections</li>
+     *   <li>{@literal > 20°} - medium (0.52 / tick) for normal tracking</li>
+     *   <li>{@literal ≤ 20°} - slow (0.40 / tick) for fine micro-adjustments</li>
      * </ul>
      * Pitch lerps slightly faster than yaw so the bot doesn't visibly tilt
      * away from the target during quick up/down movements.
@@ -1442,7 +1442,7 @@ public final class BotPvpAI {
         float yaw, pitch;
         if (s != null && !Float.isNaN(s.smoothYaw)) {
             float angleDiff = Math.abs(wrapDeg(targetYaw - s.smoothYaw));
-            // Adaptive lerp factor — larger turn = snap faster to avoid lag
+            // Adaptive lerp factor - larger turn = snap faster to avoid lag
             float t = angleDiff > 60f ? 0.72f : (angleDiff > 20f ? 0.52f : 0.40f);
             s.smoothYaw   = lerpAngle(s.smoothYaw, targetYaw, t);
             // Pitch lerps a touch faster (vertical tracking is more critical for visuals)
@@ -1452,7 +1452,7 @@ public final class BotPvpAI {
             yaw   = s.smoothYaw;
             pitch = s.smoothPitch;
         } else {
-            // First tick — snap directly and seed the smooth state
+            // First tick - snap directly and seed the smooth state
             yaw = targetYaw;
             pitch = targetPitch;
             if (s != null) {
@@ -1543,7 +1543,7 @@ public final class BotPvpAI {
             if (queuePotionUse(bot, s, rng)) return;
         }
 
-        // ── Priority 2: HEALING FOOD — only if no healing potion is available ───
+        // ── Priority 2: HEALING FOOD - only if no healing potion is available ───
         // Never overlap with an active potion phase; never eat food when a potion
         // still exists in inventory (potion is always the higher-priority heal).
         if (health <= EAT_HEALTH_THRESHOLD && s.eatCooldown == 0
@@ -1576,13 +1576,13 @@ public final class BotPvpAI {
      *
      * <p>Phase order:
      * <ol>
-     *   <li>{@link PotionPhase#SWITCH_DELAY} — bot holds the potion but waits
+     *   <li>{@link PotionPhase#SWITCH_DELAY} - bot holds the potion but waits
      *       {@link #POTION_SWITCH_DELAY_MIN}–{@link #POTION_SWITCH_DELAY_MAX} ticks
      *       (human reaction lag; bot retreats slowly during this window).</li>
-     *   <li>{@link PotionPhase#AIM_TURN} — bot rotates to look back and downward
+     *   <li>{@link PotionPhase#AIM_TURN} - bot rotates to look back and downward
      *       ({@link #POTION_AIM_TICKS} ticks), so the splash lands at its own feet
      *       without "locking on" to the enemy with its head.</li>
-     *   <li>{@link PotionPhase#THROW} — bot executes the throw (see
+     *   <li>{@link PotionPhase#THROW} - bot executes the throw (see
      *       {@link #executePotionThrow}), then resets to IDLE.</li>
      * </ol>
      *
@@ -1591,7 +1591,7 @@ public final class BotPvpAI {
     private static boolean queuePotionUse(Player bot, BotState s, ThreadLocalRandom rng) {
         PlayerInventory inv = bot.getInventory();
 
-        // Prioritize SPLASH potions over drinkable — more impactful
+        // Prioritize SPLASH potions over drinkable - more impactful
         for (int pass = 0; pass < 2; pass++) {
             Material targetType = (pass == 0) ? Material.SPLASH_POTION : Material.POTION;
 
@@ -1626,9 +1626,9 @@ public final class BotPvpAI {
      * Called by {@link #tickBot} whenever {@code s.potionPhase != IDLE}.
      *
      * <ul>
-     *   <li>SWITCH_DELAY — bot retreats slowly, faces target, waits for timer.</li>
-     *   <li>AIM_TURN     — bot smoothly rotates to look away from target and downward.</li>
-     *   <li>THROW        — bot executes the throw, then returns to IDLE.</li>
+     *   <li>SWITCH_DELAY - bot retreats slowly, faces target, waits for timer.</li>
+     *   <li>AIM_TURN     - bot smoothly rotates to look away from target and downward.</li>
+     *   <li>THROW        - bot executes the throw, then returns to IDLE.</li>
      * </ul>
      */
     private static void processPotionPhase(FakePlayer fp, Player bot, BotState s, Player target) {
@@ -1638,7 +1638,7 @@ public final class BotPvpAI {
         switch (s.potionPhase) {
 
             case SWITCH_DELAY -> {
-                // Holding potion — stop sprinting, do a slow back-pedal while "preparing"
+                // Holding potion - stop sprinting, do a slow back-pedal while "preparing"
                 bot.setSprinting(false);
 
                 if (target != null) {
@@ -1672,7 +1672,7 @@ public final class BotPvpAI {
 
             case AIM_TURN -> {
                 // Rotate to look AWAY from target and DOWN at own feet.
-                // This prevents the bot's head from pointing at the enemy while healing —
+                // This prevents the bot's head from pointing at the enemy while healing -
                 // a tell-tale sign of automation.  The smooth lerp makes the turn look natural.
                 bot.setSprinting(false);
 
@@ -1699,7 +1699,7 @@ public final class BotPvpAI {
                     double rdz = tgtLoc.getZ() - botLoc.getZ();
                     awayYaw = (float)(-Math.toDegrees(Math.atan2(-rdx, -rdz)));
                 } else {
-                    awayYaw = bot.getLocation().getYaw(); // no target — just look down
+                    awayYaw = bot.getLocation().getYaw(); // no target - just look down
                 }
 
                 // Lerp pitch toward POTION_AIM_DOWN_PITCH for a smooth tilt
@@ -1756,7 +1756,7 @@ public final class BotPvpAI {
         boolean isSplash = (potion.getType() == Material.SPLASH_POTION);
 
         if (isSplash) {
-            // Throw at own feet — bot is already looking down/back from AIM_TURN
+            // Throw at own feet - bot is already looking down/back from AIM_TURN
             Location throwLoc = bot.getLocation().add(0, 1.5, 0);
             ThrownPotion thrown = bot.getWorld().spawn(throwLoc, ThrownPotion.class);
             thrown.setItem(potion.clone());
@@ -1800,7 +1800,7 @@ public final class BotPvpAI {
 
     /** Returns true if the PotionMeta has healing or regeneration (base type OR custom effects). */
     private static boolean isHealingPotionMeta(PotionMeta meta) {
-        // Check base potion type (normal brewing stand potions — most common)
+        // Check base potion type (normal brewing stand potions - most common)
         PotionType base = meta.getBasePotionType();
         if (base != null) {
             String n = base.name();
@@ -1901,7 +1901,7 @@ public final class BotPvpAI {
     private static void startEating(Player bot, BotState s, ItemStack food, int slot) {
         PlayerInventory inv = bot.getInventory();
 
-        // Move food to main hand (keep it there — Minecraft will consume it after 32 ticks)
+        // Move food to main hand (keep it there - Minecraft will consume it after 32 ticks)
         ItemStack currentMain = inv.getItemInMainHand();
         if (currentMain.getType() == Material.AIR) currentMain = null;
         inv.setItemInMainHand(food.clone());
@@ -1918,7 +1918,7 @@ public final class BotPvpAI {
         s.eatingTicks     = 36; // slightly longer than vanilla 32 ticks for safety
         s.eatCooldown     = EAT_COOLDOWN;
         s.pendingFoodType = null; // Minecraft handles benefits natively now
-        s.isFleeing       = true; // flee while eating — bot sprints away instead of standing still
+        s.isFleeing       = true; // flee while eating - bot sprints away instead of standing still
     }
 
     /**
@@ -2084,7 +2084,7 @@ public final class BotPvpAI {
         
         // Check if totem was just used (offhand went from totem to empty/air)
         if (s.totemUsed && s.totemSwapDelay == 0) {
-            // Totem cooldown expired — try to get new totem
+            // Totem cooldown expired - try to get new totem
             ItemStack newTotem = findTotemInInventory(inv);
             if (newTotem != null) {
                 // Move new totem to offhand
@@ -2544,7 +2544,7 @@ public final class BotPvpAI {
         if (p == null || !p.isOnline() || p.isDead()) return false;
         if (!p.getWorld().equals(bot.getWorld())) return false;
         if (manager.getByUuid(p.getUniqueId()) != null) return false; // never target other bots
-        // Only target SURVIVAL and ADVENTURE mode players — ignore CREATIVE and SPECTATOR
+        // Only target SURVIVAL and ADVENTURE mode players - ignore CREATIVE and SPECTATOR
         GameMode gm = p.getGameMode();
         if (gm != GameMode.SURVIVAL && gm != GameMode.ADVENTURE) return false;
 
@@ -2827,7 +2827,7 @@ public final class BotPvpAI {
     /**
      * Returns whether the bot is on the ground via the Entity reference so the
      * compiler sees Entity#isOnGround (not deprecated) instead of
-     * Player#isOnGround (deprecated — only deprecated because real clients can
+     * Player#isOnGround (deprecated - only deprecated because real clients can
      * spoof it; server-controlled bots report ground state server-side).
      */
     private static boolean isGrounded(Player p) {
@@ -2843,3 +2843,4 @@ public final class BotPvpAI {
         return inst != null ? inst.getValue() : 20.0;
     }
 }
+

@@ -21,19 +21,19 @@ import java.util.List;
  *
  * <h3>Covered files</h3>
  * <ul>
- *   <li>{@code language/en.yml}  — message strings; new keys added by plugin updates
+ *   <li>{@code language/en.yml}  - message strings; new keys added by plugin updates
  *       are automatically merged into the user's file.</li>
- *   <li>{@code bot-names.yml}    — ensures the root {@code name} list key is present.</li>
- *   <li>{@code bot-messages.yml} — ensures the root {@code messages} list key is present.</li>
+ *   <li>{@code bot-names.yml}    - ensures the root {@code name} list key is present.</li>
+ *   <li>{@code bot-messages.yml} - ensures the root {@code messages} list key is present.</li>
  * </ul>
  *
  * <h3>Integration points</h3>
  * <ul>
- *   <li>{@link me.bill.fakePlayerPlugin.lang.Lang#reload()} — runs automatically on
+ *   <li>{@link me.bill.fakePlayerPlugin.lang.Lang#reload()} - runs automatically on
  *       startup and every {@code /fpp reload}.</li>
- *   <li>{@link me.bill.fakePlayerPlugin.config.BotNameConfig#reload()} — same.</li>
- *   <li>{@link me.bill.fakePlayerPlugin.config.BotMessageConfig#reload()} — same.</li>
- *   <li>{@code /fpp migrate lang|names|messages} — force-sync from the command line.</li>
+ *   <li>{@link me.bill.fakePlayerPlugin.config.BotNameConfig#reload()} - same.</li>
+ *   <li>{@link me.bill.fakePlayerPlugin.config.BotMessageConfig#reload()} - same.</li>
+ *   <li>{@code /fpp migrate lang|names|messages} - force-sync from the command line.</li>
  * </ul>
  */
 public final class YamlFileSyncer {
@@ -114,7 +114,7 @@ public final class YamlFileSyncer {
             // unknown Bukkit-serialized types (e.g. !!MVSpawnLocation from Multiverse).
             // Log a warning and skip the sync rather than crashing the plugin.
             FppLogger.warn("YamlFileSyncer: could not parse disk file '" + fileName
-                    + "' — it may be corrupted or contain unknown serializable types"
+                    + "' - it may be corrupted or contain unknown serializable types"
                     + " (e.g. from another plugin). Skipping sync. Cause: " + e.getMessage());
             return new SyncResult(fileName, List.of());
         }
@@ -127,7 +127,7 @@ public final class YamlFileSyncer {
         }
 
         if (missing.isEmpty()) {
-            FppLogger.debug("YamlFileSyncer: " + fileName + " is up to date — no keys missing.");
+            FppLogger.debug("YamlFileSyncer: " + fileName + " is up to date - no keys missing.");
             return new SyncResult(fileName, List.of());
         }
 
@@ -143,7 +143,7 @@ public final class YamlFileSyncer {
             return new SyncResult(fileName, List.of());
         }
 
-        FppLogger.info("YamlFileSyncer: " + fileName + " — added " + missing.size()
+        FppLogger.info("YamlFileSyncer: " + fileName + " - added " + missing.size()
                 + " new key(s) from JAR defaults: " + String.join(", ", missing));
         return new SyncResult(fileName, Collections.unmodifiableList(missing));
     }
@@ -173,7 +173,7 @@ public final class YamlFileSyncer {
             return 0;
         } catch (RuntimeException e) {
             FppLogger.warn("YamlFileSyncer: could not parse disk file for countMissingKeys"
-                    + " — skipping. Cause: " + e.getMessage());
+                    + " - skipping. Cause: " + e.getMessage());
             return 0;
         }
 
@@ -207,4 +207,5 @@ public final class YamlFileSyncer {
         }
     }
 }
+
 

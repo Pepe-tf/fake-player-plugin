@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 /**
  * Central dispatcher for all {@code /fpp} sub-commands.
- * Register a new command once with {@link #register(FppCommand)} — the dynamic
+ * Register a new command once with {@link #register(FppCommand)} - the dynamic
  * help menu and tab-complete will pick it up automatically.
  */
 public class CommandManager implements CommandExecutor, TabCompleter {
@@ -44,12 +44,28 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         if (!byName.containsKey(command.getName().toLowerCase())) {
             commands.add(command);
             byName.put(command.getName().toLowerCase(), command);
+            // Register aliases - they resolve to the same handler but don't appear in help
+            for (String alias : command.getAliases()) {
+                byName.putIfAbsent(alias.toLowerCase(), command);
+            }
             Config.debug("Registered command: fpp " + command.getName());
         }
     }
 
     public List<FppCommand> getCommands() {
         return Collections.unmodifiableList(commands);
+    }
+
+    /**
+     * Injects the {@link me.bill.fakePlayerPlugin.gui.HelpGui} into the {@link HelpCommand}
+     * once it's been created (after plugin startup completes).
+     * Called by {@link FakePlayerPlugin#onEnable()} after listener registration.
+     */
+    public void setHelpGui(me.bill.fakePlayerPlugin.gui.HelpGui helpGui) {
+        FppCommand help = byName.get("help");
+        if (help instanceof HelpCommand hc) {
+            hc.setHelpGui(helpGui);
+        }
     }
 
     // ── CommandExecutor ──────────────────────────────────────────────────────
@@ -83,7 +99,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Use canUse() — handles both single-perm and dual-tier commands
+        // Use canUse() - handles both single-perm and dual-tier commands
         if (!sub.canUse(sender)) {
             Config.debug(sender.getName() + " was denied: fpp " + subName);
             sender.sendMessage(Lang.get("no-permission"));
@@ -126,7 +142,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     // ── Plugin info screen ────────────────────────────────────────────────────
 
     /**
-     * Shown when the player types bare {@code /fpp} — a compact, themed info panel.
+     * Shown when the player types bare {@code /fpp} - a compact, themed info panel.
      */
     private void sendPluginInfo(CommandSender sender) {
         String version = plugin.getPluginMeta().getVersion();
@@ -151,7 +167,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
             sender.sendMessage(row("ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ", String.valueOf(fpm.getCount())));
         }
 
-        // Download links — all 4 platforms as clickable text
+        // Download links - all 4 platforms as clickable text
         sender.sendMessage(Component.empty()
                 .append(Component.text("  ").color(DARK_GRAY))
                 .append(Component.text("ᴅᴏᴡɴʟᴏᴀᴅ ").color(GRAY))
@@ -193,7 +209,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
         sender.sendMessage(Component.empty());
 
-        // Help hint — clickable shortcut
+        // Help hint - clickable shortcut
         sender.sendMessage(Component.empty()
                 .append(Component.text("  ").color(DARK_GRAY))
                 .append(Component.text("ᴛʏᴘᴇ ").color(GRAY))
@@ -214,3 +230,5 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 .append(Component.text(value).color(WHITE));
     }
 }
+
+

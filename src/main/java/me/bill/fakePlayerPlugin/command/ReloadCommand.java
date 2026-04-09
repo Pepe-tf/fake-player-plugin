@@ -31,7 +31,7 @@ import org.bukkit.command.CommandSender;
  *   <li>Update checker (fresh async version check)</li>
  * </ol>
  *
- * <p>All changes take effect immediately — no server restart required.
+ * <p>All changes take effect immediately - no server restart required.
  */
 public class ReloadCommand implements FppCommand {
 
@@ -68,11 +68,11 @@ public class ReloadCommand implements FppCommand {
         //        take effect immediately instead of waiting for old tasks to expire
         if (plugin.getBotChatAI() != null && Config.fakeChatEnabled()) {
             plugin.getBotChatAI().restartLoops();
-            sendStep(sender, "Bot-chat loops restarted  —  interval "
+            sendStep(sender, "Bot-chat loops restarted  -  interval "
                     + Config.fakeChatIntervalMin() + "–" + Config.fakeChatIntervalMax() + "s");
         }
 
-        // ── 1a. AUTO_PUSH — push updated configs to the network after reload ──
+        // ── 1a. AUTO_PUSH - push updated configs to the network after reload ──
         if (Config.configSyncMode().equalsIgnoreCase("AUTO_PUSH")
                 && plugin.getConfigSyncManager() != null) {
             var csm = plugin.getConfigSyncManager();
@@ -85,7 +85,7 @@ public class ReloadCommand implements FppCommand {
 
         // ── 2. Tab-list manager ───────────────────────────────────────────────
         if (plugin.getTabListManager() != null) plugin.getTabListManager().reload();
-        sendStep(sender, "Tab-list  —  bots " + (Config.tabListEnabled() ? "visible" : "hidden"));
+        sendStep(sender, "Tab-list  -  bots " + (Config.tabListEnabled() ? "visible" : "hidden"));
 
         // ── 3. Active bot runtime state ───────────────────────────────────────
         FakePlayerManager fpm = plugin.getFakePlayerManager();
@@ -96,18 +96,18 @@ public class ReloadCommand implements FppCommand {
             if (active > 0) sendStep(sender, active + " active bot(s) runtime state updated");
         }
 
-        // ── 3b. Peak-hours reload — wakes sleeping bots then re-evaluates ──────
+        // ── 3b. Peak-hours reload - wakes sleeping bots then re-evaluates ──────
         me.bill.fakePlayerPlugin.fakeplayer.PeakHoursManager phm = plugin.getPeakHoursManager();
         if (phm != null) {
             phm.reload();
             String phState = me.bill.fakePlayerPlugin.config.Config.peakHoursEnabled()
-                    ? "on — " + phm.getSleepingCount() + " sleeping, "
+                    ? "on - " + phm.getSleepingCount() + " sleeping, "
                       + phm.getTotalPool() + " total pool"
                     : "off";
             sendStep(sender, "Peak-hours reloaded  (" + phState + ")");
         }
 
-        // ── 4. LuckPerms — bots are real NMS players, LP handles natively ─────
+        // ── 4. LuckPerms - bots are real NMS players, LP handles natively ─────
         // No manual cache invalidation needed. Display names auto-update via
         // UserDataRecalculateEvent subscription (see LuckPermsHelper.subscribeLpEvents).
         sendStep(sender, "LuckPerms integration active (auto-updates via event bus)");
@@ -124,7 +124,7 @@ public class ReloadCommand implements FppCommand {
         int issues = ConfigValidator.validate();
         if (issues > 0) {
             sender.sendMessage(Component.text("│  ⚠ " + issues
-                    + " config issue(s) detected — check console").color(YELLOW));
+                    + " config issue(s) detected - check console").color(YELLOW));
         }
 
         // ── 7. Update checker (async, non-blocking) ───────────────────────────
@@ -150,3 +150,4 @@ public class ReloadCommand implements FppCommand {
         );
     }
 }
+

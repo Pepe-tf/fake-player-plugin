@@ -1,7 +1,8 @@
 # Configuration
 
 FPP is configured through `plugins/FakePlayerPlugin/config.yml`.  
-All changes take effect immediately after running `/fpp reload` — no server restart required.
+All changes take effect immediately after running `/fpp reload` — no server restart required.  
+**Config version:** 51 (auto-migrated from any older version)
 
 ---
 
@@ -11,10 +12,10 @@ All changes take effect immediately after running `/fpp reload` — no server re
 |---------|---------|
 | [`language`](#language) | Active language file |
 | [`debug`](#debug) | Verbose console logging |
-| [`logging.debug.*`](#debug) | Per-subsystem debug toggles (startup, nms, packets, luckperms, network, config-sync, skin, database, chat) |
+| [`logging.debug.*`](#debug) | Per-subsystem debug toggles (startup, nms, packets, luckperms, network, config-sync, skin, database, chat, swap) |
 | [`bot-name`](#bot-display-names) | Admin/user display name format templates |
 | [`skin`](#skin) | Skin system mode (`auto` / `custom` / `off`) |
-| [`body`](#body) | Physical entity, pushable & damageable toggles |
+| [`body`](#body) | Physical entity, pushable, damageable, pick-up-items, pick-up-xp toggles |
 | [`persistence`](#persistence) | Save/restore bots across restarts |
 | [`join-delay` / `leave-delay`](#join-delay) | Staggered join/leave timing |
 | [`combat`](#combat) | Health and hurt sounds |
@@ -25,8 +26,11 @@ All changes take effect immediately after running `/fpp reload` — no server re
 | [`swim-ai`](#swim-ai) | Automatic swimming in water/lava |
 | [`collision`](#collision--push) | Push physics |
 | [`swap`](#swap-system) | Bot session rotation settings |
+| [`peak-hours`](#peak-hours) | Time-window bot pool scheduler |
+| [`pathfinding`](#pathfinding) | A* pathfinding options for `/fpp move` *(v1.6.0)* |
 | [`fake-chat`](#fake-chat) | Bot chat AI, realism enhancements, event triggers |
 | [`tab-list`](#tab-list) | Tab-list header/footer and bot visibility toggle |
+| [`performance`](#performance) | Position sync distance culling |
 | [`database`](#database) | SQLite / MySQL storage |
 | [`config-sync`](#config-sync) | Cross-server config push/pull mode |
 
@@ -119,8 +123,8 @@ limits:
 ```
 
 The default personal bot limit for players with `fpp.user.spawn`.  
-This is the fallback when the player has no `fpp.bot.<num>` node.  
-Override per-player or per-group with the `fpp.bot.<num>` permission nodes.
+This is the fallback when the player has no `fpp.spawn.limit.<N>` node.  
+Override per-player or per-group with the `fpp.spawn.limit.<N>` permission nodes.
 
 ### spawn-presets
 
@@ -176,15 +180,19 @@ body:
   enabled: true
   pushable: true
   damageable: true
+  pick-up-items: false   # bots do not pick up items by default
+  pick-up-xp: true       # bots pick up XP orbs (gated by XpCommand cooldown when false)
 ```
 
-Controls whether a physical **Mannequin** entity is spawned for each bot and how it interacts with the world.
+Controls whether a physical NMS ServerPlayer entity is spawned and how it interacts with the world.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enabled` | boolean | `true` | Spawn a visible Mannequin entity in the world. When `false`, bots appear only in the tab list with join/leave messages — no entity is placed. |
-| `pushable` | boolean | `true` | Allow players and other entities to physically push the bot's body. When `false`, the Mannequin is completely immovable — walk-into, hit-knockback, and bot-vs-bot separation forces are all ignored. Hot-reloadable via `/fpp reload`. |
-| `damageable` | boolean | `true` | Allow the bot's body to take damage and be killed. When `false`, the Mannequin is invulnerable — hits register the hurt sound (if `combat.hurt-sound: true`) but deal no damage. Hot-reloadable via `/fpp reload`. |
+| `enabled` | boolean | `true` | Spawn a visible entity in the world. When `false`, bots appear only in the tab list with join/leave messages — no entity is placed. |
+| `pushable` | boolean | `true` | Allow players and entities to physically push the bot. When `false`, the bot is immovable. Hot-reloadable via `/fpp reload`. |
+| `damageable` | boolean | `true` | Allow the bot to take damage and be killed. When `false`, the bot is invulnerable. Hot-reloadable via `/fpp reload`. |
+| `pick-up-items` | boolean | `false` | Allow bots to pick up item entities in the world. |
+| `pick-up-xp` | boolean | `true` | Allow bots to pick up XP orbs. When `false`, all XP orb pickup is blocked. Also honoured by the `/fpp xp` post-collection cooldown via `BotXpPickupListener`. *(v1.6.0)* |
 
 ## Persistence
 
@@ -458,6 +466,29 @@ tab-list:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `enabled` | boolean | `true` | **Whether bots appear as entries in the player tab list.** `true` = bots show in the tab list. `false` = bots are invisible in the tab list; they still count toward the server player count shown in the multiplayer server-list screen. Hot-reloadable via `/fpp reload`. |
+
+## Pathfinding
+
+*(New in v1.6.0 — used by `/fpp move`)*
+
+```yaml
+pathfinding:
+  parkour: false          # Enable gap-jump moves (bot will jump over 1-block gaps)
+  break-blocks: false     # Allow breaking obstructing blocks to clear a path
+  place-blocks: false     # Allow placing blocks to bridge gaps
+  place-material: DIRT    # Material used when bridging (must be a solid block)
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `parkour` | `false` | When `true`, the A* pathfinder includes PARKOUR moves — the bot will jump across 1-block horizontal gaps. Increases search complexity. |
+| `break-blocks` | `false` | When `true`, the bot may break obstructing blocks (BREAK move type) to clear a path. Uses `handleBlockBreakAction()` NMS call. |
+| `place-blocks` | `false` | When `true`, the bot may place blocks to bridge floor gaps (PLACE move type). Extends `MAX_NODES` from 2000 to 4000. |
+| `place-material` | `DIRT` | Material to place when bridging. Must be a valid solid block material. Falls back to DIRT if invalid. |
+
+These options are re-read on every path recalculation — change them via `/fpp settings` (Pathfinding category) or in `config.yml` then `/fpp reload`.
+
+---
 
 ## Database
 

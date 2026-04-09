@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
  * permission plugin is installed (LuckPerms, PermissionsEx, GroupManager, etc.)
  * automatically. No LuckPerms API dependency is needed here; LuckPerms hooks
  * into Bukkit's permission layer at startup. All you need to do is assign the
- * nodes listed below to groups or players via LuckPerms commands — they will
+ * nodes listed below to groups or players via LuckPerms commands - they will
  * take effect immediately.
  *
  * <h3>Inheritance</h3>
@@ -27,80 +27,94 @@ import org.bukkit.entity.Player;
  *   /lp group admin permission set fpp.* true
  * </pre>
  */
-@SuppressWarnings("unused") // All constants are public API — used by commands via getPermission()
+@SuppressWarnings("unused") // All constants are public API - used by commands via getPermission()
 public final class Perm {
 
     private Perm() {}
 
     // ── Admin wildcard ────────────────────────────────────────────────────────
 
-    /** Grants access to every FPP command. Children declared in plugin.yml. */
-    public static final String ALL        = "fpp.*";
+    /**
+     * Grants access to every FPP command (admin + user).
+     * Replaces the old fpp.* wildcard. Children declared in plugin.yml.
+     */
+    public static final String OP = "fpp.op";
 
     // ── User wildcard ─────────────────────────────────────────────────────────
 
     /**
-     * Grants all user-facing FPP commands (spawn, tph, info-self).
+     * Grants all user-facing FPP commands (spawn, tph, xp, info-self).
      * Does NOT include admin commands (delete, reload, chat, list, info-full).
-     * Children declared in plugin.yml.
+     * Replaces the old fpp.user.* wildcard. Children declared in plugin.yml.
      */
-    public static final String USER_ALL   = "fpp.user.*";
+    public static final String USE = "fpp.use";
 
     // ── User commands ─────────────────────────────────────────────────────────
 
     /**
-     * User-tier spawn — spawn bots up to the player's personal bot limit.
-     * The limit is resolved from {@code fpp.bot.<num>} nodes (highest wins).
-     * Falls back to config {@code fake-player.user-bot-limit} when no
-     * {@code fpp.bot.*} node is present.
+     * User-tier spawn - spawn bots up to the player's personal bot limit.
+     * The limit is resolved from {@code fpp.spawn.limit.<num>} nodes (highest wins).
+     * Falls back to config {@code fake-player.user-bot-limit} when no limit node is present.
      */
-    public static final String USER_SPAWN = "fpp.user.spawn";
+    public static final String USER_SPAWN = "fpp.spawn.user";
 
     /**
      * Teleport the user's own bot(s) to themselves.
-     * {@code /fpp tph [botname]} — user-tier, included in fpp.user.*.
+     * {@code /fpp tph [botname]} - user-tier, included in fpp.use.
      */
-    public static final String TPH        = "fpp.user.tph";
+    public static final String USER_TPH = "fpp.tph";
 
     /**
      * Teleport the user to one of their own bots.
-     * {@code /fpp tp [botname]} — admin-tier by default.
+     * {@code /fpp tp [botname]} - admin-tier by default.
      */
-    public static final String TP         = "fpp.tp";
+    public static final String TP = "fpp.tp";
+
+    /**
+     * Collect XP from a bot.
+     * {@code /fpp xp <botname>} - user-tier by default, included in fpp.use.
+     */
+    public static final String USER_XP = "fpp.xp";
 
     /**
      * View limited bot info for bots the user owns.
-     * {@code /fpp info <botname>} — shows location, world, uptime only.
-     * Included in fpp.user.*.
+     * {@code /fpp info <botname>} - shows location, world, uptime only.
+     * Included in fpp.use.
      */
-    public static final String INFO_SELF  = "fpp.user.info";
+    public static final String USER_INFO = "fpp.info.user";
 
     // ── Bot limit nodes ───────────────────────────────────────────────────────
 
     /**
-     * Per-user bot spawn limit — resolved by scanning {@code fpp.bot.<num>}
+     * Per-user bot spawn limit - resolved by scanning {@code fpp.spawn.limit.<num>}
      * from 1 to 100. The highest matching node wins.
      *
      * <p>Examples:
      * <pre>
-     *   fpp.bot.1   → player may have at most 1 bot active
-     *   fpp.bot.5   → player may have at most 5 bots active
-     *   fpp.bot.20  → player may have at most 20 bots active
+     *   fpp.spawn.limit.1   → player may have at most 1 bot active
+     *   fpp.spawn.limit.5   → player may have at most 5 bots active
+     *   fpp.spawn.limit.20  → player may have at most 20 bots active
      * </pre>
      *
-     * If the player has no {@code fpp.bot.*} node, the global
+     * If the player has no {@code fpp.spawn.limit.*} node, the global
      * {@code fake-player.user-bot-limit} config value is used.
      * If the player also has {@link #BYPASS_MAX} the global max is ignored.
      */
-    public static final String BOT_LIMIT_PREFIX = "fpp.bot.";
+    public static final String BOT_LIMIT_PREFIX = "fpp.spawn.limit.";
 
     // ── Admin commands ────────────────────────────────────────────────────────
 
     /** View the /fpp help menu. Default: everyone. */
     public static final String HELP       = "fpp.help";
 
-    /** Run /fpp spawn [amount] [--name <name>]. Default: op. */
+    /** Run /fpp spawn [amount] [--name <name>]. Admin-tier spawn. Default: op. */
     public static final String SPAWN      = "fpp.spawn";
+
+    /** Spawn more than one bot at a time. Inherited from fpp.spawn. */
+    public static final String SPAWN_MULTIPLE    = "fpp.spawn.multiple";
+
+    /** Use the --name flag for custom bot names. Inherited from fpp.spawn. */
+    public static final String SPAWN_CUSTOM_NAME = "fpp.spawn.name";
 
     /** Run /fpp delete <name|all>. Default: op. */
     public static final String DELETE     = "fpp.delete";
@@ -117,45 +131,26 @@ public final class Perm {
     /** Toggle /fpp chat on|off. Default: op. */
     public static final String CHAT       = "fpp.chat";
 
-
     /** Run /fpp reload. Default: op. */
     public static final String RELOAD     = "fpp.reload";
 
     /** Full admin query of /fpp info. Default: op. */
     public static final String INFO       = "fpp.info";
 
-    // ── Spawn sub-nodes ───────────────────────────────────────────────────────
-
-    /** Spawn more than one bot at a time. Inherited from fpp.spawn. */
-    public static final String SPAWN_MULTIPLE    = "fpp.spawn.multiple";
-
-    /** Use the --name flag for custom bot names. Inherited from fpp.spawn. */
-    public static final String SPAWN_CUSTOM_NAME = "fpp.spawn.name";
-
-    // ── Admin bypass ─────────────────────────────────────────────────────────
-
-    /** Bypass the max-bots cap defined in config.yml. */
-    public static final String BYPASS_MAX = "fpp.bypass.maxbots";
-
-    // ── Migration / Backup ────────────────────────────────────────────────────
-
-    /** Access {@code /fpp migrate} — the config and database migration system. */
-    public static final String ADMIN_MIGRATE = "fpp.admin.migrate";
+    /** Freeze or unfreeze bots with /fpp freeze <bot|all> [on|off]. */
+    public static final String FREEZE        = "fpp.freeze";
 
     /** View the /fpp stats panel with live and database statistics. */
     public static final String STATS         = "fpp.stats";
 
-    /** Freeze or unfreeze bots with /fpp freeze <bot|all> [on|off]. */
-    public static final String FREEZE        = "fpp.freeze";
+    /** Access {@code /fpp migrate} - the config and database migration system. */
+    public static final String MIGRATE = "fpp.migrate";
 
     /** View LuckPerms diagnostic info for a bot via /fpp lpinfo <bot>. */
     public static final String LP_INFO       = "fpp.lpinfo";
 
     /** Assign LuckPerms groups to bots via /fpp rank. */
     public static final String RANK          = "fpp.rank";
-
-    /** Bypass the spawn cooldown timer. */
-    public static final String BYPASS_COOLDOWN = "fpp.bypass.cooldown";
 
     /** Broadcast network-wide alerts via /fpp alert. */
     public static final String ALERT         = "fpp.alert";
@@ -171,6 +166,36 @@ public final class Perm {
 
     /** Open the interactive in-game settings GUI via /fpp settings. */
     public static final String SETTINGS      = "fpp.settings";
+
+    /** Control bot movement (WASD) via /fpp move. */
+    public static final String MOVE          = "fpp.move";
+
+    /** Open and edit a bot's inventory via /fpp inventory <bot>. */
+    public static final String INVENTORY     = "fpp.inventory";
+
+    /** Execute a server command as a bot via /fpp cmd <bot> <command...>. */
+    public static final String CMD           = "fpp.cmd";
+
+    /** Make a bot mine blocks in front of them via /fpp mine <bot>. */
+    public static final String MINE          = "fpp.mine";
+
+    /**
+     * Make a bot right-click whatever it's looking at via /fpp use {@literal <bot>}.
+     * Named {@code USE_CMD} (not {@code USE}) to avoid collision with the user-wildcard
+     * {@link #USE} = {@code fpp.use}.
+     */
+    public static final String USE_CMD       = "fpp.useitem";
+
+    /** Create, remove, and list named waypoint patrol routes via /fpp waypoint (alias: /fpp wp). */
+    public static final String WAYPOINT      = "fpp.waypoint";
+
+    // ── Admin bypass ─────────────────────────────────────────────────────────
+
+    /** Bypass the max-bots cap defined in config.yml. */
+    public static final String BYPASS_MAX = "fpp.bypass.max";
+
+    /** Bypass the spawn cooldown timer. */
+    public static final String BYPASS_COOLDOWN = "fpp.bypass.cooldown";
 
     // ── Static helpers ────────────────────────────────────────────────────────
 
@@ -203,7 +228,7 @@ public final class Perm {
 
     /**
      * Resolves the per-user bot limit for {@code sender} by scanning
-     * {@code fpp.bot.1} through {@code fpp.bot.100} and returning the
+     * {@code fpp.spawn.limit.1} through {@code fpp.spawn.limit.100} and returning the
      * highest matching number. Returns {@code -1} if no node is set
      * (caller should fall back to global config limit).
      */
@@ -217,3 +242,4 @@ public final class Perm {
         return best;
     }
 }
+

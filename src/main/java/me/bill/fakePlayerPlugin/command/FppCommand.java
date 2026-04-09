@@ -14,6 +14,12 @@ public interface FppCommand {
     /** Primary name used in {@code /fpp <name>}. */
     String getName();
 
+    /**
+     * Optional aliases for this sub-command (e.g. {@code ["inv"]} for {@code inventory}).
+     * Aliases are resolved by {@link CommandManager} but do NOT appear in the help menu.
+     */
+    default List<String> getAliases() { return Collections.emptyList(); }
+
     /** Short usage hint shown in the help list, e.g. {@code <player> [world]}. */
     String getUsage();
 
@@ -64,3 +70,4 @@ public interface FppCommand {
         return Collections.emptyList();
     }
 }
+

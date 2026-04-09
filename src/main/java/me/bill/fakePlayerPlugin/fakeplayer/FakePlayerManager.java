@@ -7,9 +7,13 @@ import me.bill.fakePlayerPlugin.database.BotRecord;
 import me.bill.fakePlayerPlugin.database.DatabaseManager;
 import me.bill.fakePlayerPlugin.util.BotTabTeam;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.util.BlockIterator;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -74,6 +78,42 @@ public class FakePlayerManager {
      */
     private final Set<UUID> bodyTransitionBots = new HashSet<>();
     /**
+     * Navigation jump-hold timer.  When a navigation system (e.g. {@code MoveCommand})
+     * needs the bot to jump on land, it calls {@link #requestNavJump(UUID)} which sets
+     * a hold-count here.  The swim-AI block in the physics tick loop reads this map and
+     * keeps {@code jumping = true} for that many ticks, preventing the normal
+     * {@code setJumping(false)} reset from cancelling the jump before physics fires.
+     * <p>
+     * Using a countdown (rather than a one-shot boolean) ensures the jump flag stays
+     * set long enough for {@code LivingEntity.travel()} to call {@code jumpFromGround()}
+     * even if the bot is momentarily airborne when the first tick fires.
+     */
+    private final Map<UUID, Integer> navJumpHolding = new ConcurrentHashMap<>();
+
+    /**
+     * Mining position locks.  When a bot is set to mine via {@code MineCommand},
+     * its starting {@link Location} (including yaw + pitch) is stored here.
+     * <ul>
+     *   <li>The head-AI loop <b>skips</b> bots in this map so they never auto-rotate.</li>
+     *   <li>The physics tick enforces the locked position every tick so physics or
+     *       knockback cannot push the bot off its mining spot.</li>
+     *   <li>The locked rotation is sent to nearby players every tick so the mining
+     *       direction is visible.</li>
+     * </ul>
+     * Populated by {@link #lockForMining(UUID, Location)} (called from {@code MineCommand});
+     * removed by {@link #unlockMining(UUID)} when mining stops or the bot despawns.
+     */
+    private final ConcurrentHashMap<UUID, Location> miningLockedBots = new ConcurrentHashMap<>();
+
+    /**
+     * Navigation-locked bots.  When a bot is actively navigating via {@code MoveCommand}
+     * (player-follow or waypoint-patrol), its UUID is added here so the head-AI loop
+     * does not override the direction being set every tick by the navigation task.
+     * Populated by {@link #lockForNavigation(UUID)}; removed by {@link #unlockNavigation(UUID)}.
+     */
+    private final Set<UUID> navLockedBots = ConcurrentHashMap.newKeySet();
+
+    /**
      * UUIDs of bots that are being permanently despawned via {@link #delete} or
      * {@link #removeAll}.  Populated immediately before {@code FakePlayerBody.removeAll()}
      * fires {@code PlayerQuitEvent}, cleared right after.  Lets
@@ -88,9 +128,9 @@ public class FakePlayerManager {
     private DatabaseManager db;
     private BotPersistence  persistence;
     private BotTabTeam      botTabTeam;
-    /** PVP bot AI — movement + attack loop for all {@link BotType#PVP} bots. */
+    /** PVP bot AI - movement + attack loop for all {@link BotType#PVP} bots. */
     private final BotPvpAI  pvpAI;
-    /** Swap AI — session rotation system for all {@link BotType#AFK} bots. */
+    /** Swap AI - session rotation system for all {@link BotType#AFK} bots. */
     private BotSwapAI       botSwapAI;
     /**
      * Stable name→UUID registry.  When set, replaces {@link UUID#randomUUID()} so every
@@ -123,7 +163,7 @@ public class FakePlayerManager {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (activePlayers.isEmpty()) return;
             for (FakePlayer fp : activePlayers.values()) {
-                // Use getLiveLocation() — prefers NMS Player body over stored spawn pos
+                // Use getLiveLocation() - prefers NMS Player body over stored spawn pos
                 org.bukkit.Location loc = fp.getLiveLocation();
                 if (loc == null || loc.getWorld() == null) continue;
                 String world = loc.getWorld().getName();
@@ -156,7 +196,7 @@ public class FakePlayerManager {
 
         // Every tick: run manual physics for each bot (gravity, velocity decay, knockback
         // integration) then sync the updated position to nearby real players via packets.
-        // NMS ServerPlayer movement is client-authoritative — the server never moves a player
+        // NMS ServerPlayer movement is client-authoritative - the server never moves a player
         // on its own; without this loop bots float, ignore gravity, and can't be knocked back.
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (activePlayers.isEmpty()) return;
@@ -185,7 +225,7 @@ public class FakePlayerManager {
 
             for (FakePlayer fp : activePlayers.values()) {
                 Player bot = fp.getPlayer();
-                // Skip bots that are dead, offline, or invalid — they cannot be ticked.
+                // Skip bots that are dead, offline, or invalid - they cannot be ticked.
                 // Dead bots are handled by FakePlayerEntityListener.onEntityDeath and will
                 // be removed shortly; ticking them would cause NMS errors.
                 if (bot == null || !bot.isValid() || !bot.isOnline() || bot.isDead()) continue;
@@ -197,11 +237,27 @@ public class FakePlayerManager {
                     // up to the surface instead of sinking.  We set the NMS `jumping` flag
                     // before doTick() so the vanilla fluid-travel code applies the upward
                     // impulse (+0.04 m/s) on this same tick.
-                    // The flag MUST be explicitly cleared when outside fluid — bots have no
+                    // The flag MUST be explicitly cleared when outside fluid - bots have no
                     // real client to reset it, so it would persist and cause endless jumping
                     // on land after exiting water.
+                    //
+                    // Navigation jump override: process the navJumpHolding countdown
+                    // unconditionally so the timer always drains (even if swimAi=false).
+                    // While count > 0 the bot must jump on land - we keep jumping=true so
+                    // the swim-AI reset doesn't cancel it before tickPhysics fires.
+                    Integer navHold = navJumpHolding.get(fp.getUuid());
+                    boolean navJump = navHold != null && navHold > 0;
+                    if (navHold != null) {
+                        if (navHold <= 1) navJumpHolding.remove(fp.getUuid());
+                        else navJumpHolding.put(fp.getUuid(), navHold - 1);
+                    }
+
                     if (swimAi) {
-                        NmsPlayerSpawner.setJumping(bot, bot.isInWater() || bot.isInLava());
+                        NmsPlayerSpawner.setJumping(bot, navJump || bot.isInWater() || bot.isInLava());
+                    } else if (navJump) {
+                        // swimAi=false means we normally never touch the jumping flag,
+                        // but navigation still needs to set it explicitly.
+                        NmsPlayerSpawner.setJumping(bot, true);
                     }
 
                     // PVP AI: set movement velocity toward target BEFORE tickPhysics
@@ -212,9 +268,13 @@ public class FakePlayerManager {
 
                     NmsPlayerSpawner.tickPhysics(bot);
 
-                    // Head AI: skip for PVP bots — pvpAI already handles rotation.
+                    // Head AI: skip for PVP bots (pvpAI handles rotation)
+                    //          skip for mining-locked bots (direction must stay fixed)
+                    //          skip for navigation-locked bots (MoveCommand sets rotation each tick).
                     // Only fires every headAiRate ticks to reduce O(bots×players) raycast cost.
-                    if (doHeadAi && fp.getBotType() != BotType.PVP) {
+                    if (doHeadAi && fp.getBotType() != BotType.PVP
+                            && !miningLockedBots.containsKey(fp.getUuid())
+                            && !navLockedBots.contains(fp.getUuid())) {
 
                         // Find the nearest real (non-bot) player within range AND line-of-sight.
                         // Reuse `before` (already captured above) for the distance check so we
@@ -223,21 +283,22 @@ public class FakePlayerManager {
                         double bestSq = rangeSq;
                         for (Player p : online) {
                             if (activePlayers.containsKey(p.getUniqueId())) continue; // skip bots
+                            if (p.getGameMode() == GameMode.SPECTATOR) continue;       // skip spectators
                             if (!p.getWorld().equals(bot.getWorld())) continue;
                             double dSq = before.distanceSquared(p.getLocation()); // reuse 'before'
-                            if (dSq > bestSq) continue;              // outside range
-                            if (!bot.hasLineOfSight(p)) continue;    // wall in the way
+                            if (dSq > bestSq) continue;                               // outside range
+                            if (!hasLineOfSightIgnoringGlass(bot, p)) continue;       // opaque wall in the way
                             bestSq = dSq;
                             target = p;
                         }
 
                         // Retrieve (or lazily initialise) this bot's current smooth rotation.
-                        // Lambda captures 'before' (a Location captured above — effectively final).
+                        // Lambda captures 'before' (a Location captured above - effectively final).
                         final Location beforeCapture = before;
                         float[] rot = botHeadRotation.computeIfAbsent(fp.getUuid(), k ->
                                 new float[]{beforeCapture.getYaw(), beforeCapture.getPitch()});
 
-                        // Capture the spawn (idle) rotation once per bot — used as the
+                        // Capture the spawn (idle) rotation once per bot - used as the
                         // target when no visible player is within range.
                         float[] spawnRot = botSpawnRotation.computeIfAbsent(fp.getUuid(), k -> {
                             Location sl = fp.getSpawnLocation();
@@ -261,7 +322,7 @@ public class FakePlayerManager {
                             rot[0] = lerpAngle(rot[0], targetYaw,   speed);
                             rot[1] = lerpAngle(rot[1], targetPitch, speed);
                         } else {
-                            // No visible target — smoothly return to spawn-facing direction.
+                            // No visible target - smoothly return to spawn-facing direction.
                             rot[0] = lerpAngle(rot[0], spawnRot[0], speed);
                             rot[1] = lerpAngle(rot[1], spawnRot[1], speed);
                         }
@@ -275,6 +336,32 @@ public class FakePlayerManager {
                                 PacketHelper.sendRotation(p, fp, rot[0], rot[1], rot[0]);
                             }
                         }
+                    }
+
+                    // Mining lock: enforce exact position + rotation every tick.
+                    // Physics (gravity, knockback) can displace the bot; this snaps
+                    // it back so it stays on its mining spot and keeps the right facing.
+                    Location miningLock = miningLockedBots.get(fp.getUuid());
+                    if (miningLock != null) {
+                        Location cur = bot.getLocation();
+                        boolean outOfPlace = !cur.getWorld().equals(miningLock.getWorld())
+                                || cur.distanceSquared(miningLock) > 0.0001;
+                        if (outOfPlace) {
+                            bot.teleport(miningLock);
+                        }
+                        // Always enforce the locked rotation so the bot faces the correct
+                        // mining direction. We do this every tick (not just on change) so
+                        // head-AI remnants or knockback cannot shift the facing direction.
+                        float ly = miningLock.getYaw();
+                        float lp = miningLock.getPitch();
+                        bot.setRotation(ly, lp);
+                        NmsPlayerSpawner.setHeadYaw(bot, ly);
+                        for (Player p : online) {
+                            if (p.getUniqueId().equals(fp.getUuid())) continue;
+                            PacketHelper.sendRotation(p, fp, ly, lp, ly);
+                        }
+                        // Zero out velocity so physics does not push the bot next tick.
+                        bot.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
                     }
                 }
 
@@ -378,7 +465,7 @@ public class FakePlayerManager {
      * <p>
      * Names are pre-generated and reserved immediately, then bots appear one
      * by one with a random join delay. Skin is resolved automatically by the
-     * client via the NMS ServerPlayer's GameProfile — no HTTP calls.
+     * client via the NMS ServerPlayer's GameProfile - no HTTP calls.
      *
      * @param spawner the player who issued the command (may be null for console)
      * @return number of bots queued (-1 if at limit)
@@ -400,7 +487,7 @@ public class FakePlayerManager {
     }
 
     /**
-     * User-tier spawn — bot names are always forced to the
+     * User-tier spawn - bot names are always forced to the
      * {@code "[bot] PlayerName"} / {@code "[bot] PlayerName #N"} format.
      * Internal Minecraft names are generated as valid identifiers.
      *
@@ -438,14 +525,16 @@ public class FakePlayerManager {
             PlayerProfile profile = Bukkit.createProfile(uuid, ubn.internalName());
             FakePlayer fp = new FakePlayer(uuid, ubn.internalName(), profile);
             fp.setBotType(botType);
-            // For user bots the internal name (ubot_*) has no Mojang skin —
+            // For user bots the internal name (ubot_*) has no Mojang skin -
             // pick a random name from the pool to use for skin lookup instead.
             fp.setSkinName(pickRandomSkinName());
-            // Build display name from format — LP prefix/suffix injected later by refreshLpDisplayName.
+            // Build display name from format - LP prefix/suffix injected later by refreshLpDisplayName.
+            // Create a clean bot name without the "ubot_" prefix for the {bot_name} placeholder
+            String cleanBotName = "bot" + (alreadyOwned + i + 1);
             String rawUserName = Config.userBotNameFormat()
                     .replace("{spawner}", spawnerName)
                     .replace("{num}", String.valueOf(alreadyOwned + i + 1))
-                    .replace("{bot_name}", ubn.internalName());
+                    .replace("{bot_name}", cleanBotName);
             // PVP bots get a recognisable pvp_ prefix on their display name
             if (botType == BotType.PVP) rawUserName = "pvp_" + rawUserName;
             fp.setRawDisplayName(rawUserName);
@@ -543,7 +632,7 @@ public class FakePlayerManager {
             fp.setBotType(botType);
             // Skin lookup: for PVP bots use the base name (without pvp_ prefix) so Mojang resolves it
             fp.setSkinName(baseName != null ? baseName : name);
-            // Build display name from format — LP prefix/suffix injected later by refreshLpDisplayName.
+            // Build display name from format - LP prefix/suffix injected later by refreshLpDisplayName.
             String rawAdminName = Config.adminBotNameFormat().replace("{bot_name}", name);
             fp.setRawDisplayName(rawAdminName);
             String displayName  = finalizeDisplayName(rawAdminName, name);
@@ -573,13 +662,13 @@ public class FakePlayerManager {
 
         int total = batch.size();
         // NmsPlayerSpawner creates ServerPlayer with GameProfile containing skin data
-        // automatically — no HTTP skin fetch needed. Start visual chain immediately.
+        // automatically - no HTTP skin fetch needed. Start visual chain immediately.
         Bukkit.getScheduler().runTask(plugin, () -> visualChain(batch, 0, location));
         return total;
     }
 
     /**
-     * Spawn with bodyless flag — used by console to spawn bots without physical bodies.
+     * Spawn with bodyless flag - used by console to spawn bots without physical bodies.
      * Delegates to the BotType overload with {@link BotType#AFK}.
      *
      * @param spawnBodyless when {@code true}, bot has no physical body (tab-list only)
@@ -622,12 +711,12 @@ public class FakePlayerManager {
      * <p><b>Stack-safety:</b> deleted bots are skipped with a {@code while} loop
      * (not recursion) so a mass-delete cannot cause a {@link StackOverflowError}.
      * Continuation is always via {@link org.bukkit.scheduler.BukkitScheduler#runTask} or
-     * {@link org.bukkit.scheduler.BukkitScheduler#runTaskLater} — never a direct call.
+     * {@link org.bukkit.scheduler.BukkitScheduler#runTaskLater} - never a direct call.
      */
     private void visualChain(List<FakePlayer> batch, int index, Location location) {
         if (batch == null) return;
 
-        // Skip any bots that were deleted while skins were loading — use a loop,
+        // Skip any bots that were deleted while skins were loading - use a loop,
         // not recursion, to avoid StackOverflowError on large batch deletions.
         while (index < batch.size() && !activePlayers.containsKey(batch.get(index).getUuid())) {
             index++;
@@ -709,18 +798,18 @@ public class FakePlayerManager {
         // Fast path: if the skin is already cached the lambda fires on this tick.
         // Async path: the lambda fires immediately (bot spawns without skin), and
         //   once the Mojang/Mineskin fetch completes the skin is pushed to the live
-        //   entity — onSkinApplied refreshes display names for all online players.
+        //   entity - onSkinApplied refreshes display names for all online players.
         FakePlayerBody.resolveAndFinish(plugin, fp, spawnLoc, () -> {
             // Guard: bot may have been removed before the body spawn callback fired.
             // Abort entirely so no stale tab-list add, scoreboard entry, or join
             // message is ever sent.
             if (!activePlayers.containsKey(fp.getUuid())) {
                 Config.debug("finishSpawn aborted for '" + fp.getName()
-                        + "' — removed before body spawn callback fired.");
+                        + "' - removed before body spawn callback fired.");
                 return;
             }
 
-            // 1. Spawn body — NMS ServerPlayer entity
+            // 1. Spawn body - NMS ServerPlayer entity
             // Skip if bodyless flag is set (console spawn without location data)
             if (!fp.isBodyless() && Config.spawnBody()) {
                 Player body = FakePlayerBody.spawn(fp, spawnLoc);
@@ -755,13 +844,13 @@ public class FakePlayerManager {
                             me.bill.fakePlayerPlugin.util.FppLogger.warn(
                                     "WorldGuard: bot '" + fp.getName()
                                     + "' spawned in a no-pvp region but world spawn is also"
-                                    + " in a no-pvp region — cannot find a safe location.");
+                                    + " in a no-pvp region - cannot find a safe location.");
                         }
                     }
                     // Persist playerdata 2 ticks after spawn.  This writes
                     // world/playerdata/<uuid>.dat to disk immediately so that
                     // PlayerIo.load() inside the next placeNewPlayer() finds it
-                    // and Paper sets isFirstJoin=false — preventing CMI, Essentials,
+                    // and Paper sets isFirstJoin=false - preventing CMI, Essentials,
                     // and other plugins from flagging the bot as a new player every
                     // time it is despawned and respawned with the same name/UUID.
                     final Player savedBody = body;
@@ -773,7 +862,7 @@ public class FakePlayerManager {
                             // Stamp firstPlayed/lastPlayed with real timestamps if still 0.
                             // This ensures the .dat file written below contains non-zero
                             // values, so on the NEXT spawn Paper loads hasPlayedBefore=true
-                            // naturally — without FPP needing to override Bukkit-layer flags.
+                            // naturally - without FPP needing to override Bukkit-layer flags.
                             me.bill.fakePlayerPlugin.listener.PlayerJoinListener.stampFirstPlayed(savedBody);
                             savedBody.saveData();
                             FppLogger.debug("FakePlayerManager: initial playerdata saved for '"
@@ -789,7 +878,7 @@ public class FakePlayerManager {
                 // Bodyless spawn: no physical body, tab-list only (console spawn without location)
                 Config.debug("Bodyless spawn: skipping physical body for " + fp.getName());
             } else {
-                // body.enabled = false — mark as intentionally bodyless so validateEntities()
+                // body.enabled = false - mark as intentionally bodyless so validateEntities()
                 // and applyBodyConfig() don't mistakenly try to re-spawn this bot's body.
                 fp.setBodyless(true);
                 Config.debug("Body spawn skipped (body.enabled=false) for " + fp.getName());
@@ -809,7 +898,7 @@ public class FakePlayerManager {
                     // Only update the display name shown in the tab list.
                     for (Player p : online) PacketHelper.sendTabListDisplayNameUpdate(p, fp);
                 } else {
-                    // Bodyless bot: no server-side PlayerInfo entry — send full ADD.
+                    // Bodyless bot: no server-side PlayerInfo entry - send full ADD.
                     for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
                     for (Player p : online) PacketHelper.sendTabListDisplayNameUpdate(p, fp);
                 }
@@ -838,13 +927,13 @@ public class FakePlayerManager {
                     if (vc != null) vc.broadcastBotSpawn(fp);
                 }, 20L);
             } else {
-                Config.debug("Tab-list disabled — skipping tab add for '" + fp.getName() + "'");
+                Config.debug("Tab-list disabled - skipping tab add for '" + fp.getName() + "'");
             }
 
             // 4. Broadcast join message.
             // • Bodied bots: PlayerJoinEvent fires during FakePlayerBody.spawn(); the MONITOR
             //   handler in PlayerJoinListener sets event.joinMessage() to the custom bot-join
-            //   component so Paper broadcasts it automatically — no extra call needed here.
+            //   component so Paper broadcasts it automatically - no extra call needed here.
             // • Bodyless bots: no PlayerJoinEvent fires, so we must broadcast manually.
             // Skip during server-startup persistence restore to avoid flooding chat.
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -861,7 +950,7 @@ public class FakePlayerManager {
                 persistence.saveAsync(activePlayers.values());
             }
 
-            // 5. LP prefix — apply group directly to the online User object LP loaded at
+            // 5. LP prefix - apply group directly to the online User object LP loaded at
             // PlayerJoinEvent, then save. saveUser() on an online User fires
             // UserDataRecalculateEvent which our subscriber handles to refresh the display name.
             if (plugin.isLuckPermsAvailable()) {
@@ -888,7 +977,7 @@ public class FakePlayerManager {
                             }, 2L));
                 }, 5L);
             } else {
-                // No LP — schedule swap immediately after spawn completes
+                // No LP - schedule swap immediately after spawn completes
                 if (botSwapAI != null && fp.getBotType() != BotType.PVP) {
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (!activePlayers.containsKey(fp.getUuid())) return;
@@ -897,7 +986,7 @@ public class FakePlayerManager {
                 }
             }
         }, () -> {
-            // onSkinApplied — called on the main thread after an async skin fetch completes
+            // onSkinApplied - called on the main thread after an async skin fetch completes
             // and Paper's setPlayerProfile() has been applied to the live entity.
             // Re-send display name packets so our custom format overwrites whatever
             // Paper's internal ADD_PLAYER packet set.
@@ -917,11 +1006,11 @@ public class FakePlayerManager {
      * The original UUID and display name are reused so database records stay linked
      * and bots maintain their original appearance (prefix, format, etc.).
      *
-     * <p><b>Design rule — bots are per-server only.</b>
+     * <p><b>Design rule - bots are per-server only.</b>
      * The database may be shared (NETWORK mode), but this method must only be called
      * with rows that belong to THIS server (filtered by {@code server_id} before
      * reaching here). FakePlayer instances and NMS ServerPlayer entities
-     * are never shared or teleported across servers — they exist only on the server
+     * are never shared or teleported across servers - they exist only on the server
      * that originally spawned them.
      *
      */
@@ -936,7 +1025,7 @@ public class FakePlayerManager {
         if (usedNames.contains(name)) return;
 
         // Register this UUID in the identity cache so future fresh spawns of the same
-        // name reuse it — even if the bot is later explicitly despawned and re-spawned.
+        // name reuse it - even if the bot is later explicitly despawned and re-spawned.
         if (identityCache != null) identityCache.prime(name, uuid);
 
         // Auto-detect PVP type from MC name prefix if not explicitly provided
@@ -946,7 +1035,7 @@ public class FakePlayerManager {
         FakePlayer fp = new FakePlayer(uuid, name, profile);
         fp.setBotType(botType);
 
-        // User bots (ubot_*) have no Mojang skin — pick a random pool name for skin resolution.
+        // User bots (ubot_*) have no Mojang skin - pick a random pool name for skin resolution.
         // Admin bots use their own name for skin lookup; PVP admin bots strip the pvp_ prefix.
         boolean isUserBot = name.startsWith("ubot_");
         if (isUserBot) {
@@ -1008,7 +1097,7 @@ public class FakePlayerManager {
             db.recordSpawn(record, plainDisplay);
         }
 
-        // Visual spawn (no skin fetch on restore — keeps startup fast)
+        // Visual spawn (no skin fetch on restore - keeps startup fast)
         finishSpawn(fp, location);
         Config.debug("Restored bot: " + name + " at " + location);
     }
@@ -1063,7 +1152,7 @@ public class FakePlayerManager {
     public void removeAll() {
         if (activePlayers.isEmpty()) return;
 
-        // Snapshot and clear registry immediately — prevents double-removal
+        // Snapshot and clear registry immediately - prevents double-removal
         List<FakePlayer> toRemove = new ArrayList<>(activePlayers.values());
         activePlayers.clear();
         usedNames.clear();
@@ -1089,7 +1178,7 @@ public class FakePlayerManager {
             final FakePlayer target = fp;
             Runnable doVisualRemove = () -> {
                 // Mark as despawning so quit handlers (onQuitEarly/onQuit) suppress
-                // the vanilla "X left the game" message — the MONITOR quit handler
+                // the vanilla "X left the game" message - the MONITOR quit handler
                 // builds and broadcasts the custom bot-leave message from en.yml.
                 despawningBotIds.put(target.getUuid(), target.getDisplayName());
                 try {
@@ -1106,7 +1195,7 @@ public class FakePlayerManager {
                 for (Player online : snapshot) PacketHelper.sendTabListRemove(online, target);
 
                 // Local leave message is broadcast by PlayerJoinListener.onQuit (MONITOR)
-                // via event.quitMessage() — no manual broadcast needed here.
+                // via event.quitMessage() - no manual broadcast needed here.
                 // Forward to proxy network for cross-server leave message.
                 if (Config.leaveMessage()) {
                     var vc = plugin.getVelocityChannel();
@@ -1140,7 +1229,7 @@ public class FakePlayerManager {
     // ── Delete one ───────────────────────────────────────────────────────────
 
     /**
-     * Deletes a single fake player by name — kills the physics body, removes
+     * Deletes a single fake player by name - kills the physics body, removes
      * from tab list, despawns the visual, broadcasts leave message.
      *
      * @return true if a bot with that name was found and removed, false otherwise
@@ -1152,7 +1241,7 @@ public class FakePlayerManager {
         final FakePlayer target   = fp;
         final String     botName  = target.getName();
 
-        // Remove from registry immediately — prevents double-delete and clears tab-complete
+        // Remove from registry immediately - prevents double-delete and clears tab-complete
         activePlayers.remove(target.getUuid());
         nameIndex.remove(botName.toLowerCase());
         usedNames.remove(botName);
@@ -1166,18 +1255,25 @@ public class FakePlayerManager {
         // Clear head AI rotation state to prevent memory leaks
         botHeadRotation.remove(target.getUuid());
         botSpawnRotation.remove(target.getUuid());
+        // Clear mining lock so the tick loop doesn't hold a stale reference
+        miningLockedBots.remove(target.getUuid());
+        // Clear navigation lock
+        navLockedBots.remove(target.getUuid());
+        // Clear navigation state (prevents memory leak)
+        var moveCmd = plugin.getMoveCommand();
+        if (moveCmd != null) moveCmd.cleanupBot(target.getUuid());
 
 
         // Defer body removal, tab-list, despawn and leave message by a hardcoded 1-tick
         // so the current tick finishes before cleanup runs. The leave-delay config is
-        // intentionally NOT used here — it only applies to simulated swap-AI departures
+        // intentionally NOT used here - it only applies to simulated swap-AI departures
         // (see BotSwapAI.doLeave). This ensures /fpp despawn and combat-death despawns
         // are always instant regardless of how large leave-delay is set.
         long leaveDelay = 1L;
 
         Runnable doVisualRemove = () -> {
             // Mark as despawning so quit handlers (onQuitEarly/onQuit) suppress
-            // the vanilla "X left the game" message — the MONITOR quit handler
+            // the vanilla "X left the game" message - the MONITOR quit handler
             // builds and broadcasts the custom bot-leave message from en.yml.
             despawningBotIds.put(target.getUuid(), target.getDisplayName());
             try {
@@ -1195,7 +1291,7 @@ public class FakePlayerManager {
             for (Player online : snapshot) PacketHelper.sendTabListRemove(online, target);
 
             // Local leave message is broadcast by PlayerJoinListener.onQuit (MONITOR)
-            // via event.quitMessage() — no manual broadcast needed here.
+            // via event.quitMessage() - no manual broadcast needed here.
             // Forward to proxy network for cross-server leave message.
             if (Config.leaveMessage()) {
                 var vc = plugin.getVelocityChannel();
@@ -1226,19 +1322,19 @@ public class FakePlayerManager {
     }
 
     /**
-     * Synchronous removal of all bots — called exclusively from {@code onDisable}
+     * Synchronous removal of all bots - called exclusively from {@code onDisable}
      * when the Bukkit scheduler is already stopped.
      *
      * <h3>Shutdown optimisations</h3>
      * <ul>
-     *   <li><b>No sleep</b> — leave-delay stagger is meaningless during shutdown;
+     *   <li><b>No sleep</b> - leave-delay stagger is meaningless during shutdown;
      *       no real clients are present to observe gradual departures.</li>
-     *   <li><b>No per-bot {@code db.recordRemoval()} enqueues</b> —
+     *   <li><b>No per-bot {@code db.recordRemoval()} enqueues</b> -
      *       {@code DatabaseManager.recordAllShutdown()} closes all sessions with a
      *       single bulk SQL UPDATE called immediately after this method returns.
      *       Skipping the per-bot enqueues keeps the write queue empty so
      *       {@code db.close()} drains in milliseconds instead of seconds.</li>
-     *   <li><b>{@code fpp_active_bots} rows are left intact</b> — they serve as the
+     *   <li><b>{@code fpp_active_bots} rows are left intact</b> - they serve as the
      *       primary DB restore source on the next startup, avoiding YAML fallback.</li>
      * </ul>
      */
@@ -1298,8 +1394,11 @@ public class FakePlayerManager {
                 Player body = fp.getPlayer();
 
                 if (body != null && body.isValid()) {
-                    // Already has a body — just refresh runtime flags
-                    body.setInvulnerable(!Config.bodyDamageable());
+                    // Already has a body - just refresh runtime flags
+                    // CRITICAL: Always set invulnerable to FALSE - damage type filtering
+                    // is handled via event cancellation in FakePlayerEntityListener.
+                    // This ensures environmental damage (fall, fire, etc.) always applies.
+                    body.setInvulnerable(false);
                     body.setCollidable(Config.bodyPushable());
                     try {
                         var attr = body.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
@@ -1311,7 +1410,7 @@ public class FakePlayerManager {
                     } catch (Exception ignored) {}
 
                 } else if (fp.isBodyless()) {
-                    // Intentionally bodyless — spawn a body now
+                    // Intentionally bodyless - spawn a body now
                     Location loc = fp.getSpawnLocation();
                     if (loc == null || loc.getWorld() == null) continue;
 
@@ -1323,7 +1422,7 @@ public class FakePlayerManager {
                             fp.setPhysicsEntity(newBody);
                             entityIdIndex.put(newBody.getEntityId(), fp);
                             fp.setPacketProfileName(fp.getName());
-                            // Remove the manual ghost tab entry — the NMS join packet already
+                            // Remove the manual ghost tab entry - the NMS join packet already
                             // sent an ADD for the real entity. Re-add to force display-name sync.
                             if (Config.tabListEnabled()) {
                                 for (Player p : online) {
@@ -1335,7 +1434,7 @@ public class FakePlayerManager {
                             me.bill.fakePlayerPlugin.listener.PlayerJoinListener.stampFirstPlayed(newBody);
                             FppLogger.info("BodyConfig: body shown for '" + fp.getName() + "'");
                         } else {
-                            fp.setBodyless(true); // revert — spawn failed
+                            fp.setBodyless(true); // revert - spawn failed
                             FppLogger.warn("BodyConfig: failed to show body for '" + fp.getName() + "'");
                         }
                     } finally {
@@ -1349,7 +1448,7 @@ public class FakePlayerManager {
             return;
         }
 
-        // ── Bodies disabled — remove NMS entities, keep bots tab-list-only ────
+        // ── Bodies disabled - remove NMS entities, keep bots tab-list-only ────
         for (FakePlayer fp : new ArrayList<>(activePlayers.values())) {
             Player body = fp.getPlayer();
             if (body == null || !body.isOnline()) continue;
@@ -1364,7 +1463,7 @@ public class FakePlayerManager {
             fp.setPhysicsEntity(null);
             fp.setBodyless(true);
 
-            // Suppress the vanilla quit message — the bot is NOT leaving FPP management
+            // Suppress the vanilla quit message - the bot is NOT leaving FPP management
             bodyTransitionBots.add(fp.getUuid());
             try {
                 NmsPlayerSpawner.removeFakePlayer(body); // fires PlayerQuitEvent (suppressed)
@@ -1372,7 +1471,7 @@ public class FakePlayerManager {
                 bodyTransitionBots.remove(fp.getUuid());
             }
 
-            // PlayerQuitEvent cleared the client tab-list entry — re-add as a ghost entry
+            // PlayerQuitEvent cleared the client tab-list entry - re-add as a ghost entry
             // so the bot remains visible in the tab list despite having no physical body.
             if (Config.tabListEnabled()) {
                 for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
@@ -1391,6 +1490,8 @@ public class FakePlayerManager {
             usedNames.remove(fp.getName());
             botHeadRotation.remove(fp.getUuid());
             botSpawnRotation.remove(fp.getUuid());
+            miningLockedBots.remove(fp.getUuid());
+            navLockedBots.remove(fp.getUuid());
             pvpAI.stopBot(fp.getUuid());
             if (db != null) db.recordRemoval(fp.getUuid(), "DIED");
             Config.debug("Removed from registry: " + name);
@@ -1408,7 +1509,7 @@ public class FakePlayerManager {
      * Called after initial join AND after world changes.
      *
      * <p>The NMS ServerPlayer body is a real server-side entity
-     * kept alive by chunk tickets — no respawn needed. Only the packet-based
+     * kept alive by chunk tickets - no respawn needed. Only the packet-based
      * tab-list entries must be re-sent (Minecraft clears them on world transitions).
      * 
      * <p><b>Important:</b> For NMS players (bots with physical bodies), we only send
@@ -1435,9 +1536,9 @@ public class FakePlayerManager {
     /**
      * Called after {@code /fpp reload} to apply the {@code tab-list.enabled} toggle immediately.
      * <ul>
-     *   <li>If {@code enabled} is now {@code true}  — re-adds all active bots to every
+     *   <li>If {@code enabled} is now {@code true}  - re-adds all active bots to every
      *       online player's tab list so they appear instantly without needing to respawn.</li>
-     *   <li>If {@code enabled} is now {@code false} — removes all active bots from every
+     *   <li>If {@code enabled} is now {@code false} - removes all active bots from every
      *       online player's tab list.</li>
      * </ul>
      */
@@ -1463,7 +1564,7 @@ public class FakePlayerManager {
                     PacketHelper.sendTabListRemove(p, fp);
                 }
             }
-            // Clear team entries — hidden bots should not influence tab sections
+            // Clear team entries - hidden bots should not influence tab sections
             if (botTabTeam != null) botTabTeam.clearAll();
             Config.debug("applyTabListConfig: removed " + activePlayers.size() + " bots from tab list.");
         }
@@ -1501,14 +1602,14 @@ public class FakePlayerManager {
             }
 
             // Bot is intentionally bodyless (body.enabled was false when it spawned,
-            // or body was hidden via the settings GUI) — skip respawn logic.
+            // or body was hidden via the settings GUI) - skip respawn logic.
             if (fp.isBodyless()) continue;
 
-            // Body is valid — nothing to do
+            // Body is valid - nothing to do
             if (body != null && body.isValid()) continue;
 
             // Body became invalid (DYING pose removed by Minecraft, or other cause)
-            Config.debug("validateEntities: body of '" + fp.getName() + "' invalid — attempting respawn.");
+            Config.debug("validateEntities: body of '" + fp.getName() + "' invalid - attempting respawn.");
 
             fp.setPhysicsEntity(null);
 
@@ -1538,7 +1639,7 @@ public class FakePlayerManager {
         FakePlayer fp = entityIdIndex.get(entity.getEntityId());
         if (fp != null) return fp;
 
-        // Fallback: PDC bot-name lookup — handles the case where an entity crossed
+        // Fallback: PDC bot-name lookup - handles the case where an entity crossed
         // worlds via a portal and Paper recreated it with a new entity-id and a new
         // Java object.  PDC data is copied during recreation so the bot-name tag
         // survives the transition.  We heal the index and the physicsEntity reference
@@ -1562,7 +1663,7 @@ public class FakePlayerManager {
             candidate.setPhysicsEntity(player);
             entityIdIndex.put(entity.getEntityId(), candidate);
             Config.debug("getByEntity: recovered '" + botName
-                    + "' via PDC after world-change — new entityId=" + entity.getEntityId());
+                    + "' via PDC after world-change - new entityId=" + entity.getEntityId());
             return candidate;
         }
         
@@ -1573,7 +1674,7 @@ public class FakePlayerManager {
     /**
      * Returns the active {@link FakePlayer} with the given UUID, or {@code null}
      * if no bot with that UUID is currently registered.
-     * O(1) — delegates directly to the UUID-keyed {@link #activePlayers} map.
+     * O(1) - delegates directly to the UUID-keyed {@link #activePlayers} map.
      */
     public FakePlayer getByUuid(UUID uuid) {
         if (uuid == null) return null;
@@ -1614,7 +1715,7 @@ public class FakePlayerManager {
     /**
      * Returns the active {@link FakePlayer} with the given internal name (case-insensitive),
      * or {@code null} if no matching bot is active.
-     * O(1) — delegates to the lowercase {@link #nameIndex} map.
+     * O(1) - delegates to the lowercase {@link #nameIndex} map.
      */
     public FakePlayer getByName(String name) {
         if (name == null || name.isBlank()) return null;
@@ -1633,6 +1734,91 @@ public class FakePlayerManager {
         Long last = spawnCooldowns.get(playerUuid);
         if (last == null) return false;
         return (System.currentTimeMillis() - last) / 1000L < secs;
+    }
+
+    /**
+     * Requests that {@code botUuid}'s bot jump on the next physics tick.
+     *
+     * <p>The jump is held for 5 ticks so the swim-AI reset (which runs before
+     * {@code tickPhysics} every tick) cannot cancel it before
+     * {@code LivingEntity.travel()} fires {@code jumpFromGround()}.
+     * Safe to call every tick - the counter is simply refreshed.
+     *
+     * <p>Used by the navigation system ({@code MoveCommand}) to jump over blocks
+     * without fighting the swim-AI's unconditional {@code setJumping(false)} reset.
+     */
+    public void requestNavJump(UUID botUuid) {
+        navJumpHolding.put(botUuid, 5);
+    }
+
+    /** Clears any pending navigation jump for this bot (called on despawn). */
+    public void clearNavJump(UUID botUuid) {
+        navJumpHolding.remove(botUuid);
+    }
+
+    // ── Mining lock ───────────────────────────────────────────────────────────
+
+    /**
+     * Locks a bot to the given location + rotation for mining mode.
+     * <ul>
+     *   <li>Head-AI is suppressed for this bot - it will not rotate to look at players.</li>
+     *   <li>The physics tick enforces the locked position every tick so the bot stays on its spot.</li>
+     * </ul>
+     * Call {@link #unlockMining(UUID)} when mining stops.
+     *
+     * @param botUuid the bot to lock
+     * @param loc     the exact position + facing direction to lock to (yaw + pitch included)
+     */
+    public void lockForMining(UUID botUuid, Location loc) {
+        miningLockedBots.put(botUuid, loc.clone());
+        // Initialise head rotation state to the locked direction so the head-AI
+        // position snapshot never overwrites the locked rotation.
+        botHeadRotation.put(botUuid, new float[]{loc.getYaw(), loc.getPitch()});
+        botSpawnRotation.put(botUuid, new float[]{loc.getYaw(), loc.getPitch()});
+    }
+
+    /**
+     * Removes the mining position lock for this bot, re-enabling head-AI.
+     *
+     * @param botUuid the bot to unlock
+     */
+    public void unlockMining(UUID botUuid) {
+        miningLockedBots.remove(botUuid);
+    }
+
+    /**
+     * Returns {@code true} if the bot is currently mining-locked
+     * (head-AI disabled, position enforced every tick).
+     */
+    public boolean isMiningLocked(UUID botUuid) {
+        return miningLockedBots.containsKey(botUuid);
+    }
+
+    /**
+     * Locks a bot for navigation (disables head-AI so it doesn't look at players
+     * while MoveCommand sets the rotation every tick).
+     *
+     * @param botUuid the bot to lock
+     */
+    public void lockForNavigation(UUID botUuid) {
+        navLockedBots.add(botUuid);
+    }
+
+    /**
+     * Removes the navigation lock for this bot, re-enabling head-AI.
+     *
+     * @param botUuid the bot to unlock
+     */
+    public void unlockNavigation(UUID botUuid) {
+        navLockedBots.remove(botUuid);
+    }
+
+    /**
+     * Returns {@code true} if the bot is currently navigation-locked
+     * (head-AI disabled; MoveCommand manages its rotation).
+     */
+    public boolean isNavigationLocked(UUID botUuid) {
+        return navLockedBots.contains(botUuid);
     }
 
     /**
@@ -1700,7 +1886,7 @@ public class FakePlayerManager {
     /**
      * Builds the final display name for a bot.
      *
-     * <p>Bots are now real NMS ServerPlayer entities — LuckPerms applies their
+     * <p>Bots are now real NMS ServerPlayer entities - LuckPerms applies their
      * prefix and suffix natively in chat and the tab list. This method
      * sanitizes and PAPI-expands the raw name to produce the FPP-side custom
      * name shown via the name packet.
@@ -1756,6 +1942,18 @@ public class FakePlayerManager {
 
         display = sanitizeDisplayName(display, fp.getName());
         fp.setDisplayName(display);
+
+        // Update the entity's display name for death messages and chat
+        Player body = fp.getPlayer();
+        if (body != null && body.isValid()) {
+            try {
+                // Use raw display name to preserve color intent, then strip for vanilla compatibility
+                String plainName = rawContent.replaceAll("§[0-9a-fk-or]", "")
+                        .replaceAll("<[^>]+>", "")  // Remove MiniMessage tags
+                        .replaceAll("\\{#[0-9A-Fa-f]{6}[><]\\}", "");  // Remove LP gradient tags
+                body.displayName(Component.text(plainName));
+            } catch (Exception ignored) {}
+        }
 
         // Resend tab-list display name to all online players
         if (Config.tabListEnabled()) {
@@ -1825,7 +2023,7 @@ public class FakePlayerManager {
         String fallback  = pickRandomSkinName();
         String sanitized = PLACEHOLDER_PATTERN.matcher(displayName).replaceAll(fallback);
         FppLogger.warn("Unreplaced placeholder(s) in display name for '"
-                + context + "': '" + displayName + "' — replaced with '" + fallback
+                + context + "': '" + displayName + "' - replaced with '" + fallback
                 + "'. Check bot-name.user-format / bot-name.admin-format in config.yml.");
         return sanitized;
     }
@@ -1979,6 +2177,55 @@ public class FakePlayerManager {
     // ── Head-AI helpers ───────────────────────────────────────────────────────
 
     /**
+     * Like {@link Player#hasLineOfSight} but treats glass and other visually
+     * transparent blocks as if they were air.  Non-solid blocks (flowers,
+     * torches, etc.) are always ignored.  Falls back to the vanilla method on
+     * any unexpected error.
+     *
+     * <p>Covered by {@link #isGlassLike}: any {@link Material} whose name
+     * contains {@code "GLASS"} (plain glass, stained glass, glass panes,
+     * tinted glass, etc.).
+     */
+    private static boolean hasLineOfSightIgnoringGlass(Player from, Player to) {
+        Location start = from.getEyeLocation();
+        Location end   = to.getEyeLocation();
+        if (start.getWorld() == null || !start.getWorld().equals(end.getWorld())) return false;
+
+        org.bukkit.util.Vector dir = end.toVector().subtract(start.toVector());
+        double distance = dir.length();
+        if (distance < 1e-6) return true;
+        dir.normalize();
+
+        try {
+            BlockIterator iter = new BlockIterator(
+                    start.getWorld(), start.toVector(), dir, 0.0, (int) Math.ceil(distance) + 1);
+            while (iter.hasNext()) {
+                org.bukkit.block.Block block = iter.next();
+                Material type = block.getType();
+                if (!type.isSolid()) continue;        // air, flowers, carpet, etc.
+                if (isGlassLike(type)) continue;      // glass is transparent to head-AI
+                // Opaque solid - only counts if it is actually between the two points.
+                double blockDistSq = block.getLocation().add(0.5, 0.5, 0.5).distanceSquared(start);
+                if (blockDistSq < distance * distance) return false;
+            }
+        } catch (Exception e) {
+            return from.hasLineOfSight(to); // safe fallback
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} when the material is glass-like and should be
+     * treated as transparent for bot line-of-sight checks.
+     * Matches: {@code GLASS}, {@code STAINED_GLASS}, {@code GLASS_PANE},
+     * {@code STAINED_GLASS_PANE}, {@code TINTED_GLASS}, and any future
+     * glass-variant added by Mojang whose name contains {@code "GLASS"}.
+     */
+    private static boolean isGlassLike(Material mat) {
+        return mat.name().contains("GLASS");
+    }
+
+    /**
      * Linearly interpolates between two angles in degrees, always taking the
      * shortest arc across the 360°/−180° boundary.
      *
@@ -1995,3 +2242,4 @@ public class FakePlayerManager {
     }
 
 }
+

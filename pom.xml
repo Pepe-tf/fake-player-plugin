@@ -6,7 +6,7 @@
 
     <groupId>me.bill</groupId>
     <artifactId>fpp</artifactId>
-    <version>1.5.17</version>
+    <version>1.6.0</version>
     <packaging>jar</packaging>
 
     <name>fpp</name>
@@ -284,6 +284,14 @@
             <artifactId>paper-server</artifactId>
             <version>1.21.11-R0.1-SNAPSHOT</version>
             <classifier>mojang-mapped</classifier>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Mojang DataFixerUpper — required by paper-server for type annotations -->
+        <dependency>
+            <groupId>com.mojang</groupId>
+            <artifactId>datafixerupper</artifactId>
+            <version>8.0.16</version>
             <scope>provided</scope>
         </dependency>
 

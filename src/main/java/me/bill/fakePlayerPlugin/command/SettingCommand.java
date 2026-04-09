@@ -9,7 +9,7 @@ import org.bukkit.entity.Player;
 /**
  * {@code /fpp settings}
  *
- * <p>Opens the interactive settings GUI — a 3-row chest that lets admins
+ * <p>Opens the interactive settings GUI - a 3-row chest that lets admins
  * toggle booleans and cycle through preset numeric values without touching
  * {@code config.yml} directly.  Changes are saved to disk and take effect
  * immediately on click.  Only usable by in-game players (not console).
@@ -30,7 +30,7 @@ public class SettingCommand implements FppCommand {
     @Override public String getDescription() { return "Open the interactive in-game settings GUI."; }
     @Override public String getPermission()  { return Perm.SETTINGS; }
 
-    /** OPs always pass — consistent with all other admin commands. */
+    /** OPs always pass - consistent with all other admin commands. */
     @Override
     public boolean canUse(CommandSender sender) {
         return Perm.hasOrOp(sender, Perm.SETTINGS);
@@ -50,5 +50,6 @@ public class SettingCommand implements FppCommand {
         return true;
     }
 }
+
 
 

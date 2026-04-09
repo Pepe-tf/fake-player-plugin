@@ -13,7 +13,7 @@ import org.bukkit.World;
  * <h3>ClassLoader guard</h3>
  * <strong>Never reference this class unless
  * {@code FakePlayerPlugin.isWorldGuardAvailable()} returns {@code true}.</strong>
- * Paper eagerly resolves class references at bytecode verification time —
+ * Paper eagerly resolves class references at bytecode verification time -
  * loading this class without WorldGuard on the classpath will throw
  * {@code NoClassDefFoundError}. The pattern everywhere WorldGuard is needed:
  * <pre>{@code
@@ -79,4 +79,5 @@ public final class WorldGuardHelper {
         return null;
     }
 }
+
 

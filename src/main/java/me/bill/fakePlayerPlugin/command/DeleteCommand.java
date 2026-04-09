@@ -78,7 +78,7 @@ public class DeleteCommand implements FppCommand {
 
         String input = args[0];
 
-        // Match by internal name first (exact, case-insensitive) — this always works
+        // Match by internal name first (exact, case-insensitive) - this always works
         // regardless of colour tags or LuckPerms prefixes in the display name.
         FakePlayer fp = manager.getActivePlayers().stream()
                 .filter(p -> p.getName().equalsIgnoreCase(input))
@@ -110,10 +110,10 @@ public class DeleteCommand implements FppCommand {
         if (args.length == 1) {
             List<String> suggestions = new java.util.ArrayList<>();
             String typed = args[0].toLowerCase();
-            // "all" — only if sender has fpp.delete.all
+            // "all" - only if sender has fpp.delete.all
             if (Perm.has(sender, Perm.DELETE_ALL) && "all".startsWith(typed))
                 suggestions.add("all");
-            // "random" — requires fpp.delete
+            // "random" - requires fpp.delete
             if (Perm.has(sender, Perm.DELETE) && "random".startsWith(typed))
                 suggestions.add("random");
             // Individual bot names
@@ -147,3 +147,5 @@ public class DeleteCommand implements FppCommand {
         }
     }
 }
+
+

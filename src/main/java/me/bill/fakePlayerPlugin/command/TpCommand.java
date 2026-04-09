@@ -14,10 +14,10 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 /**
- * {@code /fpp tp [botname]} — teleports the player to one of their bots.
+ * {@code /fpp tp [botname]} - teleports the player to one of their bots.
  *
  * <p>Permission: {@code fpp.tp} (admin-tier, default: op).
- * Users with only {@code fpp.user.*} cannot use this command.
+ * Users with only {@code fpp.use} cannot use this command.
  *
  * <ul>
  *   <li>If the sender owns only one bot, {@code [botname]} is optional.</li>
@@ -66,7 +66,7 @@ public class TpCommand implements FppCommand {
         FakePlayer target;
 
         if (args.length == 0) {
-            // No name — only valid if exactly one bot active
+            // No name - only valid if exactly one bot active
             if (all.size() > 1) {
                 sender.sendMessage(Lang.get("tp-specify-name"));
                 listBots(sender, all);
@@ -125,6 +125,7 @@ public class TpCommand implements FppCommand {
                 ).color(ACCENT)));
     }
 }
+
 
 
 

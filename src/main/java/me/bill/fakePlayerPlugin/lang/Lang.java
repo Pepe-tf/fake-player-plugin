@@ -97,7 +97,7 @@ public final class Lang {
 
     /**
      * Convenience: returns a colourised {@link Component} for {@code key}.
-     * Accepts both positional and named placeholders — see {@link #raw(String, String...)}.
+     * Accepts both positional and named placeholders - see {@link #raw(String, String...)}.
      */
     public static Component get(String key, String... args) {
         return TextUtil.colorize(raw(key, args));
@@ -108,4 +108,5 @@ public final class Lang {
         return cfg;
     }
 }
+
 

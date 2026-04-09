@@ -17,12 +17,12 @@ import java.util.List;
  *
  * <h3>Features</h3>
  * <ul>
- *   <li><b>Merge old SQLite database</b> — pull records from any previous
+ *   <li><b>Merge old SQLite database</b> - pull records from any previous
  *       {@code fpp.db} file into the current database without overwriting
  *       existing rows (deduplicated by primary key).</li>
- *   <li><b>CSV export</b> — dump all session history to a CSV file in the
+ *   <li><b>CSV export</b> - dump all session history to a CSV file in the
  *       {@code exports/} folder for external analysis.</li>
- *   <li><b>SQLite → MySQL migration</b> — promote local data to a shared
+ *   <li><b>SQLite → MySQL migration</b> - promote local data to a shared
  *       MySQL backend when switching deployment topology.</li>
  * </ul>
  *
@@ -44,7 +44,7 @@ public final class DataMigrator {
      *
      * <p>The operation is safe to run while the server is live:
      * <ul>
-     *   <li>Only inserts rows — never updates or deletes existing data.</li>
+     *   <li>Only inserts rows - never updates or deletes existing data.</li>
      *   <li>Deduplication is handled by {@code INSERT OR IGNORE} / {@code INSERT IGNORE}.</li>
      *   <li>A full backup is created before any rows are written.</li>
      * </ul>
@@ -63,7 +63,7 @@ public final class DataMigrator {
         }
         if (srcFile.getAbsolutePath().equals(
                 new File(plugin.getDataFolder(), "data/fpp.db").getAbsolutePath())) {
-            FppLogger.warn("DataMigrator: source file is the same as the active database — aborted.");
+            FppLogger.warn("DataMigrator: source file is the same as the active database - aborted.");
             return -1;
         }
 
@@ -84,10 +84,10 @@ public final class DataMigrator {
             return total;
 
         } catch (ClassNotFoundException e) {
-            FppLogger.error("DataMigrator: SQLite JDBC driver not found — " + e.getMessage());
+            FppLogger.error("DataMigrator: SQLite JDBC driver not found - " + e.getMessage());
             return -1;
         } catch (SQLException e) {
-            FppLogger.error("DataMigrator: SQL error during merge — " + e.getMessage());
+            FppLogger.error("DataMigrator: SQL error during merge - " + e.getMessage());
             return -1;
         } finally {
             if (oldConn != null) {
@@ -144,7 +144,7 @@ public final class DataMigrator {
             return csv;
 
         } catch (IOException e) {
-            FppLogger.error("DataMigrator: CSV export failed — " + e.getMessage());
+            FppLogger.error("DataMigrator: CSV export failed - " + e.getMessage());
             return null;
         }
     }
@@ -283,7 +283,7 @@ public final class DataMigrator {
     // ── Database maintenance helpers ──────────────────────────────────────────
 
     /**
-     * Removes stale rows from {@code fpp_active_bots} — entries whose UUID
+     * Removes stale rows from {@code fpp_active_bots} - entries whose UUID
      * appears <em>only</em> in closed sessions (every matching session row has
      * {@code removed_at} set). These accumulate after server crashes or when the
      * plugin is forcefully stopped before the normal {@code onDisable} cleanup runs.
@@ -419,4 +419,5 @@ public final class DataMigrator {
         return 1;
     }
 }
+
 

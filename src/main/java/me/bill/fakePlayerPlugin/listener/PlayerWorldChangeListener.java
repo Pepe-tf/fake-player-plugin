@@ -18,7 +18,7 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
  * remain visible in the tab list regardless of which world the player is in.
  *
  * <p>The NMS ServerPlayer entities are real server-side
- * entities kept alive by plugin chunk-tickets — they do not need to be
+ * entities kept alive by plugin chunk-tickets - they do not need to be
  * respawned. Only the packet-based tab-list entries need to be re-sent.
  */
 public class PlayerWorldChangeListener implements Listener {
@@ -47,3 +47,4 @@ public class PlayerWorldChangeListener implements Listener {
         }, 3L);
     }
 }
+

@@ -57,7 +57,7 @@ public class BotCollisionListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (!Config.bodyPushable()) {
-            Config.debugNms("[KB-DEBUG] BotCollision: SKIP — bodyPushable=false");
+            Config.debugNms("[KB-DEBUG] BotCollision: SKIP - bodyPushable=false");
             return;
         }
         if (!(event.getEntity() instanceof Player target)) return;
@@ -65,7 +65,7 @@ public class BotCollisionListener implements Listener {
 
         Entity attacker = resolveKnockbackSource(event.getDamager());
         if (attacker == null) {
-            Config.debugNms("[KB-DEBUG] BotCollision: SKIP — attacker null for bot=" + target.getName());
+            Config.debugNms("[KB-DEBUG] BotCollision: SKIP - attacker null for bot=" + target.getName());
             return;
         }
 
@@ -81,7 +81,7 @@ public class BotCollisionListener implements Listener {
         // For player attacks, respect cancellation only if body is damageable
         if (event.isCancelled()) {
             if (fromPlayer && Config.bodyDamageable()) {
-                Config.debugNms("[KB-DEBUG] BotCollision: SKIP — event cancelled & fromPlayer & bodyDamageable");
+                Config.debugNms("[KB-DEBUG] BotCollision: SKIP - event cancelled & fromPlayer & bodyDamageable");
                 return;
             }
             // Mob attacks: continue to apply knockback even if cancelled
@@ -113,7 +113,7 @@ public class BotCollisionListener implements Listener {
             kbZ *= scale;
         }
 
-        // PVP bots receive 60 % less knockback — they should feel solid but still react.
+        // PVP bots receive 60 % less knockback - they should feel solid but still react.
         double pvpFactor = isPvpBot(target) ? 0.15 : 1.0;
         Vector finalVel = new Vector(kbX * pvpFactor, kb.getY() * pvpFactor, kbZ * pvpFactor);
 
@@ -196,7 +196,7 @@ public class BotCollisionListener implements Listener {
         for (FakePlayer fp : manager.getActivePlayers()) {
             Player body = fp.getPlayer();
             if (body == null || !body.isValid()) continue;
-            // World check first — cheapest way to skip bots in other worlds
+            // World check first - cheapest way to skip bots in other worlds
             if (!body.getWorld().equals(player.getWorld())) continue;
 
             Location bLoc = body.getLocation();
@@ -232,7 +232,7 @@ public class BotCollisionListener implements Listener {
         double botStrength = Config.collisionBotStrength();
         double maxHoriz    = Config.collisionMaxHoriz();
 
-        // Use an array snapshot — avoids ArrayList overhead and gives O(1) indexed access
+        // Use an array snapshot - avoids ArrayList overhead and gives O(1) indexed access
         FakePlayer[] bots = all.toArray(new FakePlayer[0]);
         int len = bots.length;
         for (int i = 0; i < len; i++) {
@@ -350,3 +350,4 @@ public class BotCollisionListener implements Listener {
     }
 
 }
+

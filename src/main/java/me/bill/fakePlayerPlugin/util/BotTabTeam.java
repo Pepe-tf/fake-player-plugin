@@ -29,7 +29,7 @@ import java.util.Set;
  * of which other plugins manage real-player teams.
  *
  * <h3>Team name</h3>
- * <p>{@value #TEAM_NAME} — the leading {@code ~} (ASCII 126) sorts after every
+ * <p>{@value #TEAM_NAME} - the leading {@code ~} (ASCII 126) sorts after every
  * letter ({@code a}–{@code z} = 97–122) and common symbol.  Even a server using
  * numeric team prefixes like {@code 01_owner} will still have that team appear
  * before {@code ~fpp}.
@@ -55,11 +55,11 @@ import java.util.Set;
  *
  * <h3>Lifecycle</h3>
  * <ul>
- *   <li>{@link #init()} — call once in {@code onEnable} (main thread).</li>
- *   <li>{@link #addBot(FakePlayer)} — call after spawning and sending ADD_PLAYER.</li>
- *   <li>{@link #removeBot(FakePlayer)} — call before/during bot removal.</li>
- *   <li>{@link #rebuild(Collection)} — call on {@code /fpp reload}.</li>
- *   <li>{@link #destroy()} — call in {@code onDisable}.</li>
+ *   <li>{@link #init()} - call once in {@code onEnable} (main thread).</li>
+ *   <li>{@link #addBot(FakePlayer)} - call after spawning and sending ADD_PLAYER.</li>
+ *   <li>{@link #removeBot(FakePlayer)} - call before/during bot removal.</li>
+ *   <li>{@link #rebuild(Collection)} - call on {@code /fpp reload}.</li>
+ *   <li>{@link #destroy()} - call in {@code onDisable}.</li>
  * </ul>
  */
 public final class BotTabTeam {
@@ -119,7 +119,7 @@ public final class BotTabTeam {
      * config setting.
      *
      * <p>Calling {@code body.setCollidable(false)} has no effect on bots already
-     * in a scoreboard team — the team option is what Minecraft actually uses.
+     * in a scoreboard team - the team option is what Minecraft actually uses.
      * Call this whenever {@code body.pushable} changes (e.g. from
      * {@code FakePlayerManager.applyBodyConfig()}).
      *
@@ -214,7 +214,7 @@ public final class BotTabTeam {
         }
         FppLogger.debug("[BotTabTeam] Rebuilt with " + activeBots.size() + " bot(s) on "
                 + Bukkit.getOnlinePlayers().size() + " scoreboard(s)"
-                + (Config.tabListEnabled() ? "" : " (tab-list disabled — entries not added)") + ".");
+                + (Config.tabListEnabled() ? "" : " (tab-list disabled - entries not added)") + ".");
     }
 
     /**
@@ -276,7 +276,7 @@ public final class BotTabTeam {
      */
     public void dumpTeamState() {
         FppLogger.info("═══════════════════════════════════════════════");
-        FppLogger.info("[BotTabTeam] TEAM STATE DUMP — tracked entries: " + botEntries.size());
+        FppLogger.info("[BotTabTeam] TEAM STATE DUMP - tracked entries: " + botEntries.size());
         if (!botEntries.isEmpty()) FppLogger.info("  Entries: " + String.join(", ", botEntries));
         for (Player p : Bukkit.getOnlinePlayers()) {
             Scoreboard board = p.getScoreboard();
@@ -288,4 +288,5 @@ public final class BotTabTeam {
         FppLogger.info("═══════════════════════════════════════════════");
     }
 }
+
 

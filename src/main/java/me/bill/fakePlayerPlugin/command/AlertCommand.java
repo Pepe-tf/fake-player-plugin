@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * {@code /fpp alert <message>} — Broadcasts an alert to all servers in the
+ * {@code /fpp alert <message>} - Broadcasts an alert to all servers in the
  * Velocity network.
  *
  * <p>Sends the message via plugin messaging (subchannel {@code ALERT}) to Velocity,
@@ -82,5 +82,7 @@ public final class AlertCommand implements FppCommand {
         return Collections.emptyList();
     }
 }
+
+
 
 

@@ -30,17 +30,25 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import com.destroystokyo.paper.profile.PlayerProfile;
 
+import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
+import me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner;
+import org.bukkit.Location;
+
 import java.util.*;
 
 /**
- * Interactive settings GUI — opens a 3-row chest that lets admins toggle/cycle
- * plugin configuration values without editing {@code config.yml} directly.
+ * Interactive settings GUI - opens a 6-row (double) chest that lets admins
+ * toggle/cycle plugin configuration values without editing {@code config.yml}
+ * directly.
  *
- * <h3>Layout (3 rows / 27 slots)</h3>
+ * <h3>Layout (6 rows / 54 slots)</h3>
  * <pre>
- *  [S0][S1][S2][S3][S4][S5][S6][S7][S8]   ← row 1: up to 9 settings per page
- *  [GL][GL][GL][GL][GL][GL][GL][GL][GL]   ← row 2: coloured category separator
- *  [← ][C1][C2][C3][C4][C5][GL][⊡ ][→ ]  ← row 3: navigation
+ *  [S0 ][S1 ][S2 ][S3 ][S4 ][S5 ][S6 ][S7 ][S8 ]   ← row 0: settings  0-8
+ *  [S9 ][S10][S11][S12][S13][S14][S15][S16][S17]   ← row 1: settings  9-17
+ *  [S18][S19][S20][S21][S22][S23][S24][S25][S26]   ← row 2: settings 18-26
+ *  [S27][S28][S29][S30][S31][S32][S33][S34][S35]   ← row 3: settings 27-35
+ *  [S36][S37][S38][S39][S40][S41][S42][S43][S44]   ← row 4: settings 36-44
+ *  [⟲  ][◄  ][C1 ][C2 ][C3 ][C4 ][C5 ][▶  ][ ✕]  ← row 5: reset|←cat|5 cats|→cat|close
  * </pre>
  *
  * <h3>Interaction</h3>
@@ -66,15 +74,23 @@ public final class SettingGui implements Listener {
     private static final TextColor COMING_SOON_COLOR = TextColor.fromHexString("#FFA500");
 
     // ── GUI geometry ──────────────────────────────────────────────────────────
-    private static final int SIZE              = 27;
-    private static final int SETTINGS_PER_PAGE = 18;
-    private static final int SLOT_RESET        = 18;
-    private static final int SLOT_NAV_PREV     = 19;   // ← Prev page (replaces filler)
-    private static final int SLOT_NAV_NEXT     = 26;   // → Next page (replaces old close)
-    private static final int[] CAT_SLOTS       = { 20, 21, 22, 23, 24, 25 };
+    // Double chest: 6 rows × 9 cols = 54 slots.
+    // Settings area: rows 0-4, all 9 cols → 45 slots per page (slots 0-44).
+    // Bottom row (row 5, slots 45-53):
+    //   45=⟲reset-all  46=◄scroll-cats  47-51=5 visible cat tabs  52=▶scroll-cats  53=✕close
+    private static final int SIZE              = 54;
+    private static final int SETTINGS_PER_PAGE = 45;   // 5 rows × 9 cols
+    private static final int SLOT_RESET        = 45;   // ⟲ Reset All
+    private static final int SLOT_CAT_PREV     = 46;   // ◄ scroll category window left
+    private static final int SLOT_CAT_NEXT     = 52;   // ▶ scroll category window right
+    private static final int SLOT_CLOSE        = 53;   // ✕ Save & Close
+    /** Number of category tabs visible at once in the bottom row. */
+    private static final int CAT_WINDOW        = 5;
+    /** First inventory slot of the 5-slot category window (slots 47-51). */
+    private static final int CAT_WINDOW_START  = 47;
 
     // ── Owner skull cache  (Skin System entry icon) ───────────────────────────
-    /** UUID of El_Pepes — the owner whose head is shown on the Skin System entry. */
+    /** UUID of El_Pepes - the owner whose head is shown on the Skin System entry. */
     private static final java.util.UUID SKIN_OWNER_UUID =
             java.util.UUID.fromString("a318f9f4-e2bf-479c-a47a-6a2c1b0b9e66");
     private static final String SKIN_OWNER_NAME = "El_Pepes";
@@ -88,7 +104,7 @@ public final class SettingGui implements Listener {
     // ── State ─────────────────────────────────────────────────────────────────
     private final FakePlayerPlugin plugin;
 
-    /** Per-player GUI state: [categoryIndex, pageIndex]. */
+    /** Per-player GUI state: [categoryIndex, pageIndex, catWindowOffset]. */
     private final Map<UUID, int[]> sessions = new HashMap<>();
 
     /**
@@ -107,7 +123,7 @@ public final class SettingGui implements Listener {
     /**
      * UUIDs whose InventoryCloseEvent should be ignored because {@link #build}
      * is in the middle of opening a fresh inventory (openInventory fires close
-     * on the previous one — we don't want to treat that as a real "user closed").
+     * on the previous one - we don't want to treat that as a real "user closed").
      */
     private final Set<UUID> pendingRebuild = new HashSet<>();
 
@@ -117,7 +133,7 @@ public final class SettingGui implements Listener {
     public SettingGui(FakePlayerPlugin plugin) {
         this.plugin     = plugin;
         this.categories = new Category[]{
-            general(), body(), chat(), swap(), peaks(), pvp()
+            general(), body(), chat(), swap(), peaks(), pvp(), pathfinding()
         };
     }
 
@@ -127,7 +143,7 @@ public final class SettingGui implements Listener {
 
     /** Opens the settings GUI for {@code player} at the General category. */
     public void open(Player player) {
-        sessions.put(player.getUniqueId(), new int[]{ 0, 0 });   // [catIdx, pageIdx]
+        sessions.put(player.getUniqueId(), new int[]{ 0, 0, 0 });   // [catIdx, pageIdx, catOffset]
         build(player);
     }
 
@@ -148,47 +164,57 @@ public final class SettingGui implements Listener {
         int[] state = sessions.get(holder.uuid);
         if (state == null) return;
 
-        int slot   = event.getSlot();
-        int catIdx = state[0];
-        int pageIdx = state[1];
+        int slot      = event.getSlot();
+        int catIdx    = state[0];
+        int pageIdx   = state[1];
+        int catOffset = state[2];
 
-        // ── Reset button ──────────────────────────────────────────────────
+        // ── ⟲ Reset All (slot 45) ────────────────────────────────────────
         if (slot == SLOT_RESET) {
             playUiClick(player, 0.6f);
-            resetCategory(player, catIdx);
+            resetAllCategories(player);
             return;
         }
-        // ── Prev page button (slot 19) ────────────────────────────────────
-        if (slot == SLOT_NAV_PREV && pageIdx > 0) {
-            playUiClick(player, 1.0f);
-            state[1]--;
+        // ── ◄ Scroll category window left (slot 46) ───────────────────────
+        if (slot == SLOT_CAT_PREV) {
+            if (catOffset > 0) {
+                playUiClick(player, 1.0f);
+                state[2]--;
+            }
             build(player);
             return;
         }
-        // ── Next page button (slot 26) ────────────────────────────────────
-        if (slot == SLOT_NAV_NEXT) {
-            List<SettingEntry> settings = categories[catIdx].settings;
-            if ((pageIdx + 1) * SETTINGS_PER_PAGE < settings.size()) {
+        // ── ▶ Scroll category window right (slot 52) ──────────────────────
+        if (slot == SLOT_CAT_NEXT) {
+            if (catOffset + CAT_WINDOW < categories.length) {
                 playUiClick(player, 1.0f);
-                state[1]++;
+                state[2]++;
+            }
+            build(player);
+            return;
+        }
+        // ── ✕ Close (slot 53) ────────────────────────────────────────────
+        if (slot == SLOT_CLOSE) {
+            playUiClick(player, 0.8f);
+            player.closeInventory();
+            return;
+        }
+        // ── Category tabs (slots 47-51) ───────────────────────────────────
+        if (slot >= CAT_WINDOW_START && slot < CAT_WINDOW_START + CAT_WINDOW) {
+            int ci = catOffset + (slot - CAT_WINDOW_START);
+            if (ci < categories.length) {
+                if (ci != catIdx) playUiClick(player, 1.3f);
+                state[0] = ci;
+                state[1] = 0;   // reset page when switching categories
                 build(player);
             }
             return;
         }
-        // ── Category tabs ─────────────────────────────────────────────────
-        for (int i = 0; i < CAT_SLOTS.length; i++) {
-            if (slot == CAT_SLOTS[i] && i < categories.length) {
-                if (i != catIdx) playUiClick(player, 1.3f);
-                state[0] = i;
-                state[1] = 0;   // reset page when switching categories
-                build(player);
-                return;
-            }
-        }
-        // ── Settings (rows 1 & 2: slots 0-17, page-aware) ────────────────
-        if (slot < 18) {
+        // ── Settings (slots 0-44) ─────────────────────────────────────────
+        int settingIdx = slotToSettingIdx(slot);
+        if (settingIdx >= 0) {
             List<SettingEntry> settings = categories[catIdx].settings;
-            int entryIdx = pageIdx * SETTINGS_PER_PAGE + slot;
+            int entryIdx = pageIdx * SETTINGS_PER_PAGE + settingIdx;
             if (entryIdx >= settings.size()) return;
 
             SettingEntry entry = settings.get(entryIdx);
@@ -201,23 +227,20 @@ public final class SettingGui implements Listener {
                     .decoration(TextDecoration.ITALIC, false)
                     .append(Component.text("⊘ ").color(COMING_SOON_COLOR))
                     .append(Component.text(entry.label + "  ").color(WHITE).decoration(TextDecoration.BOLD, false))
-                    .append(Component.text("— ᴄᴏᴍɪɴɢ ꜱᴏᴏɴ").color(COMING_SOON_COLOR).decoration(TextDecoration.BOLD, true)));
+                    .append(Component.text("- ᴄᴏᴍɪɴɢ ꜱᴏᴏɴ").color(COMING_SOON_COLOR).decoration(TextDecoration.BOLD, true)));
                 return;
             }
 
             if (entry.type == SettingType.TOGGLE) {
-                // Toggles flip in-place — no sign editor needed
                 entry.apply(plugin);
                 plugin.saveConfig();
                 Config.reload();
                 applyLiveEffect(entry.configKey);
                 String newVal = entry.currentValueString(plugin);
-                // High pitch = turned ON (positive feedback), low pitch = turned OFF
                 playUiClick(player, newVal.startsWith("✔") ? 1.2f : 0.85f);
                 sendActionBarConfirm(player, entry.label, newVal);
                 build(player);
             } else {
-                // Numeric / cycle settings → prompt player to type in chat
                 playUiClick(player, 1.0f);
                 openChatInput(player, entry, state.clone());
             }
@@ -238,7 +261,7 @@ public final class SettingGui implements Listener {
         plugin.saveConfig();
         Config.reload();
 
-        // Send "Settings saved" confirmation — but not on player disconnect
+        // Send "Settings saved" confirmation - but not on player disconnect
         if (event.getReason() != InventoryCloseEvent.Reason.DISCONNECT
                 && event.getPlayer() instanceof Player player) {
             player.sendMessage(Component.empty()
@@ -276,7 +299,7 @@ public final class SettingGui implements Listener {
                 p.sendMessage(Component.empty()
                     .decoration(TextDecoration.ITALIC, false)
                     .append(Component.text("✦ ").color(ACCENT))
-                    .append(Component.text("ᴄᴀɴᴄᴇʟʟᴇᴅ — ʀᴇᴛᴜʀɴɪɴɢ ᴛᴏ ꜱᴇᴛᴛɪɴɢꜱ.").color(GRAY)));
+                    .append(Component.text("ᴄᴀɴᴄᴇʟʟᴇᴅ - ʀᴇᴛᴜʀɴɪɴɢ ᴛᴏ ꜱᴇᴛᴛɪɴɢꜱ.").color(GRAY)));
                 build(p);
                 return;
             }
@@ -311,7 +334,7 @@ public final class SettingGui implements Listener {
     /**
      * Closes the settings chest and sends the player a formatted prompt asking
      * them to type a new value in chat.  The response is captured by
-     * {@link #onPlayerChat} — other players never see the raw value.
+     * {@link #onPlayerChat} - other players never see the raw value.
      *
      * <p>The player can type {@code cancel} to abort and reopen the GUI.
      * A 60-second timeout automatically cancels and reopens the GUI if no
@@ -323,7 +346,7 @@ public final class SettingGui implements Listener {
         // Mark: InventoryCloseEvent should NOT destroy the GUI session
         pendingChatInput.add(uuid);
         player.closeInventory();
-        pendingChatInput.remove(uuid);   // clear immediately — session kept in `sessions`
+        pendingChatInput.remove(uuid);   // clear immediately - session kept in `sessions`
 
         String currentVal = entry.currentValueString(plugin)
                 .replace("✔ ", "").replace("✘ ", "");
@@ -376,7 +399,7 @@ public final class SettingGui implements Listener {
                     p.sendMessage(Component.empty()
                         .decoration(TextDecoration.ITALIC, false)
                         .append(Component.text("✦ ").color(ACCENT))
-                        .append(Component.text("ɪɴᴘᴜᴛ ᴛɪᴍᴇᴅ ᴏᴜᴛ — ʀᴇᴛᴜʀɴɪɴɢ ᴛᴏ ꜱᴇᴛᴛɪɴɢꜱ.").color(GRAY)));
+                        .append(Component.text("ɪɴᴘᴜᴛ ᴛɪᴍᴇᴅ ᴏᴜᴛ - ʀᴇᴛᴜʀɴɪɴɢ ᴛᴏ ꜱᴇᴛᴛɪɴɢꜱ.").color(GRAY)));
                     build(p);
                 }
             }
@@ -443,9 +466,10 @@ public final class SettingGui implements Listener {
         int[]  state = sessions.get(uuid);
         if (state == null) return;
 
-        int catIdx  = state[0];
-        int pageIdx = state[1];
-        Category cat = categories[catIdx];
+        int catIdx    = state[0];
+        int pageIdx   = state[1];
+        int catOffset = state[2];
+        Category cat  = categories[catIdx];
 
         GuiHolder holder = new GuiHolder(uuid);
         Component title = Component.empty()
@@ -457,41 +481,72 @@ public final class SettingGui implements Listener {
 
         Inventory inv = Bukkit.createInventory(holder, SIZE, title);
 
-        // ── Settings (rows 1–2, slots 0-17) — page-aware ─────────────────────
+        // ── Settings area: rows 0-4, all 9 cols (slots 0-44) ─────────────────
         int settingsCount = cat.settings.size();
-        int startIdx      = pageIdx * SETTINGS_PER_PAGE;
-        int endIdx        = Math.min(startIdx + SETTINGS_PER_PAGE, settingsCount);
+        int totalPages    = totalPagesForCat(cat);
+        pageIdx = Math.min(pageIdx, Math.max(0, totalPages - 1));
+        state[1] = pageIdx;
+
+        int startIdx = pageIdx * SETTINGS_PER_PAGE;
+        int endIdx   = Math.min(startIdx + SETTINGS_PER_PAGE, settingsCount);
         for (int i = startIdx; i < endIdx; i++) {
             inv.setItem(i - startIdx, buildSettingItem(cat.settings.get(i)));
         }
 
-        // ── Row 3 (slots 18-26): navigation bar ───────────────────────────────
-        ItemStack nav = glassFiller(Material.GRAY_STAINED_GLASS_PANE);
-        for (int i = 18; i < 27; i++) inv.setItem(i, nav);
+        // ── Bottom row (slots 45-53) ──────────────────────────────────────────
+        // 45: ⟲ Reset All
+        inv.setItem(SLOT_RESET, buildResetAllButton());
 
-        // Reset button (slot 18)
-        inv.setItem(SLOT_RESET, buildResetButton());
+        // 46: ◄ cat-prev arrow (only when catOffset > 0)
+        inv.setItem(SLOT_CAT_PREV,
+            catOffset > 0
+                ? buildCatArrow(false)
+                : glassFiller(Material.GRAY_STAINED_GLASS_PANE));
 
-        // Prev page button (slot 19) — only when not on first page
-        if (pageIdx > 0) {
-            inv.setItem(SLOT_NAV_PREV, buildNavButton(false));
+        // 47-51: 5 category tabs from catOffset
+        for (int i = 0; i < CAT_WINDOW; i++) {
+            int ci = catOffset + i;
+            inv.setItem(CAT_WINDOW_START + i,
+                ci < categories.length
+                    ? buildCategoryTab(ci, ci == catIdx)
+                    : glassFiller(Material.GRAY_STAINED_GLASS_PANE));
         }
 
-        // Category tabs (slots 20-25)
-        for (int i = 0; i < CAT_SLOTS.length && i < categories.length; i++) {
-            inv.setItem(CAT_SLOTS[i], buildCategoryTab(i, i == catIdx));
-        }
+        // 52: ▶ cat-next arrow (only when more cats exist beyond the window)
+        inv.setItem(SLOT_CAT_NEXT,
+            catOffset + CAT_WINDOW < categories.length
+                ? buildCatArrow(true)
+                : glassFiller(Material.GRAY_STAINED_GLASS_PANE));
 
-        // Next page button (slot 26) — only when more pages exist
-        if (endIdx < settingsCount) {
-            inv.setItem(SLOT_NAV_NEXT, buildNavButton(true));
-        }
+        // 53: ✕ Close
+        inv.setItem(SLOT_CLOSE, buildCloseButton());
 
         // Mark as rebuild so the InventoryCloseEvent fired by openInventory is ignored
         pendingRebuild.add(uuid);
         player.openInventory(inv);
         pendingRebuild.remove(uuid);
         sessions.put(uuid, state);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  Slot ↔ setting-index helpers
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Maps an inventory slot to its 0-based setting index within the current page.
+     * Settings occupy slots 0-44 (rows 0-4, all 9 cols) - slot IS the index.
+     * Returns {@code -1} for the bottom row (slots 45-53).
+     */
+    private static int slotToSettingIdx(int slot) {
+        return slot < 45 ? slot : -1;
+    }
+
+    /**
+     * Inverse: maps a 0-based local setting index to the inventory slot.
+     * With the full-9-col layout slot == index for rows 0-4.
+     */
+    private static int settingIdxToSlot(int localIdx) {
+        return localIdx;   // slots 0-44 map 1:1
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -540,7 +595,7 @@ public final class SettingGui implements Listener {
         ItemStack item = new ItemStack(entry.icon);
         ItemMeta  meta = item.getItemMeta();
 
-        // Enabled toggles sparkle with an enchant glow — immediately recognisable
+        // Enabled toggles sparkle with an enchant glow - immediately recognisable
         if (isToggle && isOn) {
             meta.addEnchant(Enchantment.UNBREAKING, 1, true);
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
@@ -587,8 +642,8 @@ public final class SettingGui implements Listener {
     }
 
     private ItemStack buildCategoryTab(int idx, boolean active) {
-        Category cat  = categories[idx];
-        Material mat  = active ? cat.activeMat : cat.inactiveMat;
+        Category  cat  = categories[idx];
+        Material  mat  = active ? cat.activeMat : cat.inactiveMat;
         ItemStack item = new ItemStack(mat);
         ItemMeta  meta = item.getItemMeta();
         if (active) {
@@ -601,22 +656,55 @@ public final class SettingGui implements Listener {
                 .color(ACCENT)
                 .decoration(TextDecoration.BOLD, active)));
         meta.lore(List.of(Component.empty().decoration(TextDecoration.ITALIC, false)
-            .append(Component.text(active ? "◀  ᴄᴜʀʀᴇɴᴛʟʏ ᴠɪᴇᴡɪɴɢ" : "ᴄʟɪᴄᴋ ᴛᴏ ꜱᴡɪᴛᴄʜ")
+            .append(Component.text(active ? "◈  ᴄᴜʀʀᴇɴᴛʟʏ ᴠɪᴇᴡɪɴɢ" : "ᴄʟɪᴄᴋ ᴛᴏ ꜱᴡɪᴛᴄʜ")
                 .color(active ? ON_GREEN : DARK_GRAY))));
         item.setItemMeta(meta);
         return item;
     }
 
-    private ItemStack buildNavButton(boolean isNext) {
+    /** ◄ / ▶ arrows for scrolling the 5-slot category window. */
+    private ItemStack buildCatArrow(boolean isNext) {
         Material  mat   = isNext ? Material.LIME_STAINED_GLASS_PANE : Material.MAGENTA_STAINED_GLASS_PANE;
-        String    label = isNext ? "→  ɴᴇxᴛ ᴘᴀɢᴇ" : "←  ᴘʀᴇᴠ ᴘᴀɢᴇ";
+        String    label = isNext ? "▶" : "◄";
         TextColor col   = isNext ? ON_GREEN : COMING_SOON_COLOR;
         ItemStack item  = new ItemStack(mat);
         ItemMeta  meta  = item.getItemMeta();
         meta.displayName(Component.empty().decoration(TextDecoration.ITALIC, false)
             .append(Component.text(label).color(col).decoration(TextDecoration.BOLD, true)));
         meta.lore(List.of(Component.empty().decoration(TextDecoration.ITALIC, false)
-            .append(Component.text("ᴄʟɪᴄᴋ ᴛᴏ ɢᴏ ᴛᴏ ᴛʜᴇ " + (isNext ? "ɴᴇxᴛ" : "ᴘʀᴇᴠɪᴏᴜꜱ") + " ᴘᴀɢᴇ.").color(DARK_GRAY))));
+            .append(Component.text("ꜱᴄʀᴏʟʟ ᴄᴀᴛᴇɢᴏʀɪᴇꜱ " + (isNext ? "ꜰᴏʀᴡᴀʀᴅ" : "ʙᴀᴄᴋᴡᴀʀᴅ") + ".").color(DARK_GRAY))));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** Returns the number of pages required to display all settings in a category. */
+    private static int totalPagesForCat(Category cat) {
+        return Math.max(1, (int) Math.ceil(cat.settings.size() / (double) SETTINGS_PER_PAGE));
+    }
+
+    /** ⟲ Reset All - resets every setting across ALL categories. */
+    private ItemStack buildResetAllButton() {
+        ItemStack item = new ItemStack(Material.REDSTONE_BLOCK);
+        ItemMeta  meta = item.getItemMeta();
+        meta.displayName(Component.empty().decoration(TextDecoration.ITALIC, false)
+            .append(Component.text("⟲  ʀᴇꜱᴇᴛ ᴀʟʟ").color(YELLOW).decoration(TextDecoration.BOLD, false)));
+        meta.lore(List.of(
+            Component.empty().decoration(TextDecoration.ITALIC, false)
+                .append(Component.text("ʀᴇꜱᴇᴛ ᴇᴠᴇʀʏ ꜱᴇᴛᴛɪɴɢ ᴀᴄʀᴏꜱꜱ").color(GRAY)),
+            Component.empty().decoration(TextDecoration.ITALIC, false)
+                .append(Component.text("ᴀʟʟ ᴄᴀᴛᴇɢᴏʀɪᴇꜱ ᴛᴏ ᴅᴇꜰᴀᴜʟᴛꜱ.").color(GRAY))));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** ✕ Close - saves & closes the settings chest. */
+    private ItemStack buildCloseButton() {
+        ItemStack item = new ItemStack(Material.BARRIER);
+        ItemMeta  meta = item.getItemMeta();
+        meta.displayName(Component.empty().decoration(TextDecoration.ITALIC, false)
+            .append(Component.text("✕  ᴄʟᴏꜱᴇ").color(OFF_RED).decoration(TextDecoration.BOLD, true)));
+        meta.lore(List.of(Component.empty().decoration(TextDecoration.ITALIC, false)
+            .append(Component.text("ꜱᴀᴠᴇ & ᴄʟᴏꜱᴇ ᴛʜᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴇɴᴜ.").color(DARK_GRAY))));
         item.setItemMeta(meta);
         return item;
     }
@@ -639,7 +727,7 @@ public final class SettingGui implements Listener {
         ItemStack skull = buildSkullSync();
         cachedOwnerSkull = skull;
         skullRefreshedAt = now;
-        // Kick off an async Mojang profile update — next render will get the fresh skin
+        // Kick off an async Mojang profile update - next render will get the fresh skin
         scheduleSkullRefresh();
         return skull.clone();
     }
@@ -676,23 +764,43 @@ public final class SettingGui implements Listener {
                 cachedOwnerSkull = skull;
                 skullRefreshedAt = System.currentTimeMillis();
             } catch (Exception ignored) {
-                // Network unavailable or Mojang rate-limit — keep the old cache
+                // Network unavailable or Mojang rate-limit - keep the old cache
             }
         });
     }
 
-    private ItemStack buildResetButton() {
-        ItemStack item = new ItemStack(Material.REDSTONE_BLOCK);
-        ItemMeta  meta = item.getItemMeta();
-        meta.displayName(Component.empty().decoration(TextDecoration.ITALIC, false)
-            .append(Component.text("⟲  ʀᴇꜱᴇᴛ ᴛʜɪꜱ ᴘᴀɢᴇ").color(YELLOW).decoration(TextDecoration.BOLD, false)));
-        meta.lore(List.of(
-            Component.empty().decoration(TextDecoration.ITALIC, false)
-                .append(Component.text("ʀᴇꜱᴇᴛ ᴀʟʟ ꜱᴇᴛᴛɪɴɢꜱ ᴏɴ ᴛʜɪꜱ").color(GRAY)),
-            Component.empty().decoration(TextDecoration.ITALIC, false)
-                .append(Component.text("ᴘᴀɢᴇ ᴛᴏ ᴛʜᴇɪʀ ᴅᴇꜰᴀᴜʟᴛ ᴠᴀʟᴜᴇꜱ.").color(GRAY))));
-        item.setItemMeta(meta);
-        return item;
+    /**
+     * Resets every setting in every category to JAR defaults.
+     */
+    private void resetAllCategories(Player player) {
+        var cfg      = plugin.getConfig();
+        var defaults = cfg.getDefaults();
+        for (Category cat : categories) {
+            for (SettingEntry entry : cat.settings) {
+                switch (entry.type) {
+                    case TOGGLE -> cfg.set(entry.configKey,
+                            defaults != null ? defaults.getBoolean(entry.configKey, false) : false);
+                    case CYCLE_INT -> cfg.set(entry.configKey,
+                            defaults != null ? defaults.getInt(entry.configKey, entry.intValues[0]) : entry.intValues[0]);
+                    case CYCLE_DOUBLE -> cfg.set(entry.configKey,
+                            defaults != null ? defaults.getDouble(entry.configKey, entry.dblValues[0]) : entry.dblValues[0]);
+                    default -> { /* COMING_SOON - skip */ }
+                }
+            }
+        }
+        plugin.saveConfig();
+        Config.reload();
+        for (Category cat : categories) {
+            for (SettingEntry entry : cat.settings) {
+                applyLiveEffect(entry.configKey);
+            }
+        }
+        build(player);
+        player.sendActionBar(Component.empty()
+            .decoration(TextDecoration.ITALIC, false)
+            .append(Component.text("⟲ ").color(YELLOW))
+            .append(Component.text("ᴀʟʟ ꜱᴇᴛᴛɪɴɢꜱ  ").color(WHITE).decoration(TextDecoration.BOLD, false))
+            .append(Component.text("ʀᴇꜱᴇᴛ ᴛᴏ ᴅᴇꜰᴀᴜʟᴛꜱ").color(YELLOW).decoration(TextDecoration.BOLD, true)));
     }
 
     private ItemStack glassFiller(Material mat) {
@@ -716,10 +824,18 @@ public final class SettingGui implements Listener {
     private void applyLiveEffect(String configKey) {
         FakePlayerManager fpm = plugin.getFakePlayerManager();
 
-        // ── Body: damageable / pushable / max-health ──────────────────────────
+        // ── Body: damageable / pushable / max-health / pick-up-items ─────────
         if (configKey.equals("body.enabled") || configKey.equals("body.pushable")
                 || configKey.equals("body.damageable") || configKey.equals("combat.max-health")) {
             if (fpm != null) fpm.applyBodyConfig();
+            return;
+        }
+
+        // ── Body: pick-up-items toggled OFF → drop everything bots are holding ──
+        if (configKey.equals("body.pick-up-items")) {
+            if (!plugin.getConfig().getBoolean("body.pick-up-items", false) && fpm != null) {
+                fpm.getActivePlayers().forEach(this::dropBotInventoryWithAnimation);
+            }
             return;
         }
 
@@ -730,7 +846,7 @@ public final class SettingGui implements Listener {
             return;
         }
 
-        // ── Chat AI — any fake-chat.* change restarts loops so new values
+        // ── Chat AI - any fake-chat.* change restarts loops so new values
         //    (interval, chance, stagger, etc.) take effect immediately ─────────
         if (configKey.startsWith("fake-chat.")) {
             var chatAI = plugin.getBotChatAI();
@@ -741,7 +857,7 @@ public final class SettingGui implements Listener {
             return;
         }
 
-        // ── Swap AI — cancel all pending timers and reschedule if swap is on ──
+        // ── Swap AI - cancel all pending timers and reschedule if swap is on ──
         if (configKey.startsWith("swap.")) {
             var swapAI = plugin.getBotSwapAI();
             if (swapAI != null) {
@@ -754,11 +870,68 @@ public final class SettingGui implements Listener {
             return;
         }
 
-        // ── Peak hours — wakes sleeping bots then re-evaluates window ─────────
+        // ── Peak hours - wakes sleeping bots then re-evaluates window ─────────
         if (configKey.startsWith("peak-hours.")) {
             var phm = plugin.getPeakHoursManager();
             if (phm != null) phm.reload();
         }
+    }
+
+    /**
+     * When the pick-up-items toggle is turned OFF, makes the bot look at the
+     * ground, drops every item it currently holds into the world naturally,
+     * then restores its original head direction.
+     *
+     * <p>Sequence (runs on the main thread):
+     * <ol>
+     *   <li>Look down (pitch = 90°)</li>
+     *   <li>3 ticks later - drop all items and clear the inventory</li>
+     *   <li>5 ticks after that - restore original look direction</li>
+     * </ol>
+     */
+    private void dropBotInventoryWithAnimation(FakePlayer fp) {
+        Player bot = fp.getPlayer();
+        if (bot == null || !bot.isOnline()) return;
+
+        // Quick early-out - nothing to drop
+        boolean hasItems = false;
+        for (ItemStack item : bot.getInventory().getContents()) {
+            if (item != null && item.getType() != org.bukkit.Material.AIR) {
+                hasItems = true;
+                break;
+            }
+        }
+        if (!hasItems) return;
+
+        Location loc       = bot.getLocation();
+        float    origYaw   = loc.getYaw();
+        float    origPitch = loc.getPitch();
+
+        // 1. Look down immediately
+        bot.setRotation(origYaw, 90f);
+        NmsPlayerSpawner.setHeadYaw(bot, origYaw);
+
+        // 2. Drop items after a small delay so the animation is visible
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Player b = fp.getPlayer();
+            if (b == null || !b.isOnline()) return;
+
+            ItemStack[] contents = b.getInventory().getContents().clone();
+            b.getInventory().clear();
+            for (ItemStack item : contents) {
+                if (item != null && item.getType() != org.bukkit.Material.AIR) {
+                    b.getWorld().dropItemNaturally(b.getLocation(), item);
+                }
+            }
+
+            // 3. Restore original look direction
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                Player b2 = fp.getPlayer();
+                if (b2 == null || !b2.isOnline()) return;
+                b2.setRotation(origYaw, origPitch);
+                NmsPlayerSpawner.setHeadYaw(b2, origYaw);
+            }, 5L);
+        }, 3L);
     }
 
     private void sendActionBarConfirm(Player player, String label, String newVal) {
@@ -774,67 +947,20 @@ public final class SettingGui implements Listener {
      * Plays the Minecraft UI button-click sound privately to {@code player}.
      * {@code pitch} controls the feel:
      * <ul>
-     *   <li>~1.2 — toggle ON (bright, positive)</li>
-     *   <li>~0.85 — toggle OFF (muted, neutral)</li>
-     *   <li>~1.3 — category tab switch (light tap)</li>
-     *   <li>~1.0 — numeric input prompt (neutral)</li>
-     *   <li>~0.8 — close button</li>
-     *   <li>~0.6 — reset button (heavier)</li>
+     *   <li>~1.2 - toggle ON (bright, positive)</li>
+     *   <li>~0.85 - toggle OFF (muted, neutral)</li>
+     *   <li>~1.3 - category tab switch (light tap)</li>
+     *   <li>~1.0 - numeric input prompt (neutral)</li>
+     *   <li>~0.8 - close button</li>
+     *   <li>~0.6 - reset button (heavier)</li>
      * </ul>
      */
     private static void playUiClick(Player player, float pitch) {
         player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.5f, pitch);
     }
 
-    /**
-     * Resets all settings in the specified category to their default values
-     * as defined in the JAR's {@code config.yml}.
-     */
-    private void resetCategory(Player player, int catIdx) {
-        if (catIdx < 0 || catIdx >= categories.length) return;
-        
-        Category cat = categories[catIdx];
-        var cfg      = plugin.getConfig();
-        var defaults = cfg.getDefaults();   // defaults loaded from the bundled config.yml
-
-        // Reset each setting to its true default from the JAR config
-        for (SettingEntry entry : cat.settings) {
-            switch (entry.type) {
-                case TOGGLE -> cfg.set(entry.configKey,
-                        defaults != null
-                                ? defaults.getBoolean(entry.configKey, false)
-                                : false);
-                case CYCLE_INT -> cfg.set(entry.configKey,
-                        defaults != null
-                                ? defaults.getInt(entry.configKey, entry.intValues[0])
-                                : entry.intValues[0]);
-                case CYCLE_DOUBLE -> cfg.set(entry.configKey,
-                        defaults != null
-                                ? defaults.getDouble(entry.configKey, entry.dblValues[0])
-                                : entry.dblValues[0]);
-            }
-        }
-        
-        // Save and reload
-        plugin.saveConfig();
-        Config.reload();
-        
-        // Apply live effects for each reset key
-        for (SettingEntry entry : cat.settings) {
-            applyLiveEffect(entry.configKey);
-        }
-        
-        // Rebuild GUI and send confirmation
-        build(player);
-        player.sendActionBar(Component.empty()
-            .decoration(TextDecoration.ITALIC, false)
-            .append(Component.text("⟲ ").color(YELLOW))
-            .append(Component.text(cat.label + "  ").color(WHITE).decoration(TextDecoration.BOLD, false))
-            .append(Component.text("ʀᴇꜱᴇᴛ ᴛᴏ ᴅᴇꜰᴀᴜʟᴛꜱ").color(YELLOW).decoration(TextDecoration.BOLD, true)));
-    }
-
     // ═════════════════════════════════════════════════════════════════════════
-    //  Category definitions  (unchanged from original)
+    //  Category definitions
     // ═════════════════════════════════════════════════════════════════════════
 
     private Category general() {
@@ -861,17 +987,17 @@ public final class SettingGui implements Listener {
                     "ᴅᴇꜰᴀᴜʟᴛ ᴘᴇʀꜱᴏɴᴀʟ ʟɪᴍɪᴛ ꜰᴏʀ\nꜰᴘᴘ.ᴜꜱᴇʀ.ꜱᴘᴀᴡɴ ᴘʟᴀʏᴇʀꜱ.",
                     Material.SHIELD, new int[]{ 1, 2, 3, 5, 10 }),
                 // ── Page 2 ────────────────────────────────────────────────────
-                SettingEntry.cycleInt("join-delay.min",        "ᴊᴏɪɴ ᴅᴇʟᴀʏ — ᴍɪɴ (ᴛɪᴄᴋꜱ)",
+                SettingEntry.cycleInt("join-delay.min",        "ᴊᴏɪɴ ᴅᴇʟᴀʏ - ᴍɪɴ (ᴛɪᴄᴋꜱ)",
                     "ꜱʜᴏʀᴛᴇꜱᴛ ʀᴀɴᴅᴏᴍ ᴅᴇʟᴀʏ ʙᴇꜰᴏʀᴇ\nᴀ ʙᴏᴛ ᴊᴏɪɴꜱ. 20 = 1 ꜱᴇᴄᴏɴᴅ.",
                     Material.FEATHER, new int[]{ 0, 5, 10, 20, 40, 100 }),
-                SettingEntry.cycleInt("join-delay.max",        "ᴊᴏɪɴ ᴅᴇʟᴀʏ — ᴍᴀx (ᴛɪᴄᴋꜱ)",
-                    "ʟᴏɴɢᴇꜱᴛ ʀᴀɴᴅᴏᴍ ᴅᴇʟᴀʏ ʙᴇꜰᴏʀᴇ\nᴀ ʙᴏᴛ ᴊᴏɪɴꜱ. 20 = 1 ꜱᴇᴄᴏɴᴅ.",
+                SettingEntry.cycleInt("join-delay.max",        "ᴊᴏɪɴ ᴅᴇʟᴀʏ - ᴍᴀx (ᴛɪᴄᴋꜱ)",
+                    "ʟᴏɴɡᴇꜱᴛ ʀᴀɴᴅᴏᴍ ᴅᴇʟᴀʏ ʙᴇꜰᴏʀᴇ\nᴀ ʙᴏᴛ ᴊᴏɪɴꜱ. 20 = 1 ꜱᴇᴄᴏɴᴅ.",
                     Material.FEATHER, new int[]{ 0, 5, 10, 20, 40, 100 }),
-                SettingEntry.cycleInt("leave-delay.min",       "ʟᴇᴀᴠᴇ ᴅᴇʟᴀʏ — ᴍɪɴ (ᴛɪᴄᴋꜱ)",
+                SettingEntry.cycleInt("leave-delay.min",       "ʟᴇᴀᴠᴇ ᴅᴇʟᴀʏ - ᴍɪɴ (ᴛɪᴄᴋꜱ)",
                     "ꜱʜᴏʀᴛᴇꜱᴛ ʀᴀɴᴅᴏᴍ ᴅᴇʟᴀʏ ʙᴇꜰᴏʀᴇ\nᴀ ʙᴏᴛ ʟᴇᴀᴠᴇꜱ. 20 = 1 ꜱᴇᴄᴏɴᴅ.",
                     Material.GRAY_DYE, new int[]{ 0, 5, 10, 20, 40, 100 }),
-                SettingEntry.cycleInt("leave-delay.max",       "ʟᴇᴀᴠᴇ ᴅᴇʟᴀʏ — ᴍᴀx (ᴛɪᴄᴋꜱ)",
-                    "ʟᴏɴɢᴇꜱᴛ ʀᴀɴᴅᴏᴍ ᴅᴇʟᴀʏ ʙᴇꜰᴏʀᴇ\nᴀ ʙᴏᴛ ʟᴇᴀᴠᴇꜱ. 20 = 1 ꜱᴇᴄᴏɴᴅ.",
+                SettingEntry.cycleInt("leave-delay.max",       "ʟᴇᴀᴠᴇ ᴅᴇʟᴀʏ - ᴍᴀx (ᴛɪᴄᴋꜱ)",
+                    "ʟᴏɴɡᴇꜱᴛ ʀᴀɴᴅᴏᴍ ᴅᴇʟᴀʏ ʙᴇꜰᴏʀᴇ\nᴀ ʙᴏᴛ ʟᴇᴀᴠᴇꜱ. 20 = 1 ꜱᴇᴄᴏɴᴅ.",
                     Material.GRAY_DYE, new int[]{ 0, 5, 10, 20, 40, 100 }),
                 SettingEntry.cycleInt("chunk-loading.radius",  "ᴄʜᴜɴᴋ ʟᴏᴀᴅ ʀᴀᴅɪᴜꜱ",
                     "ᴄʜᴜɴᴋ ʀᴀᴅɪᴜꜱ ᴋᴇᴘᴛ ʟᴏᴀᴅᴇᴅ ᴀʀᴏᴜɴᴅ\nᴇᴀᴄʜ ʙᴏᴛ. 0 = ꜱᴇʀᴠᴇʀ ᴅᴇꜰᴀᴜʟᴛ.",
@@ -888,14 +1014,20 @@ public final class SettingGui implements Listener {
                     "ᴀʟʟᴏᴡ ʙᴏᴛꜱ ᴛᴏ ᴇxɪꜱᴛ ᴡɪᴛʜᴏᴜᴛ ᴀ\nᴘʜʏꜱɪᴄᴀʟ ᴇɴᴛɪᴛʏ (ᴛᴀʙ-ʟɪꜱᴛ ᴏɴʟʏ).",
                     Material.ARMOR_STAND),
                 SettingEntry.comingSoon("skin.guaranteed-skin",   "ꜱᴋɪɴ ꜱʏꜱᴛᴇᴍ",
-                    "ᴄᴜꜱᴛᴏᴍ ꜱᴋɪɴꜱ ꜰᴏʀ ʙᴏᴛꜱ.\nᴛʜɪꜱ ꜰᴇᴀᴛᴜʀᴇ ɪꜱ ɪɴ ᴅᴇᴠᴇʟᴏᴘᴍᴇɴᴛ.",
+                    "ᴄᴜꜱᴛᴏᴍ ꜱᴋɪɴꜱ ꜰᴏʀ ʙᴏᴛꜱ.\nᴛʜɪꜱ ꜰ꜇ᴀᴛᴜʀᴇ ɪꜱ ɪɴ ᴅᴇᴠᴇʟᴏᴘᴍᴇɴᴛ.",
                     Material.PLAYER_HEAD),
                 SettingEntry.toggle("body.pushable",          "ᴘᴜꜱʜᴀʙʟᴇ",
                     "ᴀʟʟᴏᴡ ᴘʟᴀʏᴇʀꜱ ᴀɴᴅ ᴇɴᴛɪᴛɪᴇꜱ\nᴛᴏ ᴘᴜꜱʜ ʙᴏᴛ ʙᴏᴅɪᴇꜱ.",
                     Material.PISTON),
                 SettingEntry.toggle("body.damageable",        "ᴅᴀᴍᴀɢᴇᴀʙʟᴇ",
-                    "ʙᴏᴛꜱ ᴛᴀᴋᴇ ᴅᴀᴍᴀɢᴇ ᴀɴᴅ ᴄᴀɴ ᴅɪᴇ.\nᴅɪꜱᴀʙʟᴇ ꜰᴏʀ ɪɴᴠᴜʟɴᴇʀᴀʙʟᴇ ʙᴏᴛꜱ.",
+                    "ʙᴏᴛꜱ ᴛᴀᴋᴇ ᴘʟᴀʏᴇʀ/ᴇɴᴛɪᴛʏ ᴅᴀᴍᴀɢᴇ.\nꜰᴀʟꜱᴇ = ɪᴍᴍᴜɴᴇ ᴛᴏ ᴘᴠᴘ/ᴍᴏʙꜱ ᴏɴʟʏ.",
                     Material.IRON_SWORD),
+                SettingEntry.toggle("body.pick-up-items",     "ᴘɪᴄᴋ ᴜᴘ ɪᴛᴇᴍꜱ",
+                    "ʙᴏᴛꜱ ᴘɪᴄᴋ ᴜᴘ ɪᴛᴇᴍꜱ ꜰʀᴏᴍ ᴛʜᴇ ɢʀᴏᴜɴᴅ\nʟɪᴋᴇ ᴀ ʀᴇᴀʟ ᴘʟᴀʏᴇʀ.",
+                    Material.HOPPER),
+                SettingEntry.toggle("body.pick-up-xp",        "ᴘɪᴄᴋ ᴜᴘ xᴘ",
+                    "ʙᴏᴛꜱ ᴄᴏʟʟᴇᴄᴛ ᴇxᴘᴇʀɪᴇɴᴄᴇ ᴏʀʙꜱ\nꜰʀᴏᴍ ᴛʜᴇ ɢʀᴏᴜɴᴅ.",
+                    Material.EXPERIENCE_BOTTLE),
                 SettingEntry.toggle("head-ai.enabled",        "ʜᴇᴀᴅ ᴀɪ",
                     "ʙᴏᴛꜱ ꜱᴍᴏᴏᴛʜʟʏ ʀᴏᴛᴀᴛᴇ ᴛᴏ ꜰᴀᴄᴇ\nᴛʜᴇ ɴᴇᴀʀᴇꜱᴛ ᴘʟᴀʏᴇʀ ɪɴ ʀᴀɴɢᴇ.",
                     Material.ENDER_EYE),
@@ -907,7 +1039,7 @@ public final class SettingGui implements Listener {
                     Material.TOTEM_OF_UNDYING),
                 SettingEntry.toggle("death.suppress-drops",   "ꜱᴜᴘᴘʀᴇꜱꜱ ᴅʀᴏᴘꜱ",
                     "ʙᴏᴛꜱ ᴅʀᴏᴘ ɴᴏ ɪᴛᴇᴍꜱ ᴏʀ xᴘ\nᴡʜᴇɴ ᴛʜᴇʏ ᴅɪᴇ.",
-                    Material.HOPPER),
+                    Material.CHEST),
                 SettingEntry.cycleDouble("combat.max-health", "ᴍᴀx ʜᴇᴀʟᴛʜ (½-ʜᴇᴀʀᴛꜱ)",
                     "ʙᴏᴛ ʙᴀꜱᴇ ʜᴇᴀʟᴛʜ. 20 = 10 ʜᴇᴀʀᴛꜱ.\nᴀᴘᴘʟɪᴇᴅ ᴀᴛ ꜱᴘᴀᴡɴ ᴀɴᴅ ᴏɴ /ꜰᴘᴘ ʀᴇʟᴏᴀᴅ.",
                     Material.GOLDEN_APPLE, new double[]{ 5, 10, 15, 20, 40 }),
@@ -924,7 +1056,7 @@ public final class SettingGui implements Listener {
             Material.YELLOW_STAINED_GLASS_PANE,
             List.of(
                 SettingEntry.toggle("fake-chat.enabled",                 "ꜰᴀᴋᴇ ᴄʜᴀᴛ",
-                    "ʙᴏᴛꜱ ꜱᴇɴᴅ ʀᴀɴᴅᴏᴍ ᴍᴇꜱꜱᴀɢᴇꜱ\nꜰʀᴏᴍ ᴛʜᴇ ᴄᴏɴꜰɪɢᴜʀᴇᴅ ᴍᴇꜱꜱᴀɢᴇ ᴘᴏᴏʟ.",
+                    "ʙᴏᴛꜱ ꜱᴇɴᴅ ʀᴀɴᴅᴏᴍ ᴍᴇꜱꜱᴀɡᴇꜱ\nꜰʀᴏᴍ ᴛʜᴇ ᴄᴏɴꜰɪɡᴜʀᴇᴅ ᴍᴇꜱꜱᴀɡᴇ ᴘᴏᴏʟ.",
                     Material.WRITABLE_BOOK),
                 SettingEntry.toggle("fake-chat.require-player-online",   "ʀᴇQᴜɪʀᴇ ᴘʟᴀʏᴇʀ ᴏɴʟɪɴᴇ",
                     "ʙᴏᴛꜱ ᴏɴʟʏ ᴄʜᴀᴛ ᴡʜᴇɴ ᴀᴛ ʟᴇᴀꜱᴛ\nᴏɴᴇ ʀᴇᴀʟ ᴘʟᴀʏᴇʀ ɪꜱ ᴏɴ ᴛʜᴇ ꜱᴇʀᴠᴇʀ.",
@@ -936,32 +1068,32 @@ public final class SettingGui implements Listener {
                     "ʙᴏᴛꜱ ʀᴇꜱᴘᴏɴᴅ ᴡʜᴇɴ ᴀ ᴘʟᴀʏᴇʀ\nꜱᴀʏꜱ ᴛʜᴇɪʀ ɴᴀᴍᴇ ɪɴ ᴄʜᴀᴛ.",
                     Material.BELL),
                 SettingEntry.toggle("fake-chat.activity-variation",      "ᴀᴄᴛɪᴠɪᴛʏ ᴠᴀʀɪᴀᴛɪᴏɴ",
-                    "ᴀꜱꜱɪɢɴ ᴇᴀᴄʜ ʙᴏᴛ ᴀ ᴜɴɪQᴜᴇ ᴄʜᴀᴛ\nᴛɪᴇʀ — Qᴜɪᴇᴛ ᴛᴏ ᴄʜᴀᴛᴛʏ.",
+                    "ᴀꜱꜱɪɢɴ ᴇᴀᴄʜ ʙᴏᴛ ᴀ ᴜɴɪQᴜᴇ ᴄʜᴀᴛ\nᴛɪᴇʀ - Qᴜɪᴇᴛ ᴛᴏ ᴄʜᴀᴛᴛʏ.",
                     Material.COMPARATOR),
-                SettingEntry.toggle("fake-chat.event-triggers.enabled",  "ᴇᴠᴇɴᴛ ᴛʀɪɢɢᴇʀꜱ",
+                SettingEntry.toggle("fake-chat.event-triggers.enabled",  "ᴇᴠᴇɴᴛ ᴛʀɪɡɡᴇʀꜱ",
                     "ʙᴏᴛꜱ ʀᴇᴀᴄᴛ ᴛᴏ ᴘʟᴀʏᴇʀ ᴊᴏɪɴ,\nᴅᴇᴀᴛʜ, ᴀɴᴅ ʟᴇᴀᴠᴇ ᴇᴠᴇɴᴛꜱ.",
                     Material.REDSTONE_TORCH),
                 SettingEntry.cycleDouble("fake-chat.chance",             "ᴄʜᴀᴛ ᴄʜᴀɴᴄᴇ (0–1)",
-                    "ᴘʀᴏʙᴀʙɪʟɪᴛʏ ᴏꜰ ᴄʜᴀᴛᴛɪɴɢ\nᴏɴ ᴇᴀᴄʜ ɪɴᴛᴇʀᴠᴀʟ ᴄʜᴇᴄᴋ.",
+                    "ᴘʀᴏʙᴀʙɪʟɪᴛʏ ᴏꜱ ᴄʜᴀᴛᴛɪɴɢ\nᴏɴ ᴇᴀᴄʜ ɪɴᴛᴇʀᴠᴀʟ ᴄʜᴇᴄᴋ.",
                     Material.RABBIT_FOOT, new double[]{ 0.25, 0.50, 0.75, 1.0 }),
-                SettingEntry.cycleInt("fake-chat.interval.min",          "ɪɴᴛᴇʀᴠᴀʟ — ᴍɪɴ (ꜱ)",
+                SettingEntry.cycleInt("fake-chat.interval.min",          "ɪɴᴛᴇʀᴠᴀʟ - ᴍɪɴ (ꜱ)",
                     "ᴍɪɴɪᴍᴜᴍ ꜱᴇᴄᴏɴᴅꜱ ʙᴇᴛᴡᴇᴇɴ\nᴀ ʙᴏᴛ'ꜱ ᴄʜᴀᴛ ᴍᴇꜱꜱᴀɢᴇꜱ.",
                     Material.CLOCK, new int[]{ 5, 10, 20, 30, 60 }),
-                SettingEntry.cycleInt("fake-chat.interval.max",          "ɪɴᴛᴇʀᴠᴀʟ — ᴍᴀx (ꜱ)",
-                    "ᴍᴀxɪᴍᴜᴍ ꜱᴇᴄᴏɴᴅꜱ ʙᴇᴛᴡᴇᴇɴ\nᴀ ʙᴏᴛ'ꜱ ᴄʜᴀᴛ ᴍᴇꜱꜱᴀɢᴇꜱ.",
+                SettingEntry.cycleInt("fake-chat.interval.max",          "ɪɴᴛᴇʀᴠᴀʟ - ᴍᴀx (ꜱ)",
+                    "ᴍᴀxɪᴍᴜᴍ ꜱᴇᴄᴏɴᴅꜱ ʙᴇᴛᴡᴇᴇɴ\nᴀ ʙᴏᴛ'ꜱ ᴄʜᴀᴛ ᴍᴇꜱꜱᴀɡᴇꜱ.",
                     Material.CLOCK, new int[]{ 10, 20, 30, 60, 120 }),
                 // ── Page 2 ────────────────────────────────────────────────────
                 SettingEntry.toggle("fake-chat.keyword-reactions.enabled", "ᴋᴇʏᴡᴏʀᴅ ʀᴇᴀᴄᴛɪᴏɴꜱ",
-                    "ʙᴏᴛꜱ ʀᴇᴀᴄᴛ ᴡʜᴇɴ ᴀ ᴘʟᴀʏᴇʀ'ꜱ\nᴍᴇꜱꜱᴀɢᴇ ᴄᴏɴᴛᴀɪɴꜱ ᴀ ᴛʀɪɢɢᴇʀ ᴡᴏʀᴅ.",
+                    "ʙᴏᴛꜱ ʀᴇᴀᴄᴛ ᴡʜᴇɴ ᴀ ᴘʟᴀʏᴇʀ'ꜱ\nᴍᴇꜱꜱᴀɢᴇ ᴄᴏɴᴛᴀɪɴꜱ ᴀ ᴛʀɪɡɡᴇʀ ᴡᴏʀᴅ.",
                     Material.BOOK),
                 SettingEntry.cycleDouble("fake-chat.burst-chance",       "ʙᴜʀꜱᴛ ᴄʜᴀɴᴄᴇ (0–1)",
                     "ᴘʀᴏʙᴀʙɪʟɪᴛʏ ᴀ ʙᴏᴛ ꜱᴇɴᴅꜱ ᴀ\nQᴜɪᴄᴋ ꜰᴏʟʟᴏᴡ-ᴜᴘ ᴍᴇꜱꜱᴀɢᴇ.",
                     Material.PAPER, new double[]{ 0.0, 0.05, 0.10, 0.15, 0.25, 0.50 }),
-                SettingEntry.cycleInt("fake-chat.stagger-interval",      "ᴄʜᴀᴛ ꜱᴛᴀɢɢᴇʀ (ꜱ)",
+                SettingEntry.cycleInt("fake-chat.stagger-interval",      "ᴄʜᴀᴛ ꜱᴀɡɡᴇʀ (ꜱ)",
                     "ᴍɪɴɪᴍᴜᴍ ɢᴀᴘ ʙᴇᴛᴡᴇᴇɴ ᴀɴʏ ᴛᴡᴏ\nʙᴏᴛꜱ ᴄʜᴀᴛᴛɪɴɢ. 0 = ᴅɪꜱᴀʙʟᴇᴅ.",
                     Material.CLOCK, new int[]{ 0, 1, 2, 3, 5, 10 }),
                 SettingEntry.cycleInt("fake-chat.history-size",          "ᴍᴇꜱꜱᴀɢᴇ ʜɪꜱᴛᴏʀʏ ꜱɪᴢᴇ",
-                    "ʀᴇᴄᴇɴᴛ ᴍᴇꜱꜱᴀɢᴇꜱ ᴘᴇʀ ʙᴏᴛ ᴛʀᴀᴄᴋᴇᴅ\nᴛᴏ ᴀᴠᴏɪᴅ ʀᴇᴘᴇᴀᴛɪɴɢ. 0 = ᴏꜰꜰ.",
+                    "ʀᴇᴄᴇɴᴛ ᴍᴇꜱꜱᴀɡᴇꜱ ᴘᴇʀ ʙᴏᴛ ᴛʀᴀᴄᴋᴇᴅ\nᴛᴏ ᴀᴠᴏɪᴅ ʀᴇᴘᴇᴀᴛɪɴɢ. 0 = ᴏꜰꜰ.",
                     Material.KNOWLEDGE_BOOK, new int[]{ 0, 3, 5, 10, 15, 20 })
             ));
     }
@@ -974,29 +1106,29 @@ public final class SettingGui implements Listener {
                 SettingEntry.toggle("swap.enabled",             "ꜱᴡᴀᴘ ꜱʏꜱᴛᴇᴍ",
                     "ʙᴏᴛꜱ ᴘᴇʀɪᴏᴅɪᴄᴀʟʟʏ ʟᴇᴀᴠᴇ ᴀɴᴅ\nʀᴇ-ᴊᴏɪɴ, ꜱɪᴍᴜʟᴀᴛɪɴɢ ʀᴇᴀʟ ᴘʟᴀʏᴇʀꜱ.",
                     Material.ENDER_PEARL),
-                SettingEntry.toggle("swap.farewell-chat",       "ꜰᴀʀᴇᴡᴇʟʟ ᴍᴇꜱꜱᴀɢᴇꜱ",
+                SettingEntry.toggle("swap.farewell-chat",       "ꜰᴀʀᴇᴡᴇʟʟ ᴍᴇꜱꜱᴀɡᴇꜱ",
                     "ʙᴏᴛꜱ ꜱᴀʏ ɢᴏᴏᴅʙʏᴇ ʙᴇꜰᴏʀᴇ\nʟᴇᴀᴠɪɴɢ ᴛʜᴇ ꜱᴇʀᴠᴇʀ.",
                     Material.POPPY),
-                SettingEntry.toggle("swap.greeting-chat",       "ɢʀᴇᴇᴛɪɴɢ ᴍᴇꜱꜱᴀɢᴇꜱ",
+                SettingEntry.toggle("swap.greeting-chat",       "ɢʀᴇᴇᴛɪɴɢ ᴍᴇꜱꜱᴀɡᴇꜱ",
                     "ʙᴏᴛꜱ ɢʀᴇᴇᴛ ᴛʜᴇ ꜱᴇʀᴠᴇʀ\nᴡʜᴇɴ ᴛʜᴇʏ ʀᴇᴛᴜʀɴ.",
                     Material.DANDELION),
                 SettingEntry.toggle("swap.same-name-on-rejoin", "ᴋᴇᴇᴘ ɴᴀᴍᴇ ᴏɴ ʀᴇᴊᴏɪɴ",
                     "ʙᴏᴛꜱ ᴛʀʏ ᴛᴏ ʀᴇᴄʟᴀɪᴍ ᴛʜᴇɪʀ\nᴏʀɪɢɪɴᴀʟ ɴᴀᴍᴇ ᴡʜᴇɴ ʀᴇᴛᴜʀɴɪɴɢ.",
                     Material.NAME_TAG),
-                SettingEntry.cycleInt("swap.session.min",       "ꜱᴇꜱꜱɪᴏɴ — ᴍɪɴ (ꜱ)",
+                SettingEntry.cycleInt("swap.session.min",       "ꜱᴇꜱꜱɪᴏɴ - ᴍɪɴ (ꜱ)",
                     "ꜱʜᴏʀᴛᴇꜱᴛ ᴘᴏꜱꜱɪʙʟᴇ ᴛɪᴍᴇ ᴀ\nʙᴏᴛ ꜱᴛᴀʏꜱ ᴏɴʟɪɴᴇ.",
                     Material.CLOCK, new int[]{ 30, 60, 120, 300, 600 }),
-                SettingEntry.cycleInt("swap.session.max",       "ꜱᴇꜱꜱɪᴏɴ — ᴍᴀx (ꜱ)",
-                    "ʟᴏɴɢᴇꜱᴛ ᴘᴏꜱꜱɪʙʟᴇ ᴛɪᴍᴇ ᴀ\nʙᴏᴛ ꜱᴛᴀʏꜱ ᴏɴʟɪɴᴇ.",
+                SettingEntry.cycleInt("swap.session.max",       "ꜱᴇꜱꜱɪᴏɴ - ᴍᴀx (ꜱ)",
+                    "ʟᴏɴɡᴇꜱᴛ ᴘᴏꜱꜱɪʙʟᴇ ᴛɪᴍᴇ ᴀ\nʙᴏᴛ ꜱᴛᴀʏꜱ ᴏɴʟɪɴᴇ.",
                     Material.CLOCK, new int[]{ 60, 120, 300, 600, 1200 }),
-                SettingEntry.cycleInt("swap.absence.min",       "ᴀʙꜱᴇɴᴄᴇ — ᴍɪɴ (ꜱ)",
-                    "ꜱʜᴏʀᴛᴇꜱᴛ ᴛɪᴍᴇ ᴀ ʙᴏᴛ\nꜱᴘᴇɴᴅꜱ ᴏꜰꜰʟɪɴᴇ.",
+                SettingEntry.cycleInt("swap.absence.min",       "ᴀʙꜱᴇɴᴄᴇ - ᴍɪɴ (ꜱ)",
+                    "ꜱʜᴏʀᴛᴇꜱᴛ ᴛɪᴍᴇ ᴀ ʙᴏᴛ\nꜱᴘᴇɴᴅꜱ ᴏꜦꜦʟɪɴᴇ.",
                     Material.GRAY_DYE, new int[]{ 15, 30, 60, 120 }),
-                SettingEntry.cycleInt("swap.absence.max",       "ᴀʙꜱᴇɴᴄᴇ — ᴍᴀx (ꜱ)",
-                    "ʟᴏɴɢᴇꜱᴛ ᴛɪᴍᴇ ᴀ ʙᴏᴛ\nꜱᴘᴇɴᴅꜱ ᴏꜰꜰʟɪɴᴇ.",
+                SettingEntry.cycleInt("swap.absence.max",       "ᴀʙꜱᴇɴᴄᴇ - ᴍᴀx (ꜱ)",
+                    "ʟᴏɴɡᴇꜱᴛ ᴛɪᴍᴇ ᴀ ʙᴏᴛ\nꜱᴘᴇɴᴅꜱ ᴏꜦꜦʟɪɴᴇ.",
                     Material.GRAY_DYE, new int[]{ 30, 60, 120, 300 }),
-                SettingEntry.cycleInt("swap.max-swapped-out",   "ᴍᴀx ᴏꜰꜰʟɪɴᴇ ᴀᴛ ᴏɴᴄᴇ",
-                    "ᴄᴀᴘ ᴏɴ ꜱɪᴍᴜʟᴛᴀɴᴇᴏᴜꜱʟʏ ᴀʙꜱᴇɴᴛ\nʙᴏᴛꜱ. 0 = ᴜɴʟɪᴍɪᴛᴇᴅ.",
+                SettingEntry.cycleInt("swap.max-swapped-out",   "ᴍᴀx ᴏꜦꜦʟɪɴᴇ ᴀᴛ ᴏɴᴄᴇ",
+                    "ᴄᴀᴘ ᴏɴ ꜱɪᴍᴜʟᴀᴛᴀɴᴇᴏᴜꜱʟʏ ᴀʙꜱᴇɴᴛ\nʙᴏᴛꜱ. 0 = ᴜɴʟɪᴍɪᴛᴇᴅ.",
                     Material.HOPPER, new int[]{ 0, 1, 2, 3, 5, 10 })
             ));
     }
@@ -1013,9 +1145,9 @@ public final class SettingGui implements Listener {
                     "ᴀʟᴇʀᴛ ꜰᴘᴘ.ᴘᴇᴀᴋꜱ ᴀᴅᴍɪɴꜱ ᴡʜᴇɴ\nᴛʜᴇ ᴀᴄᴛɪᴠᴇ ᴡɪɴᴅᴏᴡ ᴄʜᴀɴɢᴇꜱ.",
                     Material.BELL),
                 SettingEntry.cycleInt("peak-hours.min-online",       "ᴍɪɴ ʙᴏᴛꜱ ᴏɴʟɪɴᴇ",
-                    "ꜰʟᴏᴏʀ: ᴍɪɴɪᴍᴜᴍ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ\nʀᴇɢᴀʀᴅʟᴇꜱꜱ ᴏꜰ ꜰʀᴀᴄᴛɪᴏɴ. 0 = ᴏꜰꜰ.",
+                    "ꜰʟᴏᴏʀ: ᴍɪɴɪᴍᴜᴍ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ\nʀᴇɡᴀʀᴅʟᴇꜱꜱ ᴏꜦ ꜰʀᴀᴄᴛɪᴏɴ. 0 = ᴏ꜡.",
                     Material.COMPARATOR, new int[]{ 0, 1, 2, 5, 10 }),
-                SettingEntry.cycleInt("peak-hours.stagger-seconds",  "ᴛʀᴀɴꜱɪᴛɪᴏɴ ꜱᴛᴀɢɢᴇʀ (ꜱ)",
+                SettingEntry.cycleInt("peak-hours.stagger-seconds",  "ᴛʀᴀɴꜱɪᴛɪᴏɴ ꜱᴀɡɡᴇʀ (ꜱ)",
                     "ꜱᴘʀᴇᴀᴅ ʙᴏᴛ ᴊᴏɪɴ/ʟᴇᴀᴠᴇ ᴇᴠᴇɴᴛꜱ\nᴀᴄʀᴏꜱꜱ ᴛʜɪꜱ ᴡɪɴᴅᴏᴡ ɪɴ ꜱᴇᴄᴏɴᴅꜱ.",
                     Material.CLOCK, new int[]{ 5, 10, 30, 60, 120 })
             ));
@@ -1026,51 +1158,51 @@ public final class SettingGui implements Listener {
             Material.NETHERITE_SWORD, Material.IRON_SWORD,
             Material.RED_STAINED_GLASS_PANE,
             List.of(
-                // ── Page 1 (slots 0-17) ───────────────────────────────────────
+                // ── Page 1 ────────────────────────────────────────────────────
                 SettingEntry.comingSoon("pvp-ai.difficulty",       "ᴅɪꜰꜰɪᴄᴜʟᴛʏ",
                     "ꜱᴇᴛ ᴛʜᴇ ʙᴏᴛ'ꜱ ꜱᴋɪʟʟ ʟᴇᴠᴇʟ.\nɴᴘᴄ / ᴇᴀꜱʏ / ᴍᴇᴅɪᴜᴍ / ʜᴀʀᴅ / ᴛɪᴇʀ1 / ʜᴀᴄᴋᴇʀ.",
                     Material.DIAMOND_SWORD),
                 SettingEntry.comingSoon("pvp-ai.combat-mode",      "ᴄᴏᴍʙᴀᴛ ᴍᴏᴅᴇ",
-                    "ꜱᴡɪᴛᴄʜ ʙᴇᴛᴡᴇᴇɴ ᴄʀʏꜱᴛᴀʟ ᴘᴠᴘ\nᴀɴᴅ ꜱᴡᴏʀᴅ ꜰɪɢʜᴛɪɴɢ ꜱᴛʏʟᴇ.",
+                    "ꜱᴡɪᴛᴄʜ ʙᴇᴛᴡᴇᴇɴ ᴄʀʏꜱᴛᴀʟ ᴘᴠᴘ\nᴀɴᴅ ꜱᴡᴏʀᴅ ꜰɪɡʜᴛɪɴɢ ꜱᴛʏʟᴇ.",
                     Material.END_CRYSTAL),
                 SettingEntry.comingSoon("pvp-ai.critting",         "ᴄʀɪᴛᴛɪɴɢ",
-                    "ʙᴏᴛ ʟᴀɴᴅꜱ ᴄʀɪᴛɪᴄᴀʟ ʜɪᴛꜱ ʙʏ\nꜰᴀʟʟɪɴɢ ᴅᴜʀɪɴɢ ᴀᴛᴛᴀᴄᴋꜱ.",
+                    "ʙᴏᴛ ʟᴀɴᴅꜱ ᴄʀɪᴛɪᴄᴀʟ ʜɪᴛꜱ ʙʏ\nꜰᴀʟɪɴɢ ᴅᴜʀɪɴɢ ᴀᴛᴛᴀᴄᴋꜱ.",
                     Material.NETHERITE_SWORD),
                 SettingEntry.comingSoon("pvp-ai.s-tapping",        "ꜱ-ᴛᴀᴘᴘɪɴɢ",
                     "ʙᴏᴛ ᴛᴀᴘꜱ ꜱ ᴅᴜʀɪɴɢ ꜱᴡɪɴɢ\nᴛᴏ ʀᴇꜱᴇᴛ ᴀᴛᴛᴀᴄᴋ ᴄᴏᴏʟᴅᴏᴡɴ.",
                     Material.CLOCK),
                 SettingEntry.comingSoon("pvp-ai.strafing",         "ꜱᴛʀᴀꜰɪɴɢ",
-                    "ʙᴏᴛ ᴄɪʀᴄʟᴇꜱ ᴀʀᴏᴜɴᴅ ᴛʜᴇ ᴛᴀʀɢᴇᴛ\nᴡʜɪʟᴇ ꜰɪɢʜᴛɪɴɢ.",
+                    "ʙᴏᴛ ᴄɪʀᴄʟᴇꜱ ᴀʀᴏᴜɴᴅ ᴛʜᴇ ᴛᴀʀɡᴇᴛ\nᴡʜɪʟᴇ ꜰɪɡʜᴛɪɴɢ.",
                     Material.FEATHER),
                 SettingEntry.comingSoon("pvp-ai.shield",           "ꜱʜɪᴇʟᴅɪɴɢ",
                     "ʙᴏᴛ ᴄᴀʀʀɪᴇꜱ ᴀɴᴅ ᴜꜱᴇꜱ ᴀ ꜱʜɪᴇʟᴅ\nᴛᴏ ʙʟᴏᴄᴋ ɪɴᴄᴏᴍɪɴɢ ᴀᴛᴛᴀᴄᴋꜱ.",
                     Material.SHIELD),
                 SettingEntry.comingSoon("pvp-ai.speed-buffs",      "ꜱᴘᴇᴇᴅ ʙᴜꜰꜰꜱ",
-                    "ʙᴏᴛ ʜᴀꜱ ꜱᴘᴇᴇᴅ & ꜱᴛʀᴇɴɢᴛʜ ᴘᴏᴛɪᴏɴ\nᴇꜰꜰᴇᴄᴛꜱ ᴀᴄᴛɪᴠᴇ.",
+                    "ʙᴏᴛ ʜᴀꜱ ꜱᴘᴇᴇᴅ & ꜱᴛʀᴇɴɡᴛʜ ᴘᴏᴛɪᴏɴ\nᴇꜰꜰᴇᴄᴛꜱ ᴀᴄᴛɪᴠᴇ.",
                     Material.SUGAR),
                 SettingEntry.comingSoon("pvp-ai.jump-reset",       "ᴊᴜᴍᴘ ʀᴇꜱᴇᴛ",
                     "ʙᴏᴛ ᴊᴜᴍᴘꜱ ᴊᴜꜱᴛ ʙᴇꜰᴏʀᴇ ꜱᴡɪɴɢɪɴɢ\nᴛᴏ ɢᴀɪɴ ᴛʜᴇ W-ᴛᴀᴘ ᴋɴᴏᴄᴋʙᴀᴄᴋ ʙᴏɴᴜꜱ.",
                     Material.SLIME_BALL),
                 SettingEntry.comingSoon("pvp-ai.random",           "ʀᴀɴᴅᴏᴍ ᴘʟᴀʏꜱᴛʏʟᴇ",
-                    "ʀᴀɴᴅᴏᴍɪꜱᴇ ᴛᴇᴄʜɴɪQᴜᴇꜱ ᴇᴀᴄʜ ʀᴏᴜɴᴅ\nᴛᴏ ᴋᴇᴇᴘ ᴛʜᴇ ꜰɪɢʜᴛ ᴜɴᴘʀᴇᴅɪᴄᴛᴀʙʟᴇ.",
+                    "ʀᴀɴᴅᴏᴍɪꜱᴇ ᴛᴇᴄʜɴɪQᴜᴇꜱ ᴇᴀᴄʜ ʀᴏᴜɴᴅ\nᴛᴏ ᴋᴇᴇᴘ ᴛʜᴇ ꜰɪɡᴜᴛ ᴜɴᴘʀᴇᴅɪᴄᴛᴀʙʟᴇ.",
                     Material.COMPARATOR),
                 SettingEntry.comingSoon("pvp-ai.gear",             "ɢᴇᴀʀ ᴛʏᴘᴇ",
                     "ʙᴏᴛ ᴡᴇᴀʀꜱ ᴅɪᴀᴍᴏɴᴅ ᴏʀ\nɴᴇᴛʜᴇʀɪᴛᴇ ᴀʀᴍᴏᴜʀ.",
                     Material.DIAMOND_CHESTPLATE),
                 SettingEntry.comingSoon("pvp-ai.defensive-mode",   "ᴅᴇꜰᴇɴꜱɪᴠᴇ ᴍᴏᴅᴇ",
-                    "ʙᴏᴛ ᴏɴʟʏ ꜰɪɢʜᴛꜱ ʙᴀᴄᴋ ᴡʜᴇɴ\nᴛʜᴇ ᴘʟᴀʏᴇʀ ᴀᴛᴛᴀᴄᴋꜱ ꜰɪʀꜱᴛ.",
+                    "ʙᴏᴛ ᴏɴʟʏ ꜰɪɡʜᴛꜱ ʙᴀᴄᴋ ᴡʜᴇɴ\nᴛʜᴇ ᴘʟᴀʏᴇʀ ᴀᴛᴛᴀᴄᴋꜱ ꜰɪʀꜱᴛ.",
                     Material.BOW),
                 SettingEntry.comingSoon("pvp-ai.detect-range",     "ᴅᴇᴛᴇᴄᴛ ʀᴀɴɢᴇ",
-                    "ʜᴏᴡ ꜰᴀʀ ᴛʜᴇ ʙᴏᴛ ꜱᴇᴇꜱ ᴘʟᴀʏᴇʀꜱ\nᴀɴᴅ ʟᴏᴄᴋꜱ ᴏɴ ᴀꜱ ᴛᴀʀɢᴇᴛ.",
+                    "ʜᴏᴡ ꜰᴀʀ ᴛʜᴇ ʙᴏᴛ ꜱᴇᴇꜱ ᴘʟᴀʏᴇʀꜱ\nᴀɴᴅ ʟᴏᴄᴋꜱ ᴏɴ ᴀꜱ ᴛᴀʀɡᴇᴛ.",
                     Material.SPYGLASS),
                 SettingEntry.comingSoon("pvp-ai.sprint",           "ꜱᴘʀɪɴᴛɪɴɢ",
-                    "ʙᴏᴛ ꜱᴘʀɪɴᴛꜱ ᴛᴏᴡᴀʀᴅꜱ ᴛʜᴇ ᴛᴀʀɢᴇᴛ\nᴅᴜʀɪɴɢ ᴄᴏᴍʙᴀᴛ.",
+                    "ʙᴏᴛ ꜱᴘʀɪɴᴛꜱ ᴛᴏᴡᴀʀᴅꜱ ᴛʜᴇ ᴛᴀʀɡᴇᴛ\nᴅᴜʀɪɴɢ ᴄᴏᴍʙᴀᴛ.",
                     Material.GOLDEN_BOOTS),
                 SettingEntry.comingSoon("pvp-ai.pearl",            "ᴇɴᴅᴇʀ ᴘᴇᴀʀʟ",
                     "ʙᴏᴛ ᴛʜʀᴏᴡꜱ ᴇɴᴅᴇʀ ᴘᴇᴀʀʟꜱ ᴛᴏ\nᴄʟᴏꜱᴇ ᴛʜᴇ ɢᴀᴘ ᴏʀ ᴇꜱᴄᴀᴘᴇ.",
                     Material.ENDER_PEARL),
                 SettingEntry.comingSoon("pvp-ai.pearl-spam",       "ᴘᴇᴀʀʟ ꜱᴘᴀᴍ",
-                    "ʙᴏᴛ ꜱᴘᴀᴍꜱ ᴘᴇᴀʀʟꜱ ɪɴ ʙᴜʀꜱᴛꜱ\nꜰᴏʀ ᴀɢɢʀᴇꜱꜱɪᴠᴇ ɢᴀᴘ-ᴄʟᴏꜱɪɴɢ.",
+                    "ʙᴏᴛ ꜱᴘᴀᴍꜱ ᴘᴇᴀʀʟꜱ ɪɴ ʙᴜʀꜱᴛꜱ\nꜰᴏʀ ᴀɡɡʀᴇꜱꜱɪᴠᴇ ɢᴀᴘ-ᴄʟᴏꜱɪɴɢ.",
                     Material.ENDER_EYE),
                 SettingEntry.comingSoon("pvp-ai.walk-backwards",   "ᴡᴀʟᴋ ʙᴀᴄᴋᴡᴀʀᴅꜱ",
                     "ʙᴏᴛ ʙᴀᴄᴋꜱ ᴀᴡᴀʏ ᴡʜɪʟᴇ ꜱᴡɪɴɢɪɴɢ\nᴛᴏ ᴄᴏɴᴛʀᴏʟ ᴋɴᴏᴄᴋʙᴀᴄᴋ.",
@@ -1081,9 +1213,9 @@ public final class SettingGui implements Listener {
                 SettingEntry.comingSoon("pvp-ai.kit",              "ᴋɪᴛ ᴘʀᴇꜱᴇᴛ",
                     "ꜱᴇʟᴇᴄᴛ ᴛʜᴇ ʙᴏᴛ'ꜱ ʟᴏᴀᴅᴏᴜᴛ.\nᴋɪᴛ1 / ᴋɪᴛ2 / ᴋɪᴛ3 / ᴋɪᴛ4.",
                     Material.CHEST),
-                // ── Page 2 (slots 0-2) ────────────────────────────────────────
+                // ── Page 2 ────────────────────────────────────────────────────
                 SettingEntry.comingSoon("pvp-ai.auto-refill",      "ᴀᴜᴛᴏ-ʀᴇꜰɪʟʟ ᴛᴏᴛᴇᴍ",
-                    "ʙᴏᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇ-ᴇQᴜɪᴘꜱ ᴀ\nᴛᴏᴛᴇᴍ ᴀꜰᴛᴇʀ ᴘᴏᴘᴘɪɴɢ ᴏɴᴇ.",
+                    "ʙᴏᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇ-ᴇQᴜɪɡꜱ ᴀ\nᴛᴏᴛᴇᴍ ᴀꜰᴛᴇʀ ᴘᴏᴘᴘɪɴɡ ᴏɴᴇ.",
                     Material.TOTEM_OF_UNDYING),
                 SettingEntry.comingSoon("pvp-ai.auto-respawn",     "ᴀᴜᴛᴏ-ʀᴇꜱᴘᴀᴡɴ",
                     "ʙᴏᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇꜱᴘᴀᴡɴꜱ\nᴀɴᴅ ʀᴇᴊᴏɪɴꜱ ᴀꜰᴛᴇʀ ᴅᴇᴀᴛʜ.",
@@ -1091,6 +1223,26 @@ public final class SettingGui implements Listener {
                 SettingEntry.comingSoon("pvp-ai.spawn-protection", "ꜱᴘᴀᴡɴ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ",
                     "ʙᴏᴛ ꜱᴛᴀʏꜱ ɪɴᴠᴜʟɴᴇʀᴀʙʟᴇ ꜰᴏʀ\nᴀ ꜱʜᴏʀᴛ ɢʀᴀᴄᴇ ᴘᴇʀɪᴏᴅ ᴀᴛ ꜱᴘᴀᴡɴ.",
                     Material.GRASS_BLOCK)
+            ));
+    }
+
+    private Category pathfinding() {
+        return new Category("🧭 ᴘᴀᴛʜꜰɪɴᴅɪɴɢ",
+            Material.COMPASS, Material.COMPASS,
+            Material.CYAN_STAINED_GLASS_PANE,
+            List.of(
+                SettingEntry.comingSoon("pathfinding.parkour",
+                    "ᴘᴀʀᴋᴏᴜʀ",
+                    "ʙᴏᴛꜱ ꜱᴘʀɪɴᴛ-ᴊᴜᴍᴘ ᴀᴄʀᴏꜱꜱ 1–2 ʙʟᴏᴄᴋ\nɢᴀᴘꜱ ᴅᴜʀɪɴɢ /ꜰᴘᴘ ᴍᴏᴠᴇ ɴᴀᴠɪɢᴀᴛɪᴏɴ.",
+                    Material.LEATHER_BOOTS),
+                SettingEntry.comingSoon("pathfinding.break-blocks",
+                    "ʙʀᴇᴀᴋ ʙʟᴏᴄᴋꜱ",
+                    "ʙᴏᴛꜱ ʙʀᴇᴀᴋ ꜱᴏʟɪᴅ ʙʟᴏᴄᴋꜱ ᴛʜᴀᴛ ʙʟᴏᴄᴋ\nᴛʜᴇɪʀ ɴᴀᴠɪɢᴀᴛɪᴏɴ ᴘᴀᴛʜ.",
+                    Material.IRON_PICKAXE),
+                SettingEntry.comingSoon("pathfinding.place-blocks",
+                    "ᴘʟᴀᴄᴇ ʙʟᴏᴄᴋꜱ",
+                    "ʙᴏᴛꜱ ᴘʟᴀᴄᴇ ʙʀɪᴅɢᴇ ʙʟᴏᴄᴋꜱ ᴛᴏ\nᴄʀᴏꜱꜱ 1-ʙʟᴏᴄᴋ ɢᴀᴘꜱ ᴅᴜʀɪɴɢ ɴᴀᴠɪɢᴀᴛɪᴏɴ.",
+                    Material.DIRT)
             ));
     }
 
@@ -1164,7 +1316,7 @@ public final class SettingGui implements Listener {
                     SettingType.CYCLE_DOUBLE, null, values);
         }
 
-        /** Creates a locked "coming soon" entry — clicking plays ENTITY_VILLAGER_NO. */
+        /** Creates a locked "coming soon" entry - clicking plays ENTITY_VILLAGER_NO. */
         static SettingEntry comingSoon(String key, String label, String desc, Material icon) {
             return new SettingEntry(key, label, desc, icon,
                     SettingType.COMING_SOON, null, null);
@@ -1193,5 +1345,6 @@ public final class SettingGui implements Listener {
         }
     }
 }
+
 
 

@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * {@code /fpp rank} — Assign LP groups to bots using LuckPerms' native API.
+ * {@code /fpp rank} - Assign LP groups to bots using LuckPerms' native API.
  *
  * <p>Because bots are now real NMS {@code ServerPlayer} entities, LuckPerms
  * detects them as genuine online players. This command uses LP's
@@ -26,10 +26,10 @@ import java.util.concurrent.CompletableFuture;
  *
  * <h3>Subcommands</h3>
  * <ul>
- *   <li>{@code /fpp rank <bot> <group>} — assign bot to an LP group</li>
- *   <li>{@code /fpp rank random <group> [num]} — assign a group to random active bots</li>
- *   <li>{@code /fpp rank <bot> clear}   — reset bot to LP "default" group</li>
- *   <li>{@code /fpp rank list}          — list all bots with their current LP groups</li>
+ *   <li>{@code /fpp rank <bot> <group>} - assign bot to an LP group</li>
+ *   <li>{@code /fpp rank random <group> [num]} - assign a group to random active bots</li>
+ *   <li>{@code /fpp rank <bot> clear}   - reset bot to LP "default" group</li>
+ *   <li>{@code /fpp rank list}          - list all bots with their current LP groups</li>
  * </ul>
  */
 public final class RankCommand implements FppCommand {
@@ -54,7 +54,9 @@ public final class RankCommand implements FppCommand {
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        if (!LuckPermsHelper.isAvailable()) {
+        // Use the classloader-safe cached flag - calling LuckPermsHelper directly when LP
+        // is absent throws NoClassDefFoundError (Paper eagerly resolves LP API bytecode).
+        if (!plugin.isLuckPermsAvailable()) {
             sender.sendMessage(Lang.get("rank-no-luckperms"));
             return true;
         }
@@ -229,6 +231,7 @@ public final class RankCommand implements FppCommand {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
+        if (!plugin.isLuckPermsAvailable()) return List.of();
         if (args.length == 1) {
             List<String> options = new ArrayList<>();
             options.add("list");
@@ -255,6 +258,7 @@ public final class RankCommand implements FppCommand {
         return list.stream().filter(s -> s.toLowerCase().startsWith(lower)).toList();
     }
 }
+
 
 
 

@@ -44,7 +44,7 @@ public final class TextUtil {
 
     // ── Pre-compiled patterns ─────────────────────────────────────────────────
 
-    /** Matches a trailing unclosed hex tag (possibly with trailing space) — stripped at string end. */
+    /** Matches a trailing unclosed hex tag (possibly with trailing space) - stripped at string end. */
     private static final Pattern TRAILING_HEX_TAG_SPACE = Pattern.compile("<#[0-9A-Fa-f]{6}>\\s*$");
     /** Matches a trailing unclosed hex tag at the very end of a string (no space). */
     private static final Pattern TRAILING_HEX_TAG       = Pattern.compile("<#[0-9A-Fa-f]{6}>$");
@@ -94,11 +94,11 @@ public final class TextUtil {
      * <p>
      * <b>Supports all modern MiniMessage formats:</b>
      * <ul>
-     *   <li>{@code <rainbow>text</rainbow>} — rainbow gradient</li>
-     *   <li>{@code <gradient:#FF0000:#0000FF>text</gradient>} — custom gradient</li>
-     *   <li>{@code <#9782ff>text</#9782ff>} — hex colors (closing tag optional)</li>
-     *   <li>{@code &7[<#9782ff>Phantom</#9782ff>&7]} — mixed legacy + MiniMessage</li>
-     *   <li>{@code {#fffff>}[PLAYER]{#00000<}} — LuckPerms gradient shorthand</li>
+     *   <li>{@code <rainbow>text</rainbow>} - rainbow gradient</li>
+     *   <li>{@code <gradient:#FF0000:#0000FF>text</gradient>} - custom gradient</li>
+     *   <li>{@code <#9782ff>text</#9782ff>} - hex colors (closing tag optional)</li>
+     *   <li>{@code &7[<#9782ff>Phantom</#9782ff>&7]} - mixed legacy + MiniMessage</li>
+     *   <li>{@code {#fffff>}[PLAYER]{#00000<}} - LuckPerms gradient shorthand</li>
      * </ul>
      */
     public static String legacyToMiniMessage(String s) {
@@ -247,7 +247,7 @@ public final class TextUtil {
     private static String expand3DigitHexCodes(String s) {
         if (s == null || s.indexOf('#') < 0) return s;
         
-        // Opening tags <#RGB> — use pre-compiled pattern
+        // Opening tags <#RGB> - use pre-compiled pattern
         Matcher m = OPEN_3DIGIT_HEX.matcher(s);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
@@ -261,7 +261,7 @@ public final class TextUtil {
         m.appendTail(sb);
         s = sb.toString();
         
-        // Closing tags </#RGB> — use pre-compiled pattern
+        // Closing tags </#RGB> - use pre-compiled pattern
         m = CLOSE_3DIGIT_HEX.matcher(s);
         sb = new StringBuffer();
         while (m.find()) {
@@ -311,7 +311,7 @@ public final class TextUtil {
         // Convert valid gradients
         s = convertLpGradients(s);
         
-        // Any remaining bare {#RRGGBB} tags (solid color, no gradient) — pre-compiled pattern
+        // Any remaining bare {#RRGGBB} tags (solid color, no gradient) - pre-compiled pattern
         s = BARE_HEX_SOLID.matcher(s).replaceAll("<$1>");
 
         return s;
@@ -319,7 +319,7 @@ public final class TextUtil {
 
     private static String convertLpGradients(String s) {
         Matcher m = LP_GRADIENT.matcher(s);
-        if (!m.find()) return s; // fast-path — no gradient tags present
+        if (!m.find()) return s; // fast-path - no gradient tags present
         m.reset();
         StringBuilder sb = new StringBuilder();
         while (m.find()) {
@@ -334,3 +334,4 @@ public final class TextUtil {
         return sb.toString();
     }
 }
+

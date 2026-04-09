@@ -24,7 +24,7 @@ public class PlayerJoinListener implements Listener {
     private final FakePlayerPlugin plugin;
     private final FakePlayerManager manager;
 
-    // Cached reflection field — CraftPlayer.hasPlayedBefore (set once on first use).
+    // Cached reflection field - CraftPlayer.hasPlayedBefore (set once on first use).
     private static volatile Field hasPlayedBeforeField = null;
     // Cached reflection fields for firstPlayed / lastPlayed (zero by default on fresh players).
     private static volatile Field firstPlayedField = null;
@@ -36,7 +36,7 @@ public class PlayerJoinListener implements Listener {
     }
 
     /**
-     * Earliest possible handler — fires before NORMAL/HIGH/MONITOR plugins (e.g. CMI).
+     * Earliest possible handler - fires before NORMAL/HIGH/MONITOR plugins (e.g. CMI).
      *
      * <p>Suppresses the join message immediately at LOWEST so that management plugins
      * at NORMAL/HIGH see {@code null} and do not send their own join announcement.
@@ -61,7 +61,7 @@ public class PlayerJoinListener implements Listener {
     }
 
     /**
-     * Earliest quit handler — fires before NORMAL/HIGH/MONITOR plugins.
+     * Earliest quit handler - fires before NORMAL/HIGH/MONITOR plugins.
      *
      * <p>Suppresses the vanilla quit message at LOWEST so that management plugins
      * at NORMAL/HIGH see {@code null} and do not send their own leave announcement.
@@ -111,7 +111,7 @@ public class PlayerJoinListener implements Listener {
      * after spawning a bot (before {@code saveData()}) so the written {@code .dat}
      * file contains real timestamps.  On the next spawn Paper loads those timestamps,
      * sees {@code firstPlayed != 0}, and sets {@code hasPlayedBefore = true}
-     * automatically — without FPP needing to override anything at the event level.
+     * automatically - without FPP needing to override anything at the event level.
      *
      * <p>Safe no-op on any unexpected reflection error.
      */
@@ -176,7 +176,7 @@ public class PlayerJoinListener implements Listener {
         try {
             var upd = plugin.getUpdateNotification();
             if (upd != null) {
-                if (me.bill.fakePlayerPlugin.permission.Perm.hasOrOp(event.getPlayer(), me.bill.fakePlayerPlugin.permission.Perm.ALL)) {
+                if (me.bill.fakePlayerPlugin.permission.Perm.hasOrOp(event.getPlayer(), me.bill.fakePlayerPlugin.permission.Perm.OP)) {
                     try {
                         event.getPlayer().sendMessage(upd);
                     } catch (NoSuchMethodError | NoClassDefFoundError e) {
@@ -191,7 +191,7 @@ public class PlayerJoinListener implements Listener {
         try {
             if (plugin.isVersionUnsupported()
                     && me.bill.fakePlayerPlugin.permission.Perm.hasOrOp(
-                            event.getPlayer(), me.bill.fakePlayerPlugin.permission.Perm.ALL)) {
+                            event.getPlayer(), me.bill.fakePlayerPlugin.permission.Perm.OP)) {
                 event.getPlayer().sendMessage(
                         me.bill.fakePlayerPlugin.lang.Lang.get(
                                 "version-unsupported-admin",
@@ -213,7 +213,7 @@ public class PlayerJoinListener implements Listener {
             } catch (Throwable ignored) {}
 
             // Add virtual tab-list entries for bots running on other proxy servers.
-            // These are purely client-side entries — no entity exists on this server.
+            // These are purely client-side entries - no entity exists on this server.
             if (me.bill.fakePlayerPlugin.config.Config.isNetworkMode()
                     && me.bill.fakePlayerPlugin.config.Config.tabListEnabled()) {
                 try {
@@ -244,12 +244,12 @@ public class PlayerJoinListener implements Listener {
         java.util.UUID uuid = event.getPlayer().getUniqueId();
 
         // ── Permanent despawn via /fpp despawn ───────────────────────────────
-        // isDespawning() check BEFORE getCount() — removeAll() clears activePlayers first.
+        // isDespawning() check BEFORE getCount() - removeAll() clears activePlayers first.
         if (manager.isDespawning(uuid)) {
-            // Suppress any vanilla/third-party quit message — we broadcast manually.
+            // Suppress any vanilla/third-party quit message - we broadcast manually.
             event.quitMessage(null);
             // Broadcast the custom bot-leave message directly rather than relying on
-            // Paper to re-broadcast event.quitMessage() — newer Paper builds (26.1.1+)
+            // Paper to re-broadcast event.quitMessage() - newer Paper builds (26.1.1+)
             // do not always honour a non-null quitMessage set inside the MONITOR handler.
             if (Config.leaveMessage()) {
                 String displayName = manager.getDespawningDisplayName(uuid);
@@ -267,11 +267,11 @@ public class PlayerJoinListener implements Listener {
         if (fp == null) fp = manager.getByUuid(uuid);
         if (fp != null) {
             if (fp.isRespawning() || manager.isBodyTransitioning(fp.getUuid())) {
-                // Suppress — bot is not actually leaving.
+                // Suppress - bot is not actually leaving.
                 event.quitMessage(null);
             } else if (!fp.isAlive()) {
                 // ── Bot died and was removed via PlayerList.remove() ─────────
-                // Suppress vanilla message and broadcast custom leave directly —
+                // Suppress vanilla message and broadcast custom leave directly -
                 // newer Paper (26.1.1+) does not reliably re-broadcast a Component
                 // set on event.quitMessage() from inside the MONITOR handler.
                 event.quitMessage(null);
@@ -288,3 +288,4 @@ public class PlayerJoinListener implements Listener {
         }, 2L);
     }
 }
+

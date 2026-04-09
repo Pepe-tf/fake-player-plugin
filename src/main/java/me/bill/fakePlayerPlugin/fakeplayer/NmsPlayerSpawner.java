@@ -22,7 +22,7 @@ import java.util.*;
      *       {@code PlayerList.placeNewPlayer()} with a FakeChannel-backed
      *       connection.  {@code placeNewPlayer()} creates a vanilla
      *       {@code ServerGamePacketListenerImpl} (SGPL) and sends a spawn-position
-     *       packet — setting {@code awaitingPositionFromClient} on that SGPL.</li>
+     *       packet - setting {@code awaitingPositionFromClient} on that SGPL.</li>
      *   <li>After {@code placeNewPlayer()}, create a fresh
      *       {@link FakeServerGamePacketListenerImpl} (a SGPL subclass whose
      *       {@code send()} is a no-op).  This fresh instance has
@@ -70,8 +70,14 @@ public final class NmsPlayerSpawner {
     // ── LivingEntity.jumping flag (for swim AI) ────────────────────────────────
     private static Field jumpingField;
 
-    // ── LivingEntity.yHeadRot field (for head AI) ──────────────────────────────
+    // ── LivingEntity.yHeadRot field (for head AI) ─────────────────────────────────
     private static Field yHeadRotField;
+
+    // ── LivingEntity movement input fields (for move command) ──────────────────────
+    /** Forward/backward input (-1.0 to 1.0). Negative = backward. */
+    private static Field zzaField;
+    /** Left/right strafe input (-1.0 to 1.0). Positive = left, negative = right. */
+    private static Field xxaField;
 
     // ── ServerPlayer.connection field ─────────────────────────────────────────
     /** Used to replace the vanilla SGPL with {@link FakeServerGamePacketListenerImpl}. */
@@ -83,28 +89,28 @@ public final class NmsPlayerSpawner {
 
     // ── PlayerList lifecycle ──────────────────────────────────────────────────
     /**
-     * {@code PlayerList.remove(EntityPlayer)} — removes the bot through the proper
+     * {@code PlayerList.remove(EntityPlayer)} - removes the bot through the proper
      * server-side lifecycle (saves data, fires {@code PlayerQuitEvent}, removes entity
      * from world).  Used instead of {@code player.kick()} so the save path is
      * guaranteed even when the fake Netty pipeline's {@code fireChannelInactive()} is a no-op.
      */
     private static Method playerListRemoveMethod;
 
-    // ── WorldNBTStorage (PlayerDataStorage) — pre-spawn file creation ─────────
+    // ── WorldNBTStorage (PlayerDataStorage) - pre-spawn file creation ─────────
     /**
      * The {@code WorldNBTStorage} (a.k.a. {@code PlayerDataStorage}) field {@code s}
      * on {@code PlayerList}.  Holds the player-file I/O backend.
      */
     private static java.lang.reflect.Field playerDataStorageField;
     /**
-     * {@code WorldNBTStorage.a(EntityHuman)} — saves player NBT to
+     * {@code WorldNBTStorage.a(EntityHuman)} - saves player NBT to
      * {@code world/playerdata/<uuid>.dat}.  Called <em>before</em> {@code placeNewPlayer()}
      * when no file yet exists so Paper/CMI/Essentials see the bot as a returning player
      * ({@code hasPlayedBefore() == true}) on every subsequent spawn.
      */
     private static Method playerDataSaveMethod;
     /**
-     * {@code WorldNBTStorage.getPlayerDir()} — returns the {@code File} pointing at
+     * {@code WorldNBTStorage.getPlayerDir()} - returns the {@code File} pointing at
      * the {@code world/playerdata/} directory.  Used to check whether
      * {@code <uuid>.dat} already exists before attempting a pre-spawn save.
      */
@@ -225,7 +231,7 @@ public final class NmsPlayerSpawner {
             if (doTickMethod != null) {
                 FppLogger.debug("NmsPlayerSpawner: doTick cached as " + doTickMethod.getName() + "()");
             } else {
-                FppLogger.warn("NmsPlayerSpawner: doTick() not found — bots will have no physics");
+                FppLogger.warn("NmsPlayerSpawner: doTick() not found - bots will have no physics");
             }
 
             // ── xo/yo/zo previous-position fields ─────────────────────────────
@@ -241,7 +247,7 @@ public final class NmsPlayerSpawner {
             FppLogger.debug("NmsPlayerSpawner: xo/yo/zo fields "
                     + (xoField != null ? "cached" : "not found"));
 
-            // ── jumping field (LivingEntity) — used by swim AI ─────────────────
+            // ── jumping field (LivingEntity) - used by swim AI ─────────────────
             try {
                 Class<?> livingEntityClass =
                         nmsLoader.loadClass("net.minecraft.world.entity.LivingEntity");
@@ -251,14 +257,22 @@ public final class NmsPlayerSpawner {
                 jumpingField = findFieldByName(serverPlayerClass, "jumping");
             }
             FppLogger.debug("NmsPlayerSpawner: jumping field "
-                    + (jumpingField != null ? "cached" : "not found — swim AI inactive"));
+                    + (jumpingField != null ? "cached" : "not found - swim AI inactive"));
 
-            // ── yHeadRot field (LivingEntity) — used by head AI ───────────────
+            // ── yHeadRot field (LivingEntity) - used by head AI ───────────────
             // findFieldByName walks the whole superclass chain, so passing
             // serverPlayerClass is enough even though yHeadRot lives in LivingEntity.
             yHeadRotField = findFieldByName(serverPlayerClass, "yHeadRot");
             FppLogger.debug("NmsPlayerSpawner: yHeadRot field "
-                    + (yHeadRotField != null ? "cached" : "not found — head AI will rely on setRotation only"));
+                    + (yHeadRotField != null ? "cached" : "not found - head AI will rely on setRotation only"));
+
+            // ── LivingEntity movement input fields (for move command) ──────────────────────
+            /** Forward/backward input (-1.0 to 1.0). Negative = backward. */
+            zzaField = findFieldByName(serverPlayerClass, "zza");
+            /** Left/right strafe input (-1.0 to 1.0). Positive = left, negative = right. */
+            xxaField = findFieldByName(serverPlayerClass, "xxa");
+            FppLogger.debug("NmsPlayerSpawner: movement input fields "
+                    + (zzaField != null && xxaField != null ? "cached" : "not found - move command inactive"));
 
             // ── ServerPlayer.connection field ─────────────────────────────────
             // Used after placeNewPlayer() to replace the vanilla SGPL with our
@@ -284,7 +298,7 @@ public final class NmsPlayerSpawner {
                             + connectionFieldInPlayer.getName());
                 } else {
                     FppLogger.warn("NmsPlayerSpawner: ServerPlayer.connection field not found"
-                            + " — fake listener injection will be skipped");
+                            + " - fake listener injection will be skipped");
                 }
             }
 
@@ -295,17 +309,17 @@ public final class NmsPlayerSpawner {
                 if (attackMethod != null) {
                     FppLogger.debug("NmsPlayerSpawner: attack(Entity) method cached");
                 } else {
-                    FppLogger.warn("NmsPlayerSpawner: attack(Entity) method not found — PVP bots will use fallback damage");
+                    FppLogger.warn("NmsPlayerSpawner: attack(Entity) method not found - PVP bots will use fallback damage");
                 }
             } catch (Exception e) {
                 FppLogger.warn("NmsPlayerSpawner: Failed to cache attack method: " + e.getMessage());
             }
 
             // ── PlayerList.remove / WorldNBTStorage save ────────────────────────
-            // remove(EntityPlayer) — proper despawn path: saves data, fires
+            // remove(EntityPlayer) - proper despawn path: saves data, fires
             //   PlayerQuitEvent, removes entity from world. Used instead of kick()
             //   to guarantee the save even when FakeChannelPipeline is a no-op.
-            // WorldNBTStorage.a(EntityHuman) — save() — called BEFORE placeNewPlayer()
+            // WorldNBTStorage.a(EntityHuman) - save() - called BEFORE placeNewPlayer()
             //   when no <uuid>.dat file exists yet, ensuring Paper sees the bot as a
             //   returning player (hasPlayedBefore=true) on every subsequent spawn.
             //   Also used via getPlayerDir() to check for the pre-existing file.
@@ -325,9 +339,9 @@ public final class NmsPlayerSpawner {
                 }
                 if (playerDataStorageField != null) {
                     Class<?> storageClass = playerDataStorageField.getType();
-                    // getPlayerDir() — Mojang-mapped name is preserved in Paper
+                    // getPlayerDir() - Mojang-mapped name is preserved in Paper
                     try { getPlayerDirMethod = storageClass.getMethod("getPlayerDir"); } catch (Exception ignored) {}
-                    // void a(EntityHuman) — the save overload (load returns Optional, not void)
+                    // void a(EntityHuman) - the save overload (load returns Optional, not void)
                     for (java.lang.reflect.Method m : storageClass.getDeclaredMethods()) {
                         if ("a".equals(m.getName()) && m.getParameterCount() == 1
                                 && m.getReturnType() == void.class) {
@@ -337,7 +351,7 @@ public final class NmsPlayerSpawner {
                         }
                     }
                 }
-                FppLogger.debug("NmsPlayerSpawner: PlayerList lifecycle — remove="
+                FppLogger.debug("NmsPlayerSpawner: PlayerList lifecycle - remove="
                         + (playerListRemoveMethod != null ? "ok" : "missing")
                         + " storage=" + (playerDataStorageField != null ? "ok" : "missing")
                         + " save=" + (playerDataSaveMethod != null ? "ok" : "missing")
@@ -383,7 +397,7 @@ public final class NmsPlayerSpawner {
                 // Entity.entityData field (walks full hierarchy via findFieldByName)
                 entityDataFieldForSkinParts = findFieldByName(serverPlayerClass, "entityData");
 
-                FppLogger.debug("NmsPlayerSpawner: skin-parts init — accessor="
+                FppLogger.debug("NmsPlayerSpawner: skin-parts init - accessor="
                         + (skinPartsDataAccessor != null)
                         + " entityData=" + (entityDataFieldForSkinParts != null)
                         + " setMethod=" + (synchedEntityDataSetMethod != null));
@@ -426,7 +440,7 @@ public final class NmsPlayerSpawner {
     public static Player spawnFakePlayer(UUID uuid, String name, SkinProfile skin,
                                          World world, double x, double y, double z) {
         if (!isAvailable()) {
-            FppLogger.warn("NmsPlayerSpawner not available — cannot spawn " + name);
+            FppLogger.warn("NmsPlayerSpawner not available - cannot spawn " + name);
             return null;
         }
         try {
@@ -464,7 +478,7 @@ public final class NmsPlayerSpawner {
             // ── Ensure playerdata file exists before placeNewPlayer() ─────────
             // Creates world/playerdata/<uuid>.dat if it does not yet exist by calling
             // WorldNBTStorage.save() on the freshly-created (but not yet placed) player.
-            // placeNewPlayer() calls playerIo.load() internally — when the file exists,
+            // placeNewPlayer() calls playerIo.load() internally - when the file exists,
             // Paper sets isFirstJoin=false, so Bukkit's hasPlayedBefore() returns true.
             // This prevents CMI, Essentials, and other plugins from treating the bot as
             // a brand-new player on every respawn with the same name+UUID.
@@ -580,7 +594,7 @@ public final class NmsPlayerSpawner {
      *
      * <p>When {@code true} the entity's next physics tick will apply the "swim up"
      * impulse (vanilla: +0.04 m/s per tick in water), exactly replicating a player
-     * holding the spacebar / jump key while submerged.  The flag is transient — NMS
+     * holding the spacebar / jump key while submerged.  The flag is transient - NMS
      * clears it after each tick unless we re-apply it, so this must be called every
      * tick the bot should continue swimming.
      *
@@ -646,7 +660,7 @@ public final class NmsPlayerSpawner {
             Object nmsTarget = craftPlayerGetHandleMethod.invoke(target);
 
             if (attackMethod != null && nmsTarget != null) {
-                // Use real NMS attack — this triggers all vanilla combat mechanics
+                // Use real NMS attack - this triggers all vanilla combat mechanics
                 attackMethod.invoke(nmsBot, nmsTarget);
             } else {
                 // Fallback: direct damage
@@ -664,6 +678,44 @@ public final class NmsPlayerSpawner {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    //  Movement control (for move command)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Sets the forward/backward movement input for a bot (-1.0 to 1.0).
+     * <p>Mimics W (forward = 1.0) / S (backward = -1.0) key presses.</p>
+     * 
+     * @param bot the bot to control
+     * @param forward 1.0 = forward, -1.0 = backward, 0 = no movement
+     */
+    public static void setMovementForward(Player bot, float forward) {
+        if (!initialized || zzaField == null || craftPlayerGetHandleMethod == null) return;
+        try {
+            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+            zzaField.setFloat(nmsPlayer, forward);
+        } catch (Exception e) {
+            FppLogger.debug("NmsPlayerSpawner.setMovementForward failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Sets the left/right strafe movement input for a bot (-1.0 to 1.0).
+     * <p>Mimics A (left = 1.0) / D (right = -1.0) key presses.</p>
+     * 
+     * @param bot the bot to control
+     * @param strafe 1.0 = left, -1.0 = right, 0 = no strafe
+     */
+    public static void setMovementStrafe(Player bot, float strafe) {
+        if (!initialized || xxaField == null || craftPlayerGetHandleMethod == null) return;
+        try {
+            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+            xxaField.setFloat(nmsPlayer, strafe);
+        } catch (Exception e) {
+            FppLogger.debug("NmsPlayerSpawner.setMovementStrafe failed: " + e.getMessage());
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     //  Remove
     // ══════════════════════════════════════════════════════════════════════════
 
@@ -672,17 +724,17 @@ public final class NmsPlayerSpawner {
      *
      * <h3>Removal sequence</h3>
      * <ol>
-     *   <li><b>Explicit save</b> — {@code player.saveData()} writes
+     *   <li><b>Explicit save</b> - {@code player.saveData()} writes
      *       {@code world/playerdata/<uuid>.dat} before anything else.  This is the
      *       primary guarantee that the file exists for the next {@code placeNewPlayer()}
      *       call; it is intentionally done here even though {@code PlayerList.remove()}
      *       (step 2) also saves.</li>
-     *   <li><b>{@code PlayerList.remove(nmsPlayer)}</b> (preferred) — saves data again,
+     *   <li><b>{@code PlayerList.remove(nmsPlayer)}</b> (preferred) - saves data again,
      *       fires {@code PlayerQuitEvent}, removes from the server player list, and
      *       removes the entity from the world via
      *       {@code ServerLevel.removePlayerImmediately()}.  This is the correct lifecycle
      *       path that Paper uses for real player disconnections.</li>
-     *   <li><b>Kick fallback</b> — if {@code PlayerList.remove()} is not available or
+     *   <li><b>Kick fallback</b> - if {@code PlayerList.remove()} is not available or
      *       fails (e.g. reflection error on an unusual build), falls back to
      *       {@code player.kick(Component.empty())}.  The empty reason bypasses
      *       {@code FakePlayerKickListener}'s "cancel all kicks" guard.</li>
@@ -690,7 +742,7 @@ public final class NmsPlayerSpawner {
      *
      * <p>By replacing the old kick-only approach with a direct {@code PlayerList.remove()}
      * call we eliminate the dependency on the fake Netty pipeline's
-     * {@code fireChannelInactive()} firing {@code handleDisconnection()} — a path that is
+     * {@code fireChannelInactive()} firing {@code handleDisconnection()} - a path that is
      * a no-op with our fake channel.  The result is reliable playerdata persistence on
      * every despawn.
      */
@@ -704,7 +756,7 @@ public final class NmsPlayerSpawner {
 
                 FppLogger.debug("NmsPlayerSpawner: removing '" + name + "' uuid=" + uuid);
 
-                // Step 1: Explicit save — guarantees world/playerdata/<uuid>.dat exists
+                // Step 1: Explicit save - guarantees world/playerdata/<uuid>.dat exists
                 // for the next placeNewPlayer() regardless of what the removal path does.
                 try {
                     player.saveData();
@@ -715,7 +767,7 @@ public final class NmsPlayerSpawner {
                             + name + "' uuid=" + uuid + ": " + e.getMessage());
                 }
 
-                // Step 2: Remove via PlayerList.remove(nmsPlayer) — proper lifecycle path.
+                // Step 2: Remove via PlayerList.remove(nmsPlayer) - proper lifecycle path.
                 // Fires PlayerQuitEvent, saves data again, removes from player list,
                 // and calls ServerLevel.removePlayerImmediately() to drop the entity.
                 boolean removedViaPlayerList = false;
@@ -736,11 +788,11 @@ public final class NmsPlayerSpawner {
                     } catch (Exception e) {
                         FppLogger.debug("NmsPlayerSpawner: PlayerList.remove failed for '"
                                 + name + "' uuid=" + uuid + ": " + e.getMessage()
-                                + " — falling back to kick");
+                                + " - falling back to kick");
                     }
                 }
 
-                // Step 3: Fallback — kick with empty reason when PlayerList.remove() was
+                // Step 3: Fallback - kick with empty reason when PlayerList.remove() was
                 // unavailable or failed.  Empty reason bypasses FakePlayerKickListener.
                 if (!removedViaPlayerList && player.isOnline()) {
                     player.kick(net.kyori.adventure.text.Component.empty());
@@ -781,7 +833,7 @@ public final class NmsPlayerSpawner {
      *       a valid compressed-NBT file containing the bot's default initial state
      *       (empty inventory, default health, the position we just set).  On the next
      *       {@code placeNewPlayer()} call, {@code load()} finds the file and sets
-     *       {@code isFirstJoin = false} — the bot is recognised as a returning player.</li>
+     *       {@code isFirstJoin = false} - the bot is recognised as a returning player.</li>
      * </ol>
      *
      * <p>If the reflection objects are unavailable (older/remapped server), the method
@@ -797,7 +849,7 @@ public final class NmsPlayerSpawner {
                                                String name, UUID uuid) {
         if (playerDataStorageField == null) {
             FppLogger.debug("NmsPlayerSpawner: ensurePlayerDataExists skipped"
-                    + " — WorldNBTStorage field not cached (name=" + name + " uuid=" + uuid + ")");
+                    + " - WorldNBTStorage field not cached (name=" + name + " uuid=" + uuid + ")");
             return;
         }
         try {
@@ -810,23 +862,23 @@ public final class NmsPlayerSpawner {
                 java.io.File playerFile = new java.io.File(playerDir, uuid + ".dat");
                 if (playerFile.exists()) {
                     FppLogger.debug("NmsPlayerSpawner: playerdata found for '"
-                            + name + "' uuid=" + uuid + " — returning player");
+                            + name + "' uuid=" + uuid + " - returning player");
                     return;
                 }
             }
 
-            // ── File does not exist — write initial data to prevent first-join ─
+            // ── File does not exist - write initial data to prevent first-join ─
             if (playerDataSaveMethod != null) {
                 playerDataSaveMethod.invoke(playerDataStorage, serverPlayer);
                 FppLogger.debug("NmsPlayerSpawner: created initial playerdata for '"
                         + name + "' uuid=" + uuid
-                        + " — will be treated as returning player on next spawn");
+                        + " - will be treated as returning player on next spawn");
             } else {
                 FppLogger.debug("NmsPlayerSpawner: playerdata file missing but save method"
-                        + " not cached — first-join message may appear (name=" + name + ")");
+                        + " not cached - first-join message may appear (name=" + name + ")");
             }
         } catch (Exception e) {
-            // Non-fatal — placeNewPlayer() will proceed regardless.
+            // Non-fatal - placeNewPlayer() will proceed regardless.
             FppLogger.warn("NmsPlayerSpawner: ensurePlayerDataExists failed for '"
                     + name + "' uuid=" + uuid + ": " + e.getMessage());
         }
@@ -910,7 +962,7 @@ public final class NmsPlayerSpawner {
         try {
             Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
             Object entityData = entityDataFieldForSkinParts.get(nmsPlayer);
-            // 0x7F = 0111 1111 — all seven skin-overlay bits set
+            // 0x7F = 0111 1111 - all seven skin-overlay bits set
             synchedEntityDataSetMethod.invoke(entityData, skinPartsDataAccessor, (byte) 0x7F);
             FppLogger.debug("NmsPlayerSpawner: skin-parts forced to 0x7F for " + bot.getName());
         } catch (Exception e) {
@@ -936,20 +988,20 @@ public final class NmsPlayerSpawner {
      * <p>Critically, the {@code Connection}'s own {@code packetListener} field (used by
      * {@code Connection.handleDisconnection()} to call {@code onDisconnect()}) is also
      * updated to the fake listener.  Without this second update, double-disconnect on bot
-     * death routes through the vanilla SGPL — which has no "Already retired" guard — and
+     * death routes through the vanilla SGPL - which has no "Already retired" guard - and
      * causes an {@link IllegalStateException} crash on Paper 1.21+.
      */
     private static void injectFakeListener(Object minecraftServer, Object conn,
                                            Object serverPlayer,
                                            Object gameProfile, Object clientInfo) {
         if (connectionFieldInPlayer == null) {
-            FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener — connection field not found");
+            FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener - connection field not found");
             return;
         }
         try {
             Object cookie = createCookieDynamic(gameProfile, clientInfo);
             if (cookie == null) {
-                FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener — cookie creation failed");
+                FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener - cookie creation failed");
                 return;
             }
 
@@ -1008,7 +1060,7 @@ public final class NmsPlayerSpawner {
                 } catch (Exception ignored) {}
             }
             FppLogger.debug("NmsPlayerSpawner: Connection packetListener field not found"
-                    + " — onDisconnect override may not fire on double-disconnect");
+                    + " - onDisconnect override may not fire on double-disconnect");
         } catch (Exception e) {
             FppLogger.debug("NmsPlayerSpawner: injectPacketListenerIntoConnection failed: " + e.getMessage());
         }
@@ -1236,4 +1288,5 @@ public final class NmsPlayerSpawner {
         return fields;
     }
 }
+
 

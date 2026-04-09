@@ -19,15 +19,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * {@code /fpp info [bot|spawner] <name>} — queries the database and
+ * {@code /fpp info [bot|spawner] <name>} - queries the database and
  * displays bot session history or current bot details.
  *
  * <p>Sub-commands:
  * <ul>
- *   <li>{@code /fpp info}              — overall stats</li>
- *   <li>{@code /fpp info <botname>}    — session history for a bot</li>
- *   <li>{@code /fpp info bot <name>}   — same</li>
- *   <li>{@code /fpp info spawner <n>}  — all bots spawned by a player</li>
+ *   <li>{@code /fpp info}              - overall stats</li>
+ *   <li>{@code /fpp info <botname>}    - session history for a bot</li>
+ *   <li>{@code /fpp info bot <name>}   - same</li>
+ *   <li>{@code /fpp info spawner <n>}  - all bots spawned by a player</li>
  * </ul>
  */
 public class InfoCommand implements FppCommand {
@@ -53,19 +53,19 @@ public class InfoCommand implements FppCommand {
     @Override public String getName()        { return "info"; }
     @Override public String getUsage()       { return "[bot|spawner] <name>"; }
     @Override public String getDescription() { return "Query bot session history from the database."; }
-    /** Checked manually — two tiers: fpp.info (admin) and fpp.user.info (limited). */
+    /** Checked manually - two tiers: fpp.info (admin) and fpp.user.info (limited). */
     @Override public String getPermission()  { return null; }
 
     /** Dual-tier: visible to admins (fpp.info) AND user-tier (fpp.user.info). */
     @Override
     public boolean canUse(CommandSender sender) {
-        return Perm.has(sender, Perm.INFO) || Perm.has(sender, Perm.INFO_SELF);
+        return Perm.has(sender, Perm.INFO) || Perm.has(sender, Perm.USER_INFO);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         boolean isAdmin = Perm.has(sender, Perm.INFO);
-        boolean isUser  = Perm.has(sender, Perm.INFO_SELF);
+        boolean isUser  = Perm.has(sender, Perm.USER_INFO);
 
         if (!isAdmin && !isUser) {
             sender.sendMessage(Lang.get("no-permission"));
@@ -83,7 +83,7 @@ public class InfoCommand implements FppCommand {
                 showUserOwnBots(sender, player);
                 return true;
             }
-            // User provided a bot name — show limited info only if they own it
+            // User provided a bot name - show limited info only if they own it
             showUserBotInfo(sender, player, args[0]);
             return true;
         }
@@ -162,7 +162,7 @@ public class InfoCommand implements FppCommand {
             return;
         }
 
-        sender.sendMessage(header("ʙᴏᴛ — " + fp.getDisplayName()));
+        sender.sendMessage(header("ʙᴏᴛ - " + fp.getDisplayName()));
         row(sender, "ᴡᴏʀʟᴅ",    getWorld(fp));
         row(sender, "ʟᴏᴄᴀᴛɪᴏɴ",  manager.formatLocationForDisplay(fp));
         row(sender, "ᴜᴘᴛɪᴍᴇ",    formatUptime(fp.getSpawnTime()));
@@ -172,7 +172,7 @@ public class InfoCommand implements FppCommand {
 
     // ── Admin-tier displays ───────────────────────────────────────────────────
 
-    /** Shows all currently active bots with live coordinates — no DB needed. */
+    /** Shows all currently active bots with live coordinates - no DB needed. */
     private void showAdminLiveBots(CommandSender sender) {
         java.util.Collection<FakePlayer> active = manager.getActivePlayers();
 
@@ -222,7 +222,7 @@ public class InfoCommand implements FppCommand {
 
     /** Full admin view of a single live bot. */
     private void showAdminBotInfo(CommandSender sender, FakePlayer fp) {
-        sender.sendMessage(header("ʙᴏᴛ — " + fp.getDisplayName()));
+        sender.sendMessage(header("ʙᴏᴛ - " + fp.getDisplayName()));
         row(sender, "ɴᴀᴍᴇ",      fp.getDisplayName());
         row(sender, "ɪɴᴛᴇʀɴᴀʟ",  fp.getName());
         row(sender, "ᴜᴜɪᴅ",       fp.getUuid().toString());
@@ -243,7 +243,7 @@ public class InfoCommand implements FppCommand {
             showAdminBotInfo(sender, live);
         }
 
-        // DB history — use internal name for the DB query
+        // DB history - use internal name for the DB query
         String internalName = live != null ? live.getName() : botName;
         int limit = me.bill.fakePlayerPlugin.config.Config.dbMaxHistoryRows();
         List<BotRecord> records = db.getSessionsByBot(internalName, limit);
@@ -253,7 +253,7 @@ public class InfoCommand implements FppCommand {
         }
         if (records.isEmpty()) return;
 
-        sender.sendMessage(header("ꜱᴇꜱꜱɪᴏɴ ʜɪꜱᴛᴏʀʏ — " + botName + " (last " + records.size() + ")"));
+        sender.sendMessage(header("ꜱᴇꜱꜱɪᴏɴ ʜɪꜱᴛᴏʀʏ - " + botName + " (last " + records.size() + ")"));
         for (BotRecord r : records) {
             sender.sendMessage(sessionRow(r));
         }
@@ -267,7 +267,7 @@ public class InfoCommand implements FppCommand {
             sender.sendMessage(Lang.get("info-no-records", "name", playerName));
             return;
         }
-        sender.sendMessage(header("ꜱᴘᴀᴡɴᴇʀ ʜɪꜱᴛᴏʀʏ — " + playerName + " (last " + records.size() + ")"));
+        sender.sendMessage(header("ꜱᴘᴀᴡɴᴇʀ ʜɪꜱᴛᴏʀʏ - " + playerName + " (last " + records.size() + ")"));
         for (BotRecord r : records) {
             sender.sendMessage(sessionRow(r));
         }
@@ -300,7 +300,7 @@ public class InfoCommand implements FppCommand {
         return Component.empty()
                 .append(Component.text("  #" + r.getId() + " ").color(MUTED))
                 .append(Component.text(r.getBotName() != null ? r.getBotName() : "?").color(ACCENT))
-                .append(Component.text(" — ").color(MUTED))
+                .append(Component.text(" - ").color(MUTED))
                 .append(Component.text(status).color(statusColor))
                 .append(Component.text("  " + spawned + "  " + loc).color(LABEL));
     }
@@ -342,7 +342,7 @@ public class InfoCommand implements FppCommand {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         boolean isAdmin = Perm.has(sender, Perm.INFO);
-        boolean isUser  = Perm.has(sender, Perm.INFO_SELF);
+        boolean isUser  = Perm.has(sender, Perm.USER_INFO);
         if (!isAdmin && !isUser) return List.of();
 
         String current = args.length > 0 ? args[0] : "";
@@ -369,7 +369,7 @@ public class InfoCommand implements FppCommand {
             return suggestions;
         }
 
-        // arg[0] is "bot" or "spawner" — arg[1] is the name to complete
+        // arg[0] is "bot" or "spawner" - arg[1] is the name to complete
         if (args.length == 2 && isAdmin) {
             String sub = args[0].toLowerCase();
             String name = args[1].toLowerCase();
@@ -384,5 +384,7 @@ public class InfoCommand implements FppCommand {
         return List.of();
     }
 }
+
+
 
 

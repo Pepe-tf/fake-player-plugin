@@ -2,7 +2,7 @@
 
 [SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.5.17  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.6.0  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]
@@ -26,6 +26,11 @@ FPP adds fake players to your server that look and behave like real ones:
 [*][B]Swap in and out[/B] automatically with fresh names and personalities
 [*][B]Persist across restarts[/B] — they come back where they left off
 [*][B]Freeze[/B] any bot in place with [FONT=monospace]/fpp freeze[/FONT]
+[*][B]Open bot inventory[/B] — 54-slot GUI with equipment slots; right-click any bot entity to open
+[*][B]Pathfind to players[/B] — A* grid navigation with WALK, ASCEND, DESCEND, PARKOUR, BREAK, PLACE move types
+[*][B]Mine blocks[/B] — continuous or one-shot block breaking with progressive mining progress
+[*][B]Store right-click commands[/B] — assign a command to any bot; right-clicking it runs the command
+[*][B]Transfer XP[/B] — drain a bot's entire XP pool to yourself with [FONT=monospace]/fpp xp[/FONT]
 [*][B]LuckPerms[/B] — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 [*][B]Proxy/network support[/B] — Velocity & BungeeCord cross-server chat, alerts, and shared database
 [*][B]Config sync[/B] — push/pull configuration files across your proxy network
@@ -73,11 +78,16 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TABLE="width: 100%"]
 [TR][TD][B]Command[/B][/TD][TD][B]Description[/B][/TD][/TR]
 [TR][TD][FONT=monospace]/fpp[/FONT][/TD][TD]Plugin info — version, active bots, download links[/TD][/TR]
-[TR][TD][FONT=monospace]/fpp help [page][/FONT][/TD][TD]Paginated help with clickable navigation[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp help [page][/FONT][/TD][TD]Interactive GUI help menu — paginated, permission-filtered, click-navigable[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp spawn [amount] [--name <name>][/FONT][/TD][TD]Spawn fake player(s) at your location[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp despawn <name|all|random [n]>[/FONT][/TD][TD]Remove a bot by name, remove all, or remove a random set[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp list[/FONT][/TD][TD]List all active bots with uptime and location[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp freeze <name|all> [on|off][/FONT][/TD][TD]Freeze or unfreeze bots — frozen bots are immovable; shown with ❄ in list/stats[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp inventory <bot>[/FONT][/TD][TD]Open the bot's full 54-slot inventory GUI (alias: /fpp inv)[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp move <bot> <player>[/FONT][/TD][TD]Navigate a bot to an online player using A* pathfinding[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp xp <bot>[/FONT][/TD][TD]Transfer all of a bot's XP to yourself[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp cmd <bot> <command>[/FONT][/TD][TD]Execute a command on a bot; --add/--clear/--show manage its stored right-click command[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp mine <bot> [once|stop][/FONT][/TD][TD]Start/stop continuous block mining for a bot[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp chat [on|off|status][/FONT][/TD][TD]Toggle the fake chat system[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp swap [on|off|status|now <bot>|list|info <bot>][/FONT][/TD][TD]Toggle / manage the bot swap/rotation system[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp peaks [on|off|status|next|force|list|wake <name>|sleep <name>][/FONT][/TD][TD]Time-based bot pool scheduler[/TD][/TR]
@@ -89,6 +99,7 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]/fpp info [bot <name> | spawner <name>][/FONT][/TD][TD]Query the session database[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp tp <name>[/FONT][/TD][TD]Teleport yourself to a bot[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp tph [name][/FONT][/TD][TD]Teleport your bot to yourself[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp settings[/FONT][/TD][TD]Open the in-game settings GUI — toggle config values live[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp alert <message>[/FONT][/TD][TD]Broadcast an admin message network-wide (proxy)[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp sync push [file][/FONT][/TD][TD]Upload config file(s) to the proxy network[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp sync pull [file][/FONT][/TD][TD]Download config file(s) from the proxy network[/TD][/TR]
@@ -102,16 +113,13 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 
 [SIZE=6][B]🔑 Permissions[/B][/SIZE]
 
-[SIZE=5][B]Admin[/B][/SIZE]
+[SIZE=5][B]Admin[/B][/SIZE] [I](fpp.op — default: op)[/I]
 
 [TABLE="width: 100%"]
 [TR][TD][B]Permission[/B][/TD][TD][B]Description[/B][/TD][/TR]
-[TR][TD][FONT=monospace]fpp.*[/FONT][/TD][TD]All permissions (admin wildcard)[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.op[/FONT][/TD][TD]All admin commands (admin wildcard, default: op)[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.spawn[/FONT][/TD][TD]Spawn bots (unlimited, supports --name and multi-spawn)[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.spawn.multiple[/FONT][/TD][TD]Spawn more than 1 bot at a time[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.spawn.name[/FONT][/TD][TD]Use the --name flag[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.delete[/FONT][/TD][TD]Remove bots[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.delete.all[/FONT][/TD][TD]Remove all bots at once[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.list[/FONT][/TD][TD]List all active bots[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.freeze[/FONT][/TD][TD]Freeze / unfreeze any bot or all bots[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.chat[/FONT][/TD][TD]Toggle fake chat[/TD][/TR]
@@ -122,33 +130,41 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]fpp.info[/FONT][/TD][TD]Query the database[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.reload[/FONT][/TD][TD]Reload configuration[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.tp[/FONT][/TD][TD]Teleport to bots[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.tph[/FONT][/TD][TD]Teleport any bot to you[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.bypass.maxbots[/FONT][/TD][TD]Bypass the global bot cap[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.bypass.cooldown[/FONT][/TD][TD]Bypass the per-player spawn cooldown[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.admin.migrate[/FONT][/TD][TD]Backup, migrate, and export database[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.peaks[/FONT][/TD][TD]Manage the peak-hours bot pool scheduler[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.settings[/FONT][/TD][TD]Open the in-game settings GUI[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.inventory[/FONT][/TD][TD]Open any bot's inventory GUI[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.move[/FONT][/TD][TD]Navigate bots with A* pathfinding[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.cmd[/FONT][/TD][TD]Execute or store commands on bots[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.mine[/FONT][/TD][TD]Enable/stop bot block mining[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.migrate[/FONT][/TD][TD]Backup, migrate, and export database[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.alert[/FONT][/TD][TD]Broadcast network-wide admin alerts[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.sync[/FONT][/TD][TD]Push/pull config across proxy network[/TD][/TR]
 [/TABLE]
 
-[SIZE=5][B]User[/B][/SIZE] [I](enabled for all players by default)[/I]
+[SIZE=5][B]User[/B][/SIZE] [I](fpp.use — enabled for all players by default)[/I]
 
 [TABLE="width: 100%"]
 [TR][TD][B]Permission[/B][/TD][TD][B]Description[/B][/TD][/TR]
-[TR][TD][FONT=monospace]fpp.user.*[/FONT][/TD][TD]All user commands[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.user.spawn[/FONT][/TD][TD]Spawn your own bot (limited by fpp.bot.<num>)[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.use[/FONT][/TD][TD]All user-tier commands (granted by default)[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.user.spawn[/FONT][/TD][TD]Spawn your own bot (limited by fpp.spawn.limit.<num>)[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.user.tph[/FONT][/TD][TD]Teleport your bot to you[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.user.info[/FONT][/TD][TD]View your bot's location and uptime[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.user.xp[/FONT][/TD][TD]Transfer a bot's XP to yourself[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.info.user[/FONT][/TD][TD]View your bot's location and uptime[/TD][/TR]
 [/TABLE]
 
 [SIZE=5][B]Bot Limits[/B][/SIZE]
 
-Grant players a [FONT=monospace]fpp.bot.<num>[/FONT] node to set how many bots they can spawn. FPP picks the highest one they have.
+Grant players a [FONT=monospace]fpp.spawn.limit.<num>[/FONT] node to set how many bots they can spawn. FPP picks the highest one they have.
 
-[FONT=monospace]fpp.bot.1[/FONT]  [FONT=monospace]fpp.bot.2[/FONT]  [FONT=monospace]fpp.bot.3[/FONT]  [FONT=monospace]fpp.bot.5[/FONT]  [FONT=monospace]fpp.bot.10[/FONT]  [FONT=monospace]fpp.bot.15[/FONT]  [FONT=monospace]fpp.bot.20[/FONT]  [FONT=monospace]fpp.bot.50[/FONT]  [FONT=monospace]fpp.bot.100[/FONT]
+[FONT=monospace]fpp.spawn.limit.1[/FONT]  [FONT=monospace]fpp.spawn.limit.2[/FONT]  [FONT=monospace]fpp.spawn.limit.3[/FONT]  [FONT=monospace]fpp.spawn.limit.5[/FONT]  [FONT=monospace]fpp.spawn.limit.10[/FONT]  [FONT=monospace]fpp.spawn.limit.15[/FONT]  [FONT=monospace]fpp.spawn.limit.20[/FONT]  [FONT=monospace]fpp.spawn.limit.50[/FONT]  [FONT=monospace]fpp.spawn.limit.100[/FONT]
 
 [B]LuckPerms example[/B] — give VIPs 5 bots:
 [CODE]
-/lp group vip permission set fpp.user.spawn true
-/lp group vip permission set fpp.bot.5 true
+/lp group vip permission set fpp.use true
+/lp group vip permission set fpp.spawn.limit.5 true
 [/CODE]
 
 [HR][/HR]
@@ -181,6 +197,7 @@ Located at [FONT=monospace]plugins/FakePlayerPlugin/config.yml[/FONT]. Run [FONT
 [TR][TD][FONT=monospace]swap[/FONT][/TD][TD]Auto rotation — session length, absence duration, min-online floor, retry-on-fail, farewell/greeting chat[/TD][/TR]
 [TR][TD][FONT=monospace]peak-hours[/FONT][/TD][TD]Time-based bot pool scheduler — schedule, day-overrides, stagger-seconds, min-online[/TD][/TR]
 [TR][TD][FONT=monospace]performance[/FONT][/TD][TD]Position sync distance culling (position-sync-distance)[/TD][/TR]
+[TR][TD][FONT=monospace]pathfinding[/FONT][/TD][TD]A* pathfinding options — parkour, break-blocks, place-blocks, place-material (used by /fpp move)[/TD][/TR]
 [TR][TD][FONT=monospace]fake-chat[/FONT][/TD][TD]Enable, chance, interval, typing delays, burst messages, mention replies, event reactions, keyword reactions[/TD][/TR]
 [TR][TD][FONT=monospace]tab-list[/FONT][/TD][TD]Show/hide bots in the player tab list[/TD][/TR]
 [TR][TD][FONT=monospace]config-sync[/FONT][/TD][TD]Cross-server config push/pull mode (DISABLED/MANUAL/AUTO_PULL/AUTO_PUSH)[/TD][/TR]
@@ -394,6 +411,75 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 [HR][/HR]
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
+
+[SIZE=5][B]v1.6.0[/B][/SIZE] [I](2026-04-09)[/I]
+
+[B]🖥️ Interactive Help GUI[/B]
+[LIST]
+[*][FONT=monospace]/fpp help[/FONT] now opens a [B]54-slot double-chest GUI[/B] — paginated, permission-filtered, click-navigable; replaces text output
+[*]Each command gets a semantically meaningful Material icon (compass for move, chest for inventory, diamond pickaxe for mine, etc.)
+[*]Displays command name, description, usage modes, and permission node per item; up to 45 commands per page; close button
+[/LIST]
+
+[B]📦 /fpp inventory[/B] [I](new)[/I]
+[LIST]
+[*]54-slot double-chest GUI showing the bot's full inventory — main storage, hotbar, equipment slots, and offhand
+[*]Equipment slots enforce type restrictions (boots/leggings/chestplate/helmet/offhand)
+[*]Right-click any bot entity to open without a command
+[*]Permission: [FONT=monospace]fpp.inventory[/FONT]
+[/LIST]
+
+[B]🧭 /fpp move[/B] [I](new)[/I]
+[LIST]
+[*]Navigate a bot to an online player using server-side [B]A* pathfinding[/B]
+[*]Supports WALK, ASCEND, DESCEND, PARKOUR, BREAK, PLACE move types; max 64-block range, 2000-node search
+[*]Stuck detection + path recalculation when target moves; swim-safe jump coordination
+[*]Permission: [FONT=monospace]fpp.move[/FONT]; Pathfinding options configurable via [FONT=monospace]pathfinding.*[/FONT] config section
+[/LIST]
+
+[B]⭐ /fpp xp[/B] [I](new)[/I]
+[LIST]
+[*]Transfer the bot's entire XP pool to yourself; clears bot levels and progress
+[*]30-second post-collection cooldown on bot XP pickup (gated by [FONT=monospace]BotXpPickupListener[/FONT])
+[*]Permission: [FONT=monospace]fpp.user.xp[/FONT] (user-tier, included in [FONT=monospace]fpp.use[/FONT])
+[/LIST]
+
+[B]💻 /fpp cmd[/B] [I](new)[/I]
+[LIST]
+[*][FONT=monospace]/fpp cmd <bot> <command>[/FONT] — dispatch a command as the bot via [FONT=monospace]Bukkit.dispatchCommand()[/FONT]
+[*][FONT=monospace]--add <command>[/FONT] stores a right-click command; [FONT=monospace]--clear[/FONT] removes it; [FONT=monospace]--show[/FONT] displays it
+[*]Right-clicking a bot with a stored command runs it instead of opening inventory GUI
+[*]Permission: [FONT=monospace]fpp.cmd[/FONT]
+[/LIST]
+
+[B]⛏️ /fpp mine[/B] [I](new)[/I]
+[LIST]
+[*][FONT=monospace]/fpp mine <bot>[/FONT] — continuous block mining at the bot's look target
+[*][FONT=monospace]once[/FONT] breaks a single block; [FONT=monospace]stop[/FONT] cancels mining; [FONT=monospace]/fpp mine stop[/FONT] stops all mining bots
+[*]Creative mode = instant break with 5-tick cooldown; survival = progressive mining with destroy progress packets
+[*]Permission: [FONT=monospace]fpp.mine[/FONT]
+[/LIST]
+
+[B]⚙️ Settings GUI Expanded[/B]
+[LIST]
+[*]Settings GUI now has [B]7 categories[/B]: General, Body, Chat, Swap, Peak Hours, PvP, Pathfinding (up from 5)
+[*]New pathfinding toggles: parkour, break-blocks, place-blocks, place-material
+[*]New PvP AI settings: difficulty, defensive-mode, detect-range
+[/LIST]
+
+[B]🛡️ WorldGuard Integration[/B]
+[LIST]
+[*]Bots protected from player-sourced PvP damage inside WorldGuard no-PvP regions
+[*][FONT=monospace]WorldGuardHelper.isPvpAllowed(location)[/FONT] — fail-open: only explicit DENY blocks bot damage
+[*]Soft-depend: WorldGuard auto-detected, fully optional; uses ClassLoader guard identical to LuckPerms pattern
+[/LIST]
+
+[B]📋 Config[/B]
+[LIST]
+[*]Config version bumped from [B]v47 → v51[/B] — adds pathfinding section, XP pickup gate, and cmd/mine subsystem keys
+[*]New [FONT=monospace]body.pick-up-xp[/FONT] flag — gate orb pickup globally ([FONT=monospace]true[/FONT] by default)
+[*]New [FONT=monospace]pathfinding.*[/FONT] section: [FONT=monospace]parkour[/FONT], [FONT=monospace]break-blocks[/FONT], [FONT=monospace]place-blocks[/FONT], [FONT=monospace]place-material[/FONT]
+[/LIST]
 
 [SIZE=5][B]v1.5.17[/B][/SIZE] [I](2026-04-07)[/I]
 

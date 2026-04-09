@@ -7,7 +7,7 @@ import org.bukkit.Location;
 import java.lang.reflect.Method;
 
 /**
- * NmsHelper — safely resolves the NMS classloader and provides
+ * NmsHelper - safely resolves the NMS classloader and provides
  * a handle to the server-level object for world access.
  *
  * <p>We NO LONGER attempt to call {@code PlayerList.placeNewPlayer()} with a
@@ -105,3 +105,4 @@ public final class NmsHelper {
         throw new ClassNotFoundException("Cannot resolve CraftBukkit class: " + suffix);
     }
 }
+

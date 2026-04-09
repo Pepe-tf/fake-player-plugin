@@ -117,13 +117,13 @@ public final class SkinProfileInjector {
         for (Method method : getAllMethods(propertyMap.getClass())) {
             if (!"put".equals(method.getName()) || method.getParameterCount() != 2) continue;
             method.setAccessible(true);
-            // Old authlib (ForwardingMultimap<String, Property>) — put(String, Property)
+            // Old authlib (ForwardingMultimap<String, Property>) - put(String, Property)
             try {
                 method.invoke(propertyMap, TEXTURES_KEY, property);
                 return true;
             } catch (Exception ignored) {
             }
-            // New authlib 5.x (HashMap<String, List<Property>>) — put(String, List<Property>)
+            // New authlib 5.x (HashMap<String, List<Property>>) - put(String, List<Property>)
             try {
                 List<Object> list = new ArrayList<>();
                 list.add(property);
@@ -175,4 +175,5 @@ public final class SkinProfileInjector {
         return methods;
     }
 }
+
 

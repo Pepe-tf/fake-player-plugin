@@ -16,17 +16,17 @@ import java.io.File;
 import java.util.List;
 
 /**
- * {@code /fpp migrate} — Administration command for the plugin update/migration system.
+ * {@code /fpp migrate} - Administration command for the plugin update/migration system.
  *
  * <h3>Subcommands</h3>
  * <pre>
- *  /fpp migrate backup             — Create a manual timestamped backup now
- *  /fpp migrate backups            — List stored backups
- *  /fpp migrate status             — Show config version, DB stats and backup count
- *  /fpp migrate config             — Re-run the config migration chain
- *  /fpp migrate db merge [file]    — Merge an old fpp.db into the current database
- *  /fpp migrate db export          — Export all session history to CSV
- *  /fpp migrate db tomysql         — Migrate SQLite data into configured MySQL
+ *  /fpp migrate backup             - Create a manual timestamped backup now
+ *  /fpp migrate backups            - List stored backups
+ *  /fpp migrate status             - Show config version, DB stats and backup count
+ *  /fpp migrate config             - Re-run the config migration chain
+ *  /fpp migrate db merge [file]    - Merge an old fpp.db into the current database
+ *  /fpp migrate db export          - Export all session history to CSV
+ *  /fpp migrate db tomysql         - Migrate SQLite data into configured MySQL
  * </pre>
  *
  * <p>Requires permission {@code fpp.admin.migrate} (child of {@code fpp.*}).
@@ -48,11 +48,11 @@ public class MigrateCommand implements FppCommand {
     @Override public String getName()        { return "migrate"; }
     @Override public String getUsage()       { return "<backup|status|config|lang|names|messages|db>"; }
     @Override public String getDescription() { return "Manages config/data migration and backups."; }
-    @Override public String getPermission()  { return Perm.ADMIN_MIGRATE; }
+    @Override public String getPermission()  { return Perm.MIGRATE; }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        if (!sender.hasPermission(Perm.ADMIN_MIGRATE)) {
+        if (!sender.hasPermission(Perm.MIGRATE)) {
             sender.sendMessage(Lang.get("no-permission"));
             return true;
         }
@@ -111,7 +111,7 @@ public class MigrateCommand implements FppCommand {
 
         // Config
         msg(sender, GRAY + "  Config version : " + configVer + " / " + ConfigMigrator.CURRENT_VERSION
-                + (configCurrent ? "  " + GREEN + "✔ current" : "  " + RED + "✘ outdated — run /fpp migrate config"));
+                + (configCurrent ? "  " + GREEN + "✔ current" : "  " + RED + "✘ outdated - run /fpp migrate config"));
 
         // ── YAML file sync health ─────────────────────────────────────────────
         msg(sender, COLOR + "  ꜰɪʟᴇ ꜱʏɴᴄ ꜱᴛᴀᴛᴜꜱ" + C_CLOSE);
@@ -131,7 +131,7 @@ public class MigrateCommand implements FppCommand {
                         + GRAY + " (" + total + " keys)");
             } else {
                 msg(sender, GRAY + f[2] + ": " + "<yellow>⚠ " + missing + " / " + total
-                        + " key(s) missing — run /fpp migrate " + f[3]);
+                        + " key(s) missing - run /fpp migrate " + f[3]);
             }
         }
 
@@ -197,11 +197,11 @@ public class MigrateCommand implements FppCommand {
         int missing = YamlFileSyncer.countMissingKeys(plugin, diskPath, jarPath);
 
         if (missing == 0) {
-            msg(sender, GREEN + "✔ " + label + " is already up to date — no missing keys.");
+            msg(sender, GREEN + "✔ " + label + " is already up to date - no missing keys.");
             return;
         }
         if (missing < 0) {
-            msg(sender, GRAY + label + " does not exist yet — extracting from JAR…");
+            msg(sender, GRAY + label + " does not exist yet - extracting from JAR…");
         } else {
             msg(sender, GRAY + "Backing up config files before sync…");
             plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -216,13 +216,13 @@ public class MigrateCommand implements FppCommand {
                     sync(sender, GRAY + "  Run " + COLOR + "/fpp reload" + C_CLOSE
                             + GRAY + " to apply the updated file.");
                 } else {
-                    sync(sender, GREEN + "✔ " + label + " is up to date — no changes made.");
+                    sync(sender, GREEN + "✔ " + label + " is up to date - no changes made.");
                 }
             });
             return;   // async path handles messaging
         }
 
-        // Sync synchronously for the "file missing" case (fast — just extracts)
+        // Sync synchronously for the "file missing" case (fast - just extracts)
         YamlFileSyncer.SyncResult result =
                 YamlFileSyncer.syncMissingKeys(plugin, diskPath, jarPath);
         msg(sender, GREEN + "✔ " + label + " extracted from JAR ("
@@ -239,7 +239,7 @@ public class MigrateCommand implements FppCommand {
 
         switch (args[1].toLowerCase()) {
             case "merge" -> {
-                // Resolve filename — default to "fpp.db", allow custom filename or absolute path
+                // Resolve filename - default to "fpp.db", allow custom filename or absolute path
                 String filename = args.length > 2 ? args[2] : "fpp.db";
                 File file = resolveDbFile(filename);
 
@@ -258,7 +258,7 @@ public class MigrateCommand implements FppCommand {
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                     int merged = DataMigrator.mergeFromSQLite(plugin, db, file);
                     if (merged >= 0) {
-                        sync(sender, GREEN + "✔ Merge complete — " + merged + " row(s) inserted.");
+                        sync(sender, GREEN + "✔ Merge complete - " + merged + " row(s) inserted.");
                         sync(sender, GRAY + "  Total sessions now: " + db.countSessions());
                     } else {
                         sync(sender, RED + "✘ Merge failed. Check console for details.");
@@ -289,7 +289,7 @@ public class MigrateCommand implements FppCommand {
                 }
                 if (db == null) { msg(sender, RED + "Database is offline."); return; }
                 if (!db.isMysql()) {
-                    msg(sender, RED + "The active database is still SQLite — run /fpp reload first"
+                    msg(sender, RED + "The active database is still SQLite - run /fpp reload first"
                             + " so the plugin connects to MySQL, then retry.");
                     return;
                 }
@@ -297,7 +297,7 @@ public class MigrateCommand implements FppCommand {
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                     int count = DataMigrator.migrateToMysql(plugin, db);
                     if (count >= 0) {
-                        sync(sender, GREEN + "✔ Migration complete — " + count + " row(s) transferred.");
+                        sync(sender, GREEN + "✔ Migration complete - " + count + " row(s) transferred.");
                     } else {
                         sync(sender, RED + "✘ Migration failed. Check console for details.");
                     }
@@ -312,7 +312,7 @@ public class MigrateCommand implements FppCommand {
                 msg(sender, COLOR + "ᴅʙ ꜱᴄʜᴇᴍᴀ ɪɴꜰᴏ" + C_CLOSE);
                 msg(sender, GRAY + "  Schema version : " + stored + " / " + current
                         + (ok ? "  " + GREEN + "✔ current"
-                               : "  " + RED + "✘ outdated — restart the server to apply DB migrations"));
+                               : "  " + RED + "✘ outdated - restart the server to apply DB migrations"));
                 msg(sender, GRAY + "  Backend        : " + db.getStats().backend());
                 msg(sender, GRAY + "  Sessions table : " + db.countSessions() + " row(s)");
                 msg(sender, GRAY + "  Active bots    : " + db.countActiveBotRows() + " row(s)");
@@ -324,9 +324,9 @@ public class MigrateCommand implements FppCommand {
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                     int removed = DataMigrator.cleanupStaleActiveBots(plugin, db);
                     if (removed > 0) {
-                        sync(sender, GREEN + "✔ Cleanup complete — " + removed + " stale row(s) removed.");
+                        sync(sender, GREEN + "✔ Cleanup complete - " + removed + " stale row(s) removed.");
                     } else if (removed == 0) {
-                        sync(sender, GREEN + "✔ No stale rows found — fpp_active_bots is clean.");
+                        sync(sender, GREEN + "✔ No stale rows found - fpp_active_bots is clean.");
                     } else {
                         sync(sender, RED + "✘ Cleanup failed. Check console for details.");
                     }
@@ -339,10 +339,10 @@ public class MigrateCommand implements FppCommand {
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                     int repaired = DataMigrator.repairOrphanedSessions(plugin, db);
                     if (repaired > 0) {
-                        sync(sender, GREEN + "✔ Repair complete — " + repaired
+                        sync(sender, GREEN + "✔ Repair complete - " + repaired
                                 + " orphaned session(s) closed as ORPHAN_REPAIR.");
                     } else if (repaired == 0) {
-                        sync(sender, GREEN + "✔ No orphaned sessions found — database is consistent.");
+                        sync(sender, GREEN + "✔ No orphaned sessions found - database is consistent.");
                     } else {
                         sync(sender, RED + "✘ Repair failed. Check console for details.");
                     }
@@ -357,7 +357,7 @@ public class MigrateCommand implements FppCommand {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (!sender.hasPermission(Perm.ADMIN_MIGRATE)) return List.of();
+        if (!sender.hasPermission(Perm.MIGRATE)) return List.of();
         if (args.length == 1) return filter(
                 List.of("backup", "backups", "status", "config",
                         "lang", "names", "messages", "db"), args[0]);
@@ -388,7 +388,7 @@ public class MigrateCommand implements FppCommand {
     }
 
     private void row(CommandSender sender, String cmd, String desc) {
-        msg(sender, GRAY + "  " + COLOR + cmd + C_CLOSE + " " + GRAY + "— " + desc);
+        msg(sender, GRAY + "  " + COLOR + cmd + C_CLOSE + " " + GRAY + "- " + desc);
     }
 
     private void msg(CommandSender sender, String mm) {
@@ -410,7 +410,7 @@ public class MigrateCommand implements FppCommand {
         // Try absolute path
         File abs = new File(filename);
         if (abs.isAbsolute()) return abs;
-        // Default to data/filename (may not exist — caller checks)
+        // Default to data/filename (may not exist - caller checks)
         return inData;
     }
 
@@ -425,6 +425,7 @@ public class MigrateCommand implements FppCommand {
         return options.stream().filter(o -> o.toLowerCase().startsWith(p)).toList();
     }
 }
+
 
 
 

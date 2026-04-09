@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  * A fake Netty channel that discards all writes and reports itself as always active/open.
  *
  * <p>Injected into the NMS {@code Connection} object used by each fake bot player.
- * All outbound packets (position, entity data, etc.) are silently discarded — bots
+ * All outbound packets (position, entity data, etc.) are silently discarded - bots
  * have no real network client, so sending packets to them is a no-op.
  *
  * <p>Ported from the hello09x/fakeplayer reference implementation.
@@ -142,5 +142,6 @@ public final class FakeChannel extends AbstractChannel {
         }
     }
 }
+
 
 

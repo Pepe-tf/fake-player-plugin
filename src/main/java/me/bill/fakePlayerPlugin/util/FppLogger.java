@@ -12,21 +12,21 @@ import java.util.logging.Logger;
  *
  * <h3>Log levels</h3>
  * <ul>
- *   <li>{@link #info}    — plain white  — general information</li>
- *   <li>{@link #success} — bright green — positive confirmation</li>
- *   <li>{@link #warn}    — bright yellow — non-fatal warnings</li>
- *   <li>{@link #error}   — bright red   — errors that need attention</li>
- *   <li>{@link #debug}   — yellow+grey  — verbose, only when a matching debug toggle is enabled</li>
- *   <li>{@link #highlight} — cyan bold  — important state changes (enable/disable)</li>
+ *   <li>{@link #info}    - plain white  - general information</li>
+ *   <li>{@link #success} - bright green - positive confirmation</li>
+ *   <li>{@link #warn}    - bright yellow - non-fatal warnings</li>
+ *   <li>{@link #error}   - bright red   - errors that need attention</li>
+ *   <li>{@link #debug}   - yellow+grey  - verbose, only when a matching debug toggle is enabled</li>
+ *   <li>{@link #highlight} - cyan bold  - important state changes (enable/disable)</li>
  * </ul>
  *
  * <h3>Formatting helpers</h3>
  * <ul>
- *   <li>{@link #section}  — labelled separator line</li>
- *   <li>{@link #rule}     — plain separator line</li>
- *   <li>{@link #kv}       — "  key ....... value" row</li>
- *   <li>{@link #statusRow} — "  [✔/✘] label : value" row</li>
- *   <li>{@link #blank}    — empty line</li>
+ *   <li>{@link #section}  - labelled separator line</li>
+ *   <li>{@link #rule}     - plain separator line</li>
+ *   <li>{@link #kv}       - "  key ....... value" row</li>
+ *   <li>{@link #statusRow} - "  [✔/✘] label : value" row</li>
+ *   <li>{@link #blank}    - empty line</li>
  * </ul>
  */
 public final class FppLogger {
@@ -43,7 +43,7 @@ public final class FppLogger {
     private static final String YELLOW   = "\u001B[93m";
     // Green for success / OK
     private static final String GREEN    = "\u001B[92m";
-    // Gold/amber — kept for legacy references, not used in logging
+    // Gold/amber - kept for legacy references, not used in logging
     private static final String GOLD     = "\u001B[33m";
     // Red for error / FAIL
     private static final String RED      = "\u001B[91m";
@@ -74,28 +74,28 @@ public final class FppLogger {
 
     // ── Core log methods ──────────────────────────────────────────────────────
 
-    /** General info — white. */
+    /** General info - white. */
     public static void info(String message) {
         logger.info(TAG + " " + WHITE + message + RESET);
     }
 
-    /** Positive confirmation — bright green. */
+    /** Positive confirmation - bright green. */
     public static void success(String message) {
         logger.info(TAG + " " + GREEN + message + RESET);
     }
 
-    /** Warning — bright yellow. Appears in console as a WARNING-level entry. */
+    /** Warning - bright yellow. Appears in console as a WARNING-level entry. */
     public static void warn(String message) {
         logger.warning(TAG + " " + YELLOW + message + RESET);
     }
 
-    /** Error — bright red. Appears in console as a SEVERE-level entry. */
+    /** Error - bright red. Appears in console as a SEVERE-level entry. */
     public static void error(String message) {
         logger.severe(TAG + " " + RED + message + RESET);
     }
 
     /**
-     * Debug — yellow, only emitted when {@code debug: true} in config.
+     * Debug - yellow, only emitted when {@code debug: true} in config.
      * Prefixed with a grey [DEBUG] badge.
      */
     public static void debug(String message) {
@@ -103,7 +103,7 @@ public final class FppLogger {
     }
 
     /**
-     * Category debug — only emitted when the provided toggle is enabled.
+     * Category debug - only emitted when the provided toggle is enabled.
      * Example badge: {@code [DEBUG/NMS]} or {@code [DEBUG/NETWORK]}.
      */
     public static void debug(String topic, boolean enabled, String message) {
@@ -114,7 +114,7 @@ public final class FppLogger {
     }
 
     /**
-     * Highlight — bold cyan, for important state transitions such as
+     * Highlight - bold cyan, for important state transitions such as
      * plugin enable/disable. Use sparingly so it stands out.
      */
     public static void highlight(String message) {
@@ -132,7 +132,7 @@ public final class FppLogger {
     }
 
     /**
-     * Prints a bold rule — used for the very top and bottom of banners.
+     * Prints a bold rule - used for the very top and bottom of banners.
      */
     public static void boldRule() {
         logger.info(TAG + " " + GRAY + BOLD + "═".repeat(RULE_WIDTH) + RESET);
@@ -212,9 +212,9 @@ public final class FppLogger {
     }
 
     /**
-     * Prints an empty (blank) separator line — useful between sections.
+     * Prints an empty (blank) separator line - useful between sections.
      */
-    @SuppressWarnings("unused") // Public API — available for callers outside this class
+    @SuppressWarnings("unused") // Public API - available for callers outside this class
     public static void blank() {
         logger.info("");
     }
@@ -312,7 +312,7 @@ public final class FppLogger {
      */
     public static void printShutdownBanner(int botsRemoved, boolean dbFlushed, long uptimeMs) {
         boldRule();
-        highlight("  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  —  shutting down");
+        highlight("  ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ  -  shutting down");
         rule();
         kv("Bots removed",   botsRemoved);
         kv("DB sessions",    dbFlushed ? "flushed ✔" : "skipped (no DB)");
@@ -356,3 +356,4 @@ public final class FppLogger {
         OFF
     }
 }
+

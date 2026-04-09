@@ -12,19 +12,19 @@ import java.net.URLClassLoader;
 import java.util.concurrent.Callable;
 
 /**
- * FastStats anonymous usage metrics — developer-only, not user-configurable.
+ * FastStats anonymous usage metrics - developer-only, not user-configurable.
  *
  * <p>FastStats is loaded at runtime via a dedicated {@link URLClassLoader} pointing
  * to jars bundled inside the plugin jar as resources (src/main/resources/faststats/).
  * This sidesteps all Maven shade-plugin relocation issues: the shade plugin does NOT
  * update references in the project's own class files, causing NoClassDefFoundError.
- * With URLClassLoader the classes are found directly — no relocation needed.
+ * With URLClassLoader the classes are found directly - no relocation needed.
  *
  * <p>No personal data, player names, or server addresses are ever collected.
  */
 public final class FppMetrics {
 
-    // ── Developer constant — NOT in config.yml ────────────────────────────────
+    // ── Developer constant - NOT in config.yml ────────────────────────────────
     private static final String TOKEN = "376511af6c97b56954ff2abed24dfaea";
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ public final class FppMetrics {
 
     public void init(FakePlayerPlugin plugin, FakePlayerManager botManager) {
         if (TOKEN.isBlank()) {
-            FppLogger.warn("Metrics: TOKEN is blank — FastStats disabled.");
+            FppLogger.warn("Metrics: TOKEN is blank - FastStats disabled.");
             return;
         }
 
@@ -247,3 +247,4 @@ public final class FppMetrics {
         }
     }
 }
+

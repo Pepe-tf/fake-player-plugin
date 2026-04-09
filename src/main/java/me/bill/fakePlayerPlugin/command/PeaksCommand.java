@@ -21,15 +21,15 @@ import java.util.stream.Collectors;
  * <p>Controls the peak-hours bot pool management system.
  *
  * <ul>
- *   <li>{@code /fpp peaks}              — toggle on/off</li>
- *   <li>{@code /fpp peaks on}           — enable peak-hours (auto-enables swap if configured)</li>
- *   <li>{@code /fpp peaks off}          — disable peak-hours (wakes all sleeping bots)</li>
- *   <li>{@code /fpp peaks status}       — show current window, fraction, pool, and sleeping count</li>
- *   <li>{@code /fpp peaks next}         — show time until the next window and its fraction</li>
- *   <li>{@code /fpp peaks force}        — trigger an immediate peak-hours evaluation</li>
- *   <li>{@code /fpp peaks list}         — list all currently sleeping bots with their location</li>
- *   <li>{@code /fpp peaks wake [name]}  — wake a specific bot (or all sleeping bots)</li>
- *   <li>{@code /fpp peaks sleep <name>} — manually put an active bot to sleep</li>
+ *   <li>{@code /fpp peaks}              - toggle on/off</li>
+ *   <li>{@code /fpp peaks on}           - enable peak-hours (auto-enables swap if configured)</li>
+ *   <li>{@code /fpp peaks off}          - disable peak-hours (wakes all sleeping bots)</li>
+ *   <li>{@code /fpp peaks status}       - show current window, fraction, pool, and sleeping count</li>
+ *   <li>{@code /fpp peaks next}         - show time until the next window and its fraction</li>
+ *   <li>{@code /fpp peaks force}        - trigger an immediate peak-hours evaluation</li>
+ *   <li>{@code /fpp peaks list}         - list all currently sleeping bots with their location</li>
+ *   <li>{@code /fpp peaks wake [name]}  - wake a specific bot (or all sleeping bots)</li>
+ *   <li>{@code /fpp peaks sleep <name>} - manually put an active bot to sleep</li>
  * </ul>
  */
 public class PeaksCommand implements FppCommand {
@@ -82,7 +82,7 @@ public class PeaksCommand implements FppCommand {
     // ── Enable / disable ──────────────────────────────────────────────────────
 
     private void enablePeaks(CommandSender sender) {
-        // Swap must be enabled first — user must do /fpp swap on manually
+        // Swap must be enabled first - user must do /fpp swap on manually
         if (!Config.swapEnabled()) {
             sender.sendMessage(Lang.get("peaks-requires-swap"));
             return;
@@ -294,4 +294,5 @@ public class PeaksCommand implements FppCommand {
         return List.of();
     }
 }
+
 

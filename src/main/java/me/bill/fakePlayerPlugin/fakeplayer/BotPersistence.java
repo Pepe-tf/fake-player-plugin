@@ -1,6 +1,10 @@
 package me.bill.fakePlayerPlugin.fakeplayer;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.command.MineCommand;
+import me.bill.fakePlayerPlugin.command.MoveCommand;
+import me.bill.fakePlayerPlugin.command.UseCommand;
+import me.bill.fakePlayerPlugin.command.WaypointStore;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.util.FppLogger;
 import org.bukkit.Bukkit;
@@ -31,8 +35,8 @@ import java.util.UUID;
  *
  * <p>Storage:
  * <ul>
- *   <li>{@code plugins/FakePlayerPlugin/data/active-bots.yml} — bot identity, location, type</li>
- *   <li>{@code plugins/FakePlayerPlugin/data/bot-inventories.yml} — full inventory per bot UUID</li>
+ *   <li>{@code plugins/FakePlayerPlugin/data/active-bots.yml} - bot identity, location, type</li>
+ *   <li>{@code plugins/FakePlayerPlugin/data/bot-inventories.yml} - full inventory per bot UUID</li>
  * </ul>
  *
  * <p>Each entry stores:
@@ -48,16 +52,37 @@ public final class BotPersistence {
 
     private static final String FILE_NAME      = "active-bots.yml";
     private static final String INV_FILE_NAME  = "bot-inventories.yml";
+    private static final String TASKS_FILE_NAME = "bot-tasks.yml";
 
     private final File            dataFile;
     private final File            inventoryFile;
+    private final File            tasksFile;
     private final FakePlayerPlugin plugin;
+
+    /** Injected command references used to read/resume bot tasks. */
+    private MoveCommand    moveCommand;
+    private MineCommand    mineCommand;
+    private UseCommand     useCommand;
+    private WaypointStore  waypointStore;
+
+    // ── Setters for command injection ─────────────────────────────────────────
+
+    public void setMoveCommand(MoveCommand cmd)   { this.moveCommand   = cmd; }
+    public void setMineCommand(MineCommand cmd)   { this.mineCommand   = cmd; }
+    public void setUseCommand(UseCommand cmd)     { this.useCommand    = cmd; }
+    public void setWaypointStore(WaypointStore s) { this.waypointStore = s; }
 
     /**
      * Populated once at the start of a restore cycle and cleared when done.
      * Key = UUID string, Value = map of slot-index → base64-encoded ItemStack bytes.
      */
     private Map<String, Map<String, String>> loadedInventories = null;
+
+    /**
+     * Populated once at the start of a restore cycle and cleared when done.
+     * Key = UUID string, Value = per-bot task state loaded from {@code bot-tasks.yml}.
+     */
+    private Map<String, TaskEntry> loadedTasks = null;
 
     public BotPersistence(FakePlayerPlugin plugin) {
         this.plugin   = plugin;
@@ -67,18 +92,21 @@ public final class BotPersistence {
         }
         this.dataFile      = new File(dataDir, FILE_NAME);
         this.inventoryFile = new File(dataDir, INV_FILE_NAME);
+        this.tasksFile     = new File(dataDir, TASKS_FILE_NAME);
     }
 
     // ── Save ─────────────────────────────────────────────────────────────────
 
     /**
-     * Writes all currently active fake players to {@code active-bots.yml}
-     * and their inventories to {@code bot-inventories.yml}.
+     * Writes all currently active fake players to {@code active-bots.yml},
+     * their inventories to {@code bot-inventories.yml}, and their active
+     * tasks (patrol/mine/use/right-click) to {@code bot-tasks.yml}.
      * Called from {@code onDisable} before entities are removed.
      */
     public void save(Iterable<FakePlayer> players) {
         saveInternal(players);
         saveInventoriesInternal(players);
+        saveTasksInternal(players);
     }
 
     /**
@@ -91,6 +119,7 @@ public final class BotPersistence {
         // (entity access is not thread-safe)
         List<Object> list          = buildList(players);
         Map<String, Map<String, String>> invSnap = snapshotInventories(players);
+        Map<String, TaskEntry> taskSnap = snapshotTasks(players);
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             YamlConfiguration yaml = new YamlConfiguration();
             yaml.set("bots", list);
@@ -100,6 +129,7 @@ public final class BotPersistence {
                 FppLogger.error("Failed to auto-save active bots: " + e.getMessage());
             }
             writeInventorySnapshot(invSnap);
+            writeTaskSnapshot(taskSnap);
         });
     }
 
@@ -122,6 +152,115 @@ public final class BotPersistence {
      */
     private void saveInventoriesInternal(Iterable<FakePlayer> players) {
         writeInventorySnapshot(snapshotInventories(players));
+    }
+
+    // ── Task save helpers ─────────────────────────────────────────────────────
+
+    /**
+     * Saves per-bot active task state (patrol route, mine/use location, right-click
+     * command) to {@code bot-tasks.yml} so tasks can be resumed after restart.
+     * Called on the main thread so command state is safe to read.
+     */
+    private void saveTasksInternal(Iterable<FakePlayer> players) {
+        writeTaskSnapshot(snapshotTasks(players));
+    }
+
+    /**
+     * Builds an in-memory snapshot of all bot task state on the calling (main) thread.
+     */
+    private Map<String, TaskEntry> snapshotTasks(Iterable<FakePlayer> players) {
+        Map<String, TaskEntry> snap = new LinkedHashMap<>();
+        for (FakePlayer fp : players) {
+            String uuidStr = fp.getUuid().toString();
+
+            // Right-click command (stored on FakePlayer directly)
+            String rcc = fp.getRightClickCommand();
+
+            // Patrol state (from MoveCommand)
+            String patrolRoute = null;
+            boolean patrolRandom = false;
+            if (moveCommand != null) {
+                patrolRoute  = moveCommand.getActiveRouteForBot(fp.getUuid());
+                patrolRandom = moveCommand.isRandomPatrolForBot(fp.getUuid());
+            }
+
+            // Mining state (from MineCommand)
+            String mineWorld = null;
+            double mineX = 0, mineY = 0, mineZ = 0;
+            float mineYaw = 0, minePitch = 0;
+            boolean mineOnce = false;
+            if (mineCommand != null) {
+                Location mineLoc = mineCommand.getActiveMineLocation(fp.getUuid());
+                if (mineLoc != null && mineLoc.getWorld() != null) {
+                    mineWorld = mineLoc.getWorld().getName();
+                    mineX = mineLoc.getX(); mineY = mineLoc.getY(); mineZ = mineLoc.getZ();
+                    mineYaw = mineLoc.getYaw(); minePitch = mineLoc.getPitch();
+                    mineOnce = mineCommand.isActiveMineOnce(fp.getUuid());
+                }
+            }
+
+            // Use state (from UseCommand)
+            String useWorld = null;
+            double useX = 0, useY = 0, useZ = 0;
+            float useYaw = 0, usePitch = 0;
+            boolean useOnce = false;
+            if (useCommand != null) {
+                Location useLoc = useCommand.getActiveUseLocation(fp.getUuid());
+                if (useLoc != null && useLoc.getWorld() != null) {
+                    useWorld = useLoc.getWorld().getName();
+                    useX = useLoc.getX(); useY = useLoc.getY(); useZ = useLoc.getZ();
+                    useYaw = useLoc.getYaw(); usePitch = useLoc.getPitch();
+                    useOnce = useCommand.isActiveUseOnce(fp.getUuid());
+                }
+            }
+
+            // Only store entry if there is at least one piece of task state to save
+            if (rcc != null || patrolRoute != null || mineWorld != null || useWorld != null) {
+                snap.put(uuidStr, new TaskEntry(
+                        rcc, patrolRoute, patrolRandom,
+                        mineWorld, mineX, mineY, mineZ, mineYaw, minePitch, mineOnce,
+                        useWorld, useX, useY, useZ, useYaw, usePitch, useOnce));
+            }
+        }
+        return snap;
+    }
+
+    /** Writes a pre-built task snapshot to {@code bot-tasks.yml}. */
+    private void writeTaskSnapshot(Map<String, TaskEntry> snap) {
+        YamlConfiguration yaml = new YamlConfiguration();
+        for (Map.Entry<String, TaskEntry> e : snap.entrySet()) {
+            String sec = e.getKey() + ".";
+            TaskEntry t = e.getValue();
+            if (t.rightClickCommand() != null) yaml.set(sec + "right-click-command", t.rightClickCommand());
+            if (t.patrolRoute() != null) {
+                yaml.set(sec + "patrol-route",  t.patrolRoute());
+                yaml.set(sec + "patrol-random", t.patrolRandom());
+            }
+            if (t.mineWorld() != null) {
+                yaml.set(sec + "mine-world", t.mineWorld());
+                yaml.set(sec + "mine-x",     t.mineX());
+                yaml.set(sec + "mine-y",     t.mineY());
+                yaml.set(sec + "mine-z",     t.mineZ());
+                yaml.set(sec + "mine-yaw",   (double) t.mineYaw());
+                yaml.set(sec + "mine-pitch", (double) t.minePitch());
+                yaml.set(sec + "mine-once",  t.mineOnce());
+            }
+            if (t.useWorld() != null) {
+                yaml.set(sec + "use-world", t.useWorld());
+                yaml.set(sec + "use-x",     t.useX());
+                yaml.set(sec + "use-y",     t.useY());
+                yaml.set(sec + "use-z",     t.useZ());
+                yaml.set(sec + "use-yaw",   (double) t.useYaw());
+                yaml.set(sec + "use-pitch", (double) t.usePitch());
+                yaml.set(sec + "use-once",  t.useOnce());
+            }
+        }
+        try {
+            yaml.save(tasksFile);
+            Config.debug("Saved task state for " + snap.size() + " bot(s).");
+        } catch (IOException ex) {
+            FppLogger.error("Failed to save bot tasks: " + ex.getMessage());
+        }
     }
 
     /**
@@ -233,29 +372,31 @@ public final class BotPersistence {
      * Reads {@code active-bots.yml} and schedules a staggered restore of all
      * saved bots. The file is deleted after loading so bots only restore once.
      *
-     * <p>Called from {@code onEnable} — deferred by 40 ticks (2 seconds) to
+     * <p>Called from {@code onEnable} - deferred by 40 ticks (2 seconds) to
      * ensure the world is fully loaded before spawning entities.
      */
     public void restore(FakePlayerManager manager) {
         if (!Config.persistOnRestart()) {
             deleteFile(dataFile);
-            FppLogger.info("Bot persistence is disabled — skipping restore.");
+            FppLogger.info("Bot persistence is disabled - skipping restore.");
             return;
         }
 
-        // Set flag to indicate restoration is in progress — players joining during this window
+        // Set flag to indicate restoration is in progress - players joining during this window
         // will defer tab-list syncing until the post-restore prefix refresh completes.
         manager.setRestorationInProgress(true);
 
         // Load saved inventories once so each bot can pick up its items after spawning.
         loadInventoryFile();
+        // Load saved task state (patrol routes, mine/use locations, right-click commands).
+        loadTasksFile();
 
         // ── Primary: restore from database fpp_active_bots ───────────────────
         me.bill.fakePlayerPlugin.database.DatabaseManager db =
                 plugin.getDatabaseManager();
         if (db != null) {
             // ----------------------------------------------------------------
-            // DESIGN RULE — Bots are per-server only.
+            // DESIGN RULE - Bots are per-server only.
             // The database may be shared across multiple servers (NETWORK mode),
             // but Minecraft entities (NMS ServerPlayers, PlayerProfiles)
             // are strictly local to the server that originally spawned them.
@@ -268,7 +409,7 @@ public final class BotPersistence {
             if (!rows.isEmpty()) {
                 FppLogger.info("Restoring " + rows.size() + " bot(s) from database (server='"
                         + me.bill.fakePlayerPlugin.config.Config.serverId() + "')...");
-                // Clear only this server's rows immediately — bots are now being restored.
+                // Clear only this server's rows immediately - bots are now being restored.
                 // Other servers' rows in a shared DB are left untouched.
                 db.clearActiveBots();
                 // Also discard the YAML file so we don't double-restore
@@ -299,7 +440,7 @@ public final class BotPersistence {
                     Bukkit.getScheduler().runTaskLater(plugin,
                             () -> restoreChain(manager, saved, 0), 40L);
                 } else {
-                    // All DB rows were malformed — nothing to restore.
+                    // All DB rows were malformed - nothing to restore.
                     manager.setRestorationInProgress(false);
                 }
                 return;
@@ -366,9 +507,11 @@ public final class BotPersistence {
     /** Spawns one saved bot and schedules the next with a random join-delay. */
     private void restoreChain(FakePlayerManager manager, List<SavedBot> saved, int index) {
         if (index >= saved.size()) {
-            // All bots have been queued — signal that restoration is complete.
+            // All bots have been queued - signal that restoration is complete.
             manager.setRestorationInProgress(false);
-            loadedInventories = null; // free memory — no longer needed
+            loadedInventories = null; // free memory - no longer needed
+            loadedTasks       = null; // free memory
+            deleteFile(tasksFile);    // clean up tasks file - tasks are now live
             FppLogger.info("Bot restoration complete: " + saved.size() + " bot(s) restored.");
             return;
         }
@@ -378,7 +521,7 @@ public final class BotPersistence {
         World world = Bukkit.getWorld(sb.worldName);
         if (world == null) {
             FppLogger.warn("Cannot restore bot '" + sb.name
-                    + "' — world '" + sb.worldName + "' not found. Skipping.");
+                    + "' - world '" + sb.worldName + "' not found. Skipping.");
             restoreChain(manager, saved, index + 1);
             return;
         }
@@ -395,7 +538,15 @@ public final class BotPersistence {
             if (sb.chatTier != null) fp.setChatTier(sb.chatTier);
         }
 
-        // Restore inventory — delayed 10 ticks to ensure the NMS body is fully spawned
+        // Apply right-click command immediately (no entity dependency)
+        if (loadedTasks != null) {
+            TaskEntry te = loadedTasks.get(sb.uuid.toString());
+            if (te != null && fp != null && te.rightClickCommand() != null) {
+                fp.setRightClickCommand(te.rightClickCommand());
+            }
+        }
+
+        // Restore inventory - delayed 10 ticks to ensure the NMS body is fully spawned
         // (LP async pre-assignment + body spawn both complete well within this window).
         if (loadedInventories != null) {
             Map<String, String> invSlots = loadedInventories.get(sb.uuid.toString());
@@ -413,7 +564,57 @@ public final class BotPersistence {
             }
         }
 
-        // Stagger: use the configured join-delay range — values are TICKS (20 = 1 second)
+        // Resume active tasks (patrol / mine / use) - delayed 25 ticks to ensure
+        // the NMS body + LP assignment are fully complete before starting tasks.
+        if (loadedTasks != null) {
+            TaskEntry te = loadedTasks.get(sb.uuid.toString());
+            if (te != null && (te.patrolRoute() != null || te.mineWorld() != null || te.useWorld() != null)) {
+                final TaskEntry task = te;
+                final UUID restoredUuid = sb.uuid;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    FakePlayer restored = manager.getByUuid(restoredUuid);
+                    if (restored == null) return;
+                    Player bot = restored.getPlayer();
+                    if (bot == null || !bot.isOnline()) return;
+
+                    // Resume waypoint patrol
+                    if (task.patrolRoute() != null && moveCommand != null && waypointStore != null) {
+                        List<Location> route = waypointStore.getRoute(task.patrolRoute());
+                        if (route != null && !route.isEmpty()
+                                && route.get(0).getWorld() != null
+                                && route.get(0).getWorld().equals(bot.getWorld())) {
+                            moveCommand.resumePatrol(bot, route, task.patrolRandom(), task.patrolRoute());
+                            Config.debug("Resumed patrol '" + task.patrolRoute()
+                                    + "' for bot '" + restored.getName() + "'.");
+                        }
+                    }
+
+                    // Resume mining
+                    if (task.mineWorld() != null && mineCommand != null) {
+                        World w = Bukkit.getWorld(task.mineWorld());
+                        if (w != null && w.equals(bot.getWorld())) {
+                            Location mineLoc = new Location(w, task.mineX(), task.mineY(), task.mineZ(),
+                                    task.mineYaw(), task.minePitch());
+                            mineCommand.resumeMining(restored, task.mineOnce(), mineLoc);
+                            Config.debug("Resumed mining for bot '" + restored.getName() + "'.");
+                        }
+                    }
+
+                    // Resume use loop
+                    if (task.useWorld() != null && useCommand != null) {
+                        World w = Bukkit.getWorld(task.useWorld());
+                        if (w != null && w.equals(bot.getWorld())) {
+                            Location useLoc = new Location(w, task.useX(), task.useY(), task.useZ(),
+                                    task.useYaw(), task.usePitch());
+                            useCommand.resumeUsing(restored, task.useOnce(), useLoc);
+                            Config.debug("Resumed use loop for bot '" + restored.getName() + "'.");
+                        }
+                    }
+                }, 25L);
+            }
+        }
+
+        // Stagger: use the configured join-delay range - values are TICKS (20 = 1 second)
         int delayMinTicks = Config.joinDelayMin();
         int delayMaxTicks = Math.max(delayMinTicks, Config.joinDelayMax());
         long delayTicks;
@@ -455,6 +656,43 @@ public final class BotPersistence {
             if (!slots.isEmpty()) loadedInventories.put(uuidKey, slots);
         }
         Config.debug("Loaded inventories for " + loadedInventories.size() + " bot(s) from " + INV_FILE_NAME + ".");
+    }
+
+    /**
+     * Loads {@code bot-tasks.yml} into {@link #loadedTasks}.
+     * Called once at the start of a restore cycle. Silently does nothing if
+     * the file does not exist.
+     */
+    private void loadTasksFile() {
+        loadedTasks = new HashMap<>();
+        if (!tasksFile.exists()) return;
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(tasksFile);
+        for (String uuidStr : yaml.getKeys(false)) {
+            ConfigurationSection sec = yaml.getConfigurationSection(uuidStr);
+            if (sec == null) continue;
+            String rcc         = sec.getString("right-click-command");
+            String patrolRoute = sec.getString("patrol-route");
+            boolean patrolRandom = sec.getBoolean("patrol-random", false);
+            String mineWorld   = sec.getString("mine-world");
+            double mineX       = sec.getDouble("mine-x");
+            double mineY       = sec.getDouble("mine-y");
+            double mineZ       = sec.getDouble("mine-z");
+            float  mineYaw     = (float) sec.getDouble("mine-yaw");
+            float  minePitch   = (float) sec.getDouble("mine-pitch");
+            boolean mineOnce   = sec.getBoolean("mine-once", false);
+            String useWorld    = sec.getString("use-world");
+            double useX        = sec.getDouble("use-x");
+            double useY        = sec.getDouble("use-y");
+            double useZ        = sec.getDouble("use-z");
+            float  useYaw      = (float) sec.getDouble("use-yaw");
+            float  usePitch    = (float) sec.getDouble("use-pitch");
+            boolean useOnce    = sec.getBoolean("use-once", false);
+            loadedTasks.put(uuidStr, new TaskEntry(
+                    rcc, patrolRoute, patrolRandom,
+                    mineWorld, mineX, mineY, mineZ, mineYaw, minePitch, mineOnce,
+                    useWorld, useX, useY, useZ, useYaw, usePitch, useOnce));
+        }
+        Config.debug("Loaded task state for " + loadedTasks.size() + " bot(s) from " + TASKS_FILE_NAME + ".");
     }
 
     /**
@@ -557,5 +795,25 @@ public final class BotPersistence {
             boolean chatEnabled,
             String chatTier         // nullable
     ) {}
+
+    /**
+     * Per-bot active task state persisted across restarts.
+     * All fields are nullable / have zero-value defaults; a {@code null} field
+     * means that task is not active for this bot.
+     */
+    private record TaskEntry(
+            String  rightClickCommand,  // right-click command; null = not set
+            String  patrolRoute,        // waypoint route name; null = not patrolling
+            boolean patrolRandom,       // true = --random patrol order
+            String  mineWorld,          // world name for mine lock; null = not mining
+            double  mineX, double mineY, double mineZ,
+            float   mineYaw, float minePitch,
+            boolean mineOnce,           // true = mine one block then stop
+            String  useWorld,           // world name for use lock; null = not using
+            double  useX, double useY, double useZ,
+            float   useYaw, float usePitch,
+            boolean useOnce             // true = right-click once then stop
+    ) {}
 }
+
 

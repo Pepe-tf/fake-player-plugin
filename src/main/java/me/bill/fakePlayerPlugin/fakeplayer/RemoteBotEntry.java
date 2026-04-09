@@ -8,7 +8,7 @@ import java.util.UUID;
  *
  * <p>Received via the {@code BOT_SPAWN} plugin-messaging subchannel and stored
  * in {@link RemoteBotCache}.  Contains every field needed to create a virtual
- * tab-list entry on the receiving server — including the full skin texture so
+ * tab-list entry on the receiving server - including the full skin texture so
  * the bot shows the correct skin even without a local Mojang lookup.
  *
  * <p>When skin data is unavailable (e.g. during DB-backed startup sync where
@@ -19,7 +19,7 @@ import java.util.UUID;
 public record RemoteBotEntry(
         /** ID of the originating server (from {@code Config.serverId()}). */
         String serverId,
-        /** Bot's UUID — used as the unique key in the tab-list packet. */
+        /** Bot's UUID - used as the unique key in the tab-list packet. */
         UUID uuid,
         /** Minecraft profile name (max 16 chars). */
         String name,
@@ -37,4 +37,5 @@ public record RemoteBotEntry(
         return skinValue != null && !skinValue.isBlank();
     }
 }
+
 

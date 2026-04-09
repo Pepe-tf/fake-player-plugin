@@ -21,7 +21,7 @@ import java.util.*;
  *
  * <h3>This implementation</h3>
  * <ul>
- *   <li>Uses {@link World#addPluginChunkTicket} — Paper counts these identically to
+ *   <li>Uses {@link World#addPluginChunkTicket} - Paper counts these identically to
  *       player chunk-load tickets (mobs spawn, redstone runs, crops grow).</li>
  *   <li>Tickets are added in spiral order so nearby chunks are prioritised.</li>
  *   <li>Movement detection skips costly set-diff when the bot hasn't moved
@@ -158,7 +158,7 @@ public final class ChunkLoader {
     }
 
     /** Returns the number of plugin chunk tickets currently held across all bots. */
-    @SuppressWarnings("unused") // Public diagnostic API — used by /fpp info and addons
+    @SuppressWarnings("unused") // Public diagnostic API - used by /fpp info and addons
     public int totalTickets() {
         return states.values().stream().mapToInt(s -> s.keys.size()).sum();
     }
@@ -259,3 +259,4 @@ public final class ChunkLoader {
         }
     }
 }
+

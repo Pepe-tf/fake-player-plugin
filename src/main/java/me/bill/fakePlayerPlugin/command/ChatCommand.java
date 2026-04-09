@@ -15,23 +15,23 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * {@code /fpp chat} — global toggle and per-bot chat management.
+ * {@code /fpp chat} - global toggle and per-bot chat management.
  *
  * <p>Sub-commands:
  * <ul>
- *   <li>{@code /fpp chat}              — toggle global fake-chat on/off.</li>
- *   <li>{@code /fpp chat on|off}       — explicitly enable/disable global fake-chat.</li>
- *   <li>{@code /fpp chat status}       — view current global fake-chat status.</li>
- *   <li>{@code /fpp chat <bot>}        — toggle that bot's chat on/off.</li>
- *   <li>{@code /fpp chat <bot> on|off} — explicitly enable/disable a bot's chat.</li>
- *   <li>{@code /fpp chat <bot> status} — view that bot's chat status.</li>
- *   <li>{@code /fpp chat <bot> info}   — detailed info: tier, multiplier, mute state.</li>
- *   <li>{@code /fpp chat <bot> say <msg>} — force a bot to say something (placeholders resolved).</li>
+ *   <li>{@code /fpp chat}              - toggle global fake-chat on/off.</li>
+ *   <li>{@code /fpp chat on|off}       - explicitly enable/disable global fake-chat.</li>
+ *   <li>{@code /fpp chat status}       - view current global fake-chat status.</li>
+ *   <li>{@code /fpp chat <bot>}        - toggle that bot's chat on/off.</li>
+ *   <li>{@code /fpp chat <bot> on|off} - explicitly enable/disable a bot's chat.</li>
+ *   <li>{@code /fpp chat <bot> status} - view that bot's chat status.</li>
+ *   <li>{@code /fpp chat <bot> info}   - detailed info: tier, multiplier, mute state.</li>
+ *   <li>{@code /fpp chat <bot> say <msg>} - force a bot to say something (placeholders resolved).</li>
  *   <li>{@code /fpp chat <bot> tier <quiet|passive|normal|active|chatty>}
- *       — override a bot's activity tier.</li>
- *   <li>{@code /fpp chat <bot> mute [seconds]} — silence a bot; auto-unmute after seconds (0 = permanent).</li>
+ *       - override a bot's activity tier.</li>
+ *   <li>{@code /fpp chat <bot> mute [seconds]} - silence a bot; auto-unmute after seconds (0 = permanent).</li>
  *   <li>{@code /fpp chat all <on|off|status|say <msg>|tier <tier>|mute [seconds]>}
- *       — bulk control for all active bots.</li>
+ *       - bulk control for all active bots.</li>
  * </ul>
  */
 public class ChatCommand implements FppCommand {
@@ -209,7 +209,7 @@ public class ChatCommand implements FppCommand {
 
         String sub = args[1].toLowerCase();
 
-        // /fpp chat <bot> status — explicit status check
+        // /fpp chat <bot> status - explicit status check
         if (sub.equals("status")) {
             sender.sendMessage(Lang.get(
                     bot.isChatEnabled() ? "chat-bot-status-on" : "chat-bot-status-off",
@@ -248,7 +248,7 @@ public class ChatCommand implements FppCommand {
             return true;
         }
 
-        // /fpp chat <bot> info — detailed status
+        // /fpp chat <bot> info - detailed status
         if (sub.equals("info")) {
             BotChatAI chatAI = manager.getBotChatAI();
             String tier = bot.getChatTier() != null ? bot.getChatTier() : "random";
@@ -366,3 +366,5 @@ public class ChatCommand implements FppCommand {
         return List.of();
     }
 }
+
+

@@ -21,23 +21,23 @@ import java.util.function.BiConsumer;
  * Fetches skin textures for a given player name or URL asynchronously via
  * <b>mineskin.eu</b> ({@code https://mineskin.eu/profile/<name>}).
  *
- * <p>A single HTTP call returns a signed Mojang-compatible texture payload —
+ * <p>A single HTTP call returns a signed Mojang-compatible texture payload -
  * no UUID lookup, no Mojang session-server call.
  *
  * <h3>Capabilities</h3>
  * <ul>
- *   <li>{@link #fetchAsync(String, BiConsumer)} — resolve skin by Minecraft player name.</li>
- *   <li>{@link #fetchByUrl(String, BiConsumer)} — build a skin profile from a raw
+ *   <li>{@link #fetchAsync(String, BiConsumer)} - resolve skin by Minecraft player name.</li>
+ *   <li>{@link #fetchByUrl(String, BiConsumer)} - build a skin profile from a raw
  *       texture URL (e.g. {@code https://textures.minecraft.net/texture/…}).</li>
  * </ul>
  *
  * <h3>Reliability features</h3>
  * <ul>
- *   <li><b>Per-name cache</b> — fetched once per session; subsequent calls return
+ *   <li><b>Per-name cache</b> - fetched once per session; subsequent calls return
  *       instantly from cache.</li>
- *   <li><b>Callback deduplication</b> — simultaneous requests for the same name
+ *   <li><b>Callback deduplication</b> - simultaneous requests for the same name
  *       share one HTTP call.</li>
- *   <li><b>Rate-limited queue</b> — 300 ms between requests.</li>
+ *   <li><b>Rate-limited queue</b> - 300 ms between requests.</li>
  * </ul>
  */
 public final class SkinFetcher {
@@ -87,13 +87,13 @@ public final class SkinFetcher {
         }
         String requestName = playerName.trim();
 
-        // 1. Cached — fire immediately
+        // 1. Cached - fire immediately
         if (cache.containsKey(cacheKey)) {
             String[] r = cache.get(cacheKey);
             callback.accept(r[0], r[1]);
             return;
         }
-        // 2. Already in-flight — queue callback
+        // 2. Already in-flight - queue callback
         if (pending.containsKey(cacheKey)) {
             pending.get(cacheKey).add(callback);
             return;
@@ -124,7 +124,7 @@ public final class SkinFetcher {
     }
 
     /**
-     * Clears the entire skin cache — call on /fpp reload so bots
+     * Clears the entire skin cache - call on /fpp reload so bots
      * get fresh skins after a name-pool change.
      */
     public static synchronized void clearCache() {
@@ -142,7 +142,7 @@ public final class SkinFetcher {
      * Builds a skin profile from a raw Mojang CDN texture URL such as
      * {@code https://textures.minecraft.net/texture/<hash>}.
      *
-     * <p>Constructs the base64 texture-payload JSON locally — no extra HTTP
+     * <p>Constructs the base64 texture-payload JSON locally - no extra HTTP
      * call needed. The resulting profile has no RSA signature ({@code null})
      * which is fine for display purposes on Paper servers.
      *
@@ -150,7 +150,7 @@ public final class SkinFetcher {
      * a {@code "value"} field, that field is used directly (signed).
      *
      * @param url      texture URL
-     * @param callback receives (value, signature) — both non-null on success
+     * @param callback receives (value, signature) - both non-null on success
      */
     public static void fetchByUrl(String url, BiConsumer<String, String> callback) {
         String normalizedUrl = normalizeUrl(url);
@@ -362,3 +362,4 @@ public final class SkinFetcher {
         return element != null && !element.isJsonNull() ? element.getAsString() : null;
     }
 }
+

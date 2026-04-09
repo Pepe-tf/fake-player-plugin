@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin — Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.5.15 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
+> **Version:** 1.6.0 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
 
 ---
 
@@ -12,14 +12,19 @@
 ### ✨ What Makes FPP Special?
 
 - 🎭 **Indistinguishable from real players** — Complete tab list integration
-- 🏃 **Physical presence** — Mannequin entities with realistic hitboxes  
+- 🏃 **Physical presence** — NMS ServerPlayer entities with realistic hitboxes  
 - 🎨 **Custom skins** — Use any Minecraft skin or upload your own
-- 💬 **Fake chat** — Bots can send messages and interact
-- 🔄 **Dynamic swapping** — Replace offline players seamlessly  
-- ⚙️ **Highly configurable** — Hundreds of customization options
-- 🔐 **Permission system** — Full control over who can do what
-- 📊 **PlaceholderAPI** — 29+ placeholders for other plugins
-- 🎯 **LuckPerms integration** — Prefix/suffix support with gradients
+- 💬 **Fake chat** — Bots send messages with typing delays, burst replies, and event reactions
+- 🔄 **Dynamic swapping** — Replace offline players seamlessly with the swap system
+- ⏰ **Peak hours scheduler** — Scale your bot pool by time-of-day windows
+- 📦 **Bot inventory GUI** — Inspect and modify any bot's full inventory in-game
+- 🧭 **A* pathfinding** — Navigate bots to players with `/fpp move`
+- ⛏️ **Block mining** — Bots continuously mine blocks with `/fpp mine`
+- 💻 **Stored commands** — Assign right-click commands to bots with `/fpp cmd`
+- ⚙️ **Highly configurable** — In-game settings GUI with live toggles
+- 🔐 **Two-tier permission system** — `fpp.op` for admins, `fpp.use` for users
+- 📊 **PlaceholderAPI** — 29+ placeholders for scoreboards, tab headers, and more
+- 🎯 **LuckPerms integration** — Prefix/suffix, group assignment, weighted ordering
 
 ---
 

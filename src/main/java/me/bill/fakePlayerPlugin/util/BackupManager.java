@@ -18,7 +18,7 @@ import java.util.*;
  *   <li>{@code bot-messages.yml}</li>
  *   <li>{@code language/en.yml} (and any other lang files present)</li>
  *   <li>{@code data/active-bots.yml}</li>
- *   <li>{@code data/fpp.db} (SQLite — copied as-is, safe because we're
+ *   <li>{@code data/fpp.db} (SQLite - copied as-is, safe because we're
  *       only reading; no WAL-torn state possible with a plain file copy
  *       on shutdown where the DB is already closed)</li>
  * </ul>
@@ -41,7 +41,7 @@ public final class BackupManager {
     private BackupManager() {}
 
     /**
-     * Creates a lightweight backup of only the YAML config files —
+     * Creates a lightweight backup of only the YAML config files -
      * {@code config.yml}, {@code bot-names.yml}, {@code bot-messages.yml}, and
      * all files under {@code language/}.
      *
@@ -156,7 +156,7 @@ public final class BackupManager {
         File[] dirs = backupsDir.listFiles(File::isDirectory);
         if (dirs == null || dirs.length == 0) return List.of();
 
-        // Sort descending (newest first — timestamp prefix makes alphabetical == chronological)
+        // Sort descending (newest first - timestamp prefix makes alphabetical == chronological)
         Arrays.sort(dirs, Comparator.comparing(File::getName).reversed());
         List<String> names = new ArrayList<>(dirs.length);
         for (File d : dirs) names.add(d.getName());
@@ -234,4 +234,5 @@ public final class BackupManager {
         return size;
     }
 }
+
 

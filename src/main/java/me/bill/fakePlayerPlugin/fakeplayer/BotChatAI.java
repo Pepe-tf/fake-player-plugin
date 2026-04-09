@@ -32,25 +32,25 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <h3>Realism features</h3>
  * <ul>
- *   <li><b>Typing delay</b> — optional 0–2.5 s pause before each message fires.</li>
- *   <li><b>Burst messages</b> — configurable chance of sending a short follow-up
+ *   <li><b>Typing delay</b> - optional 0–2.5 s pause before each message fires.</li>
+ *   <li><b>Burst messages</b> - configurable chance of sending a short follow-up
  *       message 2–5 s after the first, mimicking multi-line real chat.</li>
- *   <li><b>Mention replies</b> — when a real player says a bot's name in chat
+ *   <li><b>Mention replies</b> - when a real player says a bot's name in chat
  *       the bot has a configurable chance (default 65 %) of replying after a
- *       short delay — see {@code fake-chat.mention-reply-chance}.</li>
- *   <li><b>Stagger interval</b> — minimum gap (default 3 s) between any two bots
+ *       short delay - see {@code fake-chat.mention-reply-chance}.</li>
+ *   <li><b>Stagger interval</b> - minimum gap (default 3 s) between any two bots
  *       chatting prevents message floods.</li>
- *   <li><b>Activity variation</b> — each bot is randomly assigned a quiet /
+ *   <li><b>Activity variation</b> - each bot is randomly assigned a quiet /
  *       normal / active / very-active tier that scales its chat interval.</li>
- *   <li><b>Per-bot tier override</b> — {@link FakePlayer#setChatTier(String)} locks a
+ *   <li><b>Per-bot tier override</b> - {@link FakePlayer#setChatTier(String)} locks a
  *       bot to a specific activity tier; changeable via {@code /fpp chat <bot> tier}.</li>
- *   <li><b>Per-bot mute</b> — {@link FakePlayer#setChatEnabled(boolean)} silences
+ *   <li><b>Per-bot mute</b> - {@link FakePlayer#setChatEnabled(boolean)} silences
  *       individual bots; changeable via {@code /fpp chat <bot> on|off}.</li>
- *   <li><b>History window</b> — per-bot Deque keeps the last N messages so the
+ *   <li><b>History window</b> - per-bot Deque keeps the last N messages so the
  *       same line is never repeated back-to-back.</li>
- *   <li><b>Event-triggered chat</b> — bots react to player joins and deaths.</li>
- *   <li><b>Keyword reactions</b> — bots reply when players say configured keywords.</li>
- *   <li><b>Rich placeholders</b> — {@code {name}}, {@code {random_player}},
+ *   <li><b>Event-triggered chat</b> - bots react to player joins and deaths.</li>
+ *   <li><b>Keyword reactions</b> - bots reply when players say configured keywords.</li>
+ *   <li><b>Rich placeholders</b> - {@code {name}}, {@code {random_player}},
  *       {@code {online}}, {@code {world}}, {@code {time}}, {@code {biome}}.</li>
  * </ul>
  *
@@ -69,7 +69,7 @@ public final class BotChatAI implements Listener {
      */
     private static final ThreadLocal<Boolean> isRemoteBroadcast = ThreadLocal.withInitial(() -> false);
 
-    /** Per-bot rolling message history — avoids repeating recent messages. */
+    /** Per-bot rolling message history - avoids repeating recent messages. */
     private final Map<UUID, Deque<String>> messageHistory = new ConcurrentHashMap<>();
     /** Task IDs for each bot's main scheduler loop so we can cancel on removal. */
     private final Map<UUID, Integer> taskIds = new ConcurrentHashMap<>();
@@ -79,12 +79,12 @@ public final class BotChatAI implements Listener {
      * Can be overridden by {@link #setActivityTier(UUID, String)}.
      */
     private final Map<UUID, Double> activityMultipliers = new ConcurrentHashMap<>();
-    /** Pending mention-reply task per bot — only one reply queued at a time. */
+    /** Pending mention-reply task per bot - only one reply queued at a time. */
     private final Map<UUID, Integer> pendingReplyTasks = new ConcurrentHashMap<>();
-    /** Pending event-trigger task per bot — only one at a time. */
+    /** Pending event-trigger task per bot - only one at a time. */
     private final Map<UUID, Integer> pendingEventTasks = new ConcurrentHashMap<>();
     /**
-     * Timed-mute expiry tasks — when active, the bot is silenced until the task fires
+     * Timed-mute expiry tasks - when active, the bot is silenced until the task fires
      * and re-enables chat. Key = bot UUID, value = scheduler task ID.
      */
     private final Map<UUID, Integer> muteTaskIds = new ConcurrentHashMap<>();
@@ -131,11 +131,11 @@ public final class BotChatAI implements Listener {
      * Assigns a random activity tier to a newly-discovered bot.
      * If the bot has a {@link FakePlayer#getChatTier()} override, that tier is used.
      * <ul>
-     *   <li>15 % — quiet    (2.0× interval → chats ~half as often)</li>
-     *   <li>25 % — passive  (1.4× interval)</li>
-     *   <li>30 % — normal   (1.0× interval)</li>
-     *   <li>18 % — active   (0.7× interval)</li>
-     *   <li>12 % — chatty   (0.5× interval → chats ~twice as often)</li>
+     *   <li>15 % - quiet    (2.0× interval → chats ~half as often)</li>
+     *   <li>25 % - passive  (1.4× interval)</li>
+     *   <li>30 % - normal   (1.0× interval)</li>
+     *   <li>18 % - active   (0.7× interval)</li>
+     *   <li>12 % - chatty   (0.5× interval → chats ~twice as often)</li>
      * </ul>
      */
     private void assignActivityMultiplier(UUID botUuid) {
@@ -199,14 +199,14 @@ public final class BotChatAI implements Listener {
 
     private void scheduleNext(UUID botUuid) {
         if (!Config.fakeChatEnabled()) {
-            // Chat disabled — cancel any pending reply/event/burst tasks for this bot
+            // Chat disabled - cancel any pending reply/event/burst tasks for this bot
             // so they don't fire after the admin ran /fpp chat off.
             cancelPendingReply(botUuid);
             cancelPendingEvent(botUuid);
             // Cancel the OLD long-delay main task so it can't fire a duplicate loop.
             Integer oldTask = taskIds.remove(botUuid);
             if (oldTask != null) Bukkit.getScheduler().cancelTask(oldTask);
-            // Re-check in 2 s — picks up quickly when chat is re-enabled via /fpp reload
+            // Re-check in 2 s - picks up quickly when chat is re-enabled via /fpp reload
             int id = Bukkit.getScheduler().runTaskLater(plugin,
                     () -> scheduleNext(botUuid), 40L).getTaskId();
             taskIds.put(botUuid, id);
@@ -248,7 +248,7 @@ public final class BotChatAI implements Listener {
 
         if (Config.fakeChatRequirePlayer() && !hasRealPlayerOnline()) return;
 
-        // Chance roll — skip silently if unlucky
+        // Chance roll - skip silently if unlucky
         if (ThreadLocalRandom.current().nextDouble() > Config.fakeChatChance()) return;
 
         List<String> messages = Config.fakeChatMessages();
@@ -272,16 +272,16 @@ public final class BotChatAI implements Listener {
      *
      * <p>Supported placeholders:
      * <ul>
- *   <li>{@code {name}}          — the bot's own name</li>
- *   <li>{@code {random_player}} — a random real player's name</li>
- *   <li>{@code {online}}        — number of real (non-bot) players online</li>
- *   <li>{@code {world}}         — the bot's current world name</li>
- *   <li>{@code {time}}          — {@code "day"} or {@code "night"} based on world time</li>
- *   <li>{@code {biome}}         — the bot's current biome name (human-readable)</li>
- *   <li>{@code {x}}/{@code {y}}/{@code {z}} — the bot's current block coordinates</li>
- *   <li>{@code {server}}        — the server ID from config ({@code database.server-id})</li>
- *   <li>{@code {date}}          — today's date (e.g. {@code 2026-04-05})</li>
- *   <li>{@code {day}}           — full day of week (e.g. {@code Sunday})</li>
+ *   <li>{@code {name}}          - the bot's own name</li>
+ *   <li>{@code {random_player}} - a random real player's name</li>
+ *   <li>{@code {online}}        - number of real (non-bot) players online</li>
+ *   <li>{@code {world}}         - the bot's current world name</li>
+ *   <li>{@code {time}}          - {@code "day"} or {@code "night"} based on world time</li>
+ *   <li>{@code {biome}}         - the bot's current biome name (human-readable)</li>
+ *   <li>{@code {x}}/{@code {y}}/{@code {z}} - the bot's current block coordinates</li>
+ *   <li>{@code {server}}        - the server ID from config ({@code database.server-id})</li>
+ *   <li>{@code {date}}          - today's date (e.g. {@code 2026-04-05})</li>
+ *   <li>{@code {day}}           - full day of week (e.g. {@code Sunday})</li>
  * </ul>
      */
     private String pickMessage(UUID botUuid, List<String> pool, FakePlayer bot) {
@@ -310,7 +310,7 @@ public final class BotChatAI implements Listener {
                 .replace("{name}", bot.getName())
                 .replace("{random_player}", resolveRandomPlayer(bot));
 
-        // {online} — real player count
+        // {online} - real player count
         if (s.contains("{online}")) {
             int realCount = 0;
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -319,12 +319,12 @@ public final class BotChatAI implements Listener {
             s = s.replace("{online}", String.valueOf(realCount));
         }
 
-        // {server} — server ID from config
+        // {server} - server ID from config
         if (s.contains("{server}")) {
             s = s.replace("{server}", Config.serverId());
         }
 
-        // {date} / {day} — real-world date
+        // {date} / {day} - real-world date
         if (s.contains("{date}") || s.contains("{day}")) {
             LocalDate today = LocalDate.now();
             if (s.contains("{date}")) s = s.replace("{date}", today.toString());
@@ -332,7 +332,7 @@ public final class BotChatAI implements Listener {
                     .getDisplayName(TextStyle.FULL, Locale.ROOT));
         }
 
-        // Location-based placeholders — only resolved when the bot has a valid entity
+        // Location-based placeholders - only resolved when the bot has a valid entity
         if (s.contains("{world}") || s.contains("{time}") || s.contains("{biome}")
                 || s.contains("{x}") || s.contains("{y}") || s.contains("{z}")) {
             Location loc = bot.getLiveLocation();
@@ -349,7 +349,7 @@ public final class BotChatAI implements Listener {
                 if (s.contains("{biome}")) {
                     try {
                         // getKey().getKey() returns the registry path already in lowercase
-                        // (e.g. "plains", "dark_forest") — avoids the deprecated OldEnum.name()
+                        // (e.g. "plains", "dark_forest") - avoids the deprecated OldEnum.name()
                         String biome = loc.getBlock().getBiome().getKey().getKey()
                                 .replace('_', ' ');
                         s = s.replace("{biome}", biome);
@@ -357,7 +357,7 @@ public final class BotChatAI implements Listener {
                         s = s.replace("{biome}", "unknown");
                     }
                 }
-                // {x}, {y}, {z} — block coordinates
+                // {x}, {y}, {z} - block coordinates
                 if (s.contains("{x}")) s = s.replace("{x}", String.valueOf((int) loc.getX()));
                 if (s.contains("{y}")) s = s.replace("{y}", String.valueOf((int) loc.getY()));
                 if (s.contains("{z}")) s = s.replace("{z}", String.valueOf((int) loc.getZ()));
@@ -567,7 +567,7 @@ public final class BotChatAI implements Listener {
         FakePlayer bot = manager.getByUuid(botUuid);
         if (bot == null || !bot.isChatEnabled()) return;
 
-        // Configurable chance — bot may ignore the mention
+        // Configurable chance - bot may ignore the mention
         if (ThreadLocalRandom.current().nextDouble() > Config.fakeChatMentionReplyChance()) return;
 
         int minTicks = Math.max(20, Config.fakeChatReplyDelayMin() * 20);
@@ -814,7 +814,7 @@ public final class BotChatAI implements Listener {
             assignActivityMultiplier(fp.getUuid());
             scheduleNext(fp.getUuid());
         }
-        Config.debugChat("BotChatAI loops restarted — new interval "
+        Config.debugChat("BotChatAI loops restarted - new interval "
                 + Config.fakeChatIntervalMin() + "–" + Config.fakeChatIntervalMax() + "s,"
                 + " stagger " + Config.fakeChatStaggerInterval() + "s");
     }
@@ -849,7 +849,7 @@ public final class BotChatAI implements Listener {
         taskIds.clear();
         pendingReplyTasks.clear();
         pendingEventTasks.clear();
-        // Do NOT clear activityMultipliers / messageHistory — preserve tier overrides
+        // Do NOT clear activityMultipliers / messageHistory - preserve tier overrides
         // and history so they're still active when chat is re-enabled.
         // Restart each bot's loop in disabled-polling mode (scheduleNext will see
         // fakeChatEnabled() == false and create a 2-s re-check task).
@@ -870,7 +870,7 @@ public final class BotChatAI implements Listener {
      */
     public void forceSendMessage(FakePlayer bot, String message) {
         if (manager.getByUuid(bot.getUuid()) == null) return;
-        // Bypass global enabled check — force-send is explicitly requested by admin
+        // Bypass global enabled check - force-send is explicitly requested by admin
         sendMessageForced(bot, message, false);
     }    /**
      * Forces a specific bot to immediately send {@code message}, first expanding
@@ -888,7 +888,7 @@ public final class BotChatAI implements Listener {
     public void forceSendMessageResolved(FakePlayer bot, String message) {
         if (manager.getByUuid(bot.getUuid()) == null) return;
         String resolved = resolvePlaceholders(message, bot);
-        // Bypass global enabled check — force-send is explicitly requested by admin
+        // Bypass global enabled check - force-send is explicitly requested by admin
         sendMessageForced(bot, resolved, false);
     }
 
@@ -931,7 +931,7 @@ public final class BotChatAI implements Listener {
                 FakePlayer b = manager.getByUuid(botUuid);
                 if (b != null) {
                     b.setChatEnabled(true);
-                    Config.debugChat(b.getName() + " mute expired — chat re-enabled");
+                    Config.debugChat(b.getName() + " mute expired - chat re-enabled");
                 }
             }, (long) seconds * 20L).getTaskId();
             muteTaskIds.put(botUuid, taskId);
@@ -981,7 +981,7 @@ public final class BotChatAI implements Listener {
             }
         } catch (Throwable t) {
             Config.debugChat("AsyncChatEvent dispatch failed (" + t.getMessage()
-                    + ") — falling back to player.chat()");
+                    + ") - falling back to player.chat()");
             player.chat(rawMessage);
         }
     }
@@ -997,8 +997,8 @@ public final class BotChatAI implements Listener {
      * @param botName        internal bot name
      * @param botDisplayName display name with prefix / formatting
      * @param message        the resolved message text
-     * @param prefix         unused — kept for wire-format compatibility
-     * @param suffix         unused — kept for wire-format compatibility
+     * @param prefix         unused - kept for wire-format compatibility
+     * @param suffix         unused - kept for wire-format compatibility
      */
     public static void broadcastRemote(String botName, String botDisplayName,
                                        String message, String prefix, String suffix) {
@@ -1047,3 +1047,4 @@ public final class BotChatAI implements Listener {
         return self.getName();
     }
 }
+

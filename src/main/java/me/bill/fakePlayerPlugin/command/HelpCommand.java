@@ -1,5 +1,6 @@
 package me.bill.fakePlayerPlugin.command;
 
+import me.bill.fakePlayerPlugin.gui.HelpGui;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.TextUtil;
@@ -10,25 +11,36 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.List;
 
 /**
  * Handles {@code /fpp help [page]}.
- * <p>
- * The command list is read live from the {@link CommandManager} — no manual
- * updates are needed when new commands are added.
+ *
+ * <p>For in-game players: opens the {@link HelpGui} double-chest GUI.
+ * For console / non-player senders: falls back to the original paginated text output.
+ *
+ * <p>The command list is read live from the {@link CommandManager} so new commands
+ * appear automatically without any manual wiring.
  */
 public class HelpCommand implements FppCommand {
 
     private static final int PAGE_SIZE = 6;
-    // Main accent colour #0079FF
     private static final TextColor ACCENT = TextColor.fromHexString("#0079FF");
 
     private final CommandManager manager;
 
+    /** Injected after onEnable creates the GUI. {@code null} until then → text fallback. */
+    private volatile HelpGui helpGui = null;
+
     public HelpCommand(CommandManager manager) {
         this.manager = manager;
+    }
+
+    /** Called by CommandManager once the GUI is ready. */
+    public void setHelpGui(HelpGui gui) {
+        this.helpGui = gui;
     }
 
     // ── FppCommand impl ──────────────────────────────────────────────────────
@@ -40,7 +52,13 @@ public class HelpCommand implements FppCommand {
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        // Collect only commands this sender is allowed to use (canUse handles dual-tier)
+        // ── GUI for players ──────────────────────────────────────────────────
+        if (sender instanceof Player player && helpGui != null) {
+            helpGui.open(player);
+            return true;
+        }
+
+        // ── Text fallback for console / pre-GUI init ─────────────────────────
         List<FppCommand> visible = manager.getCommands().stream()
                 .filter(cmd -> cmd.canUse(sender))
                 .toList();
@@ -121,3 +139,4 @@ public class HelpCommand implements FppCommand {
         return Component.text(" ").append(prev).append(pageInfo).append(next);
     }
 }
+

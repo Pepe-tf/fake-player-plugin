@@ -25,7 +25,7 @@ public final class BotBroadcast {
     // ── Internal helpers ──────────────────────────────────────────────────────
 
     /**
-     * Sends {@code msg} to every online player and to the console —
+     * Sends {@code msg} to every online player and to the console -
      * the same delivery path vanilla Paper uses for real join/leave messages.
      */
     private static void send(Component msg) {
@@ -76,15 +76,17 @@ public final class BotBroadcast {
 
     /**
      * Builds the join {@link Component} from {@code bot-join} in {@code en.yml}.
-     * Does not check {@code Config.joinMessage()} — callers must guard that.
+     * Does not check {@code Config.joinMessage()} - callers must guard that.
      */
     public static Component joinComponent(FakePlayer fp) {
-        return buildMessage("bot-join", fp.getDisplayName());
+        // Use raw display name to preserve color codes
+        String displayName = fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
+        return buildMessage("bot-join", displayName);
     }
 
     /**
      * Builds the leave {@link Component} from {@code bot-leave} in {@code en.yml}.
-     * Does not check {@code Config.leaveMessage()} — callers must guard that.
+     * Does not check {@code Config.leaveMessage()} - callers must guard that.
      */
     public static Component leaveComponent(String displayName) {
         return buildMessage("bot-leave", displayName);
@@ -96,13 +98,15 @@ public final class BotBroadcast {
      */
     public static void broadcastJoin(FakePlayer fp) {
         if (!Config.joinMessage()) return;
-        send(buildMessage("bot-join", fp.getDisplayName()));
+        // Use raw display name to preserve color codes
+        String displayName = fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
+        send(buildMessage("bot-join", displayName));
     }
 
     /**
      * Broadcasts a join message using a pre-resolved display-name string.
      * Used by the network layer when a JOIN event arrives from another server
-     * via plugin messaging — the {@link FakePlayer} object does not exist here.
+     * via plugin messaging - the {@link FakePlayer} object does not exist here.
      */
     public static void broadcastJoinByDisplayName(String displayName) {
         if (!Config.joinMessage()) return;
@@ -114,7 +118,9 @@ public final class BotBroadcast {
      */
     public static void broadcastLeave(FakePlayer fp) {
         if (!Config.leaveMessage()) return;
-        send(buildMessage("bot-leave", fp.getDisplayName()));
+        // Use raw display name to preserve color codes
+        String displayName = fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
+        send(buildMessage("bot-leave", displayName));
     }
 
     /**
@@ -135,4 +141,5 @@ public final class BotBroadcast {
         send(buildMessage("bot-kill", botDisplayName, "killer", killerName));
     }
 }
+
 

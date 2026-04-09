@@ -39,12 +39,12 @@ import java.net.InetSocketAddress;
  * does not require the annotation for the override to take effect.
  * The {@link FakeServerGamePacketListenerImpl} layer (injected after
  * {@code placeNewPlayer()}) handles knockback and also discards all subsequent
- * outbound packets — so bots never receive any network traffic.
+ * outbound packets - so bots never receive any network traffic.
  *
  * <h3>Pipeline setup</h3>
  * <p>{@code Connection.configureSerialization()} is called on the
  * {@link FakeChannelPipeline}.  Since {@code FakeChannelPipeline.addLast()} is a
- * no-op, no real handlers are installed — but calling the method satisfies any
+ * no-op, no real handlers are installed - but calling the method satisfies any
  * NMS internal checks that verify protocol setup was performed.
  *
  * <p>Based on the hello09x/fakeplayer reference implementation.
@@ -61,7 +61,7 @@ public final class FakeConnection extends Connection {
         this.channel = new FakeChannel(null, address);
         this.address = new InetSocketAddress(address, 25565);
         // configureSerialization() calls addLast() on the FakeChannelPipeline,
-        // which is a no-op — but it satisfies any NMS internal "pipeline ready"
+        // which is a no-op - but it satisfies any NMS internal "pipeline ready"
         // checks and mirrors the real login flow exactly.
         Connection.configureSerialization(this.channel.pipeline(), PacketFlow.SERVERBOUND, false, null);
     }
@@ -108,8 +108,8 @@ public final class FakeConnection extends Connection {
     // ── PacketSendListener variants (pre-1.21.6 and 26.1.1+) ──────────────────
     // @Override intentionally omitted: Connection.send(Packet, PacketSendListener) does
     // not exist in the 1.21.11 compile target, so the annotation would cause a compile
-    // error there.  Java's dynamic dispatch uses method name + parameter types — not the
-    // @Override annotation — so these methods correctly override the parent at runtime on
+    // error there.  Java's dynamic dispatch uses method name + parameter types - not the
+    // @Override annotation - so these methods correctly override the parent at runtime on
     // any server version where Connection exposes a PacketSendListener-based send().
 
     public void send(@NotNull Packet<?> packet, @Nullable PacketSendListener listener) {
@@ -120,6 +120,7 @@ public final class FakeConnection extends Connection {
         // no-op: covers any version that adds a 3-arg PacketSendListener flush variant
     }
 }
+
 
 
 

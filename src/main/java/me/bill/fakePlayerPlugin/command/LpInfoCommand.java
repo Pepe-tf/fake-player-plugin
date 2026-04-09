@@ -13,7 +13,7 @@ import org.bukkit.command.CommandSender;
 import java.util.List;
 
 /**
- * {@code /fpp lpinfo} — Shows LuckPerms integration status for FPP bots.
+ * {@code /fpp lpinfo} - Shows LuckPerms integration status for FPP bots.
  *
  * <p>Since bots are now real NMS players, LP handles their prefix and tab-list
  * ordering natively. This command shows the current state so admins can verify
@@ -21,7 +21,6 @@ import java.util.List;
  */
 public final class LpInfoCommand implements FppCommand {
 
-    @SuppressWarnings("unused")
     private final FakePlayerPlugin  plugin;
     private final FakePlayerManager manager;
 
@@ -41,7 +40,9 @@ public final class LpInfoCommand implements FppCommand {
                 .append(Component.text("LuckPerms Integration", NamedTextColor.BLUE))
                 .append(Component.text(" ═══", NamedTextColor.DARK_GRAY)));
 
-        boolean lpAvail = LuckPermsHelper.isAvailable();
+        // Use the cached classloader-safe flag - never call LuckPermsHelper directly
+        // when LP may not be installed (Paper eagerly resolves LP API classes).
+        boolean lpAvail = plugin.isLuckPermsAvailable();
         sender.sendMessage(Component.text("LP Installed: ", NamedTextColor.GRAY)
                 .append(Component.text(lpAvail ? "YES ✔" : "NO ✘",
                         lpAvail ? NamedTextColor.GREEN : NamedTextColor.RED)));

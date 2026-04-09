@@ -52,7 +52,13 @@ public final class FakePlayerPlugin extends JavaPlugin {
     private me.bill.fakePlayerPlugin.fakeplayer.RemoteBotCache remoteBotCache;
     private me.bill.fakePlayerPlugin.sync.ConfigSyncManager configSyncManager;
     private SettingGui settingGui;
+    private me.bill.fakePlayerPlugin.gui.HelpGui helpGui;
     private me.bill.fakePlayerPlugin.fakeplayer.BotIdentityCache botIdentityCache;
+    private XpCommand xpCommand;
+    private me.bill.fakePlayerPlugin.command.MoveCommand moveCommand;
+    private me.bill.fakePlayerPlugin.command.MineCommand mineCommand;
+    private me.bill.fakePlayerPlugin.command.UseCommand  useCommand;
+    private me.bill.fakePlayerPlugin.command.WaypointStore waypointStore;
 
     /** Update notification Component stored when an update is detected so it can be
      * delivered to admins who log in after startup. */
@@ -61,7 +67,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
     /**
      * Cached flag: whether LuckPerms is installed and enabled on this server.
      * Set once in {@code onEnable()} via a pure Bukkit check (no LP class loading)
-     * so that {@code LuckPermsHelper} is never loaded when LP is absent — prevents
+     * so that {@code LuckPermsHelper} is never loaded when LP is absent - prevents
      * {@code NoClassDefFoundError} from LP-API classes that aren't on the classpath.
      */
     private boolean luckPermsAvailable = false;
@@ -73,7 +79,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
      * Cached flag: whether WorldGuard is installed and enabled on this server.
      * Set once in {@code onEnable()} via a pure Bukkit check (no WG class loading)
      * so that {@link me.bill.fakePlayerPlugin.util.WorldGuardHelper} is never loaded
-     * when WorldGuard is absent — prevents {@code NoClassDefFoundError} from WG/WE
+     * when WorldGuard is absent - prevents {@code NoClassDefFoundError} from WG/WE
      * API classes that aren't on the classpath.
      */
     private boolean worldGuardAvailable = false;
@@ -127,7 +133,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
             versionUnsupported = true;
             String pv = getPluginMeta().getVersion();
             FppLogger.warn("═══════════════════════════════════════════════════════════════════");
-            FppLogger.warn("  ⚠  FakePlayerPlugin — UNSUPPORTED MINECRAFT VERSION  ⚠");
+            FppLogger.warn("  ⚠  FakePlayerPlugin - UNSUPPORTED MINECRAFT VERSION  ⚠");
             FppLogger.warn("═══════════════════════════════════════════════════════════════════");
             FppLogger.warn("  Plugin    : FakePlayerPlugin v" + pv);
             FppLogger.warn("  Server MC : " + detectedMcVersion + "  (NOT supported)");
@@ -160,7 +166,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
             databaseManager = new DatabaseManager();
             dbOk = databaseManager.init(getDataFolder());
             if (!dbOk) {
-                FppLogger.warn("Database could not be initialised — session tracking disabled.");
+                FppLogger.warn("Database could not be initialised - session tracking disabled.");
                 databaseManager = null;
             } else {
                 // Log database mode and server ID
@@ -169,7 +175,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 Config.debugDatabase("Database mode: " + mode + " | server-id=" + serverId);
             }
         } else {
-            Config.debugDatabase("Database disabled in config — skipping database initialisation.");
+            Config.debugDatabase("Database disabled in config - skipping database initialisation.");
             databaseManager = null;
         }
 
@@ -234,6 +240,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager.register(new ListCommand(this, fakePlayerManager));
         commandManager.register(new TphCommand(fakePlayerManager));
         commandManager.register(new TpCommand(fakePlayerManager));
+        xpCommand = new XpCommand(this, fakePlayerManager);
+        commandManager.register(xpCommand);
         commandManager.register(new ChatCommand(this));
         commandManager.register(new ReloadCommand(this));
         commandManager.register(new InfoCommand(databaseManager, fakePlayerManager));
@@ -246,10 +254,31 @@ public final class FakePlayerPlugin extends JavaPlugin {
         commandManager.register(new SyncCommand(this));
         commandManager.register(new SwapCommand(this, fakePlayerManager));
         commandManager.register(new PeaksCommand(this, fakePlayerManager));
-        // Settings GUI — create once, register as listener, share with command
+        moveCommand = new me.bill.fakePlayerPlugin.command.MoveCommand(this, fakePlayerManager);
+        waypointStore = new me.bill.fakePlayerPlugin.command.WaypointStore(this);
+        waypointStore.load();
+        moveCommand.setWaypointStore(waypointStore);
+        commandManager.register(moveCommand);
+        commandManager.register(new me.bill.fakePlayerPlugin.command.WaypointCommand(waypointStore));
+        commandManager.register(new me.bill.fakePlayerPlugin.command.CmdCommand(fakePlayerManager));
+        mineCommand = new me.bill.fakePlayerPlugin.command.MineCommand(this, fakePlayerManager);
+        commandManager.register(mineCommand);
+        useCommand = new me.bill.fakePlayerPlugin.command.UseCommand(this, fakePlayerManager);
+        commandManager.register(useCommand);
+        // Inventory command - also a Listener (drag-fix guard + right-click), registered below
+        InventoryCommand inventoryCommand = new InventoryCommand(fakePlayerManager, this);
+        commandManager.register(inventoryCommand);
+        // Settings GUI - create once, register as listener, share with command
         settingGui = new SettingGui(this);
         commandManager.register(new SettingCommand(settingGui));
         Config.debugStartup("Commands registered: " + commandManager.getCommands().size() + " total.");
+
+        // ── Inject task-tracking commands into BotPersistence ─────────────────
+        // This must happen AFTER all commands are created but BEFORE purgeOrphanedBodiesAndRestore.
+        botPersistence.setMoveCommand(moveCommand);
+        botPersistence.setMineCommand(mineCommand);
+        botPersistence.setUseCommand(useCommand);
+        botPersistence.setWaypointStore(waypointStore);
 
         var fppCmd = getCommand("fpp");
         if (fppCmd != null) {
@@ -267,7 +296,16 @@ public final class FakePlayerPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new FakePlayerKickListener(fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(new me.bill.fakePlayerPlugin.listener.BotCommandBlocker(), this);
         getServer().getPluginManager().registerEvents(new me.bill.fakePlayerPlugin.listener.BotSpawnProtectionListener(this), this);
+        getServer().getPluginManager().registerEvents(new me.bill.fakePlayerPlugin.listener.BotXpPickupListener(this, fakePlayerManager), this);
         getServer().getPluginManager().registerEvents(settingGui, this);
+        getServer().getPluginManager().registerEvents(inventoryCommand, this);
+        
+        // ── Help GUI ──────────────────────────────────────────────────────────
+        // Created after listener registration so all subsystems are ready.
+        helpGui = new me.bill.fakePlayerPlugin.gui.HelpGui(this, commandManager);
+        getServer().getPluginManager().registerEvents(helpGui, this);
+        commandManager.setHelpGui(helpGui);
+        
         botChatAI = new BotChatAI(this, fakePlayerManager);
         botSwapAI = new me.bill.fakePlayerPlugin.fakeplayer.BotSwapAI(this, fakePlayerManager);
         fakePlayerManager.setBotSwapAI(botSwapAI);
@@ -299,7 +337,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         // ── Config validation ─────────────────────────────────────────────────
         int configIssues = ConfigValidator.validate();
         if (configIssues > 0) {
-            FppLogger.warn("Config validation found " + configIssues + " issue(s) — see above.");
+            FppLogger.warn("Config validation found " + configIssues + " issue(s) - see above.");
         }
 
         // ── Tab list header/footer ────────────────────────────────────────────
@@ -315,30 +353,30 @@ public final class FakePlayerPlugin extends JavaPlugin {
             fakePlayerManager.setBotTabTeam(botTabTeam);
             Config.debugPackets("Bot tab team initialized (~fpp).");
         } catch (Exception e) {
-            FppLogger.warn("Bot tab team init failed — " + e.getMessage());
+            FppLogger.warn("Bot tab team init failed - " + e.getMessage());
         }
 
         // ── PlaceholderAPI soft-dependency ────────────────────────────────────
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             try {
                 new me.bill.fakePlayerPlugin.util.FppPlaceholderExpansion(this, fakePlayerManager).register();
-                Config.debugStartup("PlaceholderAPI detected — placeholders registered.");
+                Config.debugStartup("PlaceholderAPI detected - placeholders registered.");
             } catch (Exception e) {
-                FppLogger.warn("PlaceholderAPI: failed to register expansion — " + e.getMessage());
+                FppLogger.warn("PlaceholderAPI: failed to register expansion - " + e.getMessage());
             }
         }
 
         // ── LuckPerms soft-dependency ─────────────────────────────────────────
-        // Bots are real NMS ServerPlayer entities — LP auto-detects them as players.
+        // Bots are real NMS ServerPlayer entities - LP auto-detects them as players.
         // We just log whether LP is available and apply the configured default group.
         // luckPermsAvailable is cached here so that LuckPermsHelper is NEVER loaded
-        // when LP is absent — loading it without LP on the classpath throws
+        // when LP is absent - loading it without LP on the classpath throws
         // NoClassDefFoundError because Paper's PluginClassLoader eagerly resolves
         // LP API class references during bytecode verification.
         boolean luckPermsInstalled = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
         luckPermsAvailable = luckPermsInstalled;
         if (luckPermsInstalled) {
-            Config.debugLuckPerms("LuckPerms detected — bot group sync enabled.");
+            Config.debugLuckPerms("LuckPerms detected - bot group sync enabled.");
             String defaultGroup = me.bill.fakePlayerPlugin.config.Config.luckpermsDefaultGroup();
             if (!defaultGroup.isBlank()) {
                 Config.debugLuckPerms("default-group='" + defaultGroup + "' will be applied to new bots at spawn.");
@@ -349,29 +387,29 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         // ── WorldGuard soft-dependency ─────────────────────────────────────────
         // worldGuardAvailable is cached here so WorldGuardHelper is NEVER loaded
-        // when WorldGuard is absent — prevents NoClassDefFoundError from WG/WE API
+        // when WorldGuard is absent - prevents NoClassDefFoundError from WG/WE API
         // classes that aren't on the classpath (same guard as LuckPerms above).
         worldGuardAvailable = Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
         if (worldGuardAvailable) {
-            Config.debugStartup("WorldGuard detected — bot PvP region protection enabled.");
+            Config.debugStartup("WorldGuard detected - bot PvP region protection enabled.");
         }
 
-        // ── Update checker — purely async, never blocks startup ───────────────
+        // ── Update checker - purely async, never blocks startup ───────────────
         UpdateChecker.check(this);
 
-        // ── Metrics (FastStats) — init before banner so status is known ───────
+        // ── Metrics (FastStats) - init before banner so status is known ───────
         fppMetrics = new FppMetrics();
         if (Config.metricsEnabled()) {
             try {
                 fppMetrics.init(this, fakePlayerManager);
             } catch (Throwable t) {
-                FppLogger.error("Metrics: unexpected top-level error — " + t.getClass().getName() + ": " + t.getMessage());
+                FppLogger.error("Metrics: unexpected top-level error - " + t.getClass().getName() + ": " + t.getMessage());
                 for (StackTraceElement el : t.getStackTrace()) {
                     FppLogger.error("  at " + el);
                 }
             }
         } else {
-            Config.debugStartup("Metrics disabled in config.yml — skipping FastStats init.");
+            Config.debugStartup("Metrics disabled in config.yml - skipping FastStats init.");
         }
 
         String dbLabel = databaseManager == null ? "none"
@@ -437,7 +475,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         if (chunkLoader     != null) chunkLoader.releaseAll();
         // Cancel all pending BotChatAI tasks
         if (botChatAI       != null) botChatAI.cancelAll();
-        // Shut down peak-hours FIRST — wakes all sleeping bots and clears the DB sleeping table.
+        // Shut down peak-hours FIRST - wakes all sleeping bots and clears the DB sleeping table.
         // They are added back into fakePlayerManager.activePlayers so persistence captures them below.
         if (peakHoursManager != null) peakHoursManager.shutdown();
         // Cancel all pending BotSwapAI tasks
@@ -462,7 +500,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         // Destroy bot tab team
         if (botTabTeam != null) botTabTeam.destroy();
 
-        // Flush DB — mark all open sessions as SHUTDOWN before closing
+        // Flush DB - mark all open sessions as SHUTDOWN before closing
         boolean dbFlushed = false;
         if (databaseManager != null) {
             databaseManager.recordAllShutdown();
@@ -483,7 +521,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         FppLogger.printShutdownBanner(botsRemoved, dbFlushed, uptimeMs);
     }
 
-    @SuppressWarnings("unused") // Public API — available for addons
+    @SuppressWarnings("unused") // Public API - available for addons
     public CommandManager    getCommandManager()    { return commandManager; }
     @SuppressWarnings("unused")
     public FakePlayerManager getFakePlayerManager() { return fakePlayerManager; }
@@ -505,6 +543,12 @@ public final class FakePlayerPlugin extends JavaPlugin {
     /** Returns the stable name→UUID identity cache for this server's bots. Never null. */
     public me.bill.fakePlayerPlugin.fakeplayer.BotIdentityCache getBotIdentityCache() { return botIdentityCache; }
 
+    /** Returns the XpCommand instance for XP cooldown checks. Never null after onEnable. */
+    public XpCommand getXpCommand() { return xpCommand; }
+
+    /** Returns the MoveCommand instance for bot cleanup during despawn. Never null after onEnable. */
+    public me.bill.fakePlayerPlugin.command.MoveCommand getMoveCommand() { return moveCommand; }
+
 
     /** Returns the currently-stored update notification message, or null. */
     public Component getUpdateNotification() { return updateNotificationMessage; }
@@ -519,10 +563,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
      * Called before any subsystem reads from these folders so they always exist.
      *
      * <ul>
-     *   <li>{@code plugins/FakePlayerPlugin/}          — plugin root</li>
-     *   <li>{@code plugins/FakePlayerPlugin/skins/}    — PNG skin files</li>
-     *   <li>{@code plugins/FakePlayerPlugin/data/}     — SQLite database</li>
-     *   <li>{@code plugins/FakePlayerPlugin/language/} — lang files</li>
+     *   <li>{@code plugins/FakePlayerPlugin/}          - plugin root</li>
+     *   <li>{@code plugins/FakePlayerPlugin/skins/}    - PNG skin files</li>
+     *   <li>{@code plugins/FakePlayerPlugin/data/}     - SQLite database</li>
+     *   <li>{@code plugins/FakePlayerPlugin/language/} - lang files</li>
      * </ul>
      */
     private void ensureDataDirectories() {
@@ -540,14 +584,14 @@ public final class FakePlayerPlugin extends JavaPlugin {
         java.io.File skinsReadme = new java.io.File(root, "skins/README.txt");
         if (!skinsReadme.exists()) {
             try (java.io.PrintWriter w = new java.io.PrintWriter(skinsReadme)) {
-                w.println("# FakePlayerPlugin — Skin Folder");
+                w.println("# FakePlayerPlugin - Skin Folder");
                 w.println("#");
                 w.println("# Place PNG skin files here to use them for bots.");
                 w.println("# Requires: skin.mode = custom  in config.yml");
                 w.println("#");
                 w.println("# Naming rules:");
-                w.println("#   <botname>.png  — assigned exclusively to the bot with that name");
-                w.println("#   anything.png   — added to the random skin pool");
+                w.println("#   <botname>.png  - assigned exclusively to the bot with that name");
+                w.println("#   anything.png   - added to the random skin pool");
                 w.println("#");
                 w.println("# Skin files must be standard 64x64 or 64x32 Minecraft skin PNGs.");
                 w.println("# Run /fpp reload after adding or removing skin files.");
@@ -557,3 +601,4 @@ public final class FakePlayerPlugin extends JavaPlugin {
         }
     }
 }
+

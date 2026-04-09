@@ -17,7 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Sends NMS packets via reflection — zero NMS imports, compiles against paper-api only.
+ * Sends NMS packets via reflection - zero NMS imports, compiles against paper-api only.
  *
  * <p>Hot-path methods ({@link #sendTabListAdd}, {@link #sendTabListRemove}) use
  * {@link #ensureReady()} which bypasses the {@code synchronized} block after
@@ -50,7 +50,7 @@ public final class PacketHelper {
     private static Object   entityTypePlayer;
 
     // ── sendPositionSync cache ─────────────────────────────────────────────────
-    /** Cached constructor for the position-sync teleport packet — resolved once on first call. */
+    /** Cached constructor for the position-sync teleport packet - resolved once on first call. */
     private static volatile Constructor<?> cachedPosSyncCtor        = null;
     /** {@code true} when {@link #cachedPosSyncCtor} takes a single NMS Entity argument. */
     private static volatile boolean        posSyncUsesEntityArg     = false;
@@ -60,9 +60,9 @@ public final class PacketHelper {
     // ── sendRotation cache ────────────────────────────────────────────────────
     /** Cached {@code ClientboundMoveEntityPacket$Rot(int, byte, byte, bool)} ctor. */
     private static volatile Constructor<?> cachedMoveEntityRotCtor  = null;
-    /** Cached {@code ClientboundRotateHeadPacket(int, byte)} ctor — takes entity-id directly. */
+    /** Cached {@code ClientboundRotateHeadPacket(int, byte)} ctor - takes entity-id directly. */
     private static volatile Constructor<?> cachedRotateHeadCtorInt  = null;
-    /** Cached {@code ClientboundRotateHeadPacket(Entity, byte)} ctor — takes NMS Entity. */
+    /** Cached {@code ClientboundRotateHeadPacket(Entity, byte)} ctor - takes NMS Entity. */
     private static volatile Constructor<?> cachedRotateHeadCtorEntity = null;
     /** {@code true} once the rotation-constructor lookup has been attempted. */
     private static volatile boolean        rotCtorLookupDone        = false;
@@ -70,9 +70,9 @@ public final class PacketHelper {
     // ── Tab-list packet caches ─────────────────────────────────────────────────
     /** Cached {@code EnumSet{UPDATE_DISPLAY_NAME}} used in the periodic refresh loop. */
     private static volatile Object         cachedUpdateDisplayNameActions = null;
-    /** Cached winner constructor from {@link #buildEntry} — avoids per-call sort+scan. */
+    /** Cached winner constructor from {@link #buildEntry} - avoids per-call sort+scan. */
     private static volatile Constructor<?> cachedEntryCtorWinner    = null;
-    /** Param types of {@link #cachedEntryCtorWinner} — avoids repeated reflection calls. */
+    /** Param types of {@link #cachedEntryCtorWinner} - avoids repeated reflection calls. */
     private static volatile Class<?>[]     cachedEntryCtorParamTypes = null;
     /**
      * Cached second-arg strategy for {@code playerInfoUpdateCtor}:
@@ -87,12 +87,12 @@ public final class PacketHelper {
     private static Method         craftPlayerGetHandle;
     private static Constructor<?> playerInfoUpdateCtor;
 
-    /** Paper's PaperAdventure.asVanilla(Component) — converts Adventure → NMS Component. */
+    /** Paper's PaperAdventure.asVanilla(Component) - converts Adventure → NMS Component. */
     private static Method paperAdventureAsVanilla;
 
-    /** Cached {@code ServerPlayer.connection} Field — resolved on first {@link #sendPacket} call. */
+    /** Cached {@code ServerPlayer.connection} Field - resolved on first {@link #sendPacket} call. */
     private static volatile Field  cachedConnectionField;
-    /** Cached {@code connection.send(Packet)} Method — resolved on first {@link #sendPacket} call. */
+    /** Cached {@code connection.send(Packet)} Method - resolved on first {@link #sendPacket} call. */
     private static volatile Method cachedSendMethod;
 
     // ── Initialisation ────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ public final class PacketHelper {
 
             ClassLoader nmsLoader = findNmsClassLoader();
             if (nmsLoader == null)
-                throw new IllegalStateException("Cannot find NMS classloader — join the server first.");
+                throw new IllegalStateException("Cannot find NMS classloader - join the server first.");
 
             gameProfileClass = nmsLoader.loadClass("com.mojang.authlib.GameProfile");
             for (Constructor<?> c : gameProfileClass.getDeclaredConstructors()) {
@@ -157,12 +157,12 @@ public final class PacketHelper {
             if (playerInfoUpdateCtor == null)
                 throw new IllegalStateException("Cannot find ClientboundPlayerInfoUpdatePacket constructor.");
 
-            // Resolve PaperAdventure.asVanilla(Component) — Paper's official Adventure→NMS bridge
+            // Resolve PaperAdventure.asVanilla(Component) - Paper's official Adventure→NMS bridge
             try {
                 Class<?> paperAdventure = Class.forName("io.papermc.paper.adventure.PaperAdventure");
                 paperAdventureAsVanilla = paperAdventure.getDeclaredMethod("asVanilla", Component.class);
                 paperAdventureAsVanilla.setAccessible(true);
-                Config.debugPackets("PaperAdventure.asVanilla found — colored tablist names supported.");
+                Config.debugPackets("PaperAdventure.asVanilla found - colored tablist names supported.");
             } catch (Exception ex) {
                 Config.debugPackets("PaperAdventure.asVanilla not found, will fall back to literal: " + ex.getMessage());
             }
@@ -244,7 +244,7 @@ public final class PacketHelper {
     private static String expand3DigitHexCodesForPacket(String s) {
         if (s == null || s.indexOf('#') < 0) return s;
         
-        // Opening tags: <#RGB> — use pre-compiled pattern
+        // Opening tags: <#RGB> - use pre-compiled pattern
         Matcher m = PKT_3DIG_OPEN.matcher(s);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
@@ -258,7 +258,7 @@ public final class PacketHelper {
         m.appendTail(sb);
         s = sb.toString();
         
-        // Closing tags: </#RGB> — use pre-compiled pattern
+        // Closing tags: </#RGB> - use pre-compiled pattern
         m = PKT_3DIG_CLOSE.matcher(s);
         sb = new StringBuffer();
         while (m.find()) {
@@ -311,7 +311,7 @@ public final class PacketHelper {
      * a non-visible sort prefix based on LuckPerms group weight).
      *
      * <p>Modern authlib PropertyMap delegates to a {@code HashMultimap} internally
-     * which IS mutable — we just need to bypass the immutable wrapper that
+     * which IS mutable - we just need to bypass the immutable wrapper that
      * may be returned by {@code getProperties()} in some builds.
      */
     private static Object buildProfileWithSkin(FakePlayer fp) throws Exception {
@@ -327,7 +327,7 @@ public final class PacketHelper {
         try {
             injectProperty(profile, "textures", skin.getValue(), skin.getSignature());
         } catch (Exception e) {
-            Config.debugPackets("buildProfileWithSkin: inject failed — " + e.getMessage());
+            Config.debugPackets("buildProfileWithSkin: inject failed - " + e.getMessage());
         }
         return profile;
     }
@@ -352,7 +352,7 @@ public final class PacketHelper {
         ClassLoader cl = profile.getClass().getClassLoader();
         Class<?> propertyClass = cl.loadClass("com.mojang.authlib.properties.Property");
 
-        // Build Property(name, value, signature) — the canonical 3-arg constructor
+        // Build Property(name, value, signature) - the canonical 3-arg constructor
         Object property;
         try {
             Constructor<?> c3 = propertyClass.getDeclaredConstructor(
@@ -360,7 +360,7 @@ public final class PacketHelper {
             c3.setAccessible(true);
             property = c3.newInstance(key, value, signature != null ? signature : "");
         } catch (NoSuchMethodException ex) {
-            // Older authlib: 2-arg constructor (name, value) — no signature
+            // Older authlib: 2-arg constructor (name, value) - no signature
             Constructor<?> c2 = propertyClass.getDeclaredConstructor(String.class, String.class);
             c2.setAccessible(true);
             property = c2.newInstance(key, value);
@@ -385,7 +385,7 @@ public final class PacketHelper {
                     Config.debugPackets("injectProperty: direct put succeeded.");
                     return;
                 } catch (Exception ignored) {
-                    break; // likely immutable wrapper — fall through
+                    break; // likely immutable wrapper - fall through
                 }
             }
         }
@@ -453,12 +453,12 @@ public final class PacketHelper {
             Object delegate = f.get(propertyMap);
             if (delegate != null && delegate.getClass().getName().contains("Multimap")) {
                 f.set(propertyMap, mutableMap);
-                Config.debugPackets("injectProperty: replaced delegate multimap — succeeded.");
+                Config.debugPackets("injectProperty: replaced delegate multimap - succeeded.");
                 return;
             }
         }
 
-        FppLogger.warn("injectProperty: all strategies exhausted — skin may not appear in tab list.");
+        FppLogger.warn("injectProperty: all strategies exhausted - skin may not appear in tab list.");
     }
 
     public static void sendTabListRemove(Player receiver, FakePlayer fp) {
@@ -525,7 +525,7 @@ public final class PacketHelper {
                 try {
                     injectProperty(profile, "textures", skinValue, skinSignature);
                 } catch (Exception ex) {
-                    Config.debugPackets("sendTabListAddRaw: skin inject failed — " + ex.getMessage());
+                    Config.debugPackets("sendTabListAddRaw: skin inject failed - " + ex.getMessage());
                 }
             }
 
@@ -547,7 +547,7 @@ public final class PacketHelper {
 
     /**
      * Sends only the {@code UPDATE_DISPLAY_NAME} action for {@code fp} to {@code receiver}.
-     * Lighter than {@link #sendTabListAdd} — use in the periodic refresh loop to override
+     * Lighter than {@link #sendTabListAdd} - use in the periodic refresh loop to override
      * TAB plugin resets without re-adding the player entry from scratch.
      *
      * <p><b>Performance:</b>
@@ -565,7 +565,7 @@ public final class PacketHelper {
         try {
             Object nms = getHandle(receiver);
 
-            // ── Cached GameProfile(uuid, name) — created once per bot ─────────
+            // ── Cached GameProfile(uuid, name) - created once per bot ─────────
             Object profile = fp.getCachedTabListGameProfile();
             if (profile == null) {
                 profile = gameProfileCtor != null
@@ -574,7 +574,7 @@ public final class PacketHelper {
                 fp.setCachedTabListGameProfile(profile);
             }
 
-            // ── Cached NMS display-name Component — rebuilt only on name change ─
+            // ── Cached NMS display-name Component - rebuilt only on name change ─
             String dispStr = fp.getDisplayName();
             Object displayName = fp.getCachedNmsDisplayComponent();
             if (displayName == null || !dispStr.equals(fp.getCachedNmsDisplaySource())) {
@@ -594,7 +594,7 @@ public final class PacketHelper {
 
             sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, buildSecondArg(entry)));
         } catch (Exception e) {
-            // Silent — this is a background refresh, don't spam logs
+            // Silent - this is a background refresh, don't spam logs
         }
     }
 
@@ -740,7 +740,7 @@ public final class PacketHelper {
             Object nms = getHandle(receiver);
             ClassLoader cl = nms.getClass().getClassLoader();
             // ClientboundEntityEventPacket(Entity entity, byte eventId)
-            // Event ID 9 = LIVING_EAT_FOOD — triggers the eating arm animation
+            // Event ID 9 = LIVING_EAT_FOOD - triggers the eating arm animation
             Class<?> entityEventClass = cl.loadClass(
                 "net.minecraft.network.protocol.game.ClientboundEntityEventPacket");
             // Find the NMS entity for the bot
@@ -818,11 +818,11 @@ public final class PacketHelper {
      * <p>The constructor is resolved <em>once</em> and cached; subsequent calls per tick pay
      * zero reflection-scanning overhead.  Two strategies are tried in order:
      * <ol>
-     *   <li><b>7-param coordinate ctor</b> — {@code (int entityId, double x, double y, double z,
-     *       float yaw, float pitch, boolean onGround)} — used by
+     *   <li><b>7-param coordinate ctor</b> - {@code (int entityId, double x, double y, double z,
+     *       float yaw, float pitch, boolean onGround)} - used by
      *       {@code ClientboundEntityPositionSyncPacket} (1.21.2+) and by older builds of
      *       {@code ClientboundTeleportEntityPacket}.</li>
-     *   <li><b>1-param Entity ctor</b> — {@code (Entity entity)} — used by very old NMS builds.</li>
+     *   <li><b>1-param Entity ctor</b> - {@code (Entity entity)} - used by very old NMS builds.</li>
      * </ol>
      * Class-name candidates tried in preference order:
      * <ol>
@@ -873,7 +873,7 @@ public final class PacketHelper {
                         }
                         posSyncCtorLookupDone = true;
                         if (cachedPosSyncCtor == null) {
-                            Config.debugPackets("sendPositionSync: no suitable position-sync packet constructor found — position sync disabled.");
+                            Config.debugPackets("sendPositionSync: no suitable position-sync packet constructor found - position sync disabled.");
                         }
                     }
                 }
@@ -968,7 +968,7 @@ public final class PacketHelper {
         return null;
     }
 
-    /** Scans declared fields for a static field — bypasses Paper's reflection rewriter. */
+    /** Scans declared fields for a static field - bypasses Paper's reflection rewriter. */
     private static Object scanStaticField(Class<?> clazz, String name) throws Exception {
         for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
             for (Field f : c.getDeclaredFields()) {
@@ -1111,7 +1111,7 @@ public final class PacketHelper {
                 case "GameProfile" -> profile;
                 // All boolean flags should be true:
                 //   listed    = true  (bot appears in tab list)
-                //   showHat   = true  (outer head/hat skin layer visible — added in MC 1.21.4+)
+                //   showHat   = true  (outer head/hat skin layer visible - added in MC 1.21.4+)
                 case "boolean"     -> true;
                 case "int"         -> 0;
                 case "GameType"    -> gameTypeSurvival;
@@ -1122,6 +1122,7 @@ public final class PacketHelper {
         return args;
     }
 }
+
 
 
 

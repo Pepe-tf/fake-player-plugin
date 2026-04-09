@@ -1,5 +1,5 @@
 name: FakePlayerPlugin
-version: '1.5.17'
+version: '1.6.0'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ El_Pepes ]
@@ -22,22 +22,22 @@ commands:
 #   /lp group <groupname> permission set <permission> true
 #
 # Examples:
-#   Grant admin access:      /lp group admin permission set fpp.* true
-#   Grant user access:       /lp user PlayerName permission set fpp.user.* true
-#   Set bot limit to 5:      /lp user PlayerName permission set fpp.bot.5 true
-#   Bypass spawn cooldown:   /lp user VIP permission set fpp.bypass.cooldown true
+#   Grant full admin access:  /lp group admin permission set fpp.op true
+#   Grant user access:        /lp user PlayerName permission set fpp.use true
+#   Set bot limit to 5:       /lp user PlayerName permission set fpp.spawn.limit.5 true
+#   Bypass spawn cooldown:    /lp user VIP permission set fpp.bypass.cooldown true
 #
 # Permission hierarchy:
-#   fpp.*         → Full admin (includes all commands below)
-#   fpp.user.*    → User tier (spawn, tph, info-self) — default: everyone
-#   fpp.bot.<num> → Personal bot limit (1-100) — default: fpp.bot.1
+#   fpp.op                → Full admin (includes all commands below)
+#   fpp.use               → User tier (spawn, tph, xp, info-self) — default: everyone
+#   fpp.spawn.limit.<num> → Personal bot limit (1-100) — default: fpp.spawn.limit.1
 # ══════════════════════════════════════════════════════════════════════════════
 
 permissions:
 
   # ── Admin wildcard ─────────────────────────────────────────────────────────
   # Grants EVERYTHING — assign to owner / admin groups only
-  fpp.*:
+  fpp.op:
     description: Grants access to all FPP commands and features (admin).
     default: op
     children:
@@ -52,10 +52,9 @@ permissions:
       fpp.reload:           true
       fpp.info:             true
       fpp.tp:               true
-      fpp.bypass.maxbots:   true
+      fpp.bypass.max:       true
       fpp.bypass.cooldown:  true
-      fpp.bypass.*:         true
-      fpp.admin.migrate:    true
+      fpp.migrate:          true
       fpp.stats:            true
       fpp.freeze:           true
       fpp.lpinfo:           true
@@ -65,35 +64,42 @@ permissions:
       fpp.swap:             true
       fpp.peaks:            true
       fpp.settings:         true
-      fpp.user.*:           true
+      fpp.move:             true
+      fpp.inventory:        true
+      fpp.cmd:              true
+      fpp.mine:             true
+      fpp.useitem:          true
+      fpp.waypoint:         true
+      fpp.use:              true
 
   # ── User wildcard ──────────────────────────────────────────────────────────
   # default: true  →  ALL players get user-tier access out of the box.
   # Use LuckPerms to negate it for specific groups if needed:
-  #   /lp group guest permission set fpp.user.* false
-  fpp.user.*:
+  #   /lp group guest permission set fpp.use false
+  fpp.use:
     description: >
       Grants all user-facing FPP commands to regular players (default: everyone).
-      Includes: spawn (1-bot limit), /fpp tph, /fpp info (own bots only).
-      Does NOT include admin commands (delete, reload, chat, list, full-info, tp).
+      Includes: spawn (1-bot limit), /fpp tph, /fpp xp, /fpp info (own bots only).
+      Does NOT include admin commands (delete, reload, chat, list, full-info, tp, settings).
     default: true
     children:
-      fpp.user.spawn: true
-      fpp.user.tph:   true
-      fpp.user.info:  true
-      fpp.bot.1:      true   # default personal limit — 1 bot per player
+      fpp.spawn.user:      true
+      fpp.tph:             true
+      fpp.xp:              true
+      fpp.info.user:       true
+      fpp.spawn.limit.1:   true   # default personal limit — 1 bot per player
 
   # ── User commands ──────────────────────────────────────────────────────────
 
-  fpp.user.spawn:
+  fpp.spawn.user:
     description: >
       Spawn bots up to the player's personal bot limit.
-      Limit is resolved from fpp.bot.<num> nodes (highest wins).
+      Limit is resolved from fpp.spawn.limit.<num> nodes (highest wins).
       Falls back to fake-player.user-bot-limit in config.yml (default: 1).
       Cannot use --name or spawn multiple bots (admin-only features).
     default: true
 
-  fpp.user.tph:
+  fpp.tph:
     description: >
       Teleport your own bot(s) to you with /fpp tph [botname].
       Players can only tph bots they personally spawned.
@@ -101,7 +107,14 @@ permissions:
       If you have multiple bots, you must specify one by name.
     default: true
 
-  fpp.user.info:
+  fpp.xp:
+    description: >
+      Collect XP from your own bot(s) with /fpp xp <botname>.
+      The bot's XP is transferred to you, and the bot cannot pick up XP for 30 seconds.
+      Requires body.pick-up-xp: true in config.yml for bots to collect XP.
+    default: true
+
+  fpp.info.user:
     description: >
       View limited bot info with /fpp info [botname] — own bots only.
       Shows: world, coordinates, uptime.
@@ -110,33 +123,33 @@ permissions:
 
   # ── Bot limit nodes ────────────────────────────────────────────────────────
   # Assign the highest node the player should be allowed.
-  # The plugin scans fpp.bot.1 → fpp.bot.100 and picks the highest match.
-  # fpp.bot.1 is already included in fpp.user.* (1-bot default for all players).
-  fpp.bot.1:
-    description: Personal bot limit — 1 active bot at a time. Included in fpp.user.*.
-    default: false   # granted automatically via fpp.user.* (default: true)
-  fpp.bot.2:
+  # The plugin scans fpp.spawn.limit.1 → fpp.spawn.limit.100 and picks the highest match.
+  # fpp.spawn.limit.1 is already included in fpp.use (1-bot default for all players).
+  fpp.spawn.limit.1:
+    description: Personal bot limit — 1 active bot at a time. Included in fpp.use.
+    default: false   # granted automatically via fpp.use (default: true)
+  fpp.spawn.limit.2:
     description: Personal bot limit — 2 active bots at a time.
     default: false
-  fpp.bot.3:
+  fpp.spawn.limit.3:
     description: Personal bot limit — 3 active bots at a time.
     default: false
-  fpp.bot.5:
+  fpp.spawn.limit.5:
     description: Personal bot limit — 5 active bots at a time.
     default: false
-  fpp.bot.10:
+  fpp.spawn.limit.10:
     description: Personal bot limit — 10 active bots at a time.
     default: false
-  fpp.bot.15:
+  fpp.spawn.limit.15:
     description: Personal bot limit — 15 active bots at a time.
     default: false
-  fpp.bot.20:
+  fpp.spawn.limit.20:
     description: Personal bot limit — 20 active bots at a time.
     default: false
-  fpp.bot.50:
+  fpp.spawn.limit.50:
     description: Personal bot limit — 50 active bots at a time.
     default: false
-  fpp.bot.100:
+  fpp.spawn.limit.100:
     description: Personal bot limit — 100 active bots at a time.
     default: false
 
@@ -211,18 +224,8 @@ permissions:
     default: op
 
   # ── Bypass ────────────────────────────────────────────────────────────────
-  # Grant fpp.bypass.* to give both bypass nodes at once (e.g. VIP/Staff groups).
-  fpp.bypass.*:
-    description: >
-      Grants all FPP bypass permissions at once.
-      Useful for VIP/Staff groups that should bypass both the global bot cap
-      and the spawn cooldown. Automatically granted via fpp.*.
-    default: op
-    children:
-      fpp.bypass.maxbots:  true
-      fpp.bypass.cooldown: true
 
-  fpp.bypass.maxbots:
+  fpp.bypass.max:
     description: >
       Bypass the global max-bots cap in config.yml during /fpp spawn.
       Grant with care — no upper bound when active.
@@ -232,12 +235,12 @@ permissions:
     description: >
       Bypass the spawn-cooldown delay for /fpp spawn.
       Grant to VIP players or staff who should not be rate-limited.
-      Automatically granted to admins via fpp.* and fpp.bypass.*.
+      Automatically granted to admins via fpp.op.
     default: op
 
 
   # ── Migration & Backup ────────────────────────────────────────────────────
-  fpp.admin.migrate:
+  fpp.migrate:
     description: >
       Access /fpp migrate — create backups, run config migrations, merge old databases,
       export session data to CSV, and migrate between SQLite and MySQL backends.
@@ -326,4 +329,59 @@ permissions:
       without editing config.yml directly.
       Changes are applied and saved immediately on click.
     default: op
+
+  # ── Move (Bot Navigation) ────────────────────────────────────────────────────
+  fpp.move:
+    description: >
+      Navigate a bot to an online player's location with /fpp move <bot> <player>.
+      The bot continuously faces and walks toward the target, sprints when far away,
+      and jumps over 1-block obstacles. Stops automatically on arrival or if either
+      party goes offline or changes world.
+    default: op
+
+  # ── Inventory (View/Edit Bot Inventory) ──────────────────────────────────────
+  fpp.inventory:
+    description: >
+      Open and edit a bot's full inventory with /fpp inventory <bot>.
+      Lets admins view, add, or remove items from any active bot's inventory
+      directly without needing to teleport to the bot or use third-party plugins.
+      Bot must have a physical body (not a bodyless bot).
+    default: op
+
+  # ── Cmd (Execute Command As Bot) ─────────────────────────────────────────────
+  fpp.cmd:
+    description: >
+      Execute a server command as a bot with /fpp cmd <bot> <command...>.
+      The bot's player entity is used as the command sender, so selectors
+      like @p resolve relative to the bot's position.
+      Example: /fpp cmd Steve say Hello! | /fpp cmd Steve tp 100 64 100
+    default: op
+
+  # ── Mine (Block Mining) ────────────────────────────────────────────────────────
+  fpp.mine:
+    description: >
+      Make a bot mine blocks in front of them with /fpp mine <bot> [once|stop].
+      The bot continuously breaks the block they're looking at in creative or survival mode.
+      Use 'once' to mine a single block, 'stop' to halt mining.
+    default: op
+
+  # ── Use (Right-click Action) ────────────────────────────────────────────────────
+  fpp.useitem:
+    description: >
+      Make a bot right-click whatever it's looking at with /fpp use <bot> [once|stop].
+      Works on blocks (open doors, press buttons, place), entities (open villager GUI,
+      leash animals, fill item frames), and usable items in air (draw bow, eat food).
+      Use 'once' to right-click once, 'stop' to stop.
+    default: op
+
+  # ── Waypoint (Named Waypoint Route Management) ────────────────────────────────
+  fpp.waypoint:
+    description: >
+      Manage named waypoint patrol routes with /fpp waypoint (alias: /fpp wp).
+      Subcommands: add <route>, remove <route> <index>, delete <route>, clear <route>, list [route].
+      Routes are saved to data/waypoints.yml.
+      Use /fpp move <bot> --wp <route> to send bots on a looping patrol through all positions.
+    default: op
+
+
 

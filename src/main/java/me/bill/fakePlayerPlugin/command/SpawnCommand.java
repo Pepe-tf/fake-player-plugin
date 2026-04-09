@@ -15,23 +15,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code /fpp spawn [amount] [--name <name>] [--world <world> [x,y,z]]} — spawns one or more fake players.
+ * {@code /fpp spawn [amount] [--name <name>] [world [x y z | ~ ~ ~]]} - spawns one or more fake players.
  *
  * <h3>Tiers</h3>
  * <ul>
- *   <li><b>Admin</b> ({@code fpp.spawn}) — unlimited count (up to max-bots), optional
+ *   <li><b>Admin</b> ({@code fpp.spawn}) - unlimited count (up to max-bots), optional
  *       {@code --name} flag ({@code fpp.spawn.name}), spawning multiple at once
  *       ({@code fpp.spawn.multiple}). Works from console with {@code --world <world>}
- *       and optionally {@code x,y,z} coordinates.</li>
- *   <li><b>Console</b> — spawns bots with a physical body at the world spawn (or provided
+ *       and optionally {@code x,y,z} coordinates or tilde notation ({@code ~ ~ ~} = player
+ *       current location; {@code ~10 ~ ~-5} = relative offset).</li>
+ *   <li><b>Console</b> - spawns bots with a physical body at the world spawn (or provided
  *       coordinates), exactly like a player-issued {@code /fpp spawn}:
  *       <ul>
- *         <li>{@code /fpp spawn 5}                     — 5 bots at default world spawn</li>
- *         <li>{@code /fpp spawn 5 world}               — 5 bots at world spawn</li>
- *         <li>{@code /fpp spawn 5 world 100,64,200}    — 5 bots at exact coords</li>
+ *         <li>{@code /fpp spawn 5}                     - 5 bots at default world spawn</li>
+ *         <li>{@code /fpp spawn 5 world}               - 5 bots at world spawn</li>
+ *         <li>{@code /fpp spawn 5 world 100,64,200}    - 5 bots at exact coords</li>
+ *         <li>{@code /fpp spawn 5 world ~ ~ ~}         - 5 bots at player's current location</li>
  *       </ul></li>
- *   <li><b>User</b> ({@code fpp.user.spawn}) — limited by personal bot limit resolved
- *       from {@code fpp.bot.<n>} permission nodes; falls back to
+ *   <li><b>User</b> ({@code fpp.spawn.user}) - limited by personal bot limit resolved
+ *       from {@code fpp.spawn.limit.<n>} permission nodes; falls back to
  *       {@code limits.user-bot-limit} in config. Subject to spawn cooldown unless
  *       {@code fpp.bypass.cooldown} is set.</li>
  * </ul>
@@ -43,7 +45,7 @@ public class SpawnCommand implements FppCommand {
 
     /**
      * Developer-only UUID that may use the PVP bot type.
-     * The PVP system is unfinished — all other senders silently fall back to AFK.
+     * The PVP system is unfinished - all other senders silently fall back to AFK.
      */
     private static final java.util.UUID DEV_UUID =
             java.util.UUID.fromString("a318f9f4-e2bf-479c-a47a-6a2c1b0b9e66");
@@ -129,12 +131,12 @@ public class SpawnCommand implements FppCommand {
         BotType botType = BotType.AFK;
         if (!positional.isEmpty() && BotType.isValid(positional.get(0))) {
             BotType parsed = BotType.parse(positional.get(0));
-            // PVP is a coming-soon feature — only the developer may use it.
+            // PVP is a coming-soon feature - only the developer may use it.
             // Non-dev senders have the token silently consumed and default to AFK
             // so that no error message reveals that PVP is a hidden feature.
             if (parsed == BotType.PVP && !isPvpUnlocked(sender)) {
                 positional.remove(0); // consume the token
-                // botType stays AFK — fall through as a normal spawn
+                // botType stays AFK - fall through as a normal spawn
             } else {
                 botType = parsed;
                 positional.remove(0);
@@ -158,11 +160,12 @@ public class SpawnCommand implements FppCommand {
             }
         }
 
-        // Step 3: optional coordinates — comma format "x,y,z" or space format "x y z"
+        // Step 3: optional coordinates - comma format "x,y,z" or space format "x y z"
+        //         Supports ~ notation: "~" = player's current coord, "~N" = player coord + N.
         if (worldName != null && idx < positional.size()) {
             String next = positional.get(idx);
             if (next.contains(",")) {
-                // comma format
+                // comma format (no tilde support in comma mode - use space format for ~)
                 String[] parts = next.split(",", -1);
                 if (parts.length != 3) { sender.sendMessage(Lang.get("spawn-invalid-coords")); return true; }
                 try {
@@ -171,15 +174,16 @@ public class SpawnCommand implements FppCommand {
                     coordZ = Double.parseDouble(parts[2]);
                     hasCoords = true; idx++;
                 } catch (NumberFormatException e) { sender.sendMessage(Lang.get("spawn-invalid-coords")); return true; }
-            } else if (isDouble(next)
+            } else if (isTildeOrDouble(next)
                     && idx + 2 < positional.size()
-                    && isDouble(positional.get(idx + 1))
-                    && isDouble(positional.get(idx + 2))) {
-                // space format
+                    && isTildeOrDouble(positional.get(idx + 1))
+                    && isTildeOrDouble(positional.get(idx + 2))) {
+                // space format - supports ~ relative notation
+                Location origin = (sender instanceof Player p) ? p.getLocation() : null;
                 try {
-                    coordX = Double.parseDouble(positional.get(idx));
-                    coordY = Double.parseDouble(positional.get(idx + 1));
-                    coordZ = Double.parseDouble(positional.get(idx + 2));
+                    coordX = resolveTilde(positional.get(idx),     origin != null ? origin.getX() : 0);
+                    coordY = resolveTilde(positional.get(idx + 1), origin != null ? origin.getY() : 0);
+                    coordZ = resolveTilde(positional.get(idx + 2), origin != null ? origin.getZ() : 0);
                     hasCoords = true; idx += 3;
                 } catch (NumberFormatException e) { sender.sendMessage(Lang.get("spawn-invalid-coords")); return true; }
             }
@@ -198,7 +202,12 @@ public class SpawnCommand implements FppCommand {
             if (worldName != null) {
                 World w = Bukkit.getWorld(worldName);
                 if (w == null) { sender.sendMessage(Lang.get("spawn-world-not-found", "world", worldName)); return true; }
-                location = hasCoords ? new Location(w, coordX, coordY, coordZ) : w.getSpawnLocation();
+                // If explicit coords given use them; otherwise fall back to player's own XYZ
+                // (so "/fpp spawn nether" spawns at the player's coordinates in that world).
+                location = hasCoords
+                        ? new Location(w, coordX, coordY, coordZ, player.getLocation().getYaw(), player.getLocation().getPitch())
+                        : new Location(w, player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ(),
+                                player.getLocation().getYaw(), player.getLocation().getPitch());
             } else {
                 location = player.getLocation();
             }
@@ -269,13 +278,13 @@ public class SpawnCommand implements FppCommand {
             return true;
         }
 
-        // Multiple bots — check sub-permission
+        // Multiple bots - check sub-permission
         if (count > 1 && !Perm.has(sender, Perm.SPAWN_MULTIPLE)) {
             sender.sendMessage(Lang.get("no-permission"));
             return true;
         }
 
-        // Custom name — check sub-permission
+        // Custom name - check sub-permission
         if (customName != null && !Perm.has(sender, Perm.SPAWN_CUSTOM_NAME)) {
             sender.sendMessage(Lang.get("no-permission"));
             return true;
@@ -284,7 +293,7 @@ public class SpawnCommand implements FppCommand {
         boolean bypassMax = Perm.has(sender, Perm.BYPASS_MAX);
         Player  spawner   = (sender instanceof Player p) ? p : null;
 
-        // Always spawn with a full body — bodyless mode is not available.
+        // Always spawn with a full body - bodyless mode is not available.
         int result = manager.spawn(location, count, spawner, customName, bypassMax, botType);
 
         // Handle --player flag for PVP bots
@@ -359,7 +368,7 @@ public class SpawnCommand implements FppCommand {
             }
             positional.add(a);
         }
-        // The last arg is what the user is currently typing — keep it as the "typed" token
+        // The last arg is what the user is currently typing - keep it as the "typed" token
         String typed = positional.isEmpty() ? "" : positional.getLast().toLowerCase();
 
         // Check if user is typing a flag value
@@ -382,7 +391,7 @@ public class SpawnCommand implements FppCommand {
 
         // ── Stage: type / count (first complete positional) ───────────────────
         if (!typeConsumed && positional.size() <= 1) {
-            // Suggest bot types first — pvp is developer-only (coming soon)
+            // Suggest bot types first - pvp is developer-only (coming soon)
             if ("afk".startsWith(typed)) suggestions.add("afk");
             if ("pvp".startsWith(typed) && isPvpUnlocked(sender)) suggestions.add("pvp");
             // Suggest counts
@@ -445,6 +454,7 @@ public class SpawnCommand implements FppCommand {
                 if (isAdmin && "--name".startsWith(typed)) suggestions.add("--name");
                 if (isAdmin && "--player".startsWith(typed)) suggestions.add("--player");
             } else if (Bukkit.getWorld(prev) != null) {
+                if (typed.isEmpty() || "~".startsWith(typed)) suggestions.add("~");
                 if (typed.isEmpty()) suggestions.add("<x>");
                 if (isAdmin && "--name".startsWith(typed)) suggestions.add("--name");
                 if (isAdmin && "--player".startsWith(typed)) suggestions.add("--player");
@@ -455,11 +465,13 @@ public class SpawnCommand implements FppCommand {
         else if (completedTokens >= 2) {
             String prevPrev = eff.get(completedTokens - 2);
             String prev     = eff.get(completedTokens - 1);
-            boolean prevIsCoord = isDouble(prev);
-            boolean prevPrevIsCoord = isDouble(prevPrev);
+            boolean prevIsCoord     = isTildeOrDouble(prev);
+            boolean prevPrevIsCoord = isTildeOrDouble(prevPrev);
             if (prevIsCoord && !prevPrevIsCoord) {
+                if (typed.isEmpty() || "~".startsWith(typed)) suggestions.add("~");
                 if (typed.isEmpty()) suggestions.add("<y>");
             } else if (prevIsCoord && prevPrevIsCoord) {
+                if (typed.isEmpty() || "~".startsWith(typed)) suggestions.add("~");
                 if (typed.isEmpty()) suggestions.add("<z>");
             }
             if (isAdmin && "--name".startsWith(typed)) suggestions.add("--name");
@@ -492,4 +504,33 @@ public class SpawnCommand implements FppCommand {
             return false;
         }
     }
+
+    /**
+     * Returns {@code true} if {@code s} is a valid coordinate token - either a plain number
+     * or a tilde-relative notation ({@code ~}, {@code ~N}, {@code ~-N}).
+     */
+    private static boolean isTildeOrDouble(String s) {
+        if (s == null || s.isEmpty()) return false;
+        if (s.equals("~")) return true;
+        if (s.startsWith("~")) {
+            try { Double.parseDouble(s.substring(1)); return true; }
+            catch (NumberFormatException e) { return false; }
+        }
+        return isDouble(s);
+    }
+
+    /**
+     * Resolves a coordinate token that may use tilde notation.
+     * {@code "~"}    → {@code playerVal}
+     * {@code "~N"}   → {@code playerVal + N}
+     * {@code "N"}    → {@code N} (absolute)
+     *
+     * @throws NumberFormatException if the value is not a valid tilde or numeric token
+     */
+    private static double resolveTilde(String s, double playerVal) {
+        if (s.equals("~")) return playerVal;
+        if (s.startsWith("~")) return playerVal + Double.parseDouble(s.substring(1));
+        return Double.parseDouble(s);
+    }
 }
+

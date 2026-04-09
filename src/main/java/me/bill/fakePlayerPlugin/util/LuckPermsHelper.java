@@ -28,7 +28,7 @@ import java.util.concurrent.CompletableFuture;
  *   <li>Pre-assigns a group in LP storage <em>before</em> the NMS body spawns so
  *       that {@code PlayerJoinEvent} listeners (TAB, LP itself) see the correct group
  *       immediately at join time.</li>
- *   <li>Preserves a bot's previously-assigned group across restarts — restored bots
+ *   <li>Preserves a bot's previously-assigned group across restarts - restored bots
  *       keep their {@code /fpp rank} group without being reset to the default.</li>
  *   <li>Subscribes to LP's {@code UserDataRecalculateEvent} so display names update
  *       automatically when an admin changes a bot's group via LP commands.</li>
@@ -38,7 +38,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class LuckPermsHelper {
 
-    /** Active LP event subscription — closed in {@link #unsubscribeLpEvents()}. */
+    /** Active LP event subscription - closed in {@link #unsubscribeLpEvents()}. */
     private static EventSubscription<UserDataRecalculateEvent> eventSub;
 
     private LuckPermsHelper() {}
@@ -51,7 +51,7 @@ public final class LuckPermsHelper {
         return p != null && p.isEnabled();
     }
 
-    /** Safe LP API accessor — returns {@code null} when LP is not available. */
+    /** Safe LP API accessor - returns {@code null} when LP is not available. */
     private static LuckPerms lp() {
         if (!isAvailable()) return null;
         try { return LuckPermsProvider.get(); }
@@ -100,9 +100,9 @@ public final class LuckPermsHelper {
                         Bukkit.getScheduler().runTask(plugin,
                                 () -> manager.refreshLpDisplayName(fp));
                         Config.debugLuckPerms("UserDataRecalculate for bot '" + fp.getName()
-                                + "' — new group='" + newGroup + "', refreshing display name.");
+                                + "' - new group='" + newGroup + "', refreshing display name.");
                     });
-            Config.debugLuckPerms("Subscribed to UserDataRecalculateEvent — bot display names will auto-update when LP groups change.");
+            Config.debugLuckPerms("Subscribed to UserDataRecalculateEvent - bot display names will auto-update when LP groups change.");
         } catch (Exception e) {
             FppLogger.warn("[LP] Failed to subscribe to LP events: " + e.getMessage());
         }
@@ -132,7 +132,7 @@ public final class LuckPermsHelper {
      *   <li>If the bot already has a non-{@code default} primary group (i.e. a group
      *       explicitly assigned by a previous {@code /fpp rank}) <em>and</em> no
      *       {@code luckperms.default-group} is configured in FPP config, keep the
-     *       existing group — this preserves rank across server restarts.</li>
+     *       existing group - this preserves rank across server restarts.</li>
      *   <li>Otherwise assign the configured {@code configGroup}, or {@code "default"}
      *       if the config is blank, and call {@link User#setPrimaryGroup(String)} so
      *       LP reports the correct primary group immediately at join time.</li>
@@ -229,7 +229,7 @@ public final class LuckPermsHelper {
             return api.getUserManager().saveUser(onlineUser);
         }
 
-        // Fallback: user not in online cache yet — load from storage and set
+        // Fallback: user not in online cache yet - load from storage and set
         Config.debugLuckPerms("applyGroupToOnlineUser: user not online yet, falling back to setPlayerGroup for " + botUuid);
         return setPlayerGroup(botUuid, groupName);
     }
@@ -249,7 +249,7 @@ public final class LuckPermsHelper {
         if (api == null) return CompletableFuture.failedFuture(
                 new IllegalStateException("LuckPerms not available"));
 
-        // Prefer the live online instance — saveUser() on it fires UserDataRecalculateEvent
+        // Prefer the live online instance - saveUser() on it fires UserDataRecalculateEvent
         User onlineUser = api.getUserManager().getUser(playerUuid);
         if (onlineUser != null) {
             onlineUser.data().clear(NodeType.INHERITANCE::matches);
@@ -259,7 +259,7 @@ public final class LuckPermsHelper {
                     Config.debugLuckPerms("setPlayerGroup (online): " + playerUuid + " → '" + newGroupName + "'"));
         }
 
-        // User not online — fall back to loadUser (offline / pre-spawn use)
+        // User not online - fall back to loadUser (offline / pre-spawn use)
         return api.getUserManager().loadUser(playerUuid).thenCompose(user -> {
             if (user == null) return CompletableFuture.failedFuture(
                     new IllegalStateException("LP user not found for " + playerUuid));
@@ -409,7 +409,7 @@ public final class LuckPermsHelper {
 
     /**
      * Returns a human-readable summary of loaded LP groups and their weights.
-     * Format: {@code name(w=N), ...} — used by {@code /fpp lpinfo}.
+     * Format: {@code name(w=N), ...} - used by {@code /fpp lpinfo}.
      */
     public static String buildGroupSummary() {
         LuckPerms api = lp();
@@ -431,7 +431,7 @@ public final class LuckPermsHelper {
 
     // ── Deprecated aliases for backwards compatibility ────────────────────────
 
-    /** @deprecated No-op — LP handles caching natively for NMS ServerPlayer entities. */
+    /** @deprecated No-op - LP handles caching natively for NMS ServerPlayer entities. */
     @Deprecated
     public static void invalidateCache() {}
 
@@ -453,4 +453,5 @@ public final class LuckPermsHelper {
         return getStoredPrimaryGroup(playerUuid);
     }
 }
+
 

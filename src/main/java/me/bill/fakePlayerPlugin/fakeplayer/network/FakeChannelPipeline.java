@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * A no-op {@link ChannelPipeline} that silently discards all operations.
  *
- * <p>Used by {@link FakeChannel} — since bots have no real client, no pipeline
+ * <p>Used by {@link FakeChannel} - since bots have no real client, no pipeline
  * processing is needed. All handler additions, reads, and writes are no-ops.
  * Reference-counted messages passed to write/writeAndFlush are released to
  * prevent Netty memory leaks.
@@ -169,4 +169,5 @@ public final class FakeChannelPipeline implements ChannelPipeline {
         return Collections.<String, ChannelHandler>emptyMap().entrySet().iterator();
     }
 }
+
 

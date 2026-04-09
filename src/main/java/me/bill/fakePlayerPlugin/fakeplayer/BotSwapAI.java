@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *       (or when the feature is enabled via {@code /fpp swap on}).</li>
  *   <li>When the countdown expires the bot says an optional farewell message,
  *       waits a short "packing-up" pause, then leaves via the normal
- *       {@link FakePlayerManager#delete(String)} path — the vanilla leave
+ *       {@link FakePlayerManager#delete(String)} path - the vanilla leave
  *       message fires through NMS just like a real player disconnect.</li>
  *   <li>After a configurable absence period the bot respawns at its last
  *       known location, optionally with the same or a fresh random name, and
@@ -86,15 +86,15 @@ public final class BotSwapAI {
     public enum Personality {
         /** Average session times, normal behaviour. */
         CASUAL(1.0),
-        /** Power player — longer sessions. */
+        /** Power player - longer sessions. */
         GRINDER(1.6),
-        /** Social type — shorter sessions, quick to return. */
+        /** Social type - shorter sessions, quick to return. */
         SOCIAL(0.65),
-        /** Quiet presence — very long sessions, rarely leaves. */
+        /** Quiet presence - very long sessions, rarely leaves. */
         LURKER(2.2),
-        /** High activity — short cycles, frequent rejoins. */
+        /** High activity - short cycles, frequent rejoins. */
         ACTIVE(0.45),
-        /** Irregular player — wide variance, unpredictable pattern. */
+        /** Irregular player - wide variance, unpredictable pattern. */
         SPORADIC(1.1);
 
         /** Multiplied against the configured base session duration. */
@@ -303,7 +303,7 @@ public final class BotSwapAI {
     private void doLeave(FakePlayer fp) {
         if (!Config.swapEnabled()) return;
 
-        // Respect min-online floor — don't swap out if it would put us below the minimum
+        // Respect min-online floor - don't swap out if it would put us below the minimum
         int minOnline = Config.swapMinOnline();
         if (minOnline > 0 && manager.getActivePlayers().size() <= minOnline) {
             Config.debugSwap("[SwapAI] " + fp.getName() + " swap skipped (would go below min-online="
@@ -330,7 +330,7 @@ public final class BotSwapAI {
         Config.debugSwap("[SwapAI] " + oldName + " starting leave (swap #" + newCount
                 + ", personality=" + p.name().toLowerCase() + ")");
 
-        // 1. Farewell chat — fires before the body disappears
+        // 1. Farewell chat - fires before the body disappears
         if (Config.swapFarewellChat() && shouldChat()) {
             sendBotChat(fp, randomFrom(FAREWELLS));
         }
@@ -380,10 +380,10 @@ public final class BotSwapAI {
             }, totalRejoinDelay).getTaskId();
 
             Config.debugSwap("[SwapAI] " + oldName + " offline for ~" + absSec
-                    + "s — rejoining in " + (totalRejoinDelay / 20) + "s.");
+                    + "s - rejoining in " + (totalRejoinDelay / 20) + "s.");
 
             // *** CRITICAL FIX ***
-            // Delete FIRST — this triggers cancel(leavingUuid) which finds no rejoin timer yet
+            // Delete FIRST - this triggers cancel(leavingUuid) which finds no rejoin timer yet
             // (because we have NOT put it into rejoinTimers yet), so the rejoin is preserved.
             // Registering AFTER delete() ensures cancel() cannot accidentally kill the rejoin.
             manager.delete(oldName);
@@ -399,7 +399,7 @@ public final class BotSwapAI {
     /**
      * Attempts to rejoin a previously swapped-out bot.
      *
-     * @param leavingUuid the UUID the bot had when it left — used to track retry state
+     * @param leavingUuid the UUID the bot had when it left - used to track retry state
      * @param loc         last known location
      * @param oldName     name the bot had when it left
      * @param newSwapCount cumulative swap cycles completed (including this one)
@@ -439,7 +439,7 @@ public final class BotSwapAI {
             return;
         }
 
-        // Find the newly spawned bot —
+        // Find the newly spawned bot -
         //   • Same-name rejoin: look up by name (works even when UUID is stable via identity cache)
         //   • Random-name rejoin: UUID diff (spawn() adds to activePlayers synchronously)
         final String resolvedName = customName;
@@ -470,7 +470,7 @@ public final class BotSwapAI {
         Config.debugSwap("[SwapAI] " + newBot.getName() + " rejoined (swap #"
                 + newSwapCount + ", personality=" + p.name().toLowerCase() + ")");
 
-        // Greeting chat — slight delay after join message for NMS body to settle
+        // Greeting chat - slight delay after join message for NMS body to settle
         if (Config.swapGreetingChat() && shouldChat()) {
             UUID newId = newBot.getUuid();
             long greetDelay = 20L + ThreadLocalRandom.current().nextInt(60);
@@ -514,7 +514,7 @@ public final class BotSwapAI {
         for (org.bukkit.entity.Player p : Bukkit.getOnlinePlayers()) {
             if (manager.getByUuid(p.getUniqueId()) == null) return true; // at least one real player
         }
-        // No real players — still fire if require-player-online is off
+        // No real players - still fire if require-player-online is off
         return !Config.fakeChatRequirePlayer()
                 && ThreadLocalRandom.current().nextDouble() < 0.70;
     }
@@ -549,3 +549,4 @@ public final class BotSwapAI {
         return list.get(ThreadLocalRandom.current().nextInt(list.size()));
     }
 }
+

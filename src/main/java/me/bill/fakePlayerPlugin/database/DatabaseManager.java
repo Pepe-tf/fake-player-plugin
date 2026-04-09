@@ -15,24 +15,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <h3>Backends</h3>
  * <ol>
- *   <li><b>MySQL</b>  — when {@code database.mysql.enabled: true}</li>
- *   <li><b>SQLite</b> — automatic local fallback; WAL mode for crash-safety</li>
+ *   <li><b>MySQL</b>  - when {@code database.mysql.enabled: true}</li>
+ *   <li><b>SQLite</b> - automatic local fallback; WAL mode for crash-safety</li>
  * </ol>
  *
  * <h3>Key features</h3>
  * <ul>
- *   <li>Write queue — all writes are serialised on a dedicated thread.</li>
- *   <li>Batch location flush — position updates are deduplicated and sent in one
+ *   <li>Write queue - all writes are serialised on a dedicated thread.</li>
+ *   <li>Batch location flush - position updates are deduplicated and sent in one
  *       batch statement instead of one UPDATE per bot per tick.</li>
- *   <li>Auto-reconnect health check — silently reconnects on connection loss.</li>
- *   <li>{@code fpp_active_bots} table — authoritative source for restart
+ *   <li>Auto-reconnect health check - silently reconnects on connection loss.</li>
+ *   <li>{@code fpp_active_bots} table - authoritative source for restart
  *       persistence; always reflects live bot state, even after a crash.</li>
- *   <li>Yaw/pitch tracked in last location — bots face the correct direction
+ *   <li>Yaw/pitch tracked in last location - bots face the correct direction
  *       after a restart.</li>
- *   <li>Schema version table — safe incremental migrations.</li>
- *   <li>Indices on hot query columns — bot_name, spawned_by, removed_at.</li>
+ *   <li>Schema version table - safe incremental migrations.</li>
+ *   <li>Indices on hot query columns - bot_name, spawned_by, removed_at.</li>
  *   <li>Display name stored alongside internal name for audit trail.</li>
- *   <li>Stats API — total sessions, unique bots, top spawners, uptime.</li>
+ *   <li>Stats API - total sessions, unique bots, top spawners, uptime.</li>
  * </ul>
  */
 public class DatabaseManager {
@@ -43,7 +43,7 @@ public class DatabaseManager {
     /** Returns the latest DB schema version this build requires. */
     public static int getCurrentSchemaVersion() { return SCHEMA_VERSION; }
 
-    // ── DDL — session history ─────────────────────────────────────────────────
+    // ── DDL - session history ─────────────────────────────────────────────────
     private static final String CREATE_SESSIONS_SQLITE =
             "CREATE TABLE IF NOT EXISTS fpp_bot_sessions (" +
             "  id              INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -98,7 +98,7 @@ public class DatabaseManager {
             "  server_id       VARCHAR(64)  NOT NULL DEFAULT 'default'" +
             ")";
 
-    // ── DDL — active bots (restart persistence source of truth) ───────────────
+    // ── DDL - active bots (restart persistence source of truth) ───────────────
     private static final String CREATE_ACTIVE_SQLITE =
             "CREATE TABLE IF NOT EXISTS fpp_active_bots (" +
             "  bot_uuid        VARCHAR(36)  NOT NULL PRIMARY KEY," +
@@ -135,7 +135,7 @@ public class DatabaseManager {
             "  server_id       VARCHAR(64)  NOT NULL DEFAULT 'default'" +
             ")";
 
-    // ── DDL — sleeping bots (peak-hours crash-safe persistence) ──────────────
+    // ── DDL - sleeping bots (peak-hours crash-safe persistence) ──────────────
     private static final String CREATE_SLEEPING_SQLITE =
             "CREATE TABLE IF NOT EXISTS fpp_sleeping_bots (" +
             "  sleep_order INTEGER NOT NULL," +
@@ -164,7 +164,7 @@ public class DatabaseManager {
             "  PRIMARY KEY (server_id, sleep_order)" +
             ")";
 
-    // ── DDL — bot identity (stable name→UUID mapping per server) ─────────────
+    // ── DDL - bot identity (stable name→UUID mapping per server) ─────────────
     private static final String CREATE_IDENTITIES_SQLITE =
             "CREATE TABLE IF NOT EXISTS fpp_bot_identities (" +
             "  bot_name   VARCHAR(16) NOT NULL," +
@@ -183,7 +183,7 @@ public class DatabaseManager {
             "  PRIMARY KEY (bot_name, server_id)" +
             ")";
 
-    // ── DDL — schema version ──────────────────────────────────────────────────
+    // ── DDL - schema version ──────────────────────────────────────────────────
     private static final String CREATE_META =
             "CREATE TABLE IF NOT EXISTS fpp_meta (" +
             "  key_name VARCHAR(64)  NOT NULL PRIMARY KEY," +
@@ -209,7 +209,7 @@ public class DatabaseManager {
         { "ALTER TABLE fpp_bot_sessions ADD COLUMN luckperms_group VARCHAR(64) DEFAULT NULL",
           "ALTER TABLE fpp_active_bots  ADD COLUMN luckperms_group VARCHAR(64) DEFAULT NULL" },
         // v5 → v6: add server_id column for multi-server / NETWORK mode awareness
-        // execSilent is used — safe to run on DBs that already have the column (error is swallowed)
+        // execSilent is used - safe to run on DBs that already have the column (error is swallowed)
         { "ALTER TABLE fpp_bot_sessions ADD COLUMN server_id VARCHAR(64) NOT NULL DEFAULT 'default'",
           "ALTER TABLE fpp_active_bots  ADD COLUMN server_id VARCHAR(64) NOT NULL DEFAULT 'default'",
           "CREATE INDEX IF NOT EXISTS idx_sessions_server_id ON fpp_bot_sessions(server_id)",
@@ -270,7 +270,7 @@ public class DatabaseManager {
     private boolean connect() {
         if (Config.mysqlEnabled()) {
             if (tryMysql()) { isMysql = true; return true; }
-            FppLogger.warn("MySQL connection failed — falling back to SQLite.");
+            FppLogger.warn("MySQL connection failed - falling back to SQLite.");
         }
         return trySqlite();
     }
@@ -383,7 +383,7 @@ public class DatabaseManager {
             Thread t = new Thread(r, "FPP-DB-Health"); t.setDaemon(true); return t;
         }).scheduleAtFixedRate(() -> {
             if (!isAlive()) {
-                FppLogger.warn("DB connection lost — reconnecting...");
+                FppLogger.warn("DB connection lost - reconnecting...");
                 if (connect()) { createTables(); FppLogger.success("DB reconnected."); }
                 else            { FppLogger.error("DB reconnect failed."); }
             }
@@ -497,7 +497,7 @@ public class DatabaseManager {
                 ps.executeUpdate();
             } catch (SQLException e) { FppLogger.error("DB recordSpawn: " + e.getMessage()); }
 
-            // 2. Active bots row — source of truth for restart
+            // 2. Active bots row - source of truth for restart
             upsertActiveBotSync(record.getBotUuid().toString(), record.getBotName(), display,
                     record.getSpawnedBy(), record.getSpawnedByUuid().toString(),
                     record.getWorldName(),
@@ -507,7 +507,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Queues a position update. Updates are deduplicated per UUID — if a new
+     * Queues a position update. Updates are deduplicated per UUID - if a new
      * update arrives before the previous one is flushed, only the latest is kept.
      */
     public void updateLastLocation(UUID botUuid, String world,
@@ -551,7 +551,7 @@ public class DatabaseManager {
 
     /**
      * Closes all open sessions as SHUTDOWN. Called synchronously on disable.
-     * Does NOT clear fpp_active_bots — that table is used by the next startup
+     * Does NOT clear fpp_active_bots - that table is used by the next startup
      * to restore bots after a clean shutdown.
      * Always scoped to the current {@code server.id}.
      */
@@ -577,7 +577,7 @@ public class DatabaseManager {
     /**
      * Called after bots are successfully restored on startup so stale rows
      * from a previous crash don't re-restore on the next restart.
-     * Always scoped to the current {@code server.id} — never touches other servers' rows.
+     * Always scoped to the current {@code server.id} - never touches other servers' rows.
      */
     public void clearActiveBots() {
         final String sid = Config.serverId();
@@ -597,8 +597,8 @@ public class DatabaseManager {
     /**
      * Returns rows from {@code fpp_active_bots} scoped by the current database mode:
      * <ul>
-     *   <li><b>LOCAL</b> — only this server's rows ({@code server_id = Config.serverId()}).</li>
-     *   <li><b>NETWORK</b> — all rows across all servers (useful for admin queries).</li>
+     *   <li><b>LOCAL</b> - only this server's rows ({@code server_id = Config.serverId()}).</li>
+     *   <li><b>NETWORK</b> - all rows across all servers (useful for admin queries).</li>
      * </ul>
      *
      * <p><b>Do NOT use this method for bot restoration.</b>
@@ -637,7 +637,7 @@ public class DatabaseManager {
      * Returns only the rows from {@code fpp_active_bots} that belong to THIS server,
      * always filtering by {@code server_id = Config.serverId()}.
      *
-     * <p><b>Design rule — bots are per-server only:</b> the database may be shared
+     * <p><b>Design rule - bots are per-server only:</b> the database may be shared
      * across multiple servers in NETWORK mode, but Minecraft entities (NMS ServerPlayers,
      * ArmorStands, PlayerProfiles) are strictly local to the server that spawned them.
      * This method intentionally ignores {@link Config#isNetworkMode()} so the restore
@@ -648,7 +648,7 @@ public class DatabaseManager {
     public List<ActiveBotRow> getActiveBotsForThisServer() {
         List<ActiveBotRow> list = new ArrayList<>();
         if (!isAlive()) return list;
-        // Hard-coded server_id filter — never bypassed, even in NETWORK mode.
+        // Hard-coded server_id filter - never bypassed, even in NETWORK mode.
         // Bots are per-server only. Database may be shared, but entities are not.
         String sql = "SELECT * FROM fpp_active_bots WHERE server_id=? ORDER BY updated_at ASC";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -979,7 +979,7 @@ public class DatabaseManager {
         try { lpitch = rs.getFloat("last_pitch"); if (rs.wasNull()) lpitch = rs.getFloat("spawn_pitch"); }
         catch (SQLException ignored) { lpitch = 0f; }
 
-        // server_id — absent on pre-v6 DBs; fall back to current server
+        // server_id - absent on pre-v6 DBs; fall back to current server
         String sid = null;
         try { sid = rs.getString("server_id"); } catch (SQLException ignored) {}
         if (sid == null || sid.isBlank()) sid = Config.serverId();
@@ -1004,7 +1004,7 @@ public class DatabaseManager {
      * Backfills {@code fpp_bot_identities} from {@code fpp_bot_sessions} on first
      * startup after upgrading to schema v8, so existing bots keep their original UUID.
      * Uses the earliest recorded UUID for each {@code (bot_name, server_id)} pair.
-     * Safe to re-run — INSERT OR IGNORE / INSERT IGNORE is a no-op when the row exists.
+     * Safe to re-run - INSERT OR IGNORE / INSERT IGNORE is a no-op when the row exists.
      */
     private void backfillIdentities() {
         if (!isAlive()) return;
@@ -1028,7 +1028,7 @@ public class DatabaseManager {
                         + " identit" + (rows == 1 ? "y" : "ies") + " from session history.");
             }
         } catch (SQLException e) {
-            // Non-fatal — identity registry builds up naturally as bots spawn
+            // Non-fatal - identity registry builds up naturally as bots spawn
             FppLogger.debug("Bot identity backfill skipped (no session history yet): " + e.getMessage());
         }
     }
@@ -1037,7 +1037,7 @@ public class DatabaseManager {
      * Looks up the stored UUID for {@code botName} on the given server.
      * Returns {@code null} when no mapping exists yet.
      *
-     * <p>Synchronous read — safe to call on the main thread for single-bot spawns.
+     * <p>Synchronous read - safe to call on the main thread for single-bot spawns.
      */
     public UUID lookupBotUuid(String botName, String serverId) {
         if (!isAlive()) return null;
@@ -1060,7 +1060,7 @@ public class DatabaseManager {
     /**
      * Persists a new {@code botName → uuid} mapping for the given server.
      * Uses INSERT OR IGNORE / INSERT IGNORE so the first UUID registered for a name
-     * is always the one that sticks — re-registering with a different UUID is a no-op.
+     * is always the one that sticks - re-registering with a different UUID is a no-op.
      * Enqueued to the write thread (non-blocking from the caller's perspective).
      */
     public void registerBotUuid(String botName, UUID uuid, String serverId) {
@@ -1131,7 +1131,7 @@ public class DatabaseManager {
 
     /**
      * Loads sleeping-bot rows for the current server.
-     * Intended for startup restore — called synchronously on the main thread.
+     * Intended for startup restore - called synchronously on the main thread.
      *
      * @return ordered list (by sleep_order ASC) of sleeping bot snapshots, never null.
      */
@@ -1294,7 +1294,7 @@ public class DatabaseManager {
     // ── Inner types ───────────────────────────────────────────────────────────
     private record PendingLocation(String world, double x, double y, double z, float yaw, float pitch) {}
 
-    /** Row from fpp_active_bots — used for startup restore. */
+    /** Row from fpp_active_bots - used for startup restore. */
     public record ActiveBotRow(
             String botUuid, String botName, String botDisplay,
             String spawnedBy, String spawnedByUuid,
@@ -1305,7 +1305,7 @@ public class DatabaseManager {
     ) {}
 
     /**
-     * Row from {@code fpp_sleeping_bots} — used for peak-hours crash-recovery restore.
+     * Row from {@code fpp_sleeping_bots} - used for peak-hours crash-recovery restore.
      *
      * @param sleepOrder insertion order (FIFO index, 0-based)
      * @param botName    internal bot name
@@ -1354,3 +1354,4 @@ public class DatabaseManager {
         }
     }
 }
+

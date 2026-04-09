@@ -42,13 +42,13 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * <h3>Config keys (peak-hours.*)</h3>
  * <ul>
- *   <li>{@code enabled}            — master toggle (requires swap.enabled: true)</li>
- *   <li>{@code timezone}           — java.time.ZoneId string</li>
- *   <li>{@code stagger-seconds}    — spread joins/leaves across this many seconds</li>
- *   <li>{@code schedule}           — list of {@code {start, end, fraction}} maps</li>
- *   <li>{@code day-overrides}      — per-DayOfWeek schedule overrides</li>
- *   <li>{@code min-online}         — absolute floor: never fewer than this many bots online</li>
- *   <li>{@code notify-transitions} — broadcast window changes to admins with fpp.peaks</li>
+ *   <li>{@code enabled}            - master toggle (requires swap.enabled: true)</li>
+ *   <li>{@code timezone}           - java.time.ZoneId string</li>
+ *   <li>{@code stagger-seconds}    - spread joins/leaves across this many seconds</li>
+ *   <li>{@code schedule}           - list of {@code {start, end, fraction}} maps</li>
+ *   <li>{@code day-overrides}      - per-DayOfWeek schedule overrides</li>
+ *   <li>{@code min-online}         - absolute floor: never fewer than this many bots online</li>
+ *   <li>{@code notify-transitions} - broadcast window changes to admins with fpp.peaks</li>
  * </ul>
  */
 public final class PeakHoursManager {
@@ -59,7 +59,7 @@ public final class PeakHoursManager {
     /** Optional database manager for crash-safe sleeping-bot persistence. May be {@code null}. */
     private DatabaseManager db = null;
 
-    /** Bots put to sleep by peak-hours — FIFO so the oldest sleep first. */
+    /** Bots put to sleep by peak-hours - FIFO so the oldest sleep first. */
     private final Deque<SleepingBot> sleepingBots = new ArrayDeque<>();
 
     /** Bukkit task ID of the periodic tick, or {@code -1} when not running. */
@@ -94,7 +94,7 @@ public final class PeakHoursManager {
 
     /**
      * Starts the 60-second periodic tick.
-     * Safe to call multiple times — does nothing if already started.
+     * Safe to call multiple times - does nothing if already started.
      */
     public void start() {
         if (tickTaskId != -1) return;
@@ -111,7 +111,7 @@ public final class PeakHoursManager {
     public void shutdown() {
         stopTick();
         wakeAll();
-        Config.debugChat("[PeakHours] Shutdown complete — all sleeping bots woken.");
+        Config.debugChat("[PeakHours] Shutdown complete - all sleeping bots woken.");
     }
 
     /**
@@ -145,15 +145,15 @@ public final class PeakHoursManager {
         if (!Config.swapEnabled()) {
             if (!sleepingBots.isEmpty()) {
                 FppLogger.warn("[PeakHours] Swap disabled while " + sleepingBots.size()
-                        + " bot(s) sleeping — waking all to prevent data loss.");
+                        + " bot(s) sleeping - waking all to prevent data loss.");
                 wakeAll();
             }
-            Config.debugChat("[PeakHours] Swap is off — tick paused.");
+            Config.debugChat("[PeakHours] Swap is off - tick paused.");
             return;
         }
 
         if (adjusting) {
-            Config.debugChat("[PeakHours] Tick skipped — previous stagger still in-flight.");
+            Config.debugChat("[PeakHours] Tick skipped - previous stagger still in-flight.");
             return;
         }
 
@@ -185,14 +185,14 @@ public final class PeakHoursManager {
         toWake  = Math.min(toWake,  sleeping);  // can only wake bots we put to sleep
 
         if (toSleep == 0 && toWake == 0) {
-            Config.debugChat("[PeakHours] OK — fraction=" + String.format("%.0f%%", fraction * 100)
+            Config.debugChat("[PeakHours] OK - fraction=" + String.format("%.0f%%", fraction * 100)
                     + " online=" + onlineAFK + " swapping=" + swappedOut
                     + " sleeping=" + sleeping + " total=" + total + " target=" + target + ".");
             return;
         }
 
         int stagger = Math.max(1, Config.peakHoursStaggerSeconds());
-        Config.debugChat("[PeakHours] Adjusting — fraction=" + String.format("%.0f%%", fraction * 100)
+        Config.debugChat("[PeakHours] Adjusting - fraction=" + String.format("%.0f%%", fraction * 100)
                 + " online=" + onlineAFK + " swapping=" + swappedOut
                 + " sleeping=" + sleeping + " total=" + total
                 + " target=" + target + " toSleep=" + toSleep + " toWake=" + toWake);
@@ -276,7 +276,7 @@ public final class PeakHoursManager {
     private void wakeEntry(SleepingBot sb) {
         if (sb.loc() == null || sb.loc().getWorld() == null) {
             FppLogger.warn("[PeakHours] Sleeping bot '" + sb.name()
-                    + "' had no valid location — discarded.");
+                    + "' had no valid location - discarded.");
             return;
         }
         String customName = null;
@@ -301,7 +301,7 @@ public final class PeakHoursManager {
             if (sb != null) wakeEntry(sb);
         }
         clearPersistedSleepingBots();  // single DB clear after all bots are woken
-        if (count > 0) Config.debugChat("[PeakHours] wakeAll() — woke " + count + " bot(s).");
+        if (count > 0) Config.debugChat("[PeakHours] wakeAll() - woke " + count + " bot(s).");
     }
 
     // ── Database persistence (crash-safe sleeping-bot state) ──────────────────
@@ -357,14 +357,14 @@ public final class PeakHoursManager {
             World world = Bukkit.getWorld(row.world());
             if (world == null) {
                 FppLogger.warn("[PeakHours] Crash-recovery: cannot restore sleeping bot '"
-                        + row.botName() + "' — world '" + row.world() + "' not loaded; discarded.");
+                        + row.botName() + "' - world '" + row.world() + "' not loaded; discarded.");
                 continue;
             }
             Location loc = new Location(world, row.x(), row.y(), row.z(), row.yaw(), row.pitch());
             sleepingBots.addLast(new SleepingBot(row.botName(), loc));
             restored++;
         }
-        // Clear the table — bots are now in memory.  The queue will be re-persisted if modified.
+        // Clear the table - bots are now in memory.  The queue will be re-persisted if modified.
         database.clearSleepingBots();
         if (restored > 0) {
             FppLogger.info("[PeakHours] Crash-recovery: restored " + restored
@@ -611,4 +611,5 @@ public final class PeakHoursManager {
     /** Immutable snapshot of a bot sleeping in the peak-hours pool. */
     public record SleepingBot(String name, Location loc) {}
 }
+
 

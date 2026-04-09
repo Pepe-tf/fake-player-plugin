@@ -30,7 +30,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * <h3>Transport</h3>
  * Outbound messages are wrapped in a {@code BungeeCord} channel
  * {@code Forward ALL fpp:main} envelope so the proxy re-delivers the
- * inner payload to every connected backend server — including an echo
+ * inner payload to every connected backend server - including an echo
  * back to the originating server.  Echo suppression is handled via
  * per-message unique IDs tracked in {@link #recentIds}.
  *
@@ -39,15 +39,15 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * <h3>Subchannels</h3>
  * <ul>
- *   <li>{@code BOT_SPAWN}  — full bot profile sent when a bot spawns; all other
+ *   <li>{@code BOT_SPAWN}  - full bot profile sent when a bot spawns; all other
  *       servers add a virtual tab-list entry and cache the data.</li>
- *   <li>{@code BOT_DESPAWN} — UUID sent when a bot is removed; all other servers
+ *   <li>{@code BOT_DESPAWN} - UUID sent when a bot is removed; all other servers
  *       remove the virtual tab-list entry.</li>
- *   <li>{@code CHAT}   — bot chat line forwarded to all servers.</li>
- *   <li>{@code ALERT}  — admin broadcast pushed to all servers.</li>
- *   <li>{@code JOIN}   — bot join message forwarded to all servers.</li>
- *   <li>{@code LEAVE}  — bot leave message forwarded to all servers.</li>
- *   <li>{@code SYNC}   — key/value state update (future use).</li>
+ *   <li>{@code CHAT}   - bot chat line forwarded to all servers.</li>
+ *   <li>{@code ALERT}  - admin broadcast pushed to all servers.</li>
+ *   <li>{@code JOIN}   - bot join message forwarded to all servers.</li>
+ *   <li>{@code LEAVE}  - bot leave message forwarded to all servers.</li>
+ *   <li>{@code SYNC}   - key/value state update (future use).</li>
  * </ul>
  */
 public final class VelocityChannel implements PluginMessageListener {
@@ -65,7 +65,7 @@ public final class VelocityChannel implements PluginMessageListener {
 
     /** Plugin-messaging channel this server listens on. */
     public static final String CHANNEL        = "fpp:main";
-    /** BungeeCord forwarding channel — used to broadcast to ALL servers. */
+    /** BungeeCord forwarding channel - used to broadcast to ALL servers. */
     private static final String BUNGEE_CHANNEL = "BungeeCord";
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ public final class VelocityChannel implements PluginMessageListener {
     /**
      * Sends a plugin message to ALL backend servers via the proxy using the
      * BungeeCord {@code Forward ALL} envelope.  The proxy re-delivers the inner
-     * payload to every server on the {@code fpp:main} channel — including an echo
+     * payload to every server on the {@code fpp:main} channel - including an echo
      * back to this server (suppressed via the message ID).
      */
     public void sendPluginMessage(String subchannel, String... data) {
@@ -277,7 +277,7 @@ public final class VelocityChannel implements PluginMessageListener {
     // ── Subchannel handlers ───────────────────────────────────────────────────
 
     /**
-     * {@code BOT_SPAWN} — another server's bot has spawned.
+     * {@code BOT_SPAWN} - another server's bot has spawned.
      * Caches the entry and adds a virtual tab-list entry for every online player.
      *
      * <p>Wire: {@code [msgId][serverId][uuid][name][displayName][packetProfileName][skinValue][skinSignature]}
@@ -316,7 +316,7 @@ public final class VelocityChannel implements PluginMessageListener {
     }
 
     /**
-     * {@code BOT_DESPAWN} — another server's bot has been removed.
+     * {@code BOT_DESPAWN} - another server's bot has been removed.
      * Removes the cached entry and sends a tab-remove packet to every online player.
      *
      * <p>Wire: {@code [msgId][serverId][uuid]}
@@ -342,7 +342,7 @@ public final class VelocityChannel implements PluginMessageListener {
         }
     }
 
-    /** {@code CHAT} — wire: {@code [msgId][botName][botDisplayName][message][prefix][suffix]} */
+    /** {@code CHAT} - wire: {@code [msgId][botName][botDisplayName][message][prefix][suffix]} */
     private void handleChat(DataInputStream in) throws IOException {
         String msgId         = in.readUTF();
         String botName        = in.readUTF();
@@ -358,7 +358,7 @@ public final class VelocityChannel implements PluginMessageListener {
         BotChatAI.broadcastRemote(botName, botDisplayName, message, prefix, suffix);
     }
 
-    /** {@code ALERT} — wire: {@code [msgId][message]} */
+    /** {@code ALERT} - wire: {@code [msgId][message]} */
     private void handleAlert(DataInputStream in) throws IOException {
         String msgId   = in.readUTF();
         String message = in.readUTF();
@@ -371,7 +371,7 @@ public final class VelocityChannel implements PluginMessageListener {
         broadcastAlertLocally(message);
     }
 
-    /** {@code JOIN} — wire: {@code [msgId][displayName][originServerId]} */
+    /** {@code JOIN} - wire: {@code [msgId][displayName][originServerId]} */
     private void handleJoin(DataInputStream in) throws IOException {
         String msgId        = in.readUTF();
         String displayName  = in.readUTF();
@@ -386,7 +386,7 @@ public final class VelocityChannel implements PluginMessageListener {
         BotBroadcast.broadcastJoinByDisplayName(displayName);
     }
 
-    /** {@code LEAVE} — wire: {@code [msgId][displayName][originServerId]} */
+    /** {@code LEAVE} - wire: {@code [msgId][displayName][originServerId]} */
     private void handleLeave(DataInputStream in) throws IOException {
         String msgId        = in.readUTF();
         String displayName  = in.readUTF();
@@ -402,7 +402,7 @@ public final class VelocityChannel implements PluginMessageListener {
     }
 
     /**
-     * {@code BOT_UPDATE} — a remote bot's display name changed.
+     * {@code BOT_UPDATE} - a remote bot's display name changed.
      * Updates the cached entry and resends tab-list display-name packets.
      *
      * <p>Wire: {@code [msgId][serverId][uuid][newDisplayName]}
@@ -426,7 +426,7 @@ public final class VelocityChannel implements PluginMessageListener {
         if (cache == null) return;
 
         RemoteBotEntry existing = cache.get(uuid);
-        if (existing == null) return; // unknown bot — ignore
+        if (existing == null) return; // unknown bot - ignore
 
         // Rebuild entry with the new display name (all other fields unchanged)
         RemoteBotEntry updated = new RemoteBotEntry(
@@ -444,13 +444,13 @@ public final class VelocityChannel implements PluginMessageListener {
     }
 
     /**
-     * {@code SYNC} — generic state update from another server.
+     * {@code SYNC} - generic state update from another server.
      *
      * <p>Wire: {@code [msgId][serverId][key][value]}
      *
      * <p>Supported keys:
      * <ul>
-     *   <li>{@code config_updated} — value is the relative file name; if this server
+     *   <li>{@code config_updated} - value is the relative file name; if this server
      *       is in AUTO_PULL mode, pulls the file reactively and reloads.</li>
      * </ul>
      */
@@ -466,7 +466,7 @@ public final class VelocityChannel implements PluginMessageListener {
         }
         trackIncoming(msgId);
 
-        Config.debugNetwork("[VelocityChannel] SYNC — " + key + "='" + value
+        Config.debugNetwork("[VelocityChannel] SYNC - " + key + "='" + value
                 + "' from '" + originServer + "'.");
 
         if ("config_updated".equals(key) && Config.configSyncMode().equalsIgnoreCase("AUTO_PULL")) {
@@ -518,3 +518,4 @@ public final class VelocityChannel implements PluginMessageListener {
         Bukkit.getServer().broadcast(line);
     }
 }
+

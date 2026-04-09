@@ -23,6 +23,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -48,17 +49,23 @@ public class FakePlayerEntityListener implements Listener {
     public void onEntityDamage(EntityDamageEvent event) {
         if (!isFakeBotBody(event.getEntity())) return;
 
-        // Primary damageable guard — event-level cancellation beats any entity flag.
-        // Checked live from config so /fpp reload takes effect without respawn.
+        // Primary damageable guard - only blocks entity/player-sourced damage.
+        // Environmental damage (fall, fire, drowning, lava, etc.) is ALWAYS allowed
+        // so bots behave like real players. Checked live from config so /fpp reload
+        // takes effect without respawn.
         if (!Config.bodyDamageable()) {
-            event.setCancelled(true);
-            return;
+            // Only cancel if this is entity/player-sourced damage
+            if (event instanceof EntityDamageByEntityEvent) {
+                event.setCancelled(true);
+                return;
+            }
+            // Allow all environmental damage to pass through
         }
 
-        // WorldGuard PvP region check — cancel PvP damage to bots inside protected zones.
+        // WorldGuard PvP region check - cancel PvP damage to bots inside protected zones.
         // Cancelling at LOWEST prevents the damage, knockback, invincibility frames, and
         // the red damage tint from ever being applied (all downstream at higher priorities).
-        // We only block attacker-sourced (PvP) damage — environment damage (fall, fire, etc.)
+        // We only block attacker-sourced (PvP) damage - environment damage (fall, fire, etc.)
         // is unaffected.
         if (event instanceof EntityDamageByEntityEvent byEntity
                 && byEntity.getDamager() instanceof Player
@@ -156,7 +163,7 @@ public class FakePlayerEntityListener implements Listener {
         org.bukkit.Location from = event.getFrom();
         org.bukkit.Location to   = event.getTo();
         if (to == null || from.getWorld() == null || to.getWorld() == null) return;
-        if (from.getWorld().equals(to.getWorld())) return; // same world — fine
+        if (from.getWorld().equals(to.getWorld())) return; // same world - fine
         event.setCancelled(true);
         Config.debug("Blocked cross-world teleport for bot body: "
                 + event.getEntity().getPersistentDataContainer()
@@ -181,7 +188,9 @@ public class FakePlayerEntityListener implements Listener {
 
         Player killer = event.getEntity().getKiller();
         if (killer != null) {
-            BotBroadcast.broadcastKill(killer.getName(), fp.getDisplayName());
+            // Use raw display name to preserve color codes in kill messages
+            String displayName = fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
+            BotBroadcast.broadcastKill(killer.getName(), displayName);
         }
 
         // Increment death counter
@@ -190,7 +199,7 @@ public class FakePlayerEntityListener implements Listener {
 
         final String name = fp.getName();
 
-        // Clear entity-index references immediately — the body is dead
+        // Clear entity-index references immediately - the body is dead
         fp.setPlayer(null);
         manager.removeFromEntityIndex(event.getEntity().getEntityId());
 
@@ -200,7 +209,7 @@ public class FakePlayerEntityListener implements Listener {
             // PlayerRespawnEvent (location override handled by onBotRespawn),
             // and PlayerJoinEvent (join message suppressed by PlayerJoinListener).
             // ALL entity re-registration is done in the 2-tick follow-up task
-            // below — this eliminates the race condition where a 5-tick delayed
+            // below - this eliminates the race condition where a 5-tick delayed
             // setRespawning(false) could be overwritten by a quick second death.
             int delay = Math.max(1, Config.respawnDelay());
             if (chunkLoader != null) chunkLoader.releaseForBot(fp);
@@ -256,7 +265,7 @@ public class FakePlayerEntityListener implements Listener {
                         }
                     } catch (Exception ignored) {}
 
-                    // Clear the flag IMMEDIATELY — not in a delayed task — so a
+                    // Clear the flag IMMEDIATELY - not in a delayed task - so a
                     // rapid second death won't see a stale flag and break the cycle.
                     fp.setRespawning(false);
                 }, 2L);
@@ -272,7 +281,7 @@ public class FakePlayerEntityListener implements Listener {
             }
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
-                // NMS player's quit event fired naturally — no custom leave message needed
+                // NMS player's quit event fired naturally - no custom leave message needed
                 manager.removeByName(name);
             }, 20L); // 1 second delay
         }
@@ -292,6 +301,18 @@ public class FakePlayerEntityListener implements Listener {
         }
     }
 
+    /**
+     * Prevents bots from picking up items unless {@code body.pick-up-items} is {@code true}.
+     * Runs at NORMAL priority so anti-grief plugins still get first say.
+     */
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onEntityPickupItem(EntityPickupItemEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
+        if (!Config.bodyPickUpItems()) {
+            event.setCancelled(true);
+        }
+    }
+
 
     /** True only for Player entities tagged as an FPP bot. */
     private boolean isFakeBotBody(Entity entity) {
@@ -302,3 +323,4 @@ public class FakePlayerEntityListener implements Listener {
         return val != null && val.startsWith(FakePlayerBody.VISUAL_PDC_VALUE);
     }
 }
+

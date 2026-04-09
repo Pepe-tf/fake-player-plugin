@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed automatically. Do NOT edit.
-config-version: 47
+config-version: 50
 language: en
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -95,9 +95,12 @@ messages:
 # ── Bot Body ──────────────────────────────────────────────────────────────────
 # The physical entity that appears in the world.
 body:
-  enabled:    true   # false = tab-list / player-count only, no entity in world
-  pushable:   true   # true = players and explosions can push the body
-  damageable: true   # true = body can take damage and die; false = invulnerable
+  enabled:      true   # false = tab-list / player-count only, no entity in world
+  pushable:     true   # true = players and explosions can push the body
+  damageable:   true   # true = body can take ALL damage (player + environmental)
+                       # false = immune to player/entity damage only (fall, fire, etc. still apply)
+  pick-up-items: false  # true = bots pick up items from the ground like a real player
+  pick-up-xp:   true   # true = bots pick up XP orbs from the ground like a real player
 
 # ── Combat ────────────────────────────────────────────────────────────────────
 combat:
@@ -108,7 +111,7 @@ combat:
 death:
   respawn-on-death: false   # true = bot respawns at its spawn location after dying
   respawn-delay: 15         # Ticks before respawn (20 = 1 s · 60 = 3 s · 100 = 5 s)
-  suppress-drops: true      # Prevent bots from dropping items on death
+  suppress-drops: false     # false = bots drop items/xp on death like real players; true = suppress all drops
 
 # ── Chunk Loading ─────────────────────────────────────────────────────────────
 # Bots keep surrounding chunks loaded exactly like a real player.
@@ -417,4 +420,18 @@ update-checker:
 # Anonymous usage statistics via FastStats. No personal data collected.
 metrics:
   enabled: true
+
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  PATHFINDING  ·  used by /fpp move
+# ═════════════════════════════════════════════════════════════════════════════
+# These options expand what the A* navigator can do when routing a bot to a
+# player. All are false by default to preserve vanilla/safe behaviour.
+# Changes take effect on the next path recalculation (every ~3 s or on /fpp move).
+pathfinding:
+  parkour: false         # bots sprint-jump across 1–2 block gaps
+  break-blocks: false    # bots break solid blocks that block their path
+  place-blocks: false    # bots place blocks to bridge 1-block gaps
+  place-material: DIRT   # material placed when bridging gaps (any solid block name)
 

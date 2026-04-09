@@ -70,7 +70,7 @@ public final class BotMessageConfig {
     /**
      * Returns the list of reply messages used when a real player mentions
      * a bot's name in chat ({@code replies:} section in {@code bot-messages.yml}).
-     * Falls back to an empty list — callers should fall back to {@link #getMessages()}.
+     * Falls back to an empty list - callers should fall back to {@link #getMessages()}.
      */
     public static List<String> getReplyMessages() {
         if (cfg == null) return fallbackReplies();
@@ -138,4 +138,5 @@ public final class BotMessageConfig {
         return Arrays.asList("lol", "fr", "ngl", "no cap", "lmao");
     }
 }
+
 

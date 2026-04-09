@@ -28,7 +28,7 @@ public final class CompatibilityChecker {
      */
     public static final class Result {
 
-        /** Always {@code false} — no checks fail in the current implementation. */
+        /** Always {@code false} - no checks fail in the current implementation. */
         public final boolean      restricted;
         /** Always {@code true}. */
         public final boolean      isPaper;
@@ -36,7 +36,7 @@ public final class CompatibilityChecker {
         public final boolean      isVersionSupported;
         /** Detected Minecraft version, e.g. {@code "1.21.11"}. {@code "unknown"} if undetectable. */
         public final String       detectedVersion;
-        /** Always empty — no checks fail. */
+        /** Always empty - no checks fail. */
         public final List<String> failureLangKeys;
 
         Result(boolean restricted, boolean isPaper, boolean isVersionSupported,
@@ -70,7 +70,7 @@ public final class CompatibilityChecker {
         try {
             detectedVersion = extractMcVersion();
         } catch (Throwable ignored) {}
-        FppLogger.debug("Compatibility check skipped — all features enabled (MC " + detectedVersion + ").");
+        FppLogger.debug("Compatibility check skipped - all features enabled (MC " + detectedVersion + ").");
         return new Result(false, true, true, detectedVersion, List.of());
     }
 
@@ -128,3 +128,4 @@ public final class CompatibilityChecker {
         return parts;
     }
 }
+

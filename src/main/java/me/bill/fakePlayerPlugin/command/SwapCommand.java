@@ -22,12 +22,12 @@ import java.util.stream.Collectors;
  * periodically leave and rejoin the server, mimicking real player behaviour.
  *
  * <ul>
- *   <li>{@code /fpp swap}             — <strong>toggle</strong> swap on/off (no args = flip current state)</li>
- *   <li>{@code /fpp swap on}          — enable swap and start session countdowns</li>
- *   <li>{@code /fpp swap off}         — disable swap and cancel all countdowns</li>
- *   <li>{@code /fpp swap status}      — show status (active sessions + offline count)</li>
- *   <li>{@code /fpp swap now <bot>}   — trigger an immediate leave for a specific bot</li>
- *   <li>{@code /fpp swap list}        — list all bots with their personality and swap count</li>
+ *   <li>{@code /fpp swap}             - <strong>toggle</strong> swap on/off (no args = flip current state)</li>
+ *   <li>{@code /fpp swap on}          - enable swap and start session countdowns</li>
+ *   <li>{@code /fpp swap off}         - disable swap and cancel all countdowns</li>
+ *   <li>{@code /fpp swap status}      - show status (active sessions + offline count)</li>
+ *   <li>{@code /fpp swap now <bot>}   - trigger an immediate leave for a specific bot</li>
+ *   <li>{@code /fpp swap list}        - list all bots with their personality and swap count</li>
  * </ul>
  */
 public class SwapCommand implements FppCommand {
@@ -233,4 +233,5 @@ public class SwapCommand implements FppCommand {
         return List.of();
     }
 }
+
 

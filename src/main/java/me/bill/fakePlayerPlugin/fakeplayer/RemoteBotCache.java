@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class RemoteBotCache {
 
-    /** UUID → entry map.  ConcurrentHashMap — safe for concurrent reads/writes. */
+    /** UUID → entry map.  ConcurrentHashMap - safe for concurrent reads/writes. */
     private final ConcurrentHashMap<UUID, RemoteBotEntry> entries = new ConcurrentHashMap<>();
 
     // ── Mutators ──────────────────────────────────────────────────────────────
@@ -71,4 +71,5 @@ public final class RemoteBotCache {
         return entries.size();
     }
 }
+
 

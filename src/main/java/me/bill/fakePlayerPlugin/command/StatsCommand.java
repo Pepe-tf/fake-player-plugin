@@ -4,13 +4,11 @@ import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.database.DatabaseManager;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
-import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.TextUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
@@ -22,7 +20,7 @@ import java.util.List;
 import java.util.OptionalDouble;
 
 /**
- * {@code /fpp stats} — displays a rich statistics panel for FPP.
+ * {@code /fpp stats} - displays a rich statistics panel for FPP.
  *
  * <p>Shows:
  * <ul>
@@ -35,12 +33,9 @@ import java.util.OptionalDouble;
  */
 public class StatsCommand implements FppCommand {
 
-    private static final TextColor ACCENT  = TextColor.fromHexString("#0079FF");
     private static final TextColor LABEL   = NamedTextColor.GRAY;
-    private static final TextColor VALUE   = NamedTextColor.WHITE;
     private static final TextColor MUTED   = NamedTextColor.DARK_GRAY;
     private static final TextColor OK      = NamedTextColor.GREEN;
-    private static final TextColor WARN    = NamedTextColor.YELLOW;
     private static final TextColor ERR     = NamedTextColor.RED;
 
     private final FakePlayerManager manager;
@@ -100,7 +95,7 @@ public class StatsCommand implements FppCommand {
         statusBoolRow(sender, "ᴄʜᴜɴᴋ ʟᴏᴀᴅɪɴɢ", Config.chunkLoadingEnabled(),  "enabled",     "disabled");
         statusBoolRow(sender, "ᴘᴇʀꜱɪꜱᴛᴇɴᴄᴇ",   Config.persistOnRestart(),     "enabled",     "disabled");
         statusBoolRow(sender, "ʙᴏᴛ ʙᴏᴅɪᴇꜱ",    Config.spawnBody(),            "enabled",     "disabled");
-        sender.sendMessage(kvRow("ꜱᴋɪɴ ᴍᴏᴅᴇ", "disabled"));
+        sender.sendMessage(kvRow("ꜱᴋɪɴ ᴍᴏᴅᴇ", Config.skinMode()));
         int cooldown = Config.spawnCooldown();
         sender.sendMessage(kvRow("ꜱᴘᴀᴡɴ ᴄᴏᴏʟᴅᴏᴡɴ", cooldown > 0 ? cooldown + "s" : "off"));
 
@@ -181,5 +176,6 @@ public class StatsCommand implements FppCommand {
         return List.of();
     }
 }
+
 
 

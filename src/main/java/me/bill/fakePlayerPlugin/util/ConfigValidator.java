@@ -2,11 +2,12 @@ package me.bill.fakePlayerPlugin.util;
 
 import me.bill.fakePlayerPlugin.config.Config;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 
 /**
  * Validates {@code config.yml} values on startup and reload.
  *
- * <p>Emits {@link FppLogger#warn} for bad values but never throws —
+ * <p>Emits {@link FppLogger#warn} for bad values but never throws -
  * the plugin always continues to run; admins see the warnings in console.
  *
  * <p>Checks performed:
@@ -43,18 +44,18 @@ public final class ConfigValidator {
         // ── Join / leave delays ────────────────────────────────────────────────
         if (Config.joinDelayMin() > Config.joinDelayMax()) {
             FppLogger.warn("[Config] join-delay.min (" + Config.joinDelayMin() + ") > "
-                    + "join-delay.max (" + Config.joinDelayMax() + ") — swapping values in memory.");
+                    + "join-delay.max (" + Config.joinDelayMax() + ") - swapping values in memory.");
             issues++;
         }
         if (Config.leaveDelayMin() > Config.leaveDelayMax()) {
             FppLogger.warn("[Config] leave-delay.min (" + Config.leaveDelayMin() + ") > "
-                    + "leave-delay.max (" + Config.leaveDelayMax() + ") — swapping values in memory.");
+                    + "leave-delay.max (" + Config.leaveDelayMax() + ") - swapping values in memory.");
             issues++;
         }
 
         // ── Skin ─────────────────────────────────────────────────────────────
         if (Config.skinGuaranteed() && Config.skinFallbackName().isBlank()) {
-            FppLogger.warn("[Config] skin.fallback-name is blank but skin.guaranteed-skin is true — "
+            FppLogger.warn("[Config] skin.fallback-name is blank but skin.guaranteed-skin is true - "
                     + "last-resort fallback will not work.");
             issues++;
         }
@@ -73,7 +74,7 @@ public final class ConfigValidator {
 
         // ── Fake chat ─────────────────────────────────────────────────────────
         if (Config.fakeChatIntervalMin() > Config.fakeChatIntervalMax()) {
-            FppLogger.warn("[Config] fake-chat.interval.min > fake-chat.interval.max — "
+            FppLogger.warn("[Config] fake-chat.interval.min > fake-chat.interval.max - "
                     + "set min ≤ max for correct behaviour.");
             issues++;
         }
@@ -81,17 +82,17 @@ public final class ConfigValidator {
 
         // ── Limits ────────────────────────────────────────────────────────────
         if (Config.maxBots() < 0) {
-            FppLogger.warn("[Config] limits.max-bots is negative — treating as 0 (unlimited).");
+            FppLogger.warn("[Config] limits.max-bots is negative - treating as 0 (unlimited).");
             issues++;
         }
         if (Config.userBotLimit() < 1) {
-            FppLogger.warn("[Config] limits.user-bot-limit is < 1 — users will never be able to spawn.");
+            FppLogger.warn("[Config] limits.user-bot-limit is < 1 - users will never be able to spawn.");
             issues++;
         }
 
         // ── Spawn cooldown ────────────────────────────────────────────────────
         if (Config.spawnCooldown() < 0) {
-            FppLogger.warn("[Config] spawn-cooldown is negative — treating as 0 (no cooldown).");
+            FppLogger.warn("[Config] spawn-cooldown is negative - treating as 0 (no cooldown).");
             issues++;
         }
 
@@ -144,7 +145,7 @@ public final class ConfigValidator {
 
         // ── Peak hours ────────────────────────────────────────────────────────
         if (Config.peakHoursEnabled() && !Config.swapEnabled()) {
-            FppLogger.warn("[Config] peak-hours.enabled is true but swap.enabled is false — "
+            FppLogger.warn("[Config] peak-hours.enabled is true but swap.enabled is false - "
                     + "peak-hours will not run until swap is enabled (/fpp swap on).");
             issues++;
         }
@@ -158,7 +159,7 @@ public final class ConfigValidator {
             var ignored = java.time.ZoneId.of(phTz);
         } catch (java.time.DateTimeException e) {
             FppLogger.warn("[Config] peak-hours.timezone \"" + phTz + "\" is not a valid ZoneId "
-                    + "(e.g. \"UTC\", \"America/New_York\") — falling back to UTC at runtime.");
+                    + "(e.g. \"UTC\", \"America/New_York\") - falling back to UTC at runtime.");
             issues++;
         }
 
@@ -169,7 +170,18 @@ public final class ConfigValidator {
             if (!rawMode.trim().equalsIgnoreCase("LOCAL")
                     && !rawMode.trim().equalsIgnoreCase("NETWORK")) {
                 FppLogger.warn("[Config] database.mode \"" + rawMode.trim() + "\" is not valid "
-                        + "(accepted: LOCAL, NETWORK) — falling back to LOCAL.");
+                        + "(accepted: LOCAL, NETWORK) - falling back to LOCAL.");
+                issues++;
+            }
+        }
+
+        // ── Pathfinding ───────────────────────────────────────────────────────
+        if (Config.pathfindingPlaceBlocks()) {
+            String matName = Config.pathfindingPlaceMaterial();
+            Material mat = Material.matchMaterial(matName.toUpperCase());
+            if (mat == null || !mat.isBlock() || !mat.isSolid()) {
+                FppLogger.warn("[Config] pathfinding.place-material \"" + matName + "\" is not a valid "
+                        + "solid block - falling back to DIRT.");
                 issues++;
             }
         }
@@ -177,10 +189,11 @@ public final class ConfigValidator {
         if (issues == 0) {
             FppLogger.debug("[Config] All values passed validation.");
         } else {
-            FppLogger.warn("[Config] " + issues + " config issue(s) detected — review warnings above.");
+            FppLogger.warn("[Config] " + issues + " config issue(s) detected - review warnings above.");
         }
 
         return issues;
     }
 }
+
 

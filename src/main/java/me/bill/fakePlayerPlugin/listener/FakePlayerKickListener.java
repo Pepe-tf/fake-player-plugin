@@ -41,10 +41,11 @@ public class FakePlayerKickListener implements Listener {
         String plainReason = reason == null ? "" :
                 PlainTextComponentSerializer.plainText().serialize(reason);
 
-        if (plainReason.isEmpty()) return; // intentional kick — let it through
+        if (plainReason.isEmpty()) return; // intentional kick - let it through
 
         // Cancel all other automated kicks (anti-idle, timeout, anti-cheat, etc.)
         event.setCancelled(true);
     }
 }
+
 

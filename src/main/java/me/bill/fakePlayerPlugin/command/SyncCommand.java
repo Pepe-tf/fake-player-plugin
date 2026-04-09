@@ -15,15 +15,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code /fpp sync <push|pull|status> [file]} — Manages config synchronization
+ * {@code /fpp sync <push|pull|status> [file]} - Manages config synchronization
  * across proxy networks.
  *
  * <p>Sub-commands:
  * <ul>
- *   <li>{@code /fpp sync push [file]}     — Push config(s) to network</li>
- *   <li>{@code /fpp sync pull [file]}     — Pull config(s) from network</li>
- *   <li>{@code /fpp sync status [file]}   — Show sync status</li>
- *   <li>{@code /fpp sync check [file]}    — Check for local changes</li>
+ *   <li>{@code /fpp sync push [file]}     - Push config(s) to network</li>
+ *   <li>{@code /fpp sync pull [file]}     - Pull config(s) from network</li>
+ *   <li>{@code /fpp sync status [file]}   - Show sync status</li>
+ *   <li>{@code /fpp sync check [file]}    - Check for local changes</li>
  * </ul>
  */
 public final class SyncCommand implements FppCommand {
@@ -145,7 +145,7 @@ public final class SyncCommand implements FppCommand {
             }
 
             sender.sendMessage(divider());
-            sender.sendMessage(header("ꜱʏɴᴄ ꜱᴛᴀᴜꜱ — " + fileName));
+            sender.sendMessage(header("ꜱʏɴᴄ ꜱᴛᴀᴜꜱ - " + fileName));
             row(sender, "ʜᴀꜱʜ",        status.shortHash());
             row(sender, "ᴘᴜꜱʜᴇᴅ ʙʏ",  status.serverId() + " (" + status.pushedBy() + ")");
             row(sender, "ᴘᴜꜱʜᴇᴅ ᴀᴛ",  status.formattedTime());
@@ -233,7 +233,7 @@ public final class SyncCommand implements FppCommand {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (!Perm.has(sender, Perm.ALL)) return List.of();
+        if (!Perm.has(sender, Perm.OP)) return List.of();
 
         if (args.length <= 1) {
             String current = args.length > 0 ? args[0].toLowerCase() : "";
@@ -252,3 +252,4 @@ public final class SyncCommand implements FppCommand {
         return List.of();
     }
 }
+

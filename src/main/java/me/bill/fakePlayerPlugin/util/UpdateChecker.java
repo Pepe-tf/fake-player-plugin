@@ -22,14 +22,14 @@ import java.util.concurrent.TimeUnit;
  *
  * <h3>Source priority</h3>
  * <ol>
- *   <li><b>Modrinth API</b> — always reflects the latest published release regardless
+ *   <li><b>Modrinth API</b> - always reflects the latest published release regardless
  *       of what version is running or deployed to any web service.</li>
- *   <li>Vercel status API — used as a fallback when Modrinth is unreachable.</li>
+ *   <li>Vercel status API - used as a fallback when Modrinth is unreachable.</li>
  * </ol>
  *
  * <h3>Key behaviours</h3>
  * <ul>
- *   <li>Semantic version comparison — {@code 1.4.14 > 1.4.9} handled correctly.</li>
+ *   <li>Semantic version comparison - {@code 1.4.14 > 1.4.9} handled correctly.</li>
  *   <li>Result cache with a 5-minute TTL so repeated {@code /fpp reload} calls do not
  *       hammer the network.</li>
  *   <li>Download URL extracted from the API response and passed to the language file.</li>
@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class UpdateChecker {
 
-    /** Modrinth API — returns a JSON array of versions sorted newest-first. */
+    /** Modrinth API - returns a JSON array of versions sorted newest-first. */
     private static final String MODRINTH_API =
             "https://api.modrinth.com/v2/project/fake-player-plugin-(fpp)/version?limit=1";
 
@@ -47,7 +47,7 @@ public final class UpdateChecker {
     private static final String MODRINTH_PAGE =
             "https://modrinth.com/plugin/fake-player-plugin-(fpp)";
 
-    /** Vercel status API — secondary/fallback source. */
+    /** Vercel status API - secondary/fallback source. */
     private static final String VERCEL_API_BASE = "https://fake-player-plugin.vercel.app";
 
     /** Matches version tokens like {@code 1.2.3} or {@code v1.2.3}. */
@@ -78,7 +78,7 @@ public final class UpdateChecker {
     }
 
     /**
-     * Synchronous variant — blocks the calling thread up to {@code timeoutMs}.
+     * Synchronous variant - blocks the calling thread up to {@code timeoutMs}.
      * Honours the cache TTL. Returns {@code null} on timeout or when disabled.
      */
     public static UpdateInfo checkBlocking(Plugin plugin, long timeoutMs) {
@@ -103,8 +103,8 @@ public final class UpdateChecker {
     /**
      * Handles a fetched result on the main server thread.
      * <ul>
-     *   <li>Console — always produces a clean single-line message (no borders).</li>
-     *   <li>In-game — sends the full bordered {@code update-available} message to
+     *   <li>Console - always produces a clean single-line message (no borders).</li>
+     *   <li>In-game - sends the full bordered {@code update-available} message to
      *       all online admins and stores it for late-joining admins.</li>
      * </ul>
      */
@@ -119,7 +119,7 @@ public final class UpdateChecker {
                     + " (" + info.error + ")");
             // Notify online admins in-game
             for (Player p : plugin.getServer().getOnlinePlayers()) {
-                if (Perm.hasOrOp(p, Perm.ALL)) p.sendMessage(failMsg);
+                if (Perm.hasOrOp(p, Perm.OP)) p.sendMessage(failMsg);
             }
             return;
         }
@@ -132,16 +132,16 @@ public final class UpdateChecker {
         boolean isBeta          = cmp > 0;  // running > latest  → pre-release / beta
 
         if (updateAvailable) {
-            // Console — simple one-liner pointing to Modrinth
+            // Console - simple one-liner pointing to Modrinth
             FppLogger.warn("Update available! v" + currentClean + " → v" + latestClean
                     + " | Download: " + MODRINTH_PAGE);
 
-            // In-game — full bordered message with clickable links to all platforms
+            // In-game - full bordered message with clickable links to all platforms
             Component msg = me.bill.fakePlayerPlugin.lang.Lang.get("update-available",
                     "current", currentClean, "latest", latestClean);
 
             for (Player p : plugin.getServer().getOnlinePlayers()) {
-                if (Perm.hasOrOp(p, Perm.ALL)) p.sendMessage(msg);
+                if (Perm.hasOrOp(p, Perm.OP)) p.sendMessage(msg);
             }
 
             // Persist for admins who join after startup
@@ -159,7 +159,7 @@ public final class UpdateChecker {
                     "current", currentClean, "latest", latestClean);
 
             for (Player p : plugin.getServer().getOnlinePlayers()) {
-                if (Perm.hasOrOp(p, Perm.ALL)) p.sendMessage(msg);
+                if (Perm.hasOrOp(p, Perm.OP)) p.sendMessage(msg);
             }
 
             if (plugin instanceof me.bill.fakePlayerPlugin.FakePlayerPlugin fpp) {
@@ -167,7 +167,7 @@ public final class UpdateChecker {
             }
 
         } else {
-            // Console — simple success line
+            // Console - simple success line
             Component ok = me.bill.fakePlayerPlugin.lang.Lang.get(
                     "update-up-to-date", "current", currentClean);
             FppLogger.success(
@@ -268,13 +268,13 @@ public final class UpdateChecker {
         info.current            = plugin.getPluginMeta().getVersion();
         info.currentStartsWithV = info.current.startsWith("v");
 
-        // ── 1. Modrinth API (primary — always reflects actual published releases) ──
+        // ── 1. Modrinth API (primary - always reflects actual published releases) ──
         UpdateInfo modrinthResult = tryFetch(info.current, MODRINTH_API, true);
         if (modrinthResult != null && modrinthResult.error == null) {
             Config.debug("UpdateChecker: Modrinth → latest=" + stripV(modrinthResult.latest));
             return modrinthResult;
         }
-        Config.debug("UpdateChecker: Modrinth unavailable — " +
+        Config.debug("UpdateChecker: Modrinth unavailable - " +
                 (modrinthResult != null ? modrinthResult.error : "null result"));
 
         // ── 2. Vercel API (fallback) ──────────────────────────────────────────
@@ -341,7 +341,7 @@ public final class UpdateChecker {
             String downloadUrl;
 
             if (arrayResponse) {
-                // Modrinth returns [{...}, ...] — parse first element
+                // Modrinth returns [{...}, ...] - parse first element
                 String firstObj = extractFirstArrayElement(body);
                 if (firstObj == null) {
                     info.error = "empty version array from " + url;
@@ -372,7 +372,7 @@ public final class UpdateChecker {
         } catch (java.net.SocketTimeoutException e) {
             info.error = "timeout connecting to " + url;
         } catch (Exception e) {
-            info.error = e.getClass().getSimpleName() + ": " + e.getMessage() + " — " + url;
+            info.error = e.getClass().getSimpleName() + ": " + e.getMessage() + " - " + url;
         }
         return info;
     }
@@ -481,3 +481,4 @@ public final class UpdateChecker {
         return -1;
     }
 }
+

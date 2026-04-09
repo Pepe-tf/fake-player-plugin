@@ -19,17 +19,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>When a bot with a given name is first spawned, a random UUID is generated and
  * stored.  On every subsequent spawn with the same name on the same server, the same
  * UUID is returned.  This keeps LuckPerms group assignments, inventory data, and
- * database session history all linked to one consistent identity — bots never look
+ * database session history all linked to one consistent identity - bots never look
  * like "new players" on server restart.
  *
  * <h3>Storage priority</h3>
  * <ol>
- *   <li><b>In-memory cache</b> — populated at startup and on every first-use; always
+ *   <li><b>In-memory cache</b> - populated at startup and on every first-use; always
  *       consulted first so lookups are O(1) and non-blocking.</li>
- *   <li><b>Database table {@code fpp_bot_identities}</b> — primary persistent store
+ *   <li><b>Database table {@code fpp_bot_identities}</b> - primary persistent store
  *       when the database is enabled.  Synchronous reads are used only during spawns,
  *       which are infrequent enough that the latency is negligible.</li>
- *   <li><b>YAML file {@code data/bot-identities.yml}</b> — fallback when the database
+ *   <li><b>YAML file {@code data/bot-identities.yml}</b> - fallback when the database
  *       is disabled; auto-created on first use and updated whenever a new mapping is
  *       created.</li>
  * </ol>
@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <h3>Identity scope</h3>
  * Each mapping is scoped to the current {@code database.server-id} (read from
  * {@link Config#serverId()}).  The same bot name on two different servers produces
- * two independent UUIDs — correct behaviour for proxy setups.  The YAML fallback is
+ * two independent UUIDs - correct behaviour for proxy setups.  The YAML fallback is
  * per-installation (one file per server folder) so it is naturally scoped.
  *
  * <h3>Thread safety</h3>
@@ -54,7 +54,7 @@ public final class BotIdentityCache {
 
     /**
      * In-memory cache keyed by lower-case bot name.
-     * Server scope is implicit — one cache instance per running server.
+     * Server scope is implicit - one cache instance per running server.
      */
     private final Map<String, UUID> cache = new ConcurrentHashMap<>();
 
@@ -66,7 +66,7 @@ public final class BotIdentityCache {
     /**
      * @param plugin the FPP plugin instance
      * @param db     the active {@link DatabaseManager}, or {@code null} if the
-     *               database is disabled — the YAML fallback will be used instead
+     *               database is disabled - the YAML fallback will be used instead
      */
     public BotIdentityCache(FakePlayerPlugin plugin, DatabaseManager db) {
         this.db       = db;
@@ -84,7 +84,7 @@ public final class BotIdentityCache {
      * Returns the stored UUID for {@code botName} on the current server.
      * If no mapping exists yet, a new random UUID is generated, persisted, and returned.
      *
-     * <p><b>Must be called on the main thread</b> — the DB read path is synchronous.
+     * <p><b>Must be called on the main thread</b> - the DB read path is synchronous.
      *
      * @param botName the bot's Minecraft username (exact case as used in the
      *                {@link com.destroystokyo.paper.profile.PlayerProfile})
@@ -93,7 +93,7 @@ public final class BotIdentityCache {
     public UUID lookupOrCreate(String botName) {
         String key = botName.toLowerCase();
 
-        // 1. Hot path — in-memory cache
+        // 1. Hot path - in-memory cache
         UUID cached = cache.get(key);
         if (cached != null) return cached;
 
@@ -131,14 +131,14 @@ public final class BotIdentityCache {
     private UUID lookupOrCreateDb(String botName) {
         String serverId = Config.serverId();
 
-        // Synchronous DB read — fast primary-key lookup, safe on main thread for spawns
+        // Synchronous DB read - fast primary-key lookup, safe on main thread for spawns
         UUID fromDb = db.lookupBotUuid(botName, serverId);
         if (fromDb != null) {
             Config.debugDatabase("BotIdentityCache: DB hit for '" + botName + "' → " + fromDb);
             return fromDb;
         }
 
-        // Not found — create, persist, return
+        // Not found - create, persist, return
         UUID fresh = UUID.randomUUID();
         db.registerBotUuid(botName, fresh, serverId);
         Config.debugDatabase("BotIdentityCache: new identity for '" + botName + "' → " + fresh);
@@ -154,7 +154,7 @@ public final class BotIdentityCache {
     private void loadYaml() {
         if (!yamlFile.exists()) {
             yamlConfig = new YamlConfiguration();
-            Config.debugDatabase("BotIdentityCache: no YAML file yet — will create on first spawn.");
+            Config.debugDatabase("BotIdentityCache: no YAML file yet - will create on first spawn.");
             return;
         }
         yamlConfig = YamlConfiguration.loadConfiguration(yamlFile);
@@ -185,7 +185,7 @@ public final class BotIdentityCache {
                 Config.debugDatabase("BotIdentityCache: YAML hit for '" + botName + "' → " + fromYaml);
                 return fromYaml;
             } catch (IllegalArgumentException e) {
-                FppLogger.warn("BotIdentityCache: malformed YAML entry for '" + botName + "' — regenerating UUID.");
+                FppLogger.warn("BotIdentityCache: malformed YAML entry for '" + botName + "' - regenerating UUID.");
             }
         }
 
@@ -207,6 +207,7 @@ public final class BotIdentityCache {
         }
     }
 }
+
 
 
 

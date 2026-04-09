@@ -1,7 +1,89 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.5.15** · Released: 2026-04-06 · Config version: **45**
+> Latest version: **v1.6.0** · Released: 2026-04-09 · Config version: **51**
+
+---
+
+## v1.6.0 *(2026-04-09)*
+
+### 🖥️ Interactive Help GUI
+- `/fpp help` now opens a **54-slot double-chest GUI** — paginated, permission-filtered, click-navigable; replaces text output
+- Each command gets a semantically meaningful Material icon (compass → move, chest → inventory, diamond pickaxe → mine, etc.)
+- Displays command name, description, usage modes, and permission node per item; up to 45 commands per page
+
+### 📦 `/fpp inventory` *(new)*
+- 54-slot double-chest GUI showing the bot's full inventory — main storage (rows 1-3), hotbar (row 4), label bar (row 5), and equipment + offhand (row 6)
+- Equipment slots enforce type restrictions (boots/leggings/chestplate or elytra/helmet/offhand)
+- Right-click any bot entity to open without a command
+- Permission: `fpp.inventory`
+
+### 🧭 `/fpp move` *(new)*
+- Navigate a bot to an online player using server-side **A* pathfinding**
+- Supports WALK, ASCEND, DESCEND, PARKOUR, BREAK, PLACE move types; max 64-block range, 2000-node search
+- Stuck detection (8 ticks without movement) triggers jump + path recalculation; recalculates when target moves >3.5 blocks or every 60 ticks
+- New `pathfinding.*` config section: `parkour` (default `false`), `break-blocks` (default `false`), `place-blocks` (default `false`), `place-material` (default `"DIRT"`)
+- Permission: `fpp.move`
+
+### ⭐ `/fpp xp` *(new)*
+- Transfer the bot's entire XP pool to yourself; clears bot levels and progress
+- 30-second post-collection cooldown on bot XP pickup; `body.pick-up-xp` config flag gates orb pickup globally
+- Permission: `fpp.user.xp` (user-tier, included in `fpp.use`)
+
+### 💻 `/fpp cmd` *(new)*
+- `/fpp cmd <bot> <command>` — dispatch a command as the bot
+- `--add <command>` stores a right-click command on the bot; `--clear` removes it; `--show` displays it
+- Right-clicking a bot with a stored command runs it instead of opening the inventory GUI
+- Permission: `fpp.cmd`
+
+### ⛏️ `/fpp mine` *(new)*
+- `/fpp mine <bot>` — continuous block mining at the bot's look target
+- `once` breaks a single block; `stop` cancels mining; `/fpp mine stop` stops all mining bots
+- Creative mode = instant break with 5-tick cooldown; survival = progressive mining with `destroyBlockProgress` packets
+- Permission: `fpp.mine`
+
+### ⚙️ Settings GUI Expanded
+- Settings GUI now has **7 categories**: General, Body, Chat, Swap, Peak Hours, PvP, Pathfinding (up from 5)
+- New pathfinding toggles: parkour, break-blocks, place-blocks, place-material
+- New PvP AI settings: difficulty, defensive-mode, detect-range
+
+### 🛡️ WorldGuard Integration
+- Bots protected from player-sourced PvP damage inside WorldGuard no-PvP regions
+- Soft-depend: auto-detected, fully optional; uses ClassLoader guard identical to LuckPerms
+- `WorldGuardHelper.isPvpAllowed(location)` — fail-open: only explicit DENY regions block bot damage
+
+### 🔧 Config Migration v47 → v51
+- v47→v48: Added `pathfinding` section
+- v48→v49: Added `body.pick-up-xp`
+- v49→v50: Added `pvp-ai` section tweaks
+- v50→v51: Finalized XP cooldown and cmd storage keys
+
+---
+
+## v1.5.17 *(2026-04-07)*
+
+### 🔄 Swap System — Critical Fix & Major Enhancements
+- **Critical bug fix:** bots now actually rejoin after swapping out. The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid)` — bots left but never came back. Fixed by registering the rejoin task *after* `delete()` runs so `cancel()` finds nothing to cancel.
+- New `swap.min-online: 0` — minimum bots that must stay online; swap skips if removing one would go below this floor
+- New `swap.retry-rejoin: true` / `swap.retry-delay: 60` — auto-retry failed rejoins (e.g. when max-bots cap is temporarily full)
+- Better bot identification on rejoin: same-name rejoins use `getByName()` (reliable even with stable UUIDs); random-name rejoins use UUID diff
+- New `Personality.SPORADIC` type — unpredictable session variance for more natural patterns
+- Expanded farewell/greeting message pools (~50 entries each)
+- New `/fpp swap info <bot>` — shows personality, cycle count, time until next leave, and offline-waiting count
+- `/fpp swap list` now shows **time remaining** in each session
+- `/fpp swap status` now shows the `min-online` floor setting
+- New `logging.debug.swap: false` — dedicated swap lifecycle debug channel
+
+### ⚡ Performance Optimizations
+- O(1) bot name lookup via secondary `nameIndex` map — `getByName()` was O(n) linear scan, now O(1) `ConcurrentHashMap` lookup
+- Position sync distance culling — position packets only broadcast to players within `performance.position-sync-distance: 128.0` blocks (0 = unlimited)
+
+### 🔕 Log Cleanup
+- NmsPlayerSpawner per-spawn/despawn log messages demoted from INFO → DEBUG; no more log spam on every bot cycle
+
+### 📋 Config Reorganization
+- `config.yml` restructured into 9 clearly labelled sections: Spawning · Appearance · Body & Combat · AI Systems · Bot Chat · Scheduling · Database & Network · Performance · Debug & Logging
+- Config version → **v47**
 
 ---
 

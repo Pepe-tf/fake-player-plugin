@@ -6,19 +6,19 @@ package me.bill.fakePlayerPlugin.fakeplayer;
  *
  * <p>Priority order (highest first):
  * <ol>
- *   <li>{@link #CRYSTAL} — has end crystals + obsidian (end crystal PVP)</li>
- *   <li>{@link #SWORD}   — has sword/axe (melee combat)</li>
- *   <li>{@link #FIST}    — no weapons (fist combat)</li>
+ *   <li>{@link #CRYSTAL} - has end crystals + obsidian (end crystal PVP)</li>
+ *   <li>{@link #SWORD}   - has sword/axe (melee combat)</li>
+ *   <li>{@link #FIST}    - no weapons (fist combat)</li>
  * </ol>
  */
 public enum BotCombatMode {
-    /** End crystal PVP — place obsidian, place crystal, detonate. */
+    /** End crystal PVP - place obsidian, place crystal, detonate. */
     CRYSTAL,
 
     /** Sword/axe melee combat with crits, s-tap, shield. */
     SWORD,
 
-    /** Fist combat — pure melee, no weapon. */
+    /** Fist combat - pure melee, no weapon. */
     FIST;
 
     /**
@@ -32,4 +32,5 @@ public enum BotCombatMode {
         };
     }
 }
+
 

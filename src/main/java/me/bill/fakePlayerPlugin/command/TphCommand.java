@@ -13,9 +13,9 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 /**
- * {@code /fpp tph [botname]} — teleports the player's own bot(s) to the player.
+ * {@code /fpp tph [botname]} - teleports the player's own bot(s) to the player.
  *
- * <p>Permission: {@code fpp.user.tph} (included in {@code fpp.user.*} and {@code fpp.*}).
+ * <p>Permission: {@code fpp.tph} (included in {@code fpp.use} and {@code fpp.op}).
  *
  * <ul>
  *   <li>If the player owns only one bot, {@code [botname]} is optional.</li>
@@ -39,7 +39,7 @@ public class TphCommand implements FppCommand {
     @Override public String getName()        { return "tph"; }
     @Override public String getUsage()       { return "[botname]"; }
     @Override public String getDescription() { return "Teleports your bot(s) to you."; }
-    @Override public String getPermission()  { return Perm.TPH; }
+    @Override public String getPermission()  { return Perm.USER_TPH; }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
@@ -48,9 +48,9 @@ public class TphCommand implements FppCommand {
             return true;
         }
 
-        boolean isAdmin = Perm.has(sender, Perm.ALL);
+        boolean isAdmin = Perm.has(sender, Perm.OP);
 
-        // Determine candidate pool — admin sees all, user sees own only
+        // Determine candidate pool - admin sees all, user sees own only
         List<FakePlayer> candidates = isAdmin
                 ? List.copyOf(manager.getActivePlayers())
                 : manager.getBotsOwnedBy(player.getUniqueId());
@@ -69,7 +69,7 @@ public class TphCommand implements FppCommand {
         FakePlayer target;
 
         if (args.length == 0) {
-            // No name given — only valid if exactly one bot in pool
+            // No name given - only valid if exactly one bot in pool
             if (candidates.size() > 1) {
                 sender.sendMessage(Lang.get("tph-specify-name"));
                 listBots(sender, candidates);
@@ -110,7 +110,7 @@ public class TphCommand implements FppCommand {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length != 1) return List.of();
-        boolean isAdmin = Perm.has(sender, Perm.ALL);
+        boolean isAdmin = Perm.has(sender, Perm.OP);
         List<FakePlayer> pool = isAdmin
                 ? List.copyOf(manager.getActivePlayers())
                 : (sender instanceof Player p ? manager.getBotsOwnedBy(p.getUniqueId()) : List.of());
@@ -130,6 +130,7 @@ public class TphCommand implements FppCommand {
                 ).color(ACCENT)));
     }
 }
+
 
 
 

@@ -27,7 +27,7 @@ public class BotRecord {
     private final Instant spawnedAt;
     private       Instant removedAt;
     private       String  removeReason;
-    /** Server identifier — matches {@code server.id} from {@code config.yml}. */
+    /** Server identifier - matches {@code server.id} from {@code config.yml}. */
     private final String  serverId;
 
     // ── Primary constructor (all fields including serverId) ───────────────────
@@ -65,7 +65,7 @@ public class BotRecord {
     }
 
     /**
-     * Full constructor — defaults {@code serverId} to the current server
+     * Full constructor - defaults {@code serverId} to the current server
      * ({@link Config#serverId()}).  Existing call-sites remain unchanged.
      */
     public BotRecord(long id, String botName, UUID botUuid,
@@ -83,7 +83,7 @@ public class BotRecord {
     }
 
     /**
-     * Convenience constructor — no last-location yet (set to spawn coords).
+     * Convenience constructor - no last-location yet (set to spawn coords).
      * Defaults {@code serverId} to the current server ({@link Config#serverId()}).
      */
     public BotRecord(long id, String botName, UUID botUuid,
@@ -146,3 +146,4 @@ public class BotRecord {
                 + ", active=" + isActive() + "}";
     }
 }
+

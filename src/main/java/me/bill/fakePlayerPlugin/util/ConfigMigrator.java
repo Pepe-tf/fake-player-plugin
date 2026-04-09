@@ -17,7 +17,7 @@ import java.util.Arrays;
  *   <li>The key {@code config-version} in {@code config.yml} records which
  *       format version was last written. If it is missing the config is treated
  *       as version&nbsp;0 (very old / first run without this system).</li>
- *   <li>Each numbered migration step is applied in sequence — keys are added,
+ *   <li>Each numbered migration step is applied in sequence - keys are added,
  *       renamed, or restructured as needed while existing user values are
  *       preserved.</li>
  *   <li>A full backup is created via {@link BackupManager} before any changes
@@ -42,12 +42,12 @@ public final class ConfigMigrator {
      * The config-version value written by this build.
      * <b>Increment this whenever config.yml structure changes.</b>
      */
-    public static final int CURRENT_VERSION = 47;
+    public static final int CURRENT_VERSION = 51;
 
     /**
      * Mirrors the {@code debug} flag read directly from the raw YAML during migration.
      * Used by {@link #log} so it never touches {@code Config.cfg} (which is null
-     * during migration — {@code Config.init()} runs after {@code migrateIfNeeded}).
+     * during migration - {@code Config.init()} runs after {@code migrateIfNeeded}).
      */
     private static boolean rawDebug = false;
 
@@ -66,14 +66,14 @@ public final class ConfigMigrator {
     public static boolean migrateIfNeeded(FakePlayerPlugin plugin) {
         File configFile = new File(plugin.getDataFolder(), "config.yml");
 
-        // First run — Bukkit hasn't saved defaults yet; nothing to migrate.
+        // First run - Bukkit hasn't saved defaults yet; nothing to migrate.
         if (!configFile.exists()) {
             return false;
         }
 
         YamlConfiguration cfg = YamlConfiguration.loadConfiguration(configFile);
 
-        // Read debug flag directly from raw YAML — Config.cfg is still null at this point.
+        // Read debug flag directly from raw YAML - Config.cfg is still null at this point.
         rawDebug = cfg.getBoolean("debug", false)
                 || cfg.getBoolean("logging.debug.startup", false);
 
@@ -138,6 +138,10 @@ public final class ConfigMigrator {
         if (stored < 44) anyChange |= v43to44(cfg);
         if (stored < 46) anyChange |= v45to46(cfg);
         if (stored < 47) anyChange |= v46to47(cfg);
+        if (stored < 48) anyChange |= v47to48(cfg);
+        if (stored < 49) anyChange |= v48to49(cfg);
+        if (stored < 50) anyChange |= v49to50(cfg);
+        if (stored < 51) anyChange |= v50to51(cfg);
 
         // ── Fill any remaining missing keys from jar defaults ──────────────────
         fillDefaults(plugin, cfg);
@@ -433,10 +437,10 @@ public final class ConfigMigrator {
     }
 
     /**
-     * v10 → v11: Enhanced skin system — guaranteed skin + fallback name.
+     * v10 → v11: Enhanced skin system - guaranteed skin + fallback name.
      * <ul>
-     *   <li>Added {@code skin.guaranteed-skin} — always apply a skin (default: true)</li>
-     *   <li>Added {@code skin.fallback-name}   — last-resort Mojang name (default: Notch)</li>
+     *   <li>Added {@code skin.guaranteed-skin} - always apply a skin (default: true)</li>
+     *   <li>Added {@code skin.fallback-name}   - last-resort Mojang name (default: Notch)</li>
      * </ul>
      */
     private static boolean v10to11(YamlConfiguration cfg) {
@@ -457,7 +461,7 @@ public final class ConfigMigrator {
     /**
      * v11 → v12: Config simplification pass.
      * <ul>
-     *   <li>Added {@code head-ai.enabled} — explicit on/off toggle for head AI (default: true)</li>
+     *   <li>Added {@code head-ai.enabled} - explicit on/off toggle for head AI (default: true)</li>
      * </ul>
      */
     private static boolean v11to12(YamlConfiguration cfg) {
@@ -480,8 +484,8 @@ public final class ConfigMigrator {
     /**
      * v13 → v14: Added spawn-cooldown and tab-list header/footer.
      * <ul>
-     *   <li>Added {@code spawn-cooldown} — per-user spawn delay in seconds (default: 0)</li>
-     *   <li>Added {@code tab-list.enabled} — tab-list header/footer toggle (default: false)</li>
+     *   <li>Added {@code spawn-cooldown} - per-user spawn delay in seconds (default: 0)</li>
+     *   <li>Added {@code tab-list.enabled} - tab-list header/footer toggle (default: false)</li>
      *   <li>Added {@code tab-list.update-interval}, {@code tab-list.header}, {@code tab-list.footer}</li>
      * </ul>
      */
@@ -549,8 +553,8 @@ public final class ConfigMigrator {
     /**
      * v17 → v18: Added skin folder integration controls.
      * <ul>
-     *   <li>{@code skin.use-skin-folder}      — scan plugins/FakePlayerPlugin/skins/ for PNGs</li>
-     *   <li>{@code skin.clear-cache-on-reload} — clear resolved skin cache on /fpp reload</li>
+     *   <li>{@code skin.use-skin-folder}      - scan plugins/FakePlayerPlugin/skins/ for PNGs</li>
+     *   <li>{@code skin.clear-cache-on-reload} - clear resolved skin cache on /fpp reload</li>
      * </ul>
      */
     private static boolean v17to18(YamlConfiguration cfg) {
@@ -569,11 +573,11 @@ public final class ConfigMigrator {
     }
 
     /**
-     * v18 → v19: Internal restructure pass — no config-key changes in this bump.
+     * v18 → v19: Internal restructure pass - no config-key changes in this bump.
      * {@link #fillDefaults(FakePlayerPlugin, YamlConfiguration)} fills any missing entries.
      */
     private static boolean v18to19(YamlConfiguration cfg) {
-        // No structural config changes — version bump was driven by code/plugin.yml changes.
+        // No structural config changes - version bump was driven by code/plugin.yml changes.
         return false;
     }
 
@@ -618,10 +622,10 @@ public final class ConfigMigrator {
     /**
      * v22 → v23: Simplify tab-list config.
      * <ul>
-     *   <li>Header/footer/update-interval feature removed — drop those keys.</li>
+     *   <li>Header/footer/update-interval feature removed - drop those keys.</li>
      *   <li>{@code tab-list.enabled} now controls bot tab-list visibility.
      *       The old value (which toggled header/footer, default {@code false}) is
-     *       <b>ignored</b> — we always write the correct new value.</li>
+     *       <b>ignored</b> - we always write the correct new value.</li>
      *   <li>If {@code show-bots: false} was explicitly set, honour it by setting
      *       {@code enabled: false} so bots stay hidden after migration.</li>
      * </ul>
@@ -631,7 +635,7 @@ public final class ConfigMigrator {
 
         // The old tab-list.enabled meant "show header/footer" (default: false).
         // The new meaning is "show bots in tab list" (default: true).
-        // ALWAYS overwrite with the correct new value — the old value is meaningless here.
+        // ALWAYS overwrite with the correct new value - the old value is meaningless here.
         boolean wantHidden = cfg.contains("tab-list.show-bots")
                 && !cfg.getBoolean("tab-list.show-bots", true);
         cfg.set("tab-list.enabled", !wantHidden);
@@ -651,7 +655,7 @@ public final class ConfigMigrator {
     }
 
     /**
-     * v23 → v24: Corrective pass — ensures {@code tab-list.enabled} is {@code true}
+     * v23 → v24: Corrective pass - ensures {@code tab-list.enabled} is {@code true}
      * for any installation where the v22→v23 migration left the old {@code false}
      * (header/footer toggle) value in place.  Only changes the value when it is
      * currently {@code false} AND the deprecated {@code show-bots} key no longer
@@ -673,13 +677,13 @@ public final class ConfigMigrator {
     /**
      * v24 → v25: Housekeeping stamp for v1.4.23.
      * <ul>
-     *   <li>No structural changes — version bump only.</li>
+     *   <li>No structural changes - version bump only.</li>
      *   <li>Ensures existing installations are stamped at the current schema version
      *       so future migrations have a clean baseline.</li>
      * </ul>
      */
     private static boolean v24to25(YamlConfiguration cfg) {
-        // No structural changes in this release — stamp only.
+        // No structural changes in this release - stamp only.
         log("v24→v25", "housekeeping stamp for v1.4.23 (no structural changes)");
         return false;
     }
@@ -687,11 +691,11 @@ public final class ConfigMigrator {
     /**
      * v25 → v26: Housekeeping stamp for v1.4.24.
      * <ul>
-     *   <li>No structural changes — version bump only.</li>
+     *   <li>No structural changes - version bump only.</li>
      * </ul>
      */
     private static boolean v25to26(YamlConfiguration cfg) {
-        // No structural changes in this release — stamp only.
+        // No structural changes in this release - stamp only.
         log("v25→v26", "housekeeping stamp for v1.4.24 (no structural changes)");
         return false;
     }
@@ -712,9 +716,9 @@ public final class ConfigMigrator {
     /**
      * v27 → v28: Body pushable / damageable toggles.
      * <ul>
-     *   <li>Adds {@code body.pushable} (default {@code true}) — controls whether
+     *   <li>Adds {@code body.pushable} (default {@code true}) - controls whether
      *       players can push bot bodies and whether knockback applies on hit.</li>
-     *   <li>Adds {@code body.damageable} (default {@code true}) — controls whether
+     *   <li>Adds {@code body.damageable} (default {@code true}) - controls whether
      *       bot bodies can receive damage.</li>
      * </ul>
      */
@@ -737,7 +741,7 @@ public final class ConfigMigrator {
      * v29 → v30: Database mode and server identity.
      * <ul>
      *   <li>Adds {@code database.mode} (default {@code "LOCAL"}).</li>
-     *   <li>Adds {@code server.id} (default {@code "default"}) — superseded in v31.</li>
+     *   <li>Adds {@code server.id} (default {@code "default"}) - superseded in v31.</li>
      * </ul>
      */
     private static boolean v29to30(YamlConfiguration cfg) {
@@ -857,7 +861,7 @@ public final class ConfigMigrator {
         return true;
     }
 
-    /** v34 → v35: Added swim-ai section — bots swim up in water/lava like a real player holding spacebar. */
+    /** v34 → v35: Added swim-ai section - bots swim up in water/lava like a real player holding spacebar. */
     private static boolean v34to35(YamlConfiguration cfg) {
         if (cfg.contains("swim-ai")) return false;
         cfg.set("swim-ai.enabled", true);
@@ -903,7 +907,7 @@ public final class ConfigMigrator {
         }
 
         // ── Removed skin fallback-pool and fallback-name (simplified in v1.5.4) ──
-        // skin.guaranteed-skin default changed to false — no Mojang API fallback pool needed.
+        // skin.guaranteed-skin default changed to false - no Mojang API fallback pool needed.
         if (cfg.contains("skin.fallback-pool")) {
             cfg.set("skin.fallback-pool", null);
             log("v35→v36", "removed skin.fallback-pool (fallback is now Steve/Alex by default)");
@@ -934,22 +938,22 @@ public final class ConfigMigrator {
     /**
      * v36 → v37 (FPP 1.5.8):
      * <ul>
-     *   <li>No structural config changes — this is a version stamp migration.</li>
+     *   <li>No structural config changes - this is a version stamp migration.</li>
      *   <li>Fixes included in this release: LP ClassLoader guard, ghost "Anonymous
      *       User" fix via FakeConnection subclass, %fpp_real% / %fpp_total% accuracy,
      *       NETWORK-mode /fpp list improvements, new proxy placeholders.</li>
      * </ul>
      */
     private static boolean v36to37(YamlConfiguration cfg) {
-        // No config keys changed in this release — stamp only.
-        log("v36→v37", "version stamp updated to 37 (FPP 1.5.8 — no structural config changes)");
+        // No config keys changed in this release - stamp only.
+        log("v36→v37", "version stamp updated to 37 (FPP 1.5.8 - no structural config changes)");
         return false;
     }
 
     /**
      * v37 → v38: Remove {@code bot-name.tab-list-format}.
      * <ul>
-     *   <li>The key is no longer used — LuckPerms manages prefix/suffix natively
+     *   <li>The key is no longer used - LuckPerms manages prefix/suffix natively
      *       for real NMS ServerPlayer entities; the display name packet carries
      *       only the bot name itself.</li>
      *   <li>Any custom value (e.g. {@code "{prefix}{bot_name}{suffix}"}) the user
@@ -967,7 +971,7 @@ public final class ConfigMigrator {
     /**
      * v38 → v39: Remove {@code fake-chat.chat-format}.
      * <p>
-     * Bots now send chat via {@code Player.chat()} — the server's real chat pipeline
+     * Bots now send chat via {@code Player.chat()} - the server's real chat pipeline
      * handles formatting. The config key was the last remnant of the old fake-broadcast
      * approach and serves no purpose now that local bots route through
      * {@code AsyncChatEvent}.  Bodyless / remote bots use a hardcoded
@@ -976,21 +980,21 @@ public final class ConfigMigrator {
     private static boolean v38to39(YamlConfiguration cfg) {
         if (!cfg.contains("fake-chat.chat-format")) return false;
         cfg.set("fake-chat.chat-format", null);
-        log("v38→v39", "removed fake-chat.chat-format (key no longer used — chat goes through real pipeline)");
+        log("v38→v39", "removed fake-chat.chat-format (key no longer used - chat goes through real pipeline)");
         return true;
     }
 
     /**
      * v39 → v40: Enhanced bot-chat realism features.
      * <ul>
-     *   <li>Adds {@code fake-chat.typing-delay} (default {@code true}) — simulate typing pause.</li>
-     *   <li>Adds {@code fake-chat.burst-chance} (default {@code 0.12}) — follow-up message chance.</li>
+     *   <li>Adds {@code fake-chat.typing-delay} (default {@code true}) - simulate typing pause.</li>
+     *   <li>Adds {@code fake-chat.burst-chance} (default {@code 0.12}) - follow-up message chance.</li>
      *   <li>Adds {@code fake-chat.burst-delay.min/max} (default {@code 2/5}).</li>
-     *   <li>Adds {@code fake-chat.reply-to-mentions} (default {@code true}) — bot replies when mentioned.</li>
+     *   <li>Adds {@code fake-chat.reply-to-mentions} (default {@code true}) - bot replies when mentioned.</li>
      *   <li>Adds {@code fake-chat.reply-delay.min/max} (default {@code 2/8}).</li>
-     *   <li>Adds {@code fake-chat.stagger-interval} (default {@code 3}) — min gap between bot chats.</li>
-     *   <li>Adds {@code fake-chat.activity-variation} (default {@code true}) — per-bot frequency multiplier.</li>
-     *   <li>Adds {@code fake-chat.history-size} (default {@code 5}) — no-repeat window per bot.</li>
+     *   <li>Adds {@code fake-chat.stagger-interval} (default {@code 3}) - min gap between bot chats.</li>
+     *   <li>Adds {@code fake-chat.activity-variation} (default {@code true}) - per-bot frequency multiplier.</li>
+     *   <li>Adds {@code fake-chat.history-size} (default {@code 5}) - no-repeat window per bot.</li>
      * </ul>
      */
     private static boolean v39to40(YamlConfiguration cfg) {
@@ -1163,7 +1167,7 @@ public final class ConfigMigrator {
     }
 
     /**
-     * v43 → v44: Remove peak-hours.auto-enable-swap (feature removed — users
+     * v43 → v44: Remove peak-hours.auto-enable-swap (feature removed - users
      * must enable swap manually before using peak-hours).
      */
     private static boolean v43to44(YamlConfiguration cfg) {
@@ -1191,7 +1195,7 @@ public final class ConfigMigrator {
     }
 
     /**
-     * v46 → v47: adds swap system enhancements — min-online floor, retry config,
+     * v46 → v47: adds swap system enhancements - min-online floor, retry config,
      * and a new swap debug category.
      */
     private static boolean v46to47(YamlConfiguration cfg) {
@@ -1221,8 +1225,69 @@ public final class ConfigMigrator {
 
 
     /**
+     * v47 → v48: adds body.pick-up-items toggle (default false - bots do not
+     * pick up items by default, preserving existing server behaviour).
+     */
+    private static boolean v47to48(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("body.pick-up-items")) {
+            cfg.set("body.pick-up-items", false);
+            log("v47→v48", "added body.pick-up-items = false");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * v48 → v49: adds body.pick-up-xp toggle (default true - bots pick up XP
+     * orbs by default, matching natural player behaviour).
+     * Also resets any existing false value to true since this is a new feature
+     * whose default was previously mis-set to false.
+     */
+    private static boolean v48to49(YamlConfiguration cfg) {
+        boolean changed = false;
+        // Always set to true - the key was initially shipped with a wrong default of false.
+        if (!cfg.contains("body.pick-up-xp") || !cfg.getBoolean("body.pick-up-xp", false)) {
+            cfg.set("body.pick-up-xp", true);
+            log("v48→v49", "set body.pick-up-xp = true");
+            changed = true;
+        }
+        return changed;
+    }
+
+    private static boolean v49to50(YamlConfiguration cfg) {
+        boolean changed = false;
+        if (!cfg.contains("pathfinding")) {
+            cfg.set("pathfinding.parkour",        false);
+            cfg.set("pathfinding.break-blocks",   false);
+            cfg.set("pathfinding.place-blocks",   false);
+            cfg.set("pathfinding.place-material", "DIRT");
+            log("v49→v50", "added pathfinding section (parkour / break-blocks / place-blocks / place-material)");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * v50 → v51: reset {@code death.suppress-drops} to {@code false}.
+     *
+     * <p>The previous default was {@code true}, which caused bots to silently
+     * discard all inventory contents on death - making them behave unlike real
+     * players and making it impossible to farm or recover bot gear. The new
+     * default is {@code false} so bots drop items normally, matching vanilla
+     * player behaviour.  Admins who explicitly want to keep the old behaviour
+     * can re-enable "Suppress Drops" via {@code /fpp settings} → Body category.
+     */
+    private static boolean v50to51(YamlConfiguration cfg) {
+        cfg.set("death.suppress-drops", false);
+        log("v50→v51", "reset death.suppress-drops → false (bots now drop items on death like real players)");
+        return true;
+    }
+
+
+    /**
      * Logs a migration step message.
-     * Uses {@link #rawDebug} read from the raw YAML — never touches {@code Config.cfg}
+     * Uses {@link #rawDebug} read from the raw YAML - never touches {@code Config.cfg}
      * because this runs before {@code Config.init()}
      */
     private static void log(String step, String message) {
@@ -1238,6 +1303,7 @@ public final class ConfigMigrator {
         }
     }
 }
+
 
 
 

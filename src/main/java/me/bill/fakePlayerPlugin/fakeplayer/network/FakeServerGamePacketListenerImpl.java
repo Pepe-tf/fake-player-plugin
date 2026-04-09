@@ -26,7 +26,7 @@ import java.lang.reflect.Method;
  * <p>Key behaviour: {@link #send(Packet)} discards ALL outbound packets except
  * {@link ClientboundSetEntityMotionPacket} (knockback), which is applied server-side.
  * Because {@code send()} is a no-op, {@code awaitingPositionFromClient} on this fresh
- * instance stays {@code null} — the server's {@code connection.tick()} never snaps the
+ * instance stays {@code null} - the server's {@code connection.tick()} never snaps the
  * bot back to a stale spawn position (the root cause of bots "floating").
  *
  * <h3>Knockback strategy resolution (one-time, lazy)</h3>
@@ -36,12 +36,12 @@ import java.lang.reflect.Method;
  *   <li><b>GET_XA</b> (≤ 1.21.8): {@code packet.getXa/Ya/Za()} (or {@code xa/ya/za()})
  *       return individual doubles; apply via {@code lerpMotion(double,double,double)} or,
  *       if that method is absent, via {@code setDeltaMovement(Vec3)}.</li>
- *   <li><b>NONE</b>: no compatible API found — knockback is silently skipped.</li>
+ *   <li><b>NONE</b>: no compatible API found - knockback is silently skipped.</li>
  * </ol>
  *
  * <h3>Why {@code hurtMarked} is NOT checked in {@code applyKnockback()}</h3>
  * <p>In Paper 26.1.1+, NMS resets {@code hurtMarked = false} <em>before</em> calling
- * {@code send()} — meaning {@code hurtMarked} is always {@code false} by the time our
+ * {@code send()} - meaning {@code hurtMarked} is always {@code false} by the time our
  * override runs.  Checking it would cause every knockback packet to be silently dropped.
  * Entity-ID filtering (when the ID is available) is sufficient to prevent applying another
  * entity's motion packet to this bot.
@@ -49,7 +49,7 @@ import java.lang.reflect.Method;
  * <h3>Why two {@code send()} overload families</h3>
  * <p>NMS may call either {@code send(Packet)} or {@code send(Packet, PacketSendListener)}
  * depending on the MC version.  Both are intercepted here to ensure knockback is never missed.
- * The {@code PacketSendListener} overload intentionally omits {@code @Override} — that overload
+ * The {@code PacketSendListener} overload intentionally omits {@code @Override} - that overload
  * does not exist on the 1.21.11 compile target's {@code ServerGamePacketListenerImpl} (it uses
  * {@code ChannelFutureListener} there), but Java runtime dispatch resolves it correctly when
  * the server runs Paper 26.1.1 where {@code PacketSendListener} is the active type.
@@ -58,7 +58,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
 
     // ── Entity-ID accessor for ClientboundSetEntityMotionPacket ──────────────
     // MC 1.21.x–1.21.11 (compile target): getId() → int
-    // Paper 26.1.1+: getId() removed — probe "getEntityId" / "id" once, then cache.
+    // Paper 26.1.1+: getId() removed - probe "getEntityId" / "id" once, then cache.
     // When no getter exists we return -1 and skip the entity-ID guard (safe because
     // hurtMarked is set only on the actually-hurt entity, so the motion packet
     // received by this listener is always for this.player in that case).
@@ -67,7 +67,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     private static volatile boolean entityIdDirectFailed = false;
     /** Whether the reflection fallback has already been probed (success or exhausted). */
     private static volatile boolean entityIdFallbackResolved = false;
-    /** Cached reflection accessor — {@code null} when no getter was found. */
+    /** Cached reflection accessor - {@code null} when no getter was found. */
     private static volatile Method  cachedEntityIdMethod = null;
 
     /**
@@ -80,7 +80,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
             try {
                 return packet.getId();
             } catch (NoSuchMethodError e) {
-                // 26.1.1+ removed getId() — probe alternatives once
+                // 26.1.1+ removed getId() - probe alternatives once
                 entityIdDirectFailed = true;
             }
         }
@@ -100,14 +100,14 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
                         } catch (NoSuchMethodException ignored) {}
                     }
                     if (cachedEntityIdMethod == null) {
-                        Config.debugNms("FakePacketListener: entity-ID getter not found — "
+                        Config.debugNms("FakePacketListener: entity-ID getter not found - "
                                 + "ID check skipped (packet arrived on this entity's own connection)");
                     }
                     entityIdFallbackResolved = true;
                 }
             }
         }
-        if (cachedEntityIdMethod == null) return -1; // no getter — caller skips ID check
+        if (cachedEntityIdMethod == null) return -1; // no getter - caller skips ID check
         try {
             return (int) cachedEntityIdMethod.invoke(packet);
         } catch (Exception e) {
@@ -121,17 +121,17 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
 
     private static volatile KbStrategy kbStrategy = KbStrategy.UNRESOLVED;
 
-    // Strategy GET_MOVEMENT — packet.getMovement() → Vec3
+    // Strategy GET_MOVEMENT - packet.getMovement() → Vec3
     private static Method getMovementMethod;       // ClientboundSetEntityMotionPacket.getMovement()
     private static Method lerpMotionVec3Method;    // lerpMotion(Vec3)  OR  setDeltaMovement(Vec3)
 
-    // Strategy GET_XA — packet.getXa/Ya/Za() → individual doubles
+    // Strategy GET_XA - packet.getXa/Ya/Za() → individual doubles
     private static Method getXaMethod, getYaMethod, getZaMethod;
-    private static Method lerpMotion3Method;       // Entity.lerpMotion(double,double,double) — may be null
-    private static Method setDeltaMovementMethod;  // Entity.setDeltaMovement(Vec3)            — fallback
+    private static Method lerpMotion3Method;       // Entity.lerpMotion(double,double,double) - may be null
+    private static Method setDeltaMovementMethod;  // Entity.setDeltaMovement(Vec3)            - fallback
     private static Class<?> vec3Class;
 
-    // Strategy FIELD_SCAN — last resort: read x/y/z directly from packet fields
+    // Strategy FIELD_SCAN - last resort: read x/y/z directly from packet fields
     private static Field  scanXField, scanYField, scanZField;
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -184,8 +184,8 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     /**
      * Intercept outgoing packets.
      * <ul>
-     *   <li>{@link ClientboundSetEntityMotionPacket} — apply knockback server-side.</li>
-     *   <li>Everything else — silently discard.</li>
+     *   <li>{@link ClientboundSetEntityMotionPacket} - apply knockback server-side.</li>
+     *   <li>Everything else - silently discard.</li>
      * </ul>
      */
     @Override
@@ -199,7 +199,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     }
 
     /**
-     * PacketSendListener overload — covers Paper 26.1.1+ where NMS may call
+     * PacketSendListener overload - covers Paper 26.1.1+ where NMS may call
      * {@code send(Packet, PacketSendListener)} directly, bypassing the no-arg variant.
      *
      * <p>{@code @Override} intentionally omitted: this overload does not exist on the
@@ -227,7 +227,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
                 + " hurtMarked=" + this.player.hurtMarked);
 
         if (packetEntityId != -1 && packetEntityId != myId) {
-            Config.debugNms("[KB-DEBUG] applyKnockback: SKIPPED — packet is for entity "
+            Config.debugNms("[KB-DEBUG] applyKnockback: SKIPPED - packet is for entity "
                     + packetEntityId + " not this bot (" + myId + ")");
             return;
         }
@@ -236,10 +236,10 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
         //     checking it would always short-circuit and knockback would never be applied.
         //   • Entity-ID filtering (above) is sufficient to discard unrelated motion packets.
         //   • When packetEntityId == -1 (no getter found), the packet arrived on THIS entity's
-        //     own connection — that alone guarantees it belongs to this bot.
+        //     own connection - that alone guarantees it belongs to this bot.
 
         // Snapshot velocity from the packet before scheduling (packet object is safe to read later)
-        Config.debugNms("[KB-DEBUG] applyKnockback: PROCEEDING — scheduling task for "
+        Config.debugNms("[KB-DEBUG] applyKnockback: PROCEEDING - scheduling task for "
                 + this.player.getScoreboardName() + " strategy=" + kbStrategy);
 
         Bukkit.getScheduler().runTask(FakePlayerPlugin.getInstance(), () -> {
@@ -293,7 +293,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
                         logPostApplyVelocity("FIELD_SCAN");
                     }
                     case NONE ->
-                        Config.debugNms("[KB-DEBUG] knockback NONE — no compatible MC API found");
+                        Config.debugNms("[KB-DEBUG] knockback NONE - no compatible MC API found");
                     default ->
                         Config.debugNms("[KB-DEBUG] unexpected strategy: " + strategy);
                 }
@@ -358,12 +358,12 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
                         + " (apply=" + lm.getName() + "(" + returnType.getSimpleName() + "))");
                 return kbStrategy = KbStrategy.GET_MOVEMENT;
             }
-            // getMovement() exists but no Vec3 apply method yet — cache for FIELD_SCAN
+            // getMovement() exists but no Vec3 apply method yet - cache for FIELD_SCAN
             getMovementMethod = gm;
             Config.debugNms("FakePacketListener: getMovement() found but no Vec3 apply method;"
                     + " will try GET_XA / FIELD_SCAN");
         } catch (NoSuchMethodException ignored) {
-            // getMovement() not present — older or newer MC version
+            // getMovement() not present - older or newer MC version
         } catch (Exception e) {
             Config.debugNms("FakePacketListener: GET_MOVEMENT probe failed: " + e.getMessage());
         }
@@ -392,7 +392,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
         }
 
         // ── Strategy 3: FIELD_SCAN (last resort) ──────────────────────────────
-        // Neither accessor method family exists — scan packet declared fields for the three
+        // Neither accessor method family exists - scan packet declared fields for the three
         // velocity doubles.  Common field-name patterns across MC versions:
         //   xa/ya/za  (1.21.x record fields)
         //   xd/yd/zd  (older obfuscated names)
@@ -492,7 +492,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     }
 
     /**
-     * Finds a declared field with the given name and type on {@code clazz} (no hierarchy walk —
+     * Finds a declared field with the given name and type on {@code clazz} (no hierarchy walk -
      * packet fields are always declared directly on the packet class).
      * Returns {@code null} when not found.
      */
@@ -507,4 +507,5 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
         return null;
     }
 }
+
 

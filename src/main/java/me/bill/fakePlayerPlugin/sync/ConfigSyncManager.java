@@ -20,19 +20,19 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <h3>Features</h3>
  * <ul>
- *   <li><b>Central storage</b> — Configs stored in MySQL database</li>
- *   <li><b>Push/Pull</b> — Manually sync configs between servers</li>
- *   <li><b>Auto-sync</b> — Optional automatic pulling on startup/reload</li>
- *   <li><b>Server overrides</b> — Per-server settings that never sync</li>
- *   <li><b>Conflict detection</b> — Prevents accidental overwrites</li>
+ *   <li><b>Central storage</b> - Configs stored in MySQL database</li>
+ *   <li><b>Push/Pull</b> - Manually sync configs between servers</li>
+ *   <li><b>Auto-sync</b> - Optional automatic pulling on startup/reload</li>
+ *   <li><b>Server overrides</b> - Per-server settings that never sync</li>
+ *   <li><b>Conflict detection</b> - Prevents accidental overwrites</li>
  * </ul>
  *
  * <h3>Sync Modes</h3>
  * <ul>
- *   <li>{@code DISABLED} — No syncing (default for LOCAL mode)</li>
- *   <li>{@code MANUAL} — Only sync via commands</li>
- *   <li>{@code AUTO_PULL} — Pull latest on startup/reload</li>
- *   <li>{@code AUTO_PUSH} — Push changes automatically</li>
+ *   <li>{@code DISABLED} - No syncing (default for LOCAL mode)</li>
+ *   <li>{@code MANUAL} - Only sync via commands</li>
+ *   <li>{@code AUTO_PULL} - Pull latest on startup/reload</li>
+ *   <li>{@code AUTO_PUSH} - Push changes automatically</li>
  * </ul>
  *
  * <h3>Server-Specific Settings</h3>
@@ -494,4 +494,5 @@ public final class ConfigSyncManager {
         }
     }
 }
+
 

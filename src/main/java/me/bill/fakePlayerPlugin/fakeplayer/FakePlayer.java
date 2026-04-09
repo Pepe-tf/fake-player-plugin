@@ -26,7 +26,7 @@ import java.util.UUID;
  * <p><b>Auth bypass:</b> The player is created directly in JVM memory without a TCP 
  * connection, so the Mojang session server handshake is never triggered.
  */
-@SuppressWarnings("unused") // Public API — used by addons and InfoCommand
+@SuppressWarnings("unused") // Public API - used by addons and InfoCommand
 public final class FakePlayer {
 
     private final String        name;
@@ -35,7 +35,7 @@ public final class FakePlayer {
 
     private Location   spawnLocation;
 
-    /** The NMS ServerPlayer entity — physics, skin, nametag all in one. */
+    /** The NMS ServerPlayer entity - physics, skin, nametag all in one. */
     private Player     player;
 
     // ── Metadata ─────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ public final class FakePlayer {
     private int    deathCount       = 0;
 
     /**
-     * Last chunk X and Z this bot was in — used by ChunkLoader to
+     * Last chunk X and Z this bot was in - used by ChunkLoader to
      * detect cross-chunk movement without a Location allocation.
      */
     private int lastChunkX = Integer.MIN_VALUE;
@@ -140,7 +140,7 @@ public final class FakePlayer {
      */
     private boolean frozen = false;
 
-    /** Last world name — used for fast orphan/cross-world detection. */
+    /** Last world name - used for fast orphan/cross-world detection. */
     private String lastKnownWorld = null;
 
 
@@ -178,6 +178,15 @@ public final class FakePlayer {
      * {@code "active"}, {@code "chatty"}. {@code null} = use random assignment.
      */
     private String chatTier = null;
+
+    /**
+     * Command to execute as this bot when any player right-clicks its body.
+     * When non-null, the right-click fires {@code Bukkit.dispatchCommand(botPlayer, rightClickCommand)}
+     * instead of opening the inventory GUI.
+     * Set via {@code /fpp cmd <bot> --add <command>}; cleared via {@code --clear}.
+     * {@code null} = not set (right-click falls through to inventory GUI).
+     */
+    private String rightClickCommand = null;
 
     public FakePlayer(UUID uuid, String name, PlayerProfile profile) {
         this.uuid    = uuid;
@@ -293,7 +302,7 @@ public final class FakePlayer {
     /** Set the NMS Player entity. */
     public void setPlayer(org.bukkit.entity.Player p) { this.player = p; }
     
-    /** Set the physics entity (for compatibility — accepts Player or casts to Player). */
+    /** Set the physics entity (for compatibility - accepts Player or casts to Player). */
     public void setPhysicsEntity(Entity e) { 
         this.player = e instanceof org.bukkit.entity.Player ? (org.bukkit.entity.Player) e : null;
     }
@@ -331,6 +340,14 @@ public final class FakePlayer {
     public void    setChatTier(String tier)      { this.chatTier = tier; }
     public void setSkinName(String name)          { this.skinName      = name; }
     public void setResolvedSkin(SkinProfile skin) { this.resolvedSkin  = skin; }
+
+    // ── Right-click command ───────────────────────────────────────────────────
+    /** Returns the command stored for right-click execution, or {@code null} if not set. */
+    public String  getRightClickCommand()           { return rightClickCommand; }
+    /** Stores a command for right-click execution (without leading {@code /}). */
+    public void    setRightClickCommand(String cmd) { this.rightClickCommand = (cmd == null || cmd.isBlank()) ? null : cmd.stripLeading().replaceFirst("^/", ""); }
+    /** Returns {@code true} when a right-click command is configured on this bot. */
+    public boolean hasRightClickCommand()           { return rightClickCommand != null; }
 
 
     /** The resolved skin for this bot, or {@code null} if not yet resolved or skin is off. */
@@ -380,3 +397,4 @@ public final class FakePlayer {
         this.packetProfileName = name; 
     }
 }
+

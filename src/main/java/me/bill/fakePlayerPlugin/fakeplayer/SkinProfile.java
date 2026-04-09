@@ -1,7 +1,7 @@
 package me.bill.fakePlayerPlugin.fakeplayer;
 
 /**
- * Immutable snapshot of a resolved Mojang skin — a base64-encoded
+ * Immutable snapshot of a resolved Mojang skin - a base64-encoded
  * texture value and its RSA signature.
  *
  * <p>A {@code null} signature is acceptable; Paper / Minecraft will still
@@ -29,7 +29,7 @@ public final class SkinProfile {
     @SuppressWarnings("unused")
     public String getSignature() { return signature; }
 
-    /** Human-readable source label — used for debug logging only. */
+    /** Human-readable source label - used for debug logging only. */
     public String getSource()    { return source; }
 
     /** {@code true} if this profile contains actual texture data. */
@@ -40,5 +40,6 @@ public final class SkinProfile {
         return "SkinProfile{source='" + source + "', signed=" + (signature != null) + '}';
     }
 }
+
 
 

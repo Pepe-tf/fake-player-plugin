@@ -16,17 +16,17 @@ import java.util.stream.Collectors;
 /**
  * {@code /fpp freeze <bot|all> [on|off]}
  *
- * <p>Freezes or unfreezes a bot — the NMS ServerPlayer body becomes immovable
+ * <p>Freezes or unfreezes a bot - the NMS ServerPlayer body becomes immovable
  * and gravity is disabled so the bot hovers in place. Frozen bots are
  * shown with an ❄ indicator in {@code /fpp list} and {@code /fpp stats}.
  *
  * <p>Usage:
  * <ul>
- *   <li>{@code /fpp freeze <bot>}      — toggle frozen state</li>
- *   <li>{@code /fpp freeze <bot> on}   — freeze</li>
- *   <li>{@code /fpp freeze <bot> off}  — unfreeze</li>
- *   <li>{@code /fpp freeze all}        — toggle-freeze all bots</li>
- *   <li>{@code /fpp freeze all on|off} — freeze/unfreeze all</li>
+ *   <li>{@code /fpp freeze <bot>}      - toggle frozen state</li>
+ *   <li>{@code /fpp freeze <bot> on}   - freeze</li>
+ *   <li>{@code /fpp freeze <bot> off}  - unfreeze</li>
+ *   <li>{@code /fpp freeze all}        - toggle-freeze all bots</li>
+ *   <li>{@code /fpp freeze all on|off} - freeze/unfreeze all</li>
  * </ul>
  */
 public class FreezeCommand implements FppCommand {
@@ -87,7 +87,7 @@ public class FreezeCommand implements FppCommand {
             return true;
         }
 
-        // Determine target state — if not explicit, toggle based on majority
+        // Determine target state - if not explicit, toggle based on majority
         boolean nowFrozen;
         if ("on".equals(statArg)) {
             nowFrozen = true;
@@ -144,5 +144,7 @@ public class FreezeCommand implements FppCommand {
         return List.of();
     }
 }
+
+
 
 

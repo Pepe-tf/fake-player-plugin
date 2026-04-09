@@ -2,6 +2,7 @@ package me.bill.fakePlayerPlugin.fakeplayer;
 
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -44,7 +45,7 @@ public final class FakePlayerBody {
         try {
             // Pass the resolved skin (may be null if skin mode is off) so
             // NmsPlayerSpawner can inject it into the GameProfile before
-            // placeNewPlayer() — the initial PlayerInfo ADD packet will then
+            // placeNewPlayer() - the initial PlayerInfo ADD packet will then
             // carry the correct texture data to all clients.
             Player player = NmsPlayerSpawner.spawnFakePlayer(
                     fp.getUuid(), fp.getName(), fp.getResolvedSkin(),
@@ -69,8 +70,27 @@ public final class FakePlayerBody {
 
             // Enable physics and collision
             player.setGravity(true);
-            player.setInvulnerable(!Config.bodyDamageable());
+            // CRITICAL: Explicitly set invulnerable to FALSE so bots take environmental damage.
+            // Even when bodyDamageable is false (entity damage blocked via event cancellation),
+            // environmental damage (fall, fire, drowning) must still apply.
+            player.setInvulnerable(false);
             player.setCollidable(true);
+
+            // Set display name for death messages and chat
+            // This ensures the display name (e.g. "bot-Steve-1") appears instead of
+            // the internal Minecraft name (e.g. "ubot_Steve_1") in death messages
+            String displayName = fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
+            if (displayName != null && !displayName.isEmpty()) {
+                try {
+                    // Strip color codes for the display name (vanilla death messages don't support colors)
+                    String plainName = displayName.replaceAll("§[0-9a-fk-or]", "")
+                            .replaceAll("<[^>]+>", "")  // Remove MiniMessage tags
+                            .replaceAll("\\{#[0-9A-Fa-f]{6}[><]\\}", "");  // Remove LP gradient tags
+                    player.displayName(Component.text(plainName));
+                } catch (Exception e) {
+                    FppLogger.debug("Failed to set display name for " + fp.getName() + ": " + e.getMessage());
+                }
+            }
 
             // Apply configured max health (combat.max-health)
             try {
@@ -98,7 +118,7 @@ public final class FakePlayerBody {
             Config.debug("FakePlayerBody: spawned " + fp.getName()
                     + " (gravity=true, damageable=" + Config.bodyDamageable() + ", flying=false)");
 
-            // Apply skin via Paper's setPlayerProfile() — mirrors the approach used by
+            // Apply skin via Paper's setPlayerProfile() - mirrors the approach used by
             // other NMS fake-player implementations.  This updates the profile on the
             // live entity so any clients that process the join packet AFTER our custom
             // tab-list ADD will also receive the correct texture data.
@@ -135,19 +155,19 @@ public final class FakePlayerBody {
 
     /**
      * Prepares the skin for {@code fp} then fires {@code onReady} so the bot body
-     * spawns immediately — the bot is <b>never</b> blocked waiting for a skin API call.
+     * spawns immediately - the bot is <b>never</b> blocked waiting for a skin API call.
      *
      * <h3>Spawn flow</h3>
      * <ol>
-     *   <li><b>Cache hit (instant)</b> — skin is already in the session cache (pre-warmed
+     *   <li><b>Cache hit (instant)</b> - skin is already in the session cache (pre-warmed
      *       at startup or used before).  The skin is attached to {@code fp} so
      *       {@code NmsPlayerSpawner} can inject it into the {@code GameProfile} before
      *       the entity enters the world.  {@code onReady} fires on this tick.</li>
-     *   <li><b>Cache miss</b> — bot spawns immediately with the default Steve / Alex skin.
+     *   <li><b>Cache miss</b> - bot spawns immediately with the default Steve / Alex skin.
      *       mineskin.eu is queried asynchronously; once it responds the skin is pushed
      *       to the live entity after a short 3-tick delay (~150 ms) via
      *       {@code setPlayerProfile()}.</li>
-     *   <li><b>API failure / rate-limit</b> — the resolve callback delivers {@code null}.
+     *   <li><b>API failure / rate-limit</b> - the resolve callback delivers {@code null}.
      *       No skin is applied; the bot keeps the default Steve / Alex appearance.</li>
      * </ol>
      *
@@ -171,7 +191,7 @@ public final class FakePlayerBody {
             fp.setResolvedSkin(cached);
         }
 
-        // Always spawn immediately — never block on a skin API call.
+        // Always spawn immediately - never block on a skin API call.
         onReady.run();
 
         // Resolve skin asynchronously (instant for cache hits; async for misses).
@@ -212,7 +232,7 @@ public final class FakePlayerBody {
 
     /**
      * Sets the skin texture on a live bot entity using Paper's {@link org.bukkit.entity.Player#setPlayerProfile}
-     * API — the same technique used by other NMS fake-player implementations.
+     * API - the same technique used by other NMS fake-player implementations.
      * Copies the base64 texture value + RSA signature from a {@link SkinProfile} into a
      * {@code ProfileProperty("textures", …)} and applies it to the entity's live profile.
      *
@@ -271,5 +291,6 @@ public final class FakePlayerBody {
         // No-op - NMS player entities are cleaned up normally
     }
 }
+
 
 
