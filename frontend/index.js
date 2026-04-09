@@ -298,7 +298,7 @@ app.get("/api/status", protectAPI, async (req, res) => {
   });
 });
 
-// ── Update checker — mirrors Java UpdateChecker.java ─────────────────────────
+// ── Update checker - mirrors Java UpdateChecker.java ─────────────────────────
 // Primary: Modrinth API (same URL as the plugin uses)
 // Fallback: LATEST_VERSION / PLUGIN_VERSION env var
 const MODRINTH_API  = "https://api.modrinth.com/v2/project/fake-player-plugin-(fpp)/version?limit=1";
@@ -309,7 +309,7 @@ let cachedUpdate = null;
 let cachedAt     = 0;
 
 /**
- * Semantic version comparison — mirrors compareVersions() in UpdateChecker.java.
+ * Semantic version comparison - mirrors compareVersions() in UpdateChecker.java.
  * Returns >0 when a > b, <0 when a < b, 0 when equal.
  */
 function compareVersions(a, b) {
@@ -418,7 +418,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Wiki SPA shell — /wiki and /wiki/<pagename> (but not .md files)
+// Wiki SPA shell - /wiki and /wiki/<pagename> (but not .md files)
 app.get('/wiki', (req, res) => {
   res.sendFile(path.join(__dirname, 'wiki.html'));
 });
@@ -432,12 +432,12 @@ app.get('/wiki/:page', (req, res) => {
   res.sendFile(path.join(__dirname, 'wiki.html'));
 });
 
-// Legal pages — /legal redirects to privacy policy by default
+// Legal pages - /legal redirects to privacy policy by default
 app.get('/legal', (req, res) => {
   res.redirect(301, '/legal/privacy-policy');
 });
 
-// Legal SPA shell — /legal/<page>  (.md files already handled by static middleware above)
+// Legal SPA shell - /legal/<page>  (.md files already handled by static middleware above)
 app.get('/legal/:page', (req, res) => {
   // If it's a .md file request, let static middleware handle it
   if (req.params.page.endsWith('.md')) {

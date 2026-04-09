@@ -1,6 +1,6 @@
 # Peak Hours
 
-The peak-hours system automatically adjusts how many bots are online based on real-world time windows, mimicking natural player activity patterns — busy evenings, quiet nights, weekend surges, and so on.
+The peak-hours system automatically adjusts how many bots are online based on real-world time windows, mimicking natural player activity patterns - busy evenings, quiet nights, weekend surges, and so on.
 
 ---
 
@@ -14,7 +14,7 @@ When enabled, the plugin evaluates the current server time every **60 seconds** 
 
 Bots that exceed the target fraction are quietly put to **sleep** (removed); sleeping bots are gradually **woken** (respawned) when the fraction rises.  Transitions are staggered so joins and leaves look natural.
 
-> **Requires:** `swap.enabled: true` — peak-hours uses the swap system to sleep and wake bots naturally.
+> **Requires:** `swap.enabled: true` - peak-hours uses the swap system to sleep and wake bots naturally.
 
 ---
 
@@ -63,26 +63,26 @@ peak-hours:
   schedule:
     - start: "06:00"
       end:   "09:00"
-      fraction: 0.30       # Early morning — server waking up
+      fraction: 0.30       # Early morning - server waking up
 
     - start: "09:00"
       end:   "18:00"
-      fraction: 0.75       # Daytime — moderate activity
+      fraction: 0.75       # Daytime - moderate activity
 
     - start: "18:00"
       end:   "22:00"
-      fraction: 1.00       # Peak evening — all bots online
+      fraction: 1.00       # Peak evening - all bots online
 
     - start: "22:00"
       end:   "06:00"
-      fraction: 0.05       # Night — almost all bots sleeping
+      fraction: 0.05       # Night - almost all bots sleeping
 
   # ── Day-of-week overrides ───────────────────────────────────────────────
   day-overrides:
     SATURDAY:
       - start: "10:00"
         end:   "23:00"
-        fraction: 1.00     # Weekend peak — full server all day
+        fraction: 1.00     # Weekend peak - full server all day
       - start: "23:00"
         end:   "10:00"
         fraction: 0.10     # Saturday night wind-down
@@ -133,7 +133,7 @@ Distributes bot joins and leaves evenly across this many seconds so they don't a
 min-online: 0
 ```
 
-Sets a hard floor — at least this many AFK bots will always remain online, regardless of the computed fraction.  Useful for ensuring the server never appears completely empty during off-peak hours.
+Sets a hard floor - at least this many AFK bots will always remain online, regardless of the computed fraction.  Useful for ensuring the server never appears completely empty during off-peak hours.
 
 ---
 
@@ -155,9 +155,9 @@ Each entry in `schedule` (and each day override) is a map with three keys:
 |-----|------|-------------|
 | `start` | `HH:mm` | Window start time (24-hour) |
 | `end`   | `HH:mm` | Window end time (24-hour) |
-| `fraction` | `0.0 – 1.0` | Fraction of the total bot pool that should be online |
+| `fraction` | `0.0 - 1.0` | Fraction of the total bot pool that should be online |
 
-**Midnight-crossing windows** (e.g. `22:00 → 06:00`) are handled automatically — no special configuration is needed.
+**Midnight-crossing windows** (e.g. `22:00 → 06:00`) are handled automatically - no special configuration is needed.
 
 Windows are checked **top-to-bottom**; the first matching window wins.  If no window matches, the fraction defaults to `1.0` (all bots online).
 
@@ -188,7 +188,7 @@ When peak-hours needs to reduce the online count:
 1. A random selection of AFK bots are chosen as **sleep candidates**.
 2. Each bot's pending swap session is cancelled (so `BotSwapAI` does not independently rejoin it).
 3. The bot's current location is saved.
-4. The bot is quietly despawned (no leave message is broadcast — it simply vanishes from the tab list).
+4. The bot is quietly despawned (no leave message is broadcast - it simply vanishes from the tab list).
 
 When the fraction rises:
 
@@ -216,7 +216,7 @@ Displays:
 
 | Field | Meaning |
 |-------|---------|
-| `window` | Active time window (e.g. `18:00–22:00`) |
+| `window` | Active time window (e.g. `18:00-22:00`) |
 | `fraction` | Target fraction as a percentage |
 | `target` | Target number of bots online |
 | `online` | Currently online AFK bots |
@@ -233,7 +233,7 @@ Shows the time remaining until the next window change and its fraction.
 
 ---
 
-## Example — Realistic 24/7 Server
+## Example - Realistic 24/7 Server
 
 ```yaml
 swap:
@@ -292,6 +292,6 @@ peak-hours:
 
 - Peak-hours **does not override** the global `limits.max-bots` cap.
 - Only **AFK bots** (`BotType.AFK`) are managed by peak-hours.  PVP bots are never put to sleep.
-- Sleeping bots are **not persisted** separately — on shutdown, `PeakHoursManager` wakes all sleeping bots before `BotPersistence.save()` runs, so they are included in the normal persistence file.
+- Sleeping bots are **not persisted** separately - on shutdown, `PeakHoursManager` wakes all sleeping bots before `BotPersistence.save()` runs, so they are included in the normal persistence file.
 - `/fpp reload` wakes all sleeping bots, resets state, then immediately re-evaluates the new config.
 

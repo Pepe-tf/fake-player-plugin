@@ -10,7 +10,7 @@ FPP logs every bot session to a database for auditing, analytics, the `/fpp info
 
 | Backend | When used | Location |
 |---------|----------|----------|
-| **SQLite** | Default — always available | `plugins/FakePlayerPlugin/data/fpp.db` |
+| **SQLite** | Default - always available | `plugins/FakePlayerPlugin/data/fpp.db` |
 | **MySQL** | When `database.mysql-enabled: true` and server is reachable | Remote MySQL server |
 
 If MySQL is enabled but unreachable at startup, FPP automatically falls back to SQLite and logs a warning.
@@ -99,7 +99,7 @@ Records every bot session for `/fpp info` queries and analytics.
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | INTEGER (PK) | Auto-increment row ID |
-| `server_id` | TEXT | Server identifier (`database.server-id`) — distinguishes sessions in NETWORK mode |
+| `server_id` | TEXT | Server identifier (`database.server-id`) - distinguishes sessions in NETWORK mode |
 | `bot_name` | TEXT | Internal bot name (unique per session) |
 | `display_name` | TEXT | Display name (may differ for user-tier bots) |
 | `spawner_uuid` | TEXT | UUID of the player who spawned the bot |
@@ -135,7 +135,7 @@ Tracks bots that should be restored on next startup.
 
 ---
 
-## Querying Records — `/fpp info`
+## Querying Records - `/fpp info`
 
 ### Admin tier (`fpp.info`)
 
@@ -161,8 +161,8 @@ Shown fields: spawn time, despawn time, uptime, world, coordinates, spawner, rem
 
 When `persistence.enabled: true`, FPP:
 
-1. On **shutdown** — marks all active bot sessions as `removal_reason: SERVER_STOP`, records their last position in `fpp_active_bots`, and flushes coordinates to `bot_sessions`.
-2. On **startup** — queries `fpp_active_bots` (primary) or `data/active-bots.yml` (fallback) and respawns those bots at their last-known position.
+1. On **shutdown** - marks all active bot sessions as `removal_reason: SERVER_STOP`, records their last position in `fpp_active_bots`, and flushes coordinates to `bot_sessions`.
+2. On **startup** - queries `fpp_active_bots` (primary) or `data/active-bots.yml` (fallback) and respawns those bots at their last-known position.
 
 This ensures bots rejoin exactly where they were when the server stopped.
 
@@ -220,4 +220,4 @@ Set `database.enabled: false` to disable all database I/O. In this mode:
 - No session history is recorded
 - Bot persistence falls back to `data/active-bots.yml` only
 - `/fpp info` returns in-memory data only (no historical records)
-- `/fpp stats` DB totals show `—`
+- `/fpp stats` DB totals show `-`

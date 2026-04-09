@@ -1,4 +1,4 @@
-# Config Synchronization — Complete Guide
+# Config Synchronization - Complete Guide
 
 ## 🔄 Overview
 
@@ -37,10 +37,10 @@ config-sync:
 ```
 
 **Modes:**
-- `DISABLED` — No syncing (default for LOCAL mode)
-- `MANUAL` — Only sync via commands
-- `AUTO_PULL` — Auto-pull latest on startup/reload
-- `AUTO_PUSH` — Auto-push changes (use with caution!)
+- `DISABLED` - No syncing (default for LOCAL mode)
+- `MANUAL` - Only sync via commands
+- `AUTO_PULL` - Auto-pull latest on startup/reload
+- `AUTO_PUSH` - Auto-push changes (use with caution!)
 
 ---
 
@@ -51,9 +51,9 @@ These files can be synchronized:
 | File | What syncs | What DOESN'T sync |
 |------|------------|-------------------|
 | **config.yml** | Most settings | `server.id`, `database.mysql.*`, `debug` |
-| **bot-names.yml** | Everything | — |
-| **bot-messages.yml** | Everything | — |
-| **language/en.yml** | Everything | — |
+| **bot-names.yml** | Everything | - |
+| **bot-messages.yml** | Everything | - |
+| **language/en.yml** | Everything | - |
 
 ---
 
@@ -113,7 +113,7 @@ These files can be synchronized:
 
 **Output:**
 ```
-━━━ SYNC STATUS — config.yml ━━━
+━━━ SYNC STATUS - config.yml ━━━
   HASH: a3f2c8b1
   PUSHED BY: survival (Admin)
   PUSHED AT: 2026-03-26T18:30:00Z
@@ -521,9 +521,9 @@ mv config.yml.sync-backup config.yml
 
 ## 📚 Related Documentation
 
-- [Proxy Support](Proxy-Support.md) — Network setup guide
-- [Database](Database.md) — MySQL configuration
-- [Configuration](Configuration.md) — All config options
+- [Proxy Support](Proxy-Support.md) - Network setup guide
+- [Database](Database.md) - MySQL configuration
+- [Configuration](Configuration.md) - All config options
 
 ---
 

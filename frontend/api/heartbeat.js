@@ -1,5 +1,5 @@
 /**
- * POST /api/heartbeat — receives periodic stats from FPP plugin instances.
+ * POST /api/heartbeat - receives periodic stats from FPP plugin instances.
  *
  * Payload (JSON):
  *   { server_id, player_count, bot_count, version }
@@ -9,10 +9,10 @@
  * Staleness is determined by the `last_seen` timestamp in the stored JSON;
  * entries older than STALE_MS are ignored when reading stats.
  *
- * SETUP — enable Vercel KV in your Vercel dashboard:
+ * SETUP - enable Vercel KV in your Vercel dashboard:
  *   1. Open the project → Storage tab → Create Database → KV (Upstash)
  *   2. Vercel automatically adds KV_REST_API_URL + KV_REST_API_TOKEN env vars.
- *   3. Re-deploy — the heartbeat and online-stats endpoints will use real data.
+ *   3. Re-deploy - the heartbeat and online-stats endpoints will use real data.
  *
  * When KV is not configured the endpoint returns HTTP 503 so the plugin
  * silently drops the heartbeat without spamming the server log.
@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  // Parse body — Vercel auto-parses JSON when Content-Type is application/json
+  // Parse body - Vercel auto-parses JSON when Content-Type is application/json
   const body = req.body || {};
   const { server_id, player_count, bot_count, version } = body;
 
@@ -48,10 +48,10 @@ module.exports = async (req, res) => {
 
   const store = getKv();
   if (!store) {
-    // KV not set up — acknowledge silently so the plugin doesn't log errors
+    // KV not set up - acknowledge silently so the plugin doesn't log errors
     return res.status(503).json({
       ok: false,
-      error: 'KV not configured — enable Vercel KV in the dashboard to track live stats'
+      error: 'KV not configured - enable Vercel KV in the dashboard to track live stats'
     });
   }
 

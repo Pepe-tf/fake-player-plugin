@@ -7,11 +7,11 @@
 
 ## v1.5.17 *(2026-04-07)*
 
-### 🔄 Swap System — Critical Fix & Major Enhancements
+### 🔄 Swap System - Critical Fix & Major Enhancements
 
-**Critical Bug Fix — Bots Now Rejoin**
+**Critical Bug Fix - Bots Now Rejoin**
 
-The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid)` on the way out. Bots left but the rejoin task was destroyed before it could fire — they never came back. Fixed by registering the rejoin task **after** `delete()` runs so `cancel()` finds nothing to cancel.
+The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid)` on the way out. Bots left but the rejoin task was destroyed before it could fire - they never came back. Fixed by registering the rejoin task **after** `delete()` runs so `cancel()` finds nothing to cancel.
 
 **New Config Keys**
 | Key | Default | Description |
@@ -23,15 +23,15 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 
 **Other Improvements**
 - Better bot identification on rejoin: same-name rejoins use `getByName()` (stable even with identity cache); random-name rejoins use UUID diff
-- New `Personality.SPORADIC` type — wide random variance for truly unpredictable session patterns
+- New `Personality.SPORADIC` type - wide random variance for truly unpredictable session patterns
 - Expanded farewell/greeting message pools (~50 entries each)
-- New `/fpp swap info <bot>` — shows personality, cycle count, time until next leave, and offline-waiting count
+- New `/fpp swap info <bot>` - shows personality, cycle count, time until next leave, and offline-waiting count
 - `/fpp swap list` now shows **time remaining** in each bot's session
 - `/fpp swap status` now shows the `min-online` floor setting
 
 ### ⚡ Performance Optimizations
-- **O(1) bot name lookup** — secondary `nameIndex` map added to `FakePlayerManager`; `getByName()` was O(n) linear scan, now O(1) `ConcurrentHashMap` lookup maintained at all add/remove sites (spawn, restore, delete, removeByName, removeAllSync)
-- **Position sync distance culling** — position packets are only broadcast to players within `performance.position-sync-distance` blocks (new config key, default `128.0`; `0` = unlimited); saves significant packet overhead on large servers with many players
+- **O(1) bot name lookup** - secondary `nameIndex` map added to `FakePlayerManager`; `getByName()` was O(n) linear scan, now O(1) `ConcurrentHashMap` lookup maintained at all add/remove sites (spawn, restore, delete, removeByName, removeAllSync)
+- **Position sync distance culling** - position packets are only broadcast to players within `performance.position-sync-distance` blocks (new config key, default `128.0`; `0` = unlimited); saves significant packet overhead on large servers with many players
 
 ### 🔕 Log Cleanup
 - NmsPlayerSpawner per-spawn/despawn log lines demoted from INFO → DEBUG:
@@ -55,14 +55,14 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 
 ### 📝 Config Clarity Improvements
 - All timing-related values in `config.yml` now clearly state their unit (ticks or seconds) with human-readable conversion examples
-- `join-delay` / `leave-delay` section header updated to *"Values are in TICKS — 20 ticks = 1 second"* with a quick-reference line; `min`/`max` keys now carry inline tick-unit comments
+- `join-delay` / `leave-delay` section header updated to *"Values are in TICKS - 20 ticks = 1 second"* with a quick-reference line; `min`/`max` keys now carry inline tick-unit comments
 - `death.respawn-delay` comment now shows seconds equivalents: `15 = 0.75 s · 60 = 3 s · 100 = 5 s`
 - `chunk-loading.update-interval` comment clarified: *"in ticks (20 ticks = 1 second). Lower = more responsive, higher = less overhead."*
 - `swap.session` / `swap.absence` inline comments updated with real-world time examples (e.g. `60 = 1 min`, `300 = 5 min`)
 
 ### 🔧 Build Pipeline Fixes
-- ProGuard: removed `**.yml` from `-adaptresourcefilecontents` — prevents charset corruption of `plugin.yml` and language files on Windows builds
-- ProGuard: removed `-dontpreverify` — `StackMapTable` attributes preserved; obfuscated jar passes JVM verifier without `VerifyError`
+- ProGuard: removed `**.yml` from `-adaptresourcefilecontents` - prevents charset corruption of `plugin.yml` and language files on Windows builds
+- ProGuard: removed `-dontpreverify` - `StackMapTable` attributes preserved; obfuscated jar passes JVM verifier without `VerifyError`
 - ProGuard: MySQL / SQLite shaded classes excluded from preverification to prevent `IncompleteClassHierarchyException`; merged back verbatim into final jar
 
 ---
@@ -70,7 +70,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 ## v1.5.12 *(2026-04-05)*
 
 ### 🔒 Stable Bot UUID Identity
-- `BotIdentityCache` — each bot name is permanently tied to a stable UUID; LuckPerms data, inventory, and session history persist across restarts
+- `BotIdentityCache` - each bot name is permanently tied to a stable UUID; LuckPerms data, inventory, and session history persist across restarts
 - Storage: in-memory cache → `fpp_bot_identities` DB table → `data/bot-identities.yml` YAML fallback
 
 ### ⚙️ In-Game Settings GUI
@@ -81,7 +81,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 ### ⏰ Peak Hours Scheduler
 - `PeakHoursManager` scales the bot pool by time-of-day windows (`peak-hours.schedule`, `day-overrides`, `stagger-seconds`)
 - Crash-safe: sleeping-bot state persisted in `fpp_sleeping_bots` DB table, restored at startup
-- New command: `/fpp peaks [on|off|status|next|force|list|wake <name>|sleep <name>]` — requires `swap.enabled: true`
+- New command: `/fpp peaks [on|off|status|next|force|list|wake <name>|sleep <name>]` - requires `swap.enabled: true`
 
 ### 💬 Per-Bot Chat Control
 - Random activity tier per bot: quiet / passive / normal / active / chatty
@@ -89,7 +89,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - Event-triggered chat (`event-triggers.*`) and keyword reactions (`keyword-reactions.*`)
 
 ### 👻 Bodyless Bot Mode & Bot Types
-- `bodyless` flag — bots without a world location exist in tab-list/chat only, no world entity
+- `bodyless` flag - bots without a world location exist in tab-list/chat only, no world entity
 - `BotType`: `AFK` (passive) and `PVP` (combat via `BotPvpAI`)
 
 ### 🔧 Config Migration v41 → v44
@@ -100,7 +100,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 ## v1.5.10 *(2026-04-05)*
 
 ### 🔄 `/fpp swap` Toggle Fix
-- Running `/fpp swap` with no arguments now toggles swap on/off — exactly like `/fpp chat`
+- Running `/fpp swap` with no arguments now toggles swap on/off - exactly like `/fpp chat`
 - `swap-enabled` and `swap-disabled` messages redesigned to match the chat toggle style (`session rotation has been enabled/disabled`)
 - `swap-status-on` / `swap-status-off` now follow the same `is enabled / is disabled` pattern as chat status messages
 
@@ -109,7 +109,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - `/fpp reload` output now shows the new interval range as confirmation
 
 ### 🛠️ Language & Compatibility
-- `Biome.name()` deprecated call replaced with `Biome.getKey().getKey()` — compatible with Paper 1.22+
+- `Biome.name()` deprecated call replaced with `Biome.getKey().getKey()` - compatible with Paper 1.22+
 - `sync-usage` and `swap-now-usage` messages now end with a period, matching the rest of the file
 - Startup banner now shows **Bot swap** status in the Features section
 
@@ -123,7 +123,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - Eliminated `NullPointerException` and `ClassCastException` spam in server logs related to bot connections
 
 ### 📊 `%fpp_real%` / `%fpp_total%` Accuracy Fix
-- `%fpp_real%` now correctly subtracts bot count from `Bukkit.getOnlinePlayers()` — bots go through `placeNewPlayer()` and appear in the online list
+- `%fpp_real%` now correctly subtracts bot count from `Bukkit.getOnlinePlayers()` - bots go through `placeNewPlayer()` and appear in the online list
 - `%fpp_real_<world>%` similarly now excludes bots from per-world real-player counts
 - `%fpp_total%` fixed to avoid double-counting; accurately reports real players + local bots (+ remote bots in NETWORK mode)
 
@@ -145,14 +145,14 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - All LP-dependent code is now properly gated behind `LuckPermsHelper.isAvailable()` checks; no LP classes are loaded unless LP is present
 
 ### ⚙️ Config Migration
-- Config version bumped to `37` (no structural key changes — version stamp only)
+- Config version bumped to `37` (no structural key changes - version stamp only)
 - Automatic migration on first startup from any previous version
 
 ---
 
 ## v1.5.6 *(2026-04-03)*
 
-### ⚔️ Knockback Fix (1.21.9–1.21.11)
+### ⚔️ Knockback Fix (1.21.9-1.21.11)
 - Bots now correctly receive knockback on 1.21.9+ servers
 - Tiered strategy system auto-detects the correct MC version API at startup (zero reflection overhead per hit)
 - `GET_MOVEMENT` (1.21.9+): uses `packet.getMovement()` → `Vec3` → `player.lerpMotion(Vec3)`
@@ -164,8 +164,8 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - Ensures our `onDisconnect` override handles double-retirement gracefully
 
 ### 🛡️ Bot Protection System
-- **Command blocking** — bots can no longer execute commands from ANY source (4-layer protection)
-- **Lobby spawn fix** — 5-tick grace period prevents lobby plugins from teleporting bots at spawn
+- **Command blocking** - bots can no longer execute commands from ANY source (4-layer protection)
+- **Lobby spawn fix** - 5-tick grace period prevents lobby plugins from teleporting bots at spawn
 - New listeners: `BotCommandBlocker` and `BotSpawnProtectionListener`
 
 ---
@@ -201,7 +201,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 ### 🌐 Proxy / Network Mode
 - Full **Velocity & BungeeCord** support with `NETWORK` database mode
 - Cross-server chat, alerts, bot join/leave broadcasts, and remote bot tab-list sync via `fpp:main` plugin-messaging channel
-- Remote bot cache — thread-safe registry of bots on other proxy servers, populated from DB at startup
+- Remote bot cache - thread-safe registry of bots on other proxy servers, populated from DB at startup
 
 ### 🔄 Config Sync
 - `/fpp sync push/pull/status/check` commands
@@ -213,24 +213,24 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - Scoreboard team `~fpp` places all bots **below** real players in the tab list regardless of LP group weight
 
 ### 🎖️ Per-Bot LuckPerms Groups
-- `/fpp rank <bot> <group>` — change a bot's LP group at runtime, no respawn needed
-- `/fpp rank random <group> [num|all]` — assign a group to random bots
-- `/fpp rank list` — see each bot's current group
+- `/fpp rank <bot> <group>` - change a bot's LP group at runtime, no respawn needed
+- `/fpp rank random <group> [num|all]` - assign a group to random bots
+- `/fpp rank list` - see each bot's current group
 
 ### 🔍 New Commands
-- `/fpp lpinfo [bot]` — in-game LP diagnostic: prefix, weight, rank index, packet profile name
-- `/fpp alert <message>` — broadcast admin message to all servers on the proxy
+- `/fpp lpinfo [bot]` - in-game LP diagnostic: prefix, weight, rank index, packet profile name
+- `/fpp alert <message>` - broadcast admin message to all servers on the proxy
 
 ### 💬 Formatting & Config
-- **Fake-chat format** — `fake-chat.chat-format` supports `{prefix}`, `{bot_name}`, `{suffix}`, `{message}`; full LP gradient + color support
-- **Tab-list name format** — `bot-name.tab-list-format` supports `{prefix}`, `{bot_name}`, `{suffix}`, and any PAPI placeholder
+- **Fake-chat format** - `fake-chat.chat-format` supports `{prefix}`, `{bot_name}`, `{suffix}`, `{message}`; full LP gradient + color support
+- **Tab-list name format** - `bot-name.tab-list-format` supports `{prefix}`, `{bot_name}`, `{suffix}`, and any PAPI placeholder
 - **`luckperms.default-group`** config key; bots explicitly assigned `default` even when blank
-- **Body toggles** — `body.pushable` and `body.damageable`; live-reloadable via `/fpp reload`
-- **Spawn cooldown** — `spawn-cooldown` config key; `fpp.bypass.cooldown` permission
+- **Body toggles** - `body.pushable` and `body.damageable`; live-reloadable via `/fpp reload`
+- **Spawn cooldown** - `spawn-cooldown` config key; `fpp.bypass.cooldown` permission
 
 ### 🛠️ Technical
 - Per-subsystem debug flags: `logging.debug.startup/nms/packets/luckperms/network/config-sync/skin/database`
-- YAML auto-sync — missing keys merged into `en.yml`, `bot-names.yml`, `bot-messages.yml` on every startup and reload
+- YAML auto-sync - missing keys merged into `en.yml`, `bot-names.yml`, `bot-messages.yml` on every startup and reload
 - `/fpp migrate` enhancements: `status`, `backup`, `backups`, `lang`, `names`, `messages`, `config`, `db merge`, `db export`, `db tomysql`
 - Config version → `33`
 
@@ -238,39 +238,39 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 
 ## v1.4.28 *(2026-03-26)*
 
-- **Skin diversity fix** — guaranteed-skin fallback pool uses on-demand random selection at startup
-- **Vanilla skin pool** — 27 official Minecraft system accounts (Mojang devs + MHF_* skins)
-- **Per-world placeholders** — `%fpp_count_<world>%`, `%fpp_real_<world>%`, `%fpp_total_<world>%`
-- **`%fpp_online%`** — alias for `%fpp_total%`
-- **Fake chat prefix/suffix** — `{prefix}` and `{suffix}` in `chat-format` for full LP integration
-- **Spawn race condition fixed** — `/fpp despawn all` during spawn no longer leaves ghost entries
-- **Portal/teleport bug fixed** — PDC-based entity recovery for bots pushed through portals
-- **Body damageable toggle fixed** — event-level cancellation replaces entity-flag-only approach
-- **Body config live reload** — `/fpp reload` immediately applies `body.pushable` / `body.damageable` changes
+- **Skin diversity fix** - guaranteed-skin fallback pool uses on-demand random selection at startup
+- **Vanilla skin pool** - 27 official Minecraft system accounts (Mojang devs + MHF_* skins)
+- **Per-world placeholders** - `%fpp_count_<world>%`, `%fpp_real_<world>%`, `%fpp_total_<world>%`
+- **`%fpp_online%`** - alias for `%fpp_total%`
+- **Fake chat prefix/suffix** - `{prefix}` and `{suffix}` in `chat-format` for full LP integration
+- **Spawn race condition fixed** - `/fpp despawn all` during spawn no longer leaves ghost entries
+- **Portal/teleport bug fixed** - PDC-based entity recovery for bots pushed through portals
+- **Body damageable toggle fixed** - event-level cancellation replaces entity-flag-only approach
+- **Body config live reload** - `/fpp reload` immediately applies `body.pushable` / `body.damageable` changes
 
 ---
 
 ## v1.4.27 *(2026-03-25)*
 
-- **Unified spawn syntax** — `/fpp spawn` supports `[count] [world] [x y z] [--name <name>]`
-- **Improved `/fpp reload` output** — box-drawing lines, per-step detail, timing line
-- **`/fpp reload` canUse fix** — operators can now reload without explicit permission nodes
+- **Unified spawn syntax** - `/fpp spawn` supports `[count] [world] [x y z] [--name <name>]`
+- **Improved `/fpp reload` output** - box-drawing lines, per-step detail, timing line
+- **`/fpp reload` canUse fix** - operators can now reload without explicit permission nodes
 
 ---
 
 ## v1.4.26 *(2026-03-25)*
 
-- **Tab-list weight ordering overhauled** — bots perfectly respect LP group weights
-- **Rank command system** — `/fpp rank <bot> <group>` and `/fpp rank random`
-- **Restoration bug fixed** — bots restored after restart maintain correct weights and ranks
-- **Auto-update on group change** — prefixes and tab-list ordering update in real-time
+- **Tab-list weight ordering overhauled** - bots perfectly respect LP group weights
+- **Rank command system** - `/fpp rank <bot> <group>` and `/fpp rank random`
+- **Restoration bug fixed** - bots restored after restart maintain correct weights and ranks
+- **Auto-update on group change** - prefixes and tab-list ordering update in real-time
 
 ---
 
 ## v1.4.24 *(2026-03-24)*
 
-- YAML file syncer — missing keys auto-merged on startup and `/fpp reload`
-- `/fpp migrate lang|names|messages` — force-sync individual YAML files from the bundled JAR
+- YAML file syncer - missing keys auto-merged on startup and `/fpp reload`
+- `/fpp migrate lang|names|messages` - force-sync individual YAML files from the bundled JAR
 
 ---
 
@@ -285,7 +285,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 
 ## v1.4.22 *(2026-03-22)*
 
-- `tab-list.enabled` — toggle bot visibility in the player tab list
+- `tab-list.enabled` - toggle bot visibility in the player tab list
 - Multi-platform download links in update notifications
 - Enhanced `/fpp reload` with step-by-step progress output
 
@@ -293,8 +293,8 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 
 ## v1.2.7 *(2026-03-14)*
 
-- `/fpp freeze` — freeze / unfreeze any bot or all bots
-- `/fpp stats` — live statistics panel (bots, frozen, TPS, DB totals)
+- `/fpp freeze` - freeze / unfreeze any bot or all bots
+- `/fpp stats` - live statistics panel (bots, frozen, TPS, DB totals)
 - PlaceholderAPI expansion registered automatically
 - Spawn cooldown system (`spawn-cooldown` config key)
 - Animated tab-list header / footer
@@ -304,7 +304,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 
 ## v1.2.2 *(2026-03-14)*
 
-- **Guaranteed Skin system** — fallback chain ensures bots always have a real skin
+- **Guaranteed Skin system** - fallback chain ensures bots always have a real skin
 - `skin.fallback-name` config key for manual fallback
 - Mojang API rate-limit fix
 - Config auto-migration system introduced
@@ -316,22 +316,22 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - First stable release
 - Full permission system (`fpp.*`, `fpp.admin.*`, `fpp.user.*`)
 - User-tier commands (`/fpp spawn`, `/fpp despawn`, `/fpp list`)
-- Bot persistence — bots rejoin on server restart
+- Bot persistence - bots rejoin on server restart
 
 ---
 
 ## v0.1.0
 
 - **Initial release**
-- Tab list presence — bots appear as real players
+- Tab list presence - bots appear as real players
 - Join / leave messages
 - In-world physical body (mannequin entity)
-- Head AI — tracks nearby players
+- Head AI - tracks nearby players
 - Collision / push system
 
 ---
 
 > 📥 **Download the latest version:** [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [Hangar](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/)  
 > 💬 **Support:** [Discord](https://discord.gg/QSN7f67nkJ)  
-> 🔖 **Latest:** v1.5.17 — Swap system critical fix & enhancements
+> 🔖 **Latest:** v1.5.17 - Swap system critical fix & enhancements
 

@@ -8,7 +8,7 @@ The default language file lives at:
 plugins/FakePlayerPlugin/language/en.yml
 ```
 
-Apply changes with `/fpp reload` — no restart needed.
+Apply changes with `/fpp reload` - no restart needed.
 
 ---
 
@@ -76,7 +76,7 @@ Prepended to messages that include `{prefix}`. Edit to rebrand the plugin prefix
 | Key | Description |
 |-----|-------------|
 | `help-header` | Top border of the help menu |
-| `help-entry` | Format for each command line: `/{cmd} {args} — {desc}` |
+| `help-entry` | Format for each command line: `/{cmd} {args} - {desc}` |
 | `help-footer` | Bottom border of the help menu |
 
 ---
@@ -96,8 +96,8 @@ Prepended to messages that include `{prefix}`. Edit to rebrand the plugin prefix
 | `spawn-success` | `{count}`, `{total}` | Bots spawned successfully |
 | `spawn-max-reached` | `{max}` | Global max-bots cap hit |
 | `spawn-user-limit-reached` | `{limit}` | Personal bot limit hit |
-| `spawn-invalid` | — | Wrong usage of `/fpp spawn` |
-| `spawn-invalid-name` | — | Bot name contains invalid characters |
+| `spawn-invalid` | - | Wrong usage of `/fpp spawn` |
+| `spawn-invalid-name` | - | Bot name contains invalid characters |
 | `spawn-name-taken` | `{name}` | A bot with that name is already active |
 
 ---
@@ -108,7 +108,7 @@ Prepended to messages that include `{prefix}`. Edit to rebrand the plugin prefix
 |-----|-------------|-------------|
 | `delete-success` | `{name}` | Bot successfully removed |
 | `delete-all` | `{count}` | All bots removed |
-| `delete-none` | — | No bots to delete |
+| `delete-none` | - | No bots to delete |
 | `delete-not-found` | `{name}` | No bot with that name found |
 
 ---
@@ -160,7 +160,7 @@ Prepended to messages that include `{prefix}`. Edit to rebrand the plugin prefix
 | Key | Placeholders | Description |
 |-----|-------------|-------------|
 | `info-no-records` | `{name}` | No database records for the queried name |
-| `info-db-unavailable` | — | Database is not available |
+| `info-db-unavailable` | - | Database is not available |
 
 ---
 
@@ -168,12 +168,12 @@ Prepended to messages that include `{prefix}`. Edit to rebrand the plugin prefix
 
 | Key | Placeholders | Description |
 |-----|-------------|-------------|
-| `tph-no-bots` | — | Player has no active bots |
-| `tph-specify-name` | — | Player has multiple bots and must specify one |
+| `tph-no-bots` | - | Player has no active bots |
+| `tph-specify-name` | - | Player has multiple bots and must specify one |
 | `tph-not-yours` | `{name}` | Player doesn't own the named bot |
 | `tph-not-found` | `{name}` | No active bot with that name |
 | `tph-failed` | `{name}` | Teleport failed (entity invalid) |
-| `tp-specify-name` | — | Multiple bots active, must specify name |
+| `tp-specify-name` | - | Multiple bots active, must specify name |
 
 ---
 

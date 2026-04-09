@@ -19,7 +19,7 @@ Set `enabled: true` in `config.yml`, or toggle live with:
 /fpp chat status
 ```
 
-The command writes the change to `config.yml` immediately — it survives `/fpp reload` and restarts.
+The command writes the change to `config.yml` immediately - it survives `/fpp reload` and restarts.
 
 **Required permission:** `fpp.chat`
 
@@ -32,7 +32,7 @@ The command writes the change to `config.yml` immediately — it survives `/fpp 
 - If the roll passes, a random message is picked from `bot-messages.yml` with placeholders filled in
 - The process repeats with a new random interval
 
-No two bots share the same timer — they chat independently and asynchronously.
+No two bots share the same timer - they chat independently and asynchronously.
 
 ---
 
@@ -45,7 +45,7 @@ fake-chat:
   # Only send messages when at least one real player is online
   require-player-online: true
 
-  # Probability (0.0–1.0) a message fires each timer interval
+  # Probability (0.0-1.0) a message fires each timer interval
   chance: 0.75
 
   # Random interval between each bot's own messages (seconds)
@@ -53,7 +53,7 @@ fake-chat:
     min: 5
     max: 10
 
-  # Simulate a typing pause (0–2.5 s) before each message
+  # Simulate a typing pause (0-2.5 s) before each message
   typing-delay: true
 
   # Chance a bot sends a quick follow-up message a few seconds later
@@ -89,7 +89,7 @@ fake-chat:
 | `chance` | Roll probability per interval tick (`0.75` = 75% chance) |
 | `interval.min` | Minimum seconds between a single bot's messages |
 | `interval.max` | Maximum seconds between a single bot's messages |
-| `typing-delay` | Simulate a 0–2.5 s typing pause before each message |
+| `typing-delay` | Simulate a 0-2.5 s typing pause before each message |
 | `burst-chance` | Probability a bot sends a quick follow-up message |
 | `burst-delay` | Seconds before the follow-up fires (min/max) |
 | `reply-to-mentions` | Bots may reply when a player says their name in chat |
@@ -100,7 +100,7 @@ fake-chat:
 | `history-size` | Recent messages to remember and avoid repeating |
 | `remote-format` | MiniMessage format for bodyless / proxy-remote bot broadcasts. Placeholders: `{name}`, `{message}`. |
 
-> **Hot Reload:** Changes to `interval`, `chance`, and `stagger-interval` take effect immediately when you run `/fpp reload` — all bot chat loops are restarted with the new values. (Fixed in v1.5.10)
+> **Hot Reload:** Changes to `interval`, `chance`, and `stagger-interval` take effect immediately when you run `/fpp reload` - all bot chat loops are restarted with the new values. (Fixed in v1.5.10)
 
 > **Chat Format:** Bots send chat through the server's real chat pipeline (`Player.chat()`), so the format is controlled by your server's chat plugin (e.g. LuckPerms, EssentialsX chat). The `remote-format` key handles formatting only for bodyless and proxy-remote bot broadcasts.
 
@@ -134,7 +134,7 @@ fake-chat:
 
 | Setting | Description |
 |---------|-------------|
-| `event-triggers.enabled` | Master switch — disabling also turns off all sub-triggers below |
+| `event-triggers.enabled` | Master switch - disabling also turns off all sub-triggers below |
 | `on-player-join` | A bot greets real players when they join. Uses `join-reactions` pool in `bot-messages.yml`. |
 | `on-death` | A bot reacts when an entity dies. `players-only: true` ignores mob/animal deaths. Uses `death-reactions` pool. |
 | `on-player-leave` | A bot says goodbye when a real player leaves. Uses `leave-reactions` pool. |
@@ -222,9 +222,9 @@ fake-chat:
 
 ## Tips
 
-- **Keep messages short** — single-line, casual, conversational
-- **Avoid all-caps** — it looks spammy
-- **Mix question types and reactions** — "lol", "anyone wanna trade?", "what did I miss?"
-- **Use `{random_player}` sparingly** — only 10–20% of messages should address real players
-- **Longer intervals feel more natural** — 30–120 seconds is a realistic human chat pace
+- **Keep messages short** - single-line, casual, conversational
+- **Avoid all-caps** - it looks spammy
+- **Mix question types and reactions** - "lol", "anyone wanna trade?", "what did I miss?"
+- **Use `{random_player}` sparingly** - only 10-20% of messages should address real players
+- **Longer intervals feel more natural** - 30-120 seconds is a realistic human chat pace
 - Set `require-player-online: true` if you don't want bots chatting into an empty server

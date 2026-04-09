@@ -1,4 +1,4 @@
-# 🎮 Fake Player Plugin — Wiki
+# 🎮 Fake Player Plugin - Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
 > **Version:** 1.6.0 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub
@@ -7,24 +7,24 @@
 
 ## 🌟 Welcome to FPP
 
-**Fake Player Plugin (FPP)** is the most advanced bot-spoofing plugin for Minecraft Paper servers. Create **realistic fake players** that seamlessly integrate with your server ecosystem — appearing in the tab list, server count, and as physical entities in the world.
+**Fake Player Plugin (FPP)** is the most advanced bot-spoofing plugin for Minecraft Paper servers. Create **realistic fake players** that seamlessly integrate with your server ecosystem - appearing in the tab list, server count, and as physical entities in the world.
 
 ### ✨ What Makes FPP Special?
 
-- 🎭 **Indistinguishable from real players** — Complete tab list integration
-- 🏃 **Physical presence** — NMS ServerPlayer entities with realistic hitboxes  
-- 🎨 **Custom skins** — Use any Minecraft skin or upload your own
-- 💬 **Fake chat** — Bots send messages with typing delays, burst replies, and event reactions
-- 🔄 **Dynamic swapping** — Replace offline players seamlessly with the swap system
-- ⏰ **Peak hours scheduler** — Scale your bot pool by time-of-day windows
-- 📦 **Bot inventory GUI** — Inspect and modify any bot's full inventory in-game
-- 🧭 **A* pathfinding** — Navigate bots to players with `/fpp move`
-- ⛏️ **Block mining** — Bots continuously mine blocks with `/fpp mine`
-- 💻 **Stored commands** — Assign right-click commands to bots with `/fpp cmd`
-- ⚙️ **Highly configurable** — In-game settings GUI with live toggles
-- 🔐 **Two-tier permission system** — `fpp.op` for admins, `fpp.use` for users
-- 📊 **PlaceholderAPI** — 29+ placeholders for scoreboards, tab headers, and more
-- 🎯 **LuckPerms integration** — Prefix/suffix, group assignment, weighted ordering
+- 🎭 **Indistinguishable from real players** - Complete tab list integration
+- 🏃 **Physical presence** - NMS ServerPlayer entities with realistic hitboxes  
+- 🎨 **Custom skins** - Use any Minecraft skin or upload your own
+- 💬 **Fake chat** - Bots send messages with typing delays, burst replies, and event reactions
+- 🔄 **Dynamic swapping** - Replace offline players seamlessly with the swap system
+- ⏰ **Peak hours scheduler** - Scale your bot pool by time-of-day windows
+- 📦 **Bot inventory GUI** - Inspect and modify any bot's full inventory in-game
+- 🧭 **A* pathfinding** - Navigate bots to players with `/fpp move`
+- ⛏️ **Block mining** - Bots continuously mine blocks with `/fpp mine`
+- 💻 **Stored commands** - Assign right-click commands to bots with `/fpp cmd`
+- ⚙️ **Highly configurable** - In-game settings GUI with live toggles
+- 🔐 **Two-tier permission system** - `fpp.op` for admins, `fpp.use` for users
+- 📊 **PlaceholderAPI** - 29+ placeholders for scoreboards, tab headers, and more
+- 🎯 **LuckPerms integration** - Prefix/suffix, group assignment, weighted ordering
 
 ---
 
@@ -86,53 +86,53 @@
 ## 🎯 Key Features Breakdown
 
 ### 🎭 **Realistic Fake Players**
-- **Tab List Integration** — Bots appear as real players
-- **Server Count** — Increases displayed player count  
-- **Join/Leave Messages** — Configurable welcome/goodbye messages
-- **Chat Integration** — Bots can send messages and participate
+- **Tab List Integration** - Bots appear as real players
+- **Server Count** - Increases displayed player count  
+- **Join/Leave Messages** - Configurable welcome/goodbye messages
+- **Chat Integration** - Bots can send messages and participate
 
 ### 🏃 **Physical Bodies (Mannequins)**  
-- **Player-Shaped Entities** — Proper hitboxes and collision
-- **Skin Support** — Display any Minecraft skin
-- **Physics & AI** — Walking, head rotation, collision avoidance
-- **Combat** — Take damage, die, respawn (all configurable)
+- **Player-Shaped Entities** - Proper hitboxes and collision
+- **Skin Support** - Display any Minecraft skin
+- **Physics & AI** - Walking, head rotation, collision avoidance
+- **Combat** - Take damage, die, respawn (all configurable)
 
 ### 🎨 **Skin System**
-- **Auto Mode** — Fetch skins from Mojang automatically
-- **Custom Skins** — Upload your own skin files  
-- **Random Pool** — Rotate through multiple skins
-- **Fallback System** — Always have a working skin
+- **Auto Mode** - Fetch skins from Mojang automatically
+- **Custom Skins** - Upload your own skin files  
+- **Random Pool** - Rotate through multiple skins
+- **Fallback System** - Always have a working skin
 
 ### 💬 **Chat & Messaging**
-- **Fake Chat** — Bots send realistic messages
-- **LuckPerms Support** — Prefix/suffix with gradient colors
-- **Message Pools** — Random message selection
-- **Broadcast System** — Scheduled announcements
+- **Fake Chat** - Bots send realistic messages
+- **LuckPerms Support** - Prefix/suffix with gradient colors
+- **Message Pools** - Random message selection
+- **Broadcast System** - Scheduled announcements
 
 ### 🔄 **Swap System**  
-- **Offline Replacement** — Replace AFK/offline players
-- **Seamless Transition** — Maintain server population
-- **Smart Detection** — Automatic player monitoring
-- **Whitelist Support** — Protect VIP players
+- **Offline Replacement** - Replace AFK/offline players
+- **Seamless Transition** - Maintain server population
+- **Smart Detection** - Automatic player monitoring
+- **Whitelist Support** - Protect VIP players
 
 ### ⚙️ **Configuration**
-- **44 Config Versions** — Automatic migration system
-- **Hot Reload** — Change settings without restart
-- **Backup System** — Automatic config backups
-- **Validation** — Prevents invalid configurations
+- **44 Config Versions** - Automatic migration system
+- **Hot Reload** - Change settings without restart
+- **Backup System** - Automatic config backups
+- **Validation** - Prevents invalid configurations
 
 ---
 
 ## 🆕 What's New in v1.5.15
 
 ### 📝 **Config Clarity Improvements**
-- All timing-related values in `config.yml` now clearly state their unit (ticks or seconds) with human-readable conversion examples — no more guessing whether `respawn-delay: 15` means seconds or ticks
+- All timing-related values in `config.yml` now clearly state their unit (ticks or seconds) with human-readable conversion examples - no more guessing whether `respawn-delay: 15` means seconds or ticks
 - `join-delay` / `leave-delay` header updated with quick-reference: `0 = instant · 20 = 1 s · 40 = 2 s · 100 = 5 s`
 - `swap.session` / `swap.absence` inline comments show real-world equivalents (e.g. `60 = 1 min`, `300 = 5 min`)
 
 ### 🔧 **Build Pipeline Fixes**
-- ProGuard obfuscation pipeline fixed — `plugin.yml` and language files no longer corrupted on Windows builds
-- `StackMapTable` attributes preserved in obfuscated jar — no more `VerifyError` on startup
+- ProGuard obfuscation pipeline fixed - `plugin.yml` and language files no longer corrupted on Windows builds
+- `StackMapTable` attributes preserved in obfuscated jar - no more `VerifyError` on startup
 - MySQL / SQLite shaded classes handled correctly during ProGuard preverification
 
 ---
@@ -149,14 +149,14 @@ fpp.*                    # Full access (admin)
 ```
 
 **User Permissions:**
-- `fpp.user.spawn` — Spawn personal bots
-- `fpp.user.delete` — Delete own bots
-- `fpp.user.list` — List all bots
+- `fpp.user.spawn` - Spawn personal bots
+- `fpp.user.delete` - Delete own bots
+- `fpp.user.list` - List all bots
 
 **Admin Permissions:**  
-- `fpp.admin.spawn` — Spawn admin bots
-- `fpp.admin.delete` — Delete any bot
-- `fpp.admin.reload` — Reload configuration
+- `fpp.admin.spawn` - Spawn admin bots
+- `fpp.admin.delete` - Delete any bot
+- `fpp.admin.reload` - Reload configuration
 
 **See [🔐 Permissions](Permissions.md) for the complete list.**
 
@@ -167,20 +167,20 @@ fpp.*                    # Full access (admin)
 FPP provides **29+ placeholders** for use with other plugins:
 
 **Server-Wide:**
-- `%fpp_count%` — Number of bots (local + remote in NETWORK mode)
-- `%fpp_local_count%` — Bots on this server only
-- `%fpp_network_count%` — Bots on other proxy servers
-- `%fpp_real%` — Real players online  
-- `%fpp_total%` — Total players (real + bots)
-- `%fpp_names%` — Comma-separated bot names
+- `%fpp_count%` - Number of bots (local + remote in NETWORK mode)
+- `%fpp_local_count%` - Bots on this server only
+- `%fpp_network_count%` - Bots on other proxy servers
+- `%fpp_real%` - Real players online  
+- `%fpp_total%` - Total players (real + bots)
+- `%fpp_names%` - Comma-separated bot names
 
 **Per-World:**
-- `%fpp_count_<world>%` — Bots in specific world
-- `%fpp_real_<world>%` — Real players in world
+- `%fpp_count_<world>%` - Bots in specific world
+- `%fpp_real_<world>%` - Real players in world
 
 **Player-Relative:**
-- `%fpp_user_count%` — Player's bot count
-- `%fpp_user_max%` — Player's bot limit
+- `%fpp_user_count%` - Player's bot count
+- `%fpp_user_max%` - Player's bot limit
 
 **See [📊 Placeholders](Placeholders.md) for the complete list.**
 
@@ -189,22 +189,22 @@ FPP provides **29+ placeholders** for use with other plugins:
 ## 🛠️ Technical Specifications
 
 ### 🏗️ **Architecture**
-- **Built for Paper** — Uses Paper-specific APIs for best performance
-- **NMS Integration** — Direct packet manipulation for tab list
-- **Multi-threaded** — Background processing for heavy operations  
-- **Memory Efficient** — Optimized entity management
+- **Built for Paper** - Uses Paper-specific APIs for best performance
+- **NMS Integration** - Direct packet manipulation for tab list
+- **Multi-threaded** - Background processing for heavy operations  
+- **Memory Efficient** - Optimized entity management
 
 ### 📈 **Performance**
-- **Lightweight** — Minimal server impact
-- **Scalable** — Handle 100+ bots efficiently
-- **Optimized Packets** — Reduced network overhead
-- **Chunk Loading** — Smart chunk management
+- **Lightweight** - Minimal server impact
+- **Scalable** - Handle 100+ bots efficiently
+- **Optimized Packets** - Reduced network overhead
+- **Chunk Loading** - Smart chunk management
 
 ### 🔒 **Security**  
-- **Permission-Based** — Granular access control
-- **Input Validation** — Prevents exploits and crashes
-- **Rate Limiting** — Anti-spam protections
-- **Audit Trail** — Full command logging
+- **Permission-Based** - Granular access control
+- **Input Validation** - Prevents exploits and crashes
+- **Rate Limiting** - Anti-spam protections
+- **Audit Trail** - Full command logging
 
 ---
 

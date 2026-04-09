@@ -67,7 +67,7 @@ The `messages` pool is used for the regular timed fake chat. All other pools fee
 
 ## How Messages Are Sent
 
-Each bot has its own **independent timer** — they don't all chat at the same time.  
+Each bot has its own **independent timer** - they don't all chat at the same time.  
 The timing and probability are controlled by `fake-chat` settings in `config.yml`:
 
 ```yaml
@@ -84,7 +84,7 @@ fake-chat:
 |---------|-------------|
 | `enabled` | Master toggle. Also toggled with `/fpp chat [on|off]`. |
 | `require-player-online` | Only send messages when at least one real player is online. |
-| `chance` | Probability (0.0–1.0) that a message fires each timer interval. `0.75` = 75% chance. |
+| `chance` | Probability (0.0-1.0) that a message fires each timer interval. `0.75` = 75% chance. |
 | `interval.min` | Minimum seconds between a bot's own messages. |
 | `interval.max` | Maximum seconds between a bot's own messages. |
 
@@ -96,7 +96,7 @@ A bot's interval is randomised independently within `[min, max]` each time it fi
 
 When the [Swap System](Swap-System.md) is active with `farewell-chat: true` or `greeting-chat: true`, bots automatically send a farewell message before leaving and/or a greeting after rejoining.
 
-These messages come from the same `bot-messages.yml` pool — FPP selects naturally fitting messages (short, social phrases like "gtg", "brb", "hey", "back").
+These messages come from the same `bot-messages.yml` pool - FPP selects naturally fitting messages (short, social phrases like "gtg", "brb", "hey", "back").
 
 ---
 
@@ -116,8 +116,8 @@ The state is saved to `config.yml` and persists across restarts.
 
 ## Tips
 
-- Keep messages **short and natural** — long paragraphs look fake.  
+- Keep messages **short and natural** - long paragraphs look fake.  
 - Mix questions, reactions, and greetings for variety.  
-- Use `{random_player}` sparingly — overuse looks robotic.  
-- Set `interval.min` and `interval.max` to at least 5–10 seconds to avoid spam.  
-- A `chance` of `0.5`–`0.75` gives a realistic sporadic feel.
+- Use `{random_player}` sparingly - overuse looks robotic.  
+- Set `interval.min` and `interval.max` to at least 5-10 seconds to avoid spam.  
+- A `chance` of `0.5`-`0.75` gives a realistic sporadic feel.

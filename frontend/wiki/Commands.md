@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP Command Reference — v1.6.0**  
+> **Complete FPP Command Reference - v1.6.0**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`  
 > Tab-completion available for all commands and parameters
 
@@ -10,7 +10,7 @@
 
 | Command | Permission | Description |
 |---------|-----------|-------------|
-| [`/fpp help`](#-fpp-help) | *(everyone)* | Interactive GUI help — paginated, permission-filtered |
+| [`/fpp help`](#-fpp-help) | *(everyone)* | Interactive GUI help - paginated, permission-filtered |
 | [`/fpp spawn`](#-fpp-spawn) | `fpp.user.spawn` / `fpp.spawn` | Spawn fake player(s) |
 | [`/fpp despawn`](#-fpp-despawn) | `fpp.delete` | Remove bot(s) |
 | [`/fpp list`](#-fpp-list) | `fpp.list` | List all active bots |
@@ -45,7 +45,7 @@
 /fpp help [page]
 ```
 
-**Description:** Opens an interactive **54-slot double-chest GUI** — paginated, permission-filtered.  
+**Description:** Opens an interactive **54-slot double-chest GUI** - paginated, permission-filtered.  
 Console senders receive text output instead.
 
 **Features:**
@@ -71,15 +71,15 @@ Console senders receive text output instead.
 **Description:** Spawn one or more fake players at your location or specific coordinates.
 
 **Parameters:**
-- `amount` — Number of bots to spawn (default: 1)
-- `--name <name>` — Specific bot name
-- `--skin <skin>` — Skin to apply
-- `--group <group>` — LuckPerms group to assign
-- `world x y z` — Spawn at explicit coordinates (admin only)
+- `amount` - Number of bots to spawn (default: 1)
+- `--name <name>` - Specific bot name
+- `--skin <skin>` - Skin to apply
+- `--group <group>` - LuckPerms group to assign
+- `world x y z` - Spawn at explicit coordinates (admin only)
 
 **Permissions:**
-- `fpp.user.spawn` — Spawn personal bots (limited by `fpp.spawn.limit.<num>`)
-- `fpp.spawn` — Spawn unlimited admin bots
+- `fpp.user.spawn` - Spawn personal bots (limited by `fpp.spawn.limit.<num>`)
+- `fpp.spawn` - Spawn unlimited admin bots
 
 **Examples:**
 ```bash
@@ -91,7 +91,7 @@ Console senders receive text output instead.
 ```
 
 **Bot Limits:**  
-Grant `fpp.spawn.limit.<N>` (1–100) to set user-tier caps. FPP picks the highest node the player has.  
+Grant `fpp.spawn.limit.<N>` (1-100) to set user-tier caps. FPP picks the highest node the player has.  
 Bypass global cap: `fpp.bypass.maxbots` · Bypass cooldown: `fpp.bypass.cooldown`
 
 ---
@@ -155,8 +155,8 @@ In **NETWORK mode** remote bots from other proxy servers appear in a "Remote Bot
 **Layout:**
 | Row | Contents |
 |-----|----------|
-| 1–3 | Main inventory storage (slots 0–26) |
-| 4 | Hotbar (slots 27–35) |
+| 1-3 | Main inventory storage (slots 0-26) |
+| 4 | Hotbar (slots 27-35) |
 | 5 | Label bar |
 | 6 | Helmet · Chestplate/Elytra · Leggings · Boots · Offhand |
 
@@ -234,7 +234,7 @@ pathfinding:
 **Description:** Dispatch a command as a bot, or manage its stored right-click command.
 
 **Details:**
-- Uses `Bukkit.dispatchCommand()` — bypasses `PlayerCommandPreprocessEvent`, so `BotCommandBlocker` does not interfere
+- Uses `Bukkit.dispatchCommand()` - bypasses `PlayerCommandPreprocessEvent`, so `BotCommandBlocker` does not interfere
 - Right-clicking a bot with a stored command runs it instead of opening the inventory GUI
 
 **Permission:** `fpp.cmd`
@@ -382,7 +382,7 @@ Mining tasks auto-cancel when the bot goes offline. Runs as a 1-tick repeating t
 /fpp rank list
 ```
 
-**Description:** Assign LuckPerms groups to bots at runtime — no respawn needed.
+**Description:** Assign LuckPerms groups to bots at runtime - no respawn needed.
 
 **Permission:** `fpp.rank`
 
@@ -402,7 +402,7 @@ Mining tasks auto-cancel when the bot goes offline. Runs as a 1-tick repeating t
 /fpp settings
 ```
 
-**Description:** Opens the **in-game settings GUI** — a 6-row chest with 7 category tabs.
+**Description:** Opens the **in-game settings GUI** - a 6-row chest with 7 category tabs.
 
 **Categories:** General · Body · Chat · Swap · Peak Hours · PvP · Pathfinding
 
@@ -464,7 +464,7 @@ Mining tasks auto-cancel when the bot goes offline. Runs as a 1-tick repeating t
 /fpp stats
 ```
 
-**Description:** Live statistics panel — bot count, frozen count, TPS, database totals, memory usage, config status.
+**Description:** Live statistics panel - bot count, frozen count, TPS, database totals, memory usage, config status.
 
 **Permission:** `fpp.stats`
 
@@ -476,7 +476,7 @@ Mining tasks auto-cancel when the bot goes offline. Runs as a 1-tick repeating t
 /fpp lpinfo [bot-name]
 ```
 
-**Description:** LuckPerms integration diagnostics — integration status, bot group configuration, weight, prefix/suffix data, tab-list integration.
+**Description:** LuckPerms integration diagnostics - integration status, bot group configuration, weight, prefix/suffix data, tab-list integration.
 
 **Permission:** `fpp.lpinfo`
 

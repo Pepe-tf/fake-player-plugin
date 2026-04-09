@@ -133,8 +133,8 @@
    ✅ Should spawn 3 bots with random names and skins
 
 3. **Verify Tab List Integration**
-   - Press **Tab** — see bots listed with real players
-   - Check **server list** — player count should include bots
+   - Press **Tab** - see bots listed with real players
+   - Check **server list** - player count should include bots
 
 ### 🎨 **Recommended Tweaks** (10 minutes)
 
@@ -286,7 +286,7 @@ For better performance with many bots:
 - ✅ Check you have `fpp.user.spawn` or higher
 
 **"Bots disappear after restart"**
-- ✅ Enable `persistence.enabled: true` in config.yml (default: true — bots rejoin on restart)
+- ✅ Enable `persistence.enabled: true` in config.yml (default: true - bots rejoin on restart)
 
 ---
 
@@ -294,11 +294,11 @@ For better performance with many bots:
 
 ### 📖 **Recommended Reading Order**
 
-1. **[⌨️ Commands](Commands.md)** — Learn all available commands
-2. **[🔐 Permissions](Permissions.md)** — Set up user access
-3. **[⚙️ Configuration](Configuration.md)** — Customize behavior
-4. **[🤖 Bot Behaviour](Bot-Behaviour.md)** — Understanding bot AI
-5. **[🎨 Skin System](Skin-System.md)** — Managing bot appearances
+1. **[⌨️ Commands](Commands.md)** - Learn all available commands
+2. **[🔐 Permissions](Permissions.md)** - Set up user access
+3. **[⚙️ Configuration](Configuration.md)** - Customize behavior
+4. **[🤖 Bot Behaviour](Bot-Behaviour.md)** - Understanding bot AI
+5. **[🎨 Skin System](Skin-System.md)** - Managing bot appearances
 
 ### 🚀 **Pro Tips**
 
@@ -330,9 +330,9 @@ For better performance with many bots:
 ## 🆘 Need Help?
 
 ### 💬 **Get Support**
-- **Discord:** [Join Community](https://discord.gg/QSN7f67nkJ) — Fastest response
-- **Discord:** [Report Issues](https://discord.gg/QSN7f67nkJ) — Bug reports
-- **Wiki:** [Browse Docs](.) — Comprehensive guides
+- **Discord:** [Join Community](https://discord.gg/QSN7f67nkJ) - Fastest response
+- **Discord:** [Report Issues](https://discord.gg/QSN7f67nkJ) - Bug reports
+- **Wiki:** [Browse Docs](.) - Comprehensive guides
 
 ### 📚 **Additional Resources**
 - **FAQ:** Common questions and solutions

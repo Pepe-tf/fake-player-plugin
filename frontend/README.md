@@ -1,9 +1,9 @@
-FPP frontend — Vercel-ready API
+FPP frontend - Vercel-ready API
 
 This `frontend` directory now contains Vercel serverless API endpoints under `api/`:
 
-- `GET /api/status` — returns plugin info. If the repo files are present in the deployment it will read them locally; otherwise it will proxy to a configured plugin API.
-- `GET /api/check-update` — proxies to the plugin API's update endpoint.
+- `GET /api/status` - returns plugin info. If the repo files are present in the deployment it will read them locally; otherwise it will proxy to a configured plugin API.
+- `GET /api/check-update` - proxies to the plugin API's update endpoint.
 
 Deployment notes
 
@@ -22,4 +22,4 @@ Vercel configuration
 
 - `vercel.json` is included and routes all requests to `/api/status.js` by default so visiting the root shows the JSON.
 
-Security note: The serverless functions may proxy to your plugin API — ensure you secure that API (auth or network restrictions) if it exposes sensitive data.
+Security note: The serverless functions may proxy to your plugin API - ensure you secure that API (auth or network restrictions) if it exposes sensitive data.

@@ -1,6 +1,6 @@
 # Swap System
 
-The swap system automatically rotates bots — they periodically leave the server and rejoin with a new name, simulating organic player activity without any manual intervention.
+The swap system automatically rotates bots - they periodically leave the server and rejoin with a new name, simulating organic player activity without any manual intervention.
 
 ---
 
@@ -36,9 +36,9 @@ Set to `true` in `config.yml`, or control live with:
 /fpp swap list         ← list scheduled bots and their personalities
 ```
 
-The command writes the change to `config.yml` immediately — it survives restarts.
+The command writes the change to `config.yml` immediately - it survives restarts.
 
-> **Toggle behaviour (v1.5.10+):** Running `/fpp swap` with no arguments flips the current state exactly like `/fpp chat` — no need to type `on` or `off`.
+> **Toggle behaviour (v1.5.10+):** Running `/fpp swap` with no arguments flips the current state exactly like `/fpp chat` - no need to type `on` or `off`.
 
 **Required permission:** `fpp.swap`
 
@@ -48,7 +48,7 @@ The command writes the change to `config.yml` immediately — it survives restar
 
 ```yaml
 swap:
-  enabled: false              # Master toggle — false = bots never swap out
+  enabled: false              # Master toggle - false = bots never swap out
 
   session:
     min: 60                   # Minimum session duration in seconds (1 min)
@@ -85,11 +85,11 @@ Each bot is randomly assigned one of five personality types when swap starts:
 
 | Archetype | Session Modifier | Description |
 |-----------|-----------------|-------------|
-| **quiet** | 2.0× | Long-term sitter — stays extended periods |
+| **quiet** | 2.0× | Long-term sitter - stays extended periods |
 | **passive** | 1.4× | Below-average activity |
 | **normal** | 1.0× | Typical player session |
 | **active** | 0.7× | Chats and leaves more often |
-| **chatty** | 0.5× | Quick popper — joins briefly, leaves fast |
+| **chatty** | 0.5× | Quick popper - joins briefly, leaves fast |
 
 ---
 
@@ -124,7 +124,7 @@ When `persistence.enabled: true`, bots that were mid-session when the server shu
 
 ---
 
-## Example Setup — Active Server Simulation
+## Example Setup - Active Server Simulation
 
 ```yaml
 swap:

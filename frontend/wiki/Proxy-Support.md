@@ -45,7 +45,7 @@ database:
 
 #### Velocity
 
-No configuration needed — Velocity auto-forwards plugin messages between servers.
+No configuration needed - Velocity auto-forwards plugin messages between servers.
 
 #### BungeeCord
 
@@ -233,8 +233,8 @@ View combined stats across all servers with `/fpp info`:
 ```
 
 **Database mode indicators:**
-- `LOCAL` — single-server filtering active
-- `NETWORK` — global stats, no filtering
+- `LOCAL` - single-server filtering active
+- `NETWORK` - global stats, no filtering
 
 ---
 
@@ -320,7 +320,7 @@ Look for:
 
 ### Problem: Duplicate alerts
 
-This should **not** happen — the plugin uses unique message IDs.
+This should **not** happen - the plugin uses unique message IDs.
 
 If you see duplicates:
 1. Check server clocks are synchronized (NTP)
@@ -417,10 +417,10 @@ database:
 
 ## 📚 Related Documentation
 
-- [Database](Database.md) — Schema, queries, and stats
-- [Configuration](Configuration.md) — All config options
-- [Commands](Commands.md) — Full command reference
-- [Migration](Migration.md) — Data migration tools
+- [Database](Database.md) - Schema, queries, and stats
+- [Configuration](Configuration.md) - All config options
+- [Commands](Commands.md) - Full command reference
+- [Migration](Migration.md) - Data migration tools
 
 ---
 

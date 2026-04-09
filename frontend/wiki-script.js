@@ -73,7 +73,7 @@ function initNavigation() {
         });
     }
 
-    // Close menu when clicking outside (fallback — backdrop also handles this)
+    // Close menu when clicking outside (fallback - backdrop also handles this)
     document.addEventListener('click', (e) => {
         if (sidebar.classList.contains('active') &&
             !sidebar.contains(e.target) &&
@@ -1253,7 +1253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPage(initialPage);
     setActivePage(initialPage, { updateUrl: false }); // URL already set above
 
-    // Handle browser back/forward — browser updates the URL itself, so we only
+    // Handle browser back/forward - browser updates the URL itself, so we only
     // need to load the content and highlight the sidebar. No pushState here.
     window.addEventListener('popstate', (e) => {
         // Prefer the state object (faster) but fall back to parsing the path

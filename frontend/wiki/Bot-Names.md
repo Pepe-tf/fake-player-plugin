@@ -10,7 +10,7 @@ plugins/FakePlayerPlugin/bot-names.yml
 ## How the Name Pool Works
 
 When a bot is spawned without a `--name` flag, FPP randomly selects a name from the list in `bot-names.yml`.  
-The plugin **never assigns the same name to two active bots** simultaneously — if all names in the pool are in use, it falls back to generating names in the format `bot<number>`.
+The plugin **never assigns the same name to two active bots** simultaneously - if all names in the pool are in use, it falls back to generating names in the format `bot<number>`.
 
 The pool is loaded at startup and refreshed on `/fpp reload`.
 
@@ -35,21 +35,21 @@ names:
   # ...add as many as you like
 ```
 
-There are **1000 names** pre-populated in the default file — more than enough to avoid repeats in any practical scenario.
+There are **1000 names** pre-populated in the default file - more than enough to avoid repeats in any practical scenario.
 
 ---
 
 ## Editing the Name Pool
 
 1. Open `plugins/FakePlayerPlugin/bot-names.yml`
-2. Add or remove names under the `names:` key — one name per line, prefixed with `- `
+2. Add or remove names under the `names:` key - one name per line, prefixed with `- `
 3. Run `/fpp reload` to apply changes immediately
 
 ### Name Rules
 
 Bot names must follow Minecraft username validation:
-- **1–16 characters**
-- **Letters, digits, and underscores only** (`A–Z`, `a–z`, `0–9`, `_`)
+- **1-16 characters**
+- **Letters, digits, and underscores only** (`A-Z`, `a-z`, `0-9`, `_`)
 - No spaces, special characters, or Unicode symbols
 
 Invalid names are silently skipped when loading the file.
@@ -58,7 +58,7 @@ Invalid names are silently skipped when loading the file.
 
 ## User-Tier Bot Names
 
-When a regular player (with `fpp.user.spawn` but not `fpp.spawn`) spawns a bot, the name is **always** auto-generated — they cannot use the `--name` flag.
+When a regular player (with `fpp.user.spawn` but not `fpp.spawn`) spawns a bot, the name is **always** auto-generated - they cannot use the `--name` flag.
 
 The auto-name format is:
 
@@ -92,4 +92,4 @@ To avoid this, keep your name pool larger than the maximum number of bots you ex
 ## Swap System & Names
 
 When the [Swap System](Swap-System.md) is enabled, bots periodically leave and rejoin with a **new name** drawn from the pool.  
-A small `reconnect-chance` (configurable) causes the bot to rejoin with its **same name** instead — simulating a brief disconnect/reconnect.
+A small `reconnect-chance` (configurable) causes the bot to rejoin with its **same name** instead - simulating a brief disconnect/reconnect.

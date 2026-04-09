@@ -1,7 +1,7 @@
 # Configuration
 
 FPP is configured through `plugins/FakePlayerPlugin/config.yml`.  
-All changes take effect immediately after running `/fpp reload` — no server restart required.  
+All changes take effect immediately after running `/fpp reload` - no server restart required.  
 **Config version:** 51 (auto-migrated from any older version)
 
 ---
@@ -55,8 +55,8 @@ To add a new language, copy `en.yml`, translate it, and set this value to the ne
 debug: false  # Legacy master switch - enables all categories below
 ```
 
-When `true`, FPP prints verbose diagnostic messages to the console — useful for bug reports and development.  
-**Disable in production** — it is very noisy.
+When `true`, FPP prints verbose diagnostic messages to the console - useful for bug reports and development.  
+**Disable in production** - it is very noisy.
 
 ### Granular Debug Logging *(v1.5.0+)*
 
@@ -98,7 +98,7 @@ When `nms: true` is enabled, you'll see:
 [FPP] BotSpawnProtection: removed protection for BotName
 ```
 
-> **Tip:** Set only the category you need — this keeps logs clean and focused.
+> **Tip:** Set only the category you need - this keeps logs clean and focused.
 
 ---
 
@@ -148,10 +148,10 @@ bot-name:
 
 | Key | Description |
 |-----|-------------|
-| `admin-format` | Display-name template for bots spawned by admins (`fpp.spawn`). Placeholder: `{bot_name}` — the name drawn from `bot-names.yml`. |
+| `admin-format` | Display-name template for bots spawned by admins (`fpp.spawn`). Placeholder: `{bot_name}` - the name drawn from `bot-names.yml`. |
 | `user-format` | Display-name template for bots spawned by non-admin users (`fpp.user.spawn`). Placeholders: `{bot_name}`, `{spawner}` (the player's name), `{num}` (sequential bot index). |
 
-> **Note:** The `bot-name.tab-list-format` key was removed in v1.5.10 (config v38). LuckPerms now manages prefix/suffix natively for all bots as real NMS ServerPlayer entities — the server's own chat and tab-list pipeline handles formatting automatically.
+> **Note:** The `bot-name.tab-list-format` key was removed in v1.5.10 (config v38). LuckPerms now manages prefix/suffix natively for all bots as real NMS ServerPlayer entities - the server's own chat and tab-list pipeline handles formatting automatically.
 
 ## Skin
 
@@ -166,10 +166,10 @@ Controls how bots get their Minecraft player skin.
 | Mode | Description |
 |------|-------------|
 | `auto` *(default)* | Fetches a real Mojang skin matching the bot's name from the Mojang API. Works on online-mode servers. |
-| `custom` | Full control — per-bot overrides, a `skins/` PNG folder, and a random pool. Resolution order: per-bot override → `skins/<name>.png` → random PNG from `skins/` → random pool entry → Mojang API. |
+| `custom` | Full control - per-bot overrides, a `skins/` PNG folder, and a random pool. Resolution order: per-bot override → `skins/<name>.png` → random PNG from `skins/` → random pool entry → Mojang API. |
 | `off` | No skin applied. Bots display the default Steve / Alex appearance. |
 
-`guaranteed-skin` (default `false`) — when `false`, bots whose name has no matching Mojang account use the default Steve/Alex appearance. Set to `true` to attempt a skin fetch even for generated names.
+`guaranteed-skin` (default `false`) - when `false`, bots whose name has no matching Mojang account use the default Steve/Alex appearance. Set to `true` to attempt a skin fetch even for generated names.
 
 In `custom` mode, place 64×64 or 64×32 PNG skin files inside `plugins/FakePlayerPlugin/skins/`. Name a file `<botname>.png` to assign it exclusively to that bot; any other PNG enters the random pool. Run `/fpp reload` after adding or removing skin files.
 
@@ -188,7 +188,7 @@ Controls whether a physical NMS ServerPlayer entity is spawned and how it intera
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enabled` | boolean | `true` | Spawn a visible entity in the world. When `false`, bots appear only in the tab list with join/leave messages — no entity is placed. |
+| `enabled` | boolean | `true` | Spawn a visible entity in the world. When `false`, bots appear only in the tab list with join/leave messages - no entity is placed. |
 | `pushable` | boolean | `true` | Allow players and entities to physically push the bot. When `false`, the bot is immovable. Hot-reloadable via `/fpp reload`. |
 | `damageable` | boolean | `true` | Allow the bot to take damage and be killed. When `false`, the bot is invulnerable. Hot-reloadable via `/fpp reload`. |
 | `pick-up-items` | boolean | `false` | Allow bots to pick up item entities in the world. |
@@ -234,7 +234,7 @@ leave-delay:
 
 Same concept as join delay, applied when removing multiple bots (`/fpp despawn all`).  
 Each bot's leave message and entity removal are staggered by a random delay in this range.  
-Values are in **ticks** — `20 ticks = 1 second`.
+Values are in **ticks** - `20 ticks = 1 second`.
 
 ---
 
@@ -265,7 +265,7 @@ death:
 | Option | Description |
 |--------|-------------|
 | `respawn-on-death` | `true` → bot respawns at its last known location after dying. `false` → bot leaves the server permanently on death. |
-| `respawn-delay` | **Ticks** to wait before respawning — `20 ticks = 1 second` (e.g. `15 = 0.75 s`, `60 = 3 s`, `100 = 5 s`). Only used when `respawn-on-death: true`. |
+| `respawn-delay` | **Ticks** to wait before respawning - `20 ticks = 1 second` (e.g. `15 = 0.75 s`, `60 = 3 s`, `100 = 5 s`). Only used when `respawn-on-death: true`. |
 | `suppress-drops` | Prevent item drops when a bot dies. Recommended to keep `true`. |
 
 ---
@@ -319,7 +319,7 @@ head-ai:
 |--------|-------------|
 | `enabled` | Enable/disable head tracking entirely. |
 | `look-range` | Radius (blocks) within which a bot rotates its head to face the nearest player. Set to `0` to disable. |
-| `turn-speed` | Interpolation factor (0.0–1.0). `1.0` = instant snap. `0.1` = very slow smooth turn. |
+| `turn-speed` | Interpolation factor (0.0-1.0). `1.0` = instant snap. `0.1` = very slow smooth turn. |
 
 ---
 
@@ -330,7 +330,7 @@ swim-ai:
   enabled: true
 ```
 
-When `enabled: true`, bots automatically swim upward when submerged in water or lava — mimicking a real player holding the spacebar. Set to `false` to let bots sink or drown instead.
+When `enabled: true`, bots automatically swim upward when submerged in water or lava - mimicking a real player holding the spacebar. Set to `false` to let bots sink or drown instead.
 
 ---
 
@@ -431,15 +431,15 @@ fake-chat:
 |-----|-------------|
 | `enabled` | Master toggle for the entire fake-chat system. |
 | `require-player-online` | Suppress bot messages when no real players are online. |
-| `chance` | Roll probability (0.0–1.0) per interval tick. |
-| `interval.min` / `interval.max` | Seconds between each bot's own messages (random range). Hot-reloadable — `/fpp reload` restarts all bot chat loops immediately. |
-| `typing-delay` | Simulate a 0–2.5 s typing pause before each message. |
+| `chance` | Roll probability (0.0-1.0) per interval tick. |
+| `interval.min` / `interval.max` | Seconds between each bot's own messages (random range). Hot-reloadable - `/fpp reload` restarts all bot chat loops immediately. |
+| `typing-delay` | Simulate a 0-2.5 s typing pause before each message. |
 | `burst-chance` | Probability a bot sends a quick follow-up message shortly after. |
 | `burst-delay.min` / `max` | Seconds before the follow-up fires. |
 | `reply-to-mentions` | When a real player says a bot's name in chat, that bot may reply. |
-| `mention-reply-chance` | Probability a named bot actually replies (0.0–1.0). |
+| `mention-reply-chance` | Probability a named bot actually replies (0.0-1.0). |
 | `reply-delay.min` / `max` | Seconds before the mention reply fires. |
-| `stagger-interval` | Minimum gap (seconds) between any two bots chatting — prevents floods. 0 = disabled. |
+| `stagger-interval` | Minimum gap (seconds) between any two bots chatting - prevents floods. 0 = disabled. |
 | `activity-variation` | Give each bot a random chat-frequency multiplier (quiet/normal/active/very-active). |
 | `history-size` | How many of a bot's own recent messages to remember and avoid repeating. |
 | `remote-format` | MiniMessage format for bodyless or proxy-remote bot broadcasts. Placeholders: `{name}`, `{message}`. |
@@ -469,7 +469,7 @@ tab-list:
 
 ## Pathfinding
 
-*(New in v1.6.0 — used by `/fpp move`)*
+*(New in v1.6.0 - used by `/fpp move`)*
 
 ```yaml
 pathfinding:
@@ -481,12 +481,12 @@ pathfinding:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `parkour` | `false` | When `true`, the A* pathfinder includes PARKOUR moves — the bot will jump across 1-block horizontal gaps. Increases search complexity. |
+| `parkour` | `false` | When `true`, the A* pathfinder includes PARKOUR moves - the bot will jump across 1-block horizontal gaps. Increases search complexity. |
 | `break-blocks` | `false` | When `true`, the bot may break obstructing blocks (BREAK move type) to clear a path. Uses `handleBlockBreakAction()` NMS call. |
 | `place-blocks` | `false` | When `true`, the bot may place blocks to bridge floor gaps (PLACE move type). Extends `MAX_NODES` from 2000 to 4000. |
 | `place-material` | `DIRT` | Material to place when bridging. Must be a valid solid block material. Falls back to DIRT if invalid. |
 
-These options are re-read on every path recalculation — change them via `/fpp settings` (Pathfinding category) or in `config.yml` then `/fpp reload`.
+These options are re-read on every path recalculation - change them via `/fpp settings` (Pathfinding category) or in `config.yml` then `/fpp reload`.
 
 ---
 

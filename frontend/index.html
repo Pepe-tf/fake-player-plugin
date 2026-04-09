@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fake Player Plugin — Realistic Bots for Paper 1.21+</title>
-    <meta name="description" content="Spawn realistic fake players on your Paper server — with tab list presence, skins, LuckPerms integration, proxy support, and full hot-reload.">
+    <title>Fake Player Plugin - Realistic Bots for Paper 1.21+</title>
+    <meta name="description" content="Spawn realistic fake players on your Paper server - with tab list presence, skins, LuckPerms integration, proxy support, and full hot-reload.">
     <!-- Open Graph / Social sharing -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Fake Player Plugin — Realistic Bots for Paper 1.21+">
-    <meta property="og:description" content="Spawn realistic fake players on your Paper server — with tab list presence, skins, LuckPerms integration, proxy support, and full hot-reload.">
+    <meta property="og:title" content="Fake Player Plugin - Realistic Bots for Paper 1.21+">
+    <meta property="og:description" content="Spawn realistic fake players on your Paper server - with tab list presence, skins, LuckPerms integration, proxy support, and full hot-reload.">
     <meta property="og:image" content="/Icon/FPP.png">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Fake Player Plugin">
@@ -20,59 +20,57 @@
     <style>
         /* ==================== DESIGN TOKENS (mirrors wiki-styles.css) ==================== */
         :root {
-            --primary-color: #667eea;
-            --primary-dark: #5568d3;
-            --primary-light: #7b8ef0;
-            --secondary-color: #764ba2;
-            --accent-color: #0079FF;
+            --primary-color: #0079FF;
+            --primary-dark: #0063d1;
+            --primary-light: #59abff;
+            --secondary-color: #2b7fff;
+            --accent-color: #38bdf8;
             --success-color: #00AF5C;
             --warning-color: #FF9500;
             --danger-color: #FF3B30;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8f9fa;
-            --bg-tertiary: #e9ecef;
+            --bg-primary: #f4f7fb;
+            --bg-secondary: #ebf1f8;
+            --bg-tertiary: #dde7f2;
             --bg-card: #ffffff;
-            --text-primary: #1a1a1a;
-            --text-secondary: #6c757d;
-            --text-tertiary: #adb5bd;
+            --text-primary: #0f172a;
+            --text-secondary: #55657d;
+            --text-tertiary: #8493a8;
             --text-inverse: #ffffff;
-            --border-color: #dee2e6;
-            --border-light: #e9ecef;
-            --shadow: rgba(0, 0, 0, 0.08);
-            --shadow-lg: rgba(0, 0, 0, 0.15);
-            --shadow-xl: rgba(0, 0, 0, 0.25);
+            --border-color: #d1dceb;
+            --border-light: #dde6f2;
+            --shadow: rgba(8, 15, 28, 0.08);
+            --shadow-lg: rgba(8, 15, 28, 0.15);
+            --shadow-xl: rgba(8, 15, 28, 0.24);
             --header-height: 64px;
-            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             --font-mono: 'SF Mono', Monaco, 'Cascadia Code', Consolas, 'Courier New', monospace;
             --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             --radius: 12px;
             --radius-sm: 6px;
             --radius-lg: 20px;
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-accent: linear-gradient(135deg, #0079FF 0%, #00AF5C 100%);
         }
         [data-theme="dark"] {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --bg-card: #161b22;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-tertiary: #6e7681;
-            --border-color: #30363d;
-            --border-light: #21262d;
-            --shadow: rgba(0, 0, 0, 0.4);
-            --shadow-lg: rgba(0, 0, 0, 0.6);
-            --shadow-xl: rgba(0, 0, 0, 0.8);
-            --primary-color: #7b8ef0;
-            --primary-dark: #667eea;
-            --primary-light: #8fa3f3;
-            --secondary-color: #8b5bc4;
+            --bg-primary: #0b1220;
+            --bg-secondary: #111827;
+            --bg-tertiary: #172033;
+            --bg-card: #111827;
+            --text-primary: #e6eef8;
+            --text-secondary: #9fb0c7;
+            --text-tertiary: #70839d;
+            --border-color: #22324a;
+            --border-light: #18253a;
+            --shadow: rgba(0, 0, 0, 0.38);
+            --shadow-lg: rgba(0, 0, 0, 0.58);
+            --shadow-xl: rgba(0, 0, 0, 0.74);
+            --primary-color: #0079FF;
+            --primary-dark: #0063d1;
+            --primary-light: #59abff;
+            --secondary-color: #2b7fff;
         }
 
         /* ==================== RESET ==================== */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; font-size: 16px; }
+        html { scroll-behavior: smooth; font-size: 15px; }
         body { font-family: var(--font-sans); line-height: 1.6; color: var(--text-primary); background: var(--bg-primary); overflow-x: hidden; }
 
         /* ==================== HEADER ==================== */
@@ -86,8 +84,7 @@
             transition: background var(--transition), border-color var(--transition);
         }
         [data-theme="dark"] .site-header {
-            border-bottom: 2px solid transparent;
-            border-image: var(--gradient-primary) 1;
+            border-bottom: 1px solid rgba(0,121,255,0.28);
         }
         .header-content {
             display: flex; align-items: center; justify-content: space-between;
@@ -96,7 +93,7 @@
         .logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
         .logo-icon { width: 2rem; height: 2rem; border-radius: 6px; box-shadow: 0 2px 8px var(--shadow); transition: transform var(--transition); }
         .logo-icon:hover { transform: scale(1.05); }
-        .logo-text { font-size: 1.25rem; font-weight: 700; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; }
+        .logo-text { font-size: 1.25rem; font-weight: 700; color: var(--primary-color); white-space: nowrap; }
         .logo-text-short { display: none; }
         .header-nav { display: flex; align-items: center; gap: 0.25rem; }
         .nav-link { padding: 0.5rem 0.875rem; color: var(--text-secondary); text-decoration: none; font-size: 0.9375rem; font-weight: 500; border-radius: var(--radius-sm); transition: all var(--transition); }
@@ -107,8 +104,8 @@
         .icon-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
         .icon-btn:active { transform: scale(0.95); }
         [data-theme="light"] .moon-icon, [data-theme="dark"] .sun-icon { display: none; }
-        .btn-header { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--gradient-primary); color: #fff; text-decoration: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.875rem; transition: all var(--transition); box-shadow: 0 2px 8px rgba(102,126,234,0.3); }
-        .btn-header:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+        .btn-header { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--primary-color); color: #fff; text-decoration: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.875rem; transition: all var(--transition); box-shadow: 0 2px 8px rgba(0,121,255,0.22); }
+        .btn-header:hover { transform: translateY(-1px); background: var(--primary-dark); box-shadow: 0 4px 16px rgba(0,121,255,0.28); }
         .mobile-menu-btn { display: none; }
 
         /* ==================== MOBILE NAV PANEL ==================== */
@@ -150,7 +147,7 @@
         .mobile-nav-download {
             display: flex; align-items: center; gap: 0.5rem;
             padding: 0.65rem 0.875rem;
-            background: var(--gradient-primary);
+            background: var(--primary-color);
             color: #fff !important;
             text-decoration: none;
             border-radius: var(--radius-sm);
@@ -168,31 +165,31 @@
             padding: calc(var(--header-height) + 4rem) 1.5rem 6rem;
             overflow: hidden; background: var(--bg-primary);
         }
-        [data-theme="dark"] .hero { background: linear-gradient(160deg, #0d1117 0%, #161b22 40%, #1a1a2e 100%); }
+        [data-theme="dark"] .hero { background: var(--bg-primary); }
         .hero-bg { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
         .hero-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.1; }
-        [data-theme="dark"] .hero-orb { opacity: 0.18; }
-        .hero-orb-1 { width: 600px; height: 600px; background: #667eea; top: -200px; left: -100px; }
-        .hero-orb-2 { width: 500px; height: 500px; background: #764ba2; bottom: -100px; right: -100px; }
+        [data-theme="dark"] .hero-orb { opacity: 0.12; }
+        .hero-orb-1 { width: 600px; height: 600px; background: #0079FF; top: -200px; left: -100px; }
+        .hero-orb-2 { width: 500px; height: 500px; background: #005fcc; bottom: -100px; right: -100px; }
         .hero-orb-3 { width: 350px; height: 350px; background: #0079FF; top: 40%; left: 50%; transform: translate(-50%,-50%); }
-        .hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(102,126,234,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(102,126,234,0.05) 1px, transparent 1px); background-size: 50px 50px; }
+        .hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(0,121,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,121,255,0.05) 1px, transparent 1px); background-size: 50px 50px; }
         .hero-content { position: relative; max-width: 860px; z-index: 1; }
-        .hero-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; background: rgba(102,126,234,0.12); border: 1px solid rgba(102,126,234,0.25); border-radius: 99px; font-size: 0.8125rem; font-weight: 600; color: var(--primary-light); margin-bottom: 1.75rem; letter-spacing: 0.02em; }
+        .hero-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; background: rgba(0,121,255,0.12); border: 1px solid rgba(0,121,255,0.24); border-radius: 99px; font-size: 0.8125rem; font-weight: 600; color: var(--primary-light); margin-bottom: 1.75rem; letter-spacing: 0.02em; }
         .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success-color); box-shadow: 0 0 6px var(--success-color); animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .hero-logo { width: 5rem; height: 5rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(102,126,234,0.35); margin: 0 auto 1.5rem; display: block; transition: transform var(--transition); }
+        .hero-logo { width: 5rem; height: 5rem; border-radius: 16px; box-shadow: 0 8px 28px rgba(0,121,255,0.22); margin: 0 auto 1.5rem; display: block; transition: transform var(--transition); }
         .hero-logo:hover { transform: scale(1.05) rotate(-2deg); }
         .hero h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 1.25rem; color: var(--text-primary); }
-        .gradient-text { background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .accent-text { color: var(--primary-color); }
         .hero-desc { font-size: clamp(1rem, 2vw, 1.2rem); color: var(--text-secondary); max-width: 620px; margin: 0 auto 2.5rem; line-height: 1.7; }
         .hero-actions { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 3.5rem; }
-        .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.85rem 1.75rem; background: var(--gradient-primary); color: #fff; text-decoration: none; border-radius: var(--radius); font-weight: 700; font-size: 1rem; transition: all var(--transition); box-shadow: 0 4px 20px rgba(102,126,234,0.4); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(102,126,234,0.5); }
+        .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.85rem 1.75rem; background: var(--primary-color); color: #fff; text-decoration: none; border-radius: var(--radius); font-weight: 700; font-size: 1rem; transition: all var(--transition); box-shadow: 0 4px 20px rgba(0,121,255,0.22); }
+        .btn-primary:hover { transform: translateY(-2px); background: var(--primary-dark); box-shadow: 0 8px 28px rgba(0,121,255,0.28); }
         .btn-secondary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.85rem 1.75rem; background: transparent; color: var(--text-primary); text-decoration: none; border-radius: var(--radius); font-weight: 600; font-size: 1rem; border: 1px solid var(--border-color); transition: all var(--transition); }
         .btn-secondary:hover { background: var(--bg-secondary); border-color: var(--primary-color); color: var(--primary-color); transform: translateY(-1px); }
         .hero-stats { display: flex; align-items: center; justify-content: center; gap: 2.5rem; flex-wrap: wrap; }
         .hero-stat { text-align: center; }
-        .hero-stat-value { display: block; font-size: 1.5rem; font-weight: 800; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.2; }
+        .hero-stat-value { display: block; font-size: 1.5rem; font-weight: 800; color: var(--primary-color); line-height: 1.2; }
         .hero-stat-label { display: block; font-size: 0.8125rem; color: var(--text-tertiary); margin-top: 0.2rem; }
         .hero-stat-divider { width: 1px; height: 2.5rem; background: var(--border-color); }
 
@@ -209,10 +206,10 @@
         .features-section { background: var(--bg-secondary); }
         .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
         .feature-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.75rem; transition: all var(--transition); position: relative; overflow: hidden; }
-        .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--gradient-primary); opacity: 0; transition: opacity var(--transition); }
+        .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--primary-color); opacity: 0; transition: opacity var(--transition); }
         .feature-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px var(--shadow-lg); border-color: var(--primary-color); }
         .feature-card:hover::before { opacity: 1; }
-        [data-theme="dark"] .feature-card:hover { box-shadow: 0 12px 40px rgba(102,126,234,0.15); }
+        [data-theme="dark"] .feature-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.28); }
         .feature-icon { font-size: 2rem; margin-bottom: 1rem; display: block; }
         .feature-card h3 { font-size: 1.0625rem; font-weight: 700; margin-bottom: 0.5rem; }
         .feature-card p { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.6; }
@@ -222,7 +219,7 @@
         .steps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
         .step-card { padding: 1.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); transition: all var(--transition); }
         .step-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--shadow); border-color: var(--primary-color); }
-        .step-number { width: 36px; height: 36px; border-radius: 50%; background: var(--gradient-primary); color: #fff; font-size: 0.875rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+        .step-number { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-color); color: #fff; font-size: 0.875rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
         .step-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
         .step-card p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
         .step-card a { color: var(--primary-color); text-decoration: none; }
@@ -254,15 +251,15 @@
         .download-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
         .download-card { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); text-decoration: none; color: var(--text-primary); font-weight: 600; transition: all var(--transition); }
         .download-card:hover { border-color: var(--primary-color); background: var(--bg-primary); transform: translateY(-2px); box-shadow: 0 8px 24px var(--shadow); }
-        [data-theme="dark"] .download-card:hover { box-shadow: 0 8px 24px rgba(102,126,234,0.12); }
+        [data-theme="dark"] .download-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.26); }
         .download-card-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.25rem; }
         .download-card-name { display: block; font-size: 0.9375rem; }
         .download-card-sub { display: block; font-size: 0.8125rem; color: var(--text-secondary); font-weight: 400; }
 
         /* ==================== CTA ==================== */
         .cta-section { background: var(--bg-primary); padding: 5rem 1.5rem; }
-        .cta-banner { max-width: 860px; margin: 0 auto; background: var(--gradient-primary); border-radius: var(--radius-lg); padding: 4rem 3rem; text-align: center; position: relative; overflow: hidden; box-shadow: 0 20px 60px rgba(102,126,234,0.35); }
-        .cta-banner::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 40%); }
+        .cta-banner { max-width: 860px; margin: 0 auto; background: var(--primary-color); border-radius: var(--radius-lg); padding: 4rem 3rem; text-align: center; position: relative; overflow: hidden; box-shadow: 0 16px 40px rgba(0,121,255,0.24); }
+        .cta-banner::before { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.04); }
         .cta-banner h2 { font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 800; color: #fff; margin-bottom: 1rem; position: relative; }
         .cta-banner p { font-size: 1.0625rem; color: rgba(255,255,255,0.85); margin-bottom: 2.25rem; position: relative; max-width: 500px; margin-left: auto; margin-right: auto; }
         .cta-actions { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; position: relative; }
@@ -288,7 +285,62 @@
         .footer-badge-dot { width: 6px; height: 6px; border-radius: 50%; }
         .dot-blue { background: var(--accent-color); }
         .dot-green { background: var(--success-color); }
-        .dot-purple { background: var(--primary-color); }
+        .dot-primary { background: var(--primary-color); }
+
+        /* ==================== AMBIENT MOTION ==================== */
+        .hero-orb-1 {
+            animation: orbFloatA 28s ease-in-out infinite alternate;
+        }
+        .hero-orb-2 {
+            animation: orbFloatB 34s ease-in-out infinite alternate;
+        }
+        .hero-orb-3 {
+            animation: orbFloatC 24s ease-in-out infinite alternate;
+        }
+
+        .hero-grid {
+            animation: gridDrift 45s linear infinite;
+            will-change: background-position;
+        }
+
+        .cta-banner {
+            animation: ctaGlow 14s ease-in-out infinite;
+        }
+
+        @keyframes orbFloatA {
+            0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.10; }
+            100% { transform: translate3d(28px, -20px, 0) scale(1.04); opacity: 0.14; }
+        }
+
+        @keyframes orbFloatB {
+            0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.10; }
+            100% { transform: translate3d(-24px, 18px, 0) scale(1.03); opacity: 0.13; }
+        }
+
+        @keyframes orbFloatC {
+            0% { transform: translate(-50%, -50%) translate3d(0, 0, 0) scale(1); opacity: 0.09; }
+            100% { transform: translate(-50%, -50%) translate3d(0, -16px, 0) scale(1.05); opacity: 0.13; }
+        }
+
+        @keyframes gridDrift {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 50px 50px, 50px 50px; }
+        }
+
+        @keyframes ctaGlow {
+            0%, 100% { box-shadow: 0 16px 40px rgba(0,121,255,0.24); }
+            50% { box-shadow: 0 20px 48px rgba(0,121,255,0.33); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero-orb-1,
+            .hero-orb-2,
+            .hero-orb-3,
+            .hero-grid,
+            .cta-banner {
+                animation: none !important;
+            }
+        }
 
         /* ==================== RESPONSIVE ==================== */
         @media (max-width: 768px) {
@@ -368,11 +420,11 @@
     <div class="hero-content">
         <div class="hero-badge">
             <span class="hero-badge-dot"></span>
-            Latest — v1.5.8 · Paper 1.21.x
+            [FPP] Latest - v1.5.8 - Paper 1.21.x
         </div>
         <img src="/Icon/FPP.png" alt="FPP Logo" class="hero-logo">
-        <h1>Realistic Fake Players<br><span class="gradient-text">for Paper Servers</span></h1>
-        <p class="hero-desc">Spawn realistic fake players on your Paper server — with tab list presence, real skins, LuckPerms integration, proxy network support, and full hot-reload. No compromises.</p>
+        <h1>Realistic Fake Players<br><span class="accent-text">for Paper Servers</span></h1>
+        <p class="hero-desc">Spawn realistic fake players on your Paper server - with tab list presence, real skins, LuckPerms integration, proxy network support, and full hot-reload. No compromises.</p>
         <div class="hero-actions">
             <a href="https://modrinth.com/plugin/fake-player-plugin-(fpp)" target="_blank" rel="noopener" class="btn-primary">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -413,13 +465,13 @@
         <div class="section-header text-center">
             <span class="section-label">Features</span>
             <h2 class="section-title">Everything You Need</h2>
-            <p class="section-desc" style="margin: 0 auto;">From tab list presence to proxy network sync — FPP is the only fake player plugin you'll ever need.</p>
+            <p class="section-desc" style="margin: 0 auto;">From tab list presence to proxy network sync - FPP is the only fake player plugin you'll ever need.</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
                 <span class="feature-icon">🎭</span>
                 <h3>Indistinguishable Presence</h3>
-                <p>Bots appear as real players in the tab list, server list count, and in-world — full NMS ServerPlayer entities with no ghost entries.</p>
+                <p>Bots appear as real players in the tab list, server list count, and in-world - full NMS ServerPlayer entities with no ghost entries.</p>
             </div>
             <div class="feature-card">
                 <span class="feature-icon">🎨</span>
@@ -459,7 +511,7 @@
             <div class="feature-card">
                 <span class="feature-icon">📊</span>
                 <h3>29+ PAPI Placeholders</h3>
-                <p>Per-world counts, per-player stats, network-aware totals, config state, proxy metadata — all exposed through PlaceholderAPI.</p>
+                <p>Per-world counts, per-player stats, network-aware totals, config state, proxy metadata - all exposed through PlaceholderAPI.</p>
             </div>
             <div class="feature-card">
                 <span class="feature-icon">🧊</span>
@@ -469,7 +521,7 @@
             <div class="feature-card">
                 <span class="feature-icon">⚡</span>
                 <h3>Hot Reload</h3>
-                <p>Apply every config change — names, messages, skins, LP groups, tab-list format — with a single <code>/fpp reload</code>. Zero restarts.</p>
+                <p>Apply every config change - names, messages, skins, LP groups, tab-list format - with a single <code>/fpp reload</code>. Zero restarts.</p>
             </div>
             <div class="feature-card">
                 <span class="feature-icon">🛡️</span>
@@ -536,7 +588,7 @@
                     <tr><td><code>/fpp freeze &lt;name|all&gt; [on|off]</code></td><td>Freeze or unfreeze bots in place</td></tr>
                     <tr><td><code>/fpp rank &lt;bot&gt; &lt;group&gt;</code></td><td>Assign a bot to a LuckPerms group at runtime</td></tr>
                     <tr><td><code>/fpp chat [on|off]</code></td><td>Toggle the fake chat system</td></tr>
-                    <tr><td><code>/fpp stats</code></td><td>Live statistics panel — bots, TPS, DB totals</td></tr>
+                    <tr><td><code>/fpp stats</code></td><td>Live statistics panel - bots, TPS, DB totals</td></tr>
                     <tr><td><code>/fpp reload</code></td><td>Hot-reload all config, skins, names, and messages</td></tr>
                     <tr><td><code>/fpp sync push|pull [file]</code></td><td>Sync config files across the proxy network</td></tr>
                     <tr><td><code>/fpp alert &lt;message&gt;</code></td><td>Broadcast an admin message network-wide</td></tr>
@@ -560,7 +612,7 @@
             <div class="req-card">
                 <span class="req-badge required">Required</span>
                 <h4>🖥️ Paper 1.21.x</h4>
-                <p>Supports all Paper builds 1.21.0 – 1.21.11. Leaf fork also supported.</p>
+                <p>Supports all Paper builds 1.21.0 - 1.21.11. Leaf fork also supported.</p>
             </div>
             <div class="req-card">
                 <span class="req-badge required">Required</span>
@@ -686,7 +738,7 @@
         <div class="footer-bottom">
             <p>&copy; 2026 Fake Player Plugin. All rights reserved. · Made by Bill_Hub</p>
             <div class="footer-badges">
-                <span class="footer-badge"><span class="footer-badge-dot dot-purple"></span>v1.5.8</span>
+                <span class="footer-badge"><span class="footer-badge-dot dot-primary"></span>v1.5.8</span>
                 <span class="footer-badge"><span class="footer-badge-dot dot-blue"></span>Paper 1.21.x</span>
                 <span class="footer-badge"><span class="footer-badge-dot dot-green"></span>Java 21+</span>
             </div>
@@ -831,10 +883,16 @@
     async function fetchOnlineStats() {
         const serverEl = document.getElementById('serverCount');
         const userEl = document.getElementById('userCount');
+        const botEl = document.getElementById('botCount');
 
-        if (!serverEl || !userEl) {
+        if (!serverEl || !userEl || !botEl) {
             console.log('Stats elements not found');
             return;
+        }
+
+        // Fallback first so Bots Supported is never stuck at '---'.
+        if (botEl.textContent.trim() === '---') {
+            animateCount(botEl, 1000, 1800, '+');
         }
 
         try {
@@ -856,6 +914,10 @@
                 } else {
                     userEl.textContent = '---';
                 }
+
+                // Animate bot count as part of the same stats cycle.
+                const botsTarget = (data.bots != null && data.bots >= 0) ? data.bots : 1000;
+                animateCount(botEl, botsTarget, 1800, '+');
             } else {
                 console.log('Stats API returned error:', response.status);
             }
@@ -864,21 +926,13 @@
         }
     }
 
-    // Animate the static "Bots Supported" counter to 1,000+ on page load
-    function animateBotCount() {
-        const botEl = document.getElementById('botCount');
-        if (botEl) animateCount(botEl, 1000, 1800, '+');
-    }
-
     // Fetch stats on page load
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             fetchOnlineStats();
-            animateBotCount();
         });
     } else {
         fetchOnlineStats();
-        animateBotCount();
     }
 
     // Refresh every 30 seconds

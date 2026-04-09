@@ -1,7 +1,7 @@
 # Skin System
 
 FPP ships a fully reworked skin pipeline with three modes and multiple
-skin sources — from automatic Mojang resolution to custom PNG files on disk.
+skin sources - from automatic Mojang resolution to custom PNG files on disk.
 
 ---
 
@@ -20,16 +20,16 @@ Run `/fpp reload` to apply changes without restarting.
 
 ## Modes
 
-### `auto` *(Recommended — online-mode servers)*
+### `auto` *(Recommended - online-mode servers)*
 
 FPP resolves the skin from the Mojang API using the bot's name and injects it directly
-into the bot's game profile — exactly like a real player joining.
+into the bot's game profile - exactly like a real player joining.
 
 | Feature | Detail |
 |---------|--------|
 | Skin accuracy | Matches the Minecraft account of that name |
 | Works offline | ❌ Requires `online-mode=true` for best results |
-| Delay | Async fetch — no tick blocking |
+| Delay | Async fetch - no tick blocking |
 
 > **Tip:** If a bot name doesn't match any Mojang account the client falls back
 > to the default Steve / Alex skin. This is expected behaviour.
@@ -38,7 +38,7 @@ into the bot's game profile — exactly like a real player joining.
 
 When `skin.guaranteed-skin: true`, the plugin will attempt to fetch a skin even for bots whose name doesn't match a Mojang account (generated names, user bots, etc.).
 
-**Default (since v1.5.4):** `guaranteed-skin: false` — bots with no matching Mojang account will display the default Steve or Alex skin. This avoids unnecessary Mojang API calls and is the recommended setting for most servers.
+**Default (since v1.5.4):** `guaranteed-skin: false` - bots with no matching Mojang account will display the default Steve or Alex skin. This avoids unnecessary Mojang API calls and is the recommended setting for most servers.
 
 Set `guaranteed-skin: true` only if you want every bot to have a custom-fetched skin regardless of whether their name is a real Minecraft account.
 
@@ -50,7 +50,7 @@ skin:
   guaranteed-skin: false   # false = Steve/Alex fallback for non-Mojang names (default)
 ```
 
-### `custom` *(Full control — works online & offline)*
+### `custom` *(Full control - works online & offline)*
 
 FPP runs a **5-step resolution pipeline** to find the best skin for each bot:
 
@@ -106,13 +106,13 @@ plugins/FakePlayerPlugin/skins/
 
 | File name | Behaviour |
 |-----------|-----------|
-| `anything.png` | Added to the random pool — any bot without a better match can use it |
+| `anything.png` | Added to the random pool - any bot without a better match can use it |
 | `<botname>.png` | Used **exclusively** for the bot named `<botname>` (exact, case-insensitive) |
 
 Supported formats: `64×64` (modern slim/wide) and `64×32` (legacy classic) PNG files.
 
 > **Note:** Folder skins have **no RSA signature**. They display correctly on Paper
-> servers but may produce a `"profile not signed"` debug message — this is harmless.
+> servers but may produce a `"profile not signed"` debug message - this is harmless.
 
 The folder is scanned on startup and on `/fpp reload`.
 
@@ -145,7 +145,7 @@ skin:
   #  Herobrine: Notch
   #  CoolBot: https://textures.minecraft.net/texture/<hash>
 
-  # Random skin pool — list of Minecraft usernames
+  # Random skin pool - list of Minecraft usernames
   pool: []
   #  - Notch
   #  - Technoblade
@@ -193,7 +193,7 @@ Bot "Herobrine" spawns
 When `mode: custom` is active and the plugin fetches skins from Mojang:
 
 - Requests are queued with a **200 ms gap** between each call
-- Results are **cached per session** — each name is fetched at most once
+- Results are **cached per session** - each name is fetched at most once
 - Mojang's documented limit is ~600 requests / 10 minutes per IP
 - `/fpp reload` clears the cache (if `clear-cache-on-reload: true`)
 

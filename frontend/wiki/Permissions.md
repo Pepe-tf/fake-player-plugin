@@ -1,5 +1,5 @@
 ﻿# 🔐 Permissions
-> **Complete Permission Reference — v1.6.0**  
+> **Complete Permission Reference - v1.6.0**  
 > FPP uses a two-tier system: **`fpp.op`** for admins and **`fpp.use`** for regular users.  
 > All permission nodes are declared in `plugin.yml` for LuckPerms tab-completion support.
 ---
@@ -37,7 +37,7 @@ See the full tree in the sections below.
 | `fpp.rank` | `/fpp rank` | Assign LuckPerms groups |
 | `fpp.lpinfo` | `/fpp lpinfo` | LuckPerms diagnostics |
 | `fpp.settings` | `/fpp settings` | In-game settings GUI |
-### Interaction — New in v1.6.0
+### Interaction - New in v1.6.0
 | Permission | Command | Description |
 |------------|---------|-------------|
 | `fpp.inventory` | `/fpp inventory` | Open any bot's 54-slot inventory GUI |
@@ -59,12 +59,12 @@ See the full tree in the sections below.
 `fpp.use` is the user wildcard (default: `true` for all players).
 | Permission | Command | Description |
 |------------|---------|-------------|
-| `fpp.use` | — | Grants all user-tier permissions |
+| `fpp.use` | - | Grants all user-tier permissions |
 | `fpp.user.spawn` | `/fpp spawn` | Spawn personal bots (limited by `fpp.spawn.limit.*`) |
 | `fpp.user.tph` | `/fpp tph` | Teleport your own bots to you |
 | `fpp.user.xp` | `/fpp xp` | Transfer bot XP to yourself (v1.6.0) |
 | `fpp.info.user` | `/fpp info` | View your own bot info |
-| `fpp.spawn.limit.1` | — | Default 1-bot personal limit (included in `fpp.use`) |
+| `fpp.spawn.limit.1` | - | Default 1-bot personal limit (included in `fpp.use`) |
 ---
 ## 🤖 Bot Quantity Limits
 Grant `fpp.spawn.limit.<N>` to set the maximum personal bots. FPP picks the **highest** node the player has.
@@ -112,6 +112,6 @@ Grant `fpp.spawn.limit.<N>` to set the maximum personal bots. FPP picks the **hi
 - Check `fpp.spawn.limit.*` nodes for the player
 - FPP picks the highest limit node held
 **LP tab-completion missing `fpp.` permissions?**
-- All nodes are declared in `plugin.yml` — restart the server after updating FPP
+- All nodes are declared in `plugin.yml` - restart the server after updating FPP
 ---
 **For commands, see [Commands](Commands.md).**

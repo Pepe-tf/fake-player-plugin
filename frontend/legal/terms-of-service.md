@@ -281,8 +281,8 @@ We are not responsible for the availability, accuracy, security, or terms of use
 
 | Support Channel | Details |
 |----------------|---------|
-| Discord Server | https://discord.gg/QSN7f67nkJ — community support, best-effort basis |
-| Plugin Pages | Modrinth, SpigotMC, Hangar — reviews and issue tracking |
+| Discord Server | https://discord.gg/QSN7f67nkJ - community support, best-effort basis |
+| Plugin Pages | Modrinth, SpigotMC, Hangar - reviews and issue tracking |
 
 Support is provided voluntarily on a best-effort basis. We do not guarantee response times, issue resolution, or feature implementation. We reserve the right to decline support requests at our sole discretion.
 
@@ -472,6 +472,6 @@ We aim to respond to formal legal inquiries within **14 business days**.
 
 ---
 
-*Fake Player Plugin — Developed by Bill_Hub (El_Pepes). All rights reserved.*
+*Fake Player Plugin - Developed by Bill_Hub (El_Pepes). All rights reserved.*
 *Not affiliated with Mojang AB, Microsoft Corporation, or any Minecraft platform provider.*
 

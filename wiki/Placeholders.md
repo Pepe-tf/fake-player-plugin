@@ -5,7 +5,7 @@
 # Placeholders (PlaceholderAPI)
 
 FPP provides **24+ PlaceholderAPI placeholders** organized into five categories.  
-Requires [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) — FPP auto-registers on startup, no `/papi ecloud` needed.
+Requires [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) - FPP auto-registers on startup, no `/papi ecloud` needed.
 
 > For the full technical reference including integration examples and troubleshooting, see [PLACEHOLDERAPI.md](../PLACEHOLDERAPI.md).
 > **Version:** 1.5.8+ · **Total placeholders:** 29+ (10 server-wide · 9 config state · 3 network · 3 per-world dynamic · 3 player-relative)
@@ -14,12 +14,12 @@ Requires [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245
 
 ## Server-Wide Placeholders
 
-Same value for all players — no player context required.  
+Same value for all players - no player context required.  
 In **NETWORK mode**, count/name placeholders include bots from **all servers** in the proxy.
 
 | Placeholder | Return Type | Description | Example |
 |-------------|-------------|-------------|---------|
-| `%fpp_count%` | `integer` | Active bots — **all servers** in NETWORK mode, local only otherwise | `5` |
+| `%fpp_count%` | `integer` | Active bots - **all servers** in NETWORK mode, local only otherwise | `5` |
 | `%fpp_local_count%` | `integer` | Bots on **this server only** (always local, regardless of mode) | `3` |
 | `%fpp_network_count%` | `integer` | Bots on **other servers only** (0 in LOCAL mode) | `2` |
 | `%fpp_max%` | `integer` / `∞` | Global bot cap (`limits.max-bots`). `∞` when cap is `0` | `50` or `∞` |
@@ -27,7 +27,7 @@ In **NETWORK mode**, count/name placeholders include bots from **all servers** i
 | `%fpp_total%` | `integer` | Real players + bots combined (network-wide) | `17` |
 | `%fpp_online%` | `integer` | Alias for `%fpp_total%` | `17` |
 | `%fpp_frozen%` | `integer` | Bots frozen via `/fpp freeze` (local only) | `2` |
-| `%fpp_names%` | `string` | Comma-separated bot display names — **all servers** in NETWORK mode | `Steve, Alex, Notch` |
+| `%fpp_names%` | `string` | Comma-separated bot display names - **all servers** in NETWORK mode | `Steve, Alex, Notch` |
 | `%fpp_network_names%` | `string` | Display names of bots on **other servers only** | `RemoteBot1, RemoteBot2` |
 | `%fpp_version%` | `string` | Plugin version | `1.5.8` |
 
@@ -35,7 +35,7 @@ In **NETWORK mode**, count/name placeholders include bots from **all servers** i
 
 ## Config State Placeholders
 
-Reflect live `config.yml` values — update instantly after `/fpp reload`.
+Reflect live `config.yml` values - update instantly after `/fpp reload`.
 
 | Placeholder | Values | Config Key |
 |-------------|--------|------------|
@@ -67,7 +67,7 @@ Useful when running FPP in NETWORK mode across multiple backend servers.
 
 ## Per-World Placeholders
 
-Dynamic — append any world name after `count_`, `real_`, or `total_`.  
+Dynamic - append any world name after `count_`, `real_`, or `total_`.  
 World names are **case-insensitive**; use underscores for spaces.
 
 | Placeholder | Description | Example |
@@ -109,7 +109,7 @@ Require an online player context. Fall back to `0` / `""` when the context playe
 ```
 %fpp_real%   = Bukkit.getOnlinePlayers().size()   (real players only, never includes bots)
 %fpp_total%  = %fpp_real% + %fpp_count%
-%fpp_online% = %fpp_real% + %fpp_count%            (identical — use whichever reads better)
+%fpp_online% = %fpp_real% + %fpp_count%            (identical - use whichever reads better)
 ```
 
 Fake bots are NMS ServerPlayer entities not accessible via the Bukkit `Player` API.
@@ -171,7 +171,7 @@ header:
 ### Using PAPI Placeholders in Tab-List Format
 
 ```yaml
-# config.yml — works because finalizeDisplayName uses server-wide PAPI context
+# config.yml - works because finalizeDisplayName uses server-wide PAPI context
 bot-name:
   tab-list-format: '{prefix}{bot_name}{suffix} <gray>(%fpp_count% bots)'
 ```
@@ -184,17 +184,17 @@ bot-name:
 
 | Symptom | Fix |
 |---------|-----|
-| `%fpp_count%` returns unparsed literal | PlaceholderAPI not installed or FPP failed to register — check console for `[FPP] PlaceholderAPI expansion registered` |
-| `%fpp_count%` only shows local bots | Ensure `database.mode: NETWORK` and `database.enabled: true` — remote bots require NETWORK mode |
+| `%fpp_count%` returns unparsed literal | PlaceholderAPI not installed or FPP failed to register - check console for `[FPP] PlaceholderAPI expansion registered` |
+| `%fpp_count%` only shows local bots | Ensure `database.mode: NETWORK` and `database.enabled: true` - remote bots require NETWORK mode |
 | `%fpp_network_count%` always `0` | Only non-zero in NETWORK mode with other servers sending `BOT_SPAWN` plugin messages |
-| `%fpp_user_count%` always `0` | Requires online player context — not usable in server-wide contexts |
-| `%fpp_max%` shows `∞` unexpectedly | `limits.max-bots: 0` means unlimited — set a number to get a numeric value |
-| Per-world placeholder always `0` | Check world name — case-insensitive but spelling must match; use underscores for spaces |
-| Config state shows stale value | Run `/fpp reload` — config state placeholders update immediately |
+| `%fpp_user_count%` always `0` | Requires online player context - not usable in server-wide contexts |
+| `%fpp_max%` shows `∞` unexpectedly | `limits.max-bots: 0` means unlimited - set a number to get a numeric value |
+| Per-world placeholder always `0` | Check world name - case-insensitive but spelling must match; use underscores for spaces |
+| Config state shows stale value | Run `/fpp reload` - config state placeholders update immediately |
 | `%fpp_pushable%` or `%fpp_damageable%` wrong | Edit `body.pushable` / `body.damageable` in config.yml then run `/fpp reload` |
 | `%fpp_network%` always `off` | Only `on` when `database.enabled: true` and `database.mode: NETWORK` |
 | `%fpp_server_id%` shows `default` | Set `database.server-id` in config.yml to a unique value per server |
-| `%fpp_spawn_cooldown%` shows `0` | `spawn-cooldown` is `0` (disabled) by default — set a positive integer to enable |
+| `%fpp_spawn_cooldown%` shows `0` | `spawn-cooldown` is `0` (disabled) by default - set a positive integer to enable |
 
 ---
 

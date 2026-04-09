@@ -30,7 +30,7 @@ Every time you update FPP, three things may have changed:
 | Old keys renamed or restructured | **Auto-migrated** via the version chain |
 | Database schema updated | **Auto-applied** via incremental SQL migrations |
 
-The migration system runs **automatically on every startup** — you don't need to do anything manually for routine updates. Manual tools (`/fpp migrate`) exist for advanced cases like merging databases, exporting data, or switching from SQLite to MySQL.
+The migration system runs **automatically on every startup** - you don't need to do anything manually for routine updates. Manual tools (`/fpp migrate`) exist for advanced cases like merging databases, exporting data, or switching from SQLite to MySQL.
 
 ---
 
@@ -109,7 +109,7 @@ FPP keeps the **10 most recent** backup sets. Older ones are pruned automaticall
 /fpp migrate backup
 ```
 
-Create a backup at any time — useful before making large config changes or switching database backends.
+Create a backup at any time - useful before making large config changes or switching database backends.
 
 ---
 
@@ -167,13 +167,13 @@ If you deleted and reinstalled FPP (or moved servers), you may have an old `fpp.
 3. FPP will:
    - Create a backup first
    - Read all rows from the old database
-   - Insert them into the current database using `INSERT OR IGNORE` — existing rows are **never overwritten**
+   - Insert them into the current database using `INSERT OR IGNORE` - existing rows are **never overwritten**
    - Report how many rows were merged
 
 ### Notes
 
 - You can specify just the filename (relative to `data/`) or a full absolute path
-- The merge is safe to run while the server is live — it never deletes or updates existing records
+- The merge is safe to run while the server is live - it never deletes or updates existing records
 - If a bot UUID already exists in the current database, that row is silently skipped (no duplicate inserts)
 
 ---
@@ -208,7 +208,7 @@ When you're ready to move from a local SQLite database to a shared MySQL instanc
 
 ### Steps
 
-1. **Set up MySQL** — create a database and user.
+1. **Set up MySQL** - create a database and user.
 
 2. **Update `config.yml`:**
    ```yaml
@@ -227,7 +227,7 @@ When you're ready to move from a local SQLite database to a shared MySQL instanc
    /fpp reload
    ```
 
-4. **Verify** the connection in `/fpp migrate status` — it should show `DB backend: MySQL`.
+4. **Verify** the connection in `/fpp migrate status` - it should show `DB backend: MySQL`.
 
 5. **Migrate the data:**
    ```
@@ -275,21 +275,21 @@ If something goes wrong after an update, you can restore from a backup:
 | 34 | 1.5.0 | Added `swim-ai` section |
 | 35 | 1.5.0 | Added `swim-ai.enabled` key |
 | **36** | **1.5.4** | Removed orphaned LuckPerms keys; removed `skin.fallback-pool`, `skin.fallback-name`; `skin.guaranteed-skin` reset to `false` |
-| 37 | 1.5.8 | Version stamp only — no structural key changes (ghost player fix, proxy list improvements) |
-| 38 | 1.5.10 | Removed `bot-name.tab-list-format` — LP manages prefix/suffix natively for real NMS entities |
-| 39 | 1.5.10 | Removed `fake-chat.chat-format` — bots now send via `Player.chat()` (real pipeline) |
+| 37 | 1.5.8 | Version stamp only - no structural key changes (ghost player fix, proxy list improvements) |
+| 38 | 1.5.10 | Removed `bot-name.tab-list-format` - LP manages prefix/suffix natively for real NMS entities |
+| 39 | 1.5.10 | Removed `fake-chat.chat-format` - bots now send via `Player.chat()` (real pipeline) |
 | 40 | 1.5.10 | Added fake-chat realism keys: `typing-delay`, `burst-chance`, `burst-delay`, `reply-to-mentions`, `mention-reply-chance`, `reply-delay`, `stagger-interval`, `activity-variation`, `history-size` |
 | **41** | **1.5.10** | Added `logging.debug.chat`, `fake-chat.remote-format`, `fake-chat.event-triggers` (on-player-join, on-death, on-player-leave), `fake-chat.keyword-reactions` |
 | 42 | 1.5.12 | Added `peak-hours` section with schedule, day-overrides, stagger-seconds, timezone |
 | 43 | 1.5.12 | Added `peak-hours.min-online`, `peak-hours.notify-transitions` |
 | 44 | 1.5.12 | Removed `peak-hours.auto-enable-swap` |
-| **45** | **1.5.15** | Config version stamp update — no structural key changes; timing comments clarified throughout (ticks vs seconds with conversion examples) |
+| **45** | **1.5.15** | Config version stamp update - no structural key changes; timing comments clarified throughout (ticks vs seconds with conversion examples) |
 
 ## Troubleshooting
 
 ### Config migration ran but my values were reset
 
-The migrator only adds missing keys — it should never overwrite existing values. If your values changed, check:
+The migrator only adds missing keys - it should never overwrite existing values. If your values changed, check:
 1. Whether you had the key under an old name that was migrated to a new path (e.g. `max-bots` → `limits.max-bots`)
 2. The backup in `backups/` for your original values
 

@@ -1,8 +1,8 @@
 /**
- * Vercel serverless function — mirrors the Java UpdateChecker logic exactly.
+ * Vercel serverless function - mirrors the Java UpdateChecker logic exactly.
  *
  * Priority (same as UpdateChecker.java):
- *   1. Modrinth API  — https://api.modrinth.com/v2/project/fake-player-plugin-(fpp)/version?limit=1
+ *   1. Modrinth API  - https://api.modrinth.com/v2/project/fake-player-plugin-(fpp)/version?limit=1
  *   2. LATEST_VERSION / PLUGIN_VERSION env var (set on Vercel dashboard when a release ships)
  *
  * Response keys are intentionally compatible with the Java extractVersion() parser so the

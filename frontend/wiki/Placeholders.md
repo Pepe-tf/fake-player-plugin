@@ -1,9 +1,9 @@
 # PlaceholderAPI Integration
 
-FPP registers a full **PlaceholderAPI** expansion (`%fpp_…%`) that is available to any plugin that supports PAPI — TAB, Scoreboard plugins, chat formatters, holograms, etc.
+FPP registers a full **PlaceholderAPI** expansion (`%fpp_…%`) that is available to any plugin that supports PAPI - TAB, Scoreboard plugins, chat formatters, holograms, etc.
 
 **Requirement:** [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) must be installed.  
-No configuration is needed — the expansion registers automatically when PAPI is detected on startup.
+No configuration is needed - the expansion registers automatically when PAPI is detected on startup.
 
 > **Version:** 1.5.10+ · **Total placeholders:** 29+ · **Auto-register:** Yes
 
@@ -89,23 +89,23 @@ These return values specific to the requesting player. When used in a context wi
 
 ---
 
-## Combined Player Count — `%fpp_total%`
+## Combined Player Count - `%fpp_total%`
 
 `%fpp_total%` returns **real online players + active bots** as a single number.  
-This is the "combined prefix" placeholder — ideal for showing a server's apparent population in:
+This is the "combined prefix" placeholder - ideal for showing a server's apparent population in:
 
 - Tab-list headers via TAB plugin  
 - Scoreboard sidebars  
 - Server MOTD / status boards  
 - Holographic displays (HolographicDisplays, DecentHolograms, etc.)
 
-**Example — TAB plugin header:**
+**Example - TAB plugin header:**
 ```yaml
 header:
   - "<gold>Online: <white>%fpp_total% <gray>(%fpp_real% real · %fpp_count% bots)"
 ```
 
-**Example — Scoreboard line:**
+**Example - Scoreboard line:**
 ```
 Players: %fpp_total% (%fpp_count% bots)
 ```
@@ -114,7 +114,7 @@ Players: %fpp_total% (%fpp_count% bots)
 
 ## Using PAPI Placeholders Inside FPP Config
 
-FPP expands PlaceholderAPI tokens in the `tab-list` header/footer templates. As of v1.5.10, the `bot-name.tab-list-format` and `fake-chat.chat-format` config keys have been removed — bots now route through the server's real chat pipeline, so chat formatting is handled by your existing chat plugin.
+FPP expands PlaceholderAPI tokens in the `tab-list` header/footer templates. As of v1.5.10, the `bot-name.tab-list-format` and `fake-chat.chat-format` config keys have been removed - bots now route through the server's real chat pipeline, so chat formatting is handled by your existing chat plugin.
 
 > **PAPI in tab-list headers/footers:** Configure your tab-list plugin to use `%fpp_count%`, `%fpp_real%`, etc. in its header/footer templates. FPP registers all placeholders automatically when PlaceholderAPI is installed.
 

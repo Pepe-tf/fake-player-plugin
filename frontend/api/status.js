@@ -1,10 +1,10 @@
 /**
- * Vercel serverless function — returns plugin status / version info.
+ * Vercel serverless function - returns plugin status / version info.
  *
  * Resolution order:
- *   1. Local plugin.yml  — present when the repo is deployed as-is
- *   2. Modrinth API      — used when running on Vercel without local files
- *   3. LATEST_VERSION / PLUGIN_VERSION env var — manual override for pinned releases
+ *   1. Local plugin.yml  - present when the repo is deployed as-is
+ *   2. Modrinth API      - used when running on Vercel without local files
+ *   3. LATEST_VERSION / PLUGIN_VERSION env var - manual override for pinned releases
  *
  * The response shape is intentionally minimal and compatible with the Java
  * extractVersion() / extractDownloadUrl() parsers used in UpdateChecker.java.

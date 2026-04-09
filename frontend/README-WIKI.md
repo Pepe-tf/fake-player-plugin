@@ -5,30 +5,30 @@ A beautiful, modern, and fully-featured wiki system for the Fake Player Plugin d
 ## ✨ Features
 
 ### Core Features
-- 📖 **Markdown Rendering** — Full GitHub-flavored Markdown support with syntax highlighting
-- 🔍 **Real-time Search** — Fast client-side search with keyword highlighting (Ctrl+K)
-- 🎨 **Dark/Light Theme** — Automatic theme switching with persistent preference
-- 📱 **Responsive Design** — Works perfectly on desktop, tablet, and mobile
-- 🧭 **Smart Navigation** — Sidebar menu + automatic table of contents
-- 🔗 **Deep Linking** — Direct links to pages and sections via URL hash
-- ⚡ **Fast Loading** — Lazy loading and content caching for instant navigation
-- 📋 **Copy Code** — One-click copy buttons on all code blocks
+- 📖 **Markdown Rendering** - Full GitHub-flavored Markdown support with syntax highlighting
+- 🔍 **Real-time Search** - Fast client-side search with keyword highlighting (Ctrl+K)
+- 🎨 **Dark/Light Theme** - Automatic theme switching with persistent preference
+- 📱 **Responsive Design** - Works perfectly on desktop, tablet, and mobile
+- 🧭 **Smart Navigation** - Sidebar menu + automatic table of contents
+- 🔗 **Deep Linking** - Direct links to pages and sections via URL hash
+- ⚡ **Fast Loading** - Lazy loading and content caching for instant navigation
+- 📋 **Copy Code** - One-click copy buttons on all code blocks
 
 ### User Experience
-- **Auto-generated TOC** — Right sidebar automatically builds from headings
-- **Scroll spy** — Active heading highlighting as you scroll
-- **Back to top** — Floating button appears when scrolling down
-- **Mobile menu** — Collapsible sidebar for small screens
-- **Keyboard shortcuts** — Ctrl+K for search, Escape to close modals
-- **Browser history** — Back/forward buttons work correctly
-- **External links** — Open in new tabs automatically
+- **Auto-generated TOC** - Right sidebar automatically builds from headings
+- **Scroll spy** - Active heading highlighting as you scroll
+- **Back to top** - Floating button appears when scrolling down
+- **Mobile menu** - Collapsible sidebar for small screens
+- **Keyboard shortcuts** - Ctrl+K for search, Escape to close modals
+- **Browser history** - Back/forward buttons work correctly
+- **External links** - Open in new tabs automatically
 
 ### Developer Features
-- **GitHub integration** — Loads markdown files directly from GitHub repository
-- **Syntax highlighting** — Code blocks use highlight.js with theme matching
-- **XSS protection** — DOMPurify sanitization for all rendered content
-- **Error handling** — Graceful fallbacks when pages fail to load
-- **Print-friendly** — Optimized print styles for documentation
+- **GitHub integration** - Loads markdown files directly from GitHub repository
+- **Syntax highlighting** - Code blocks use highlight.js with theme matching
+- **XSS protection** - DOMPurify sanitization for all rendered content
+- **Error handling** - Graceful fallbacks when pages fail to load
+- **Print-friendly** - Optimized print styles for documentation
 
 ## 🚀 Quick Start
 
@@ -93,11 +93,11 @@ Update URL hash
 ```
 
 ### Search System
-1. **Indexing** — All pages are indexed on first search
-2. **Matching** — Case-insensitive substring matching
-3. **Grouping** — Results grouped by page
-4. **Highlighting** — Query terms highlighted with `<mark>`
-5. **Navigation** — Click result to load that page
+1. **Indexing** - All pages are indexed on first search
+2. **Matching** - Case-insensitive substring matching
+3. **Grouping** - Results grouped by page
+4. **Highlighting** - Query terms highlighted with `<mark>`
+5. **Navigation** - Click result to load that page
 
 ## 🎨 Customization
 
@@ -187,36 +187,36 @@ const port = process.env.PORT || 3000;
 ## 🎯 Features Breakdown
 
 ### 1. Markdown Rendering
-- **Headers** — H1 through H6 with auto-generated IDs
-- **Links** — Internal and external (auto-target for external)
-- **Lists** — Ordered and unordered with nesting
-- **Tables** — Full table support with hover effects
-- **Code** — Inline code and syntax-highlighted blocks
-- **Blockquotes** — Auto-styled as note/warning/tip boxes
-- **Images** — Responsive with border-radius
-- **Horizontal rules** — Styled dividers
+- **Headers** - H1 through H6 with auto-generated IDs
+- **Links** - Internal and external (auto-target for external)
+- **Lists** - Ordered and unordered with nesting
+- **Tables** - Full table support with hover effects
+- **Code** - Inline code and syntax-highlighted blocks
+- **Blockquotes** - Auto-styled as note/warning/tip boxes
+- **Images** - Responsive with border-radius
+- **Horizontal rules** - Styled dividers
 
 ### 2. Search
-- **Index building** — First search triggers async indexing
-- **Debounced input** — 300ms delay to prevent excessive queries
-- **Result grouping** — Max 10 pages, 3 results per page
-- **Context preview** — 40 chars before/after match
-- **Highlighting** — Yellow highlight on matched terms
-- **Keyboard navigation** — Full keyboard accessible
+- **Index building** - First search triggers async indexing
+- **Debounced input** - 300ms delay to prevent excessive queries
+- **Result grouping** - Max 10 pages, 3 results per page
+- **Context preview** - 40 chars before/after match
+- **Highlighting** - Yellow highlight on matched terms
+- **Keyboard navigation** - Full keyboard accessible
 
 ### 3. Table of Contents
-- **Auto-generation** — Built from H2, H3, H4 headings
-- **Scroll spy** — Active heading updates on scroll
-- **Smooth scrolling** — Animated scroll to heading
-- **Nested structure** — Indentation shows hierarchy
-- **Sticky position** — TOC stays visible while scrolling
+- **Auto-generation** - Built from H2, H3, H4 headings
+- **Scroll spy** - Active heading updates on scroll
+- **Smooth scrolling** - Animated scroll to heading
+- **Nested structure** - Indentation shows hierarchy
+- **Sticky position** - TOC stays visible while scrolling
 
 ### 4. Theme System
-- **Persistence** — Theme saved to localStorage
-- **System sync** — Can detect OS theme preference
-- **Smooth transition** — CSS transitions on all elements
-- **Code theme** — Syntax highlighting matches wiki theme
-- **Icon toggle** — Sun/moon icons swap visibility
+- **Persistence** - Theme saved to localStorage
+- **System sync** - Can detect OS theme preference
+- **Smooth transition** - CSS transitions on all elements
+- **Code theme** - Syntax highlighting matches wiki theme
+- **Icon toggle** - Sun/moon icons swap visibility
 
 ## 🐛 Troubleshooting
 
@@ -250,11 +250,11 @@ const port = process.env.PORT || 3000;
 
 ## 🔒 Security
 
-- **XSS Protection** — DOMPurify sanitizes all HTML
-- **CORS** — Enabled for API routes
-- **External links** — Auto-added `rel="noopener noreferrer"`
-- **No inline scripts** — All JS in external files
-- **Content Security** — No arbitrary HTML execution
+- **XSS Protection** - DOMPurify sanitizes all HTML
+- **CORS** - Enabled for API routes
+- **External links** - Auto-added `rel="noopener noreferrer"`
+- **No inline scripts** - All JS in external files
+- **Content Security** - No arbitrary HTML execution
 
 ## 🌐 Browser Support
 
@@ -270,14 +270,14 @@ const port = process.env.PORT || 3000;
 ## 📦 Dependencies
 
 ### Runtime
-- **marked** (11.1.1) — Markdown parser
-- **dompurify** (3.0.8) — HTML sanitizer
-- **highlight.js** (11.9.0) — Syntax highlighting
+- **marked** (11.1.1) - Markdown parser
+- **dompurify** (3.0.8) - HTML sanitizer
+- **highlight.js** (11.9.0) - Syntax highlighting
 
 ### Server
-- **express** — Web server
-- **cors** — CORS middleware
-- **path** / **fs** — File system utilities
+- **express** - Web server
+- **cors** - CORS middleware
+- **path** / **fs** - File system utilities
 
 All frontend dependencies loaded via CDN (no npm install needed for HTML/CSS/JS).
 
@@ -359,10 +359,10 @@ config:
 ## 🎉 Credits
 
 Built with:
-- [Marked.js](https://marked.js.org/) — Markdown parsing
-- [DOMPurify](https://github.com/cure53/DOMPurify) — XSS protection
-- [highlight.js](https://highlightjs.org/) — Syntax highlighting
-- [Express](https://expressjs.com/) — Web server
+- [Marked.js](https://marked.js.org/) - Markdown parsing
+- [DOMPurify](https://github.com/cure53/DOMPurify) - XSS protection
+- [highlight.js](https://highlightjs.org/) - Syntax highlighting
+- [Express](https://expressjs.com/) - Web server
 
 ---
 

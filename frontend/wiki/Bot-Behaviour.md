@@ -36,7 +36,7 @@ FPP includes automatic protection systems to prevent common issues with plugin i
 
 **Automatic 4-Layer Protection**
 
-Bots are **completely command-proof** — they cannot execute commands from any source:
+Bots are **completely command-proof** - they cannot execute commands from any source:
 
 ```
 Layer 1: LOWEST Priority   → Catch commands first
@@ -121,7 +121,7 @@ logging:
 
 ### 🏃 **Physical Bodies**
 
-Each bot is a full **NMS ServerPlayer** entity — not a Mannequin. It has a real player model, hitbox, and physics.
+Each bot is a full **NMS ServerPlayer** entity - not a Mannequin. It has a real player model, hitbox, and physics.
 
 ### ⚙️ **Body Configuration**
 
@@ -148,7 +148,7 @@ swim-ai:
   enabled: true   # Bots swim upward in water/lava; false = bots sink
 ```
 
-When `swim-ai.enabled: true`, bots automatically hold jump while submerged — mimicking a real player pressing spacebar in water or lava.
+When `swim-ai.enabled: true`, bots automatically hold jump while submerged - mimicking a real player pressing spacebar in water or lava.
 
 ### 🎨 **Visual Appearance**
 
@@ -176,7 +176,7 @@ head-ai:
 
 **Target Priority:**
 1. **Closest player** within range
-2. **Smooth rotation** — no instant snapping; `turn-speed` controls how fast the head turns each tick
+2. **Smooth rotation** - no instant snapping; `turn-speed` controls how fast the head turns each tick
 
 **Visual Effect:**
 - Bot head follows nearby players naturally
@@ -202,10 +202,10 @@ combat:
 ### 💀 **Death System**
 
 **When a Bot Dies:**
-1. **Death Animation** — Plays death animation and sound
-2. **Entity Cleanup** — Bot entity is removed from the world
-3. **Tab List Update** — Bot disappears from the player list
-4. **Event Logging** — Records death in database (if enabled)
+1. **Death Animation** - Plays death animation and sound
+2. **Entity Cleanup** - Bot entity is removed from the world
+3. **Tab List Update** - Bot disappears from the player list
+4. **Event Logging** - Records death in database (if enabled)
 
 **Death Sources:**
 - ✅ Player attacks (sword, bow, etc.)
@@ -217,7 +217,7 @@ combat:
 ```yaml
 death:
   respawn-on-death: false   # Respawn bot instead of removing it on death
-  respawn-delay: 60         # Ticks before respawn — 20 ticks = 1 second  (60 = 3 s · 100 = 5 s)
+  respawn-delay: 60         # Ticks before respawn - 20 ticks = 1 second  (60 = 3 s · 100 = 5 s)
   suppress-drops: true      # Prevent item drops on death
 ```
 
@@ -258,7 +258,7 @@ When `body.pushable: false`, all collision physics are disabled and bots become 
 
 **3. Bot Bumps Bot**
 - **Trigger:** Two bots get within `bot-radius` of each other
-- **Effect:** Bots push apart with `bot-strength` — prevents clustering
+- **Effect:** Bots push apart with `bot-strength` - prevents clustering
 
 ---
 
@@ -266,7 +266,7 @@ When `body.pushable: false`, all collision physics are disabled and bots become 
 
 ### 🌍 **World Presence**
 
-Bots keep chunks loaded around their location exactly like a real player — mobs spawn, redstone ticks, and crops grow inside the loaded radius.
+Bots keep chunks loaded around their location exactly like a real player - mobs spawn, redstone ticks, and crops grow inside the loaded radius.
 
 **Configuration (config.yml):**
 ```yaml
@@ -278,9 +278,9 @@ chunk-loading:
 
 ### 📊 **Chunk Management**
 
-- **Load on spawn** — Bot loads surrounding chunks when created
-- **Maintain presence** — Keeps chunks loaded while bot exists
-- **Smart unloading** — Releases chunks when bot is removed
+- **Load on spawn** - Bot loads surrounding chunks when created
+- **Maintain presence** - Keeps chunks loaded while bot exists
+- **Smart unloading** - Releases chunks when bot is removed
 
 Set `chunk-loading.enabled: false` if chunk loading is causing performance issues.
 
@@ -307,12 +307,12 @@ fake-chat:
 ```
 
 **Chat Features:**
-- **Random selection** — Messages chosen from `bot-messages.yml` randomly
-- **Timing variation** — Per-bot independent intervals prevent predictable patterns
-- **LuckPerms integration** — bots are real NMS entities; LP detects them as online players and applies prefix/suffix automatically
-- **Full color support** — MiniMessage and legacy `&` codes
-- **Event reactions** — Bots react to player joins, leaves, and deaths
-- **Mention replies** — Bots reply when a player says their name in chat
+- **Random selection** - Messages chosen from `bot-messages.yml` randomly
+- **Timing variation** - Per-bot independent intervals prevent predictable patterns
+- **LuckPerms integration** - bots are real NMS entities; LP detects them as online players and applies prefix/suffix automatically
+- **Full color support** - MiniMessage and legacy `&` codes
+- **Event reactions** - Bots react to player joins, leaves, and deaths
+- **Mention replies** - Bots reply when a player says their name in chat
 
 ---
 
@@ -320,7 +320,7 @@ fake-chat:
 
 ### 🎭 **Session Rotation**
 
-The Swap System periodically rotates bots — each bot leaves after a configurable session and rejoins with a fresh name. See [Swap System](Swap-System.md) for full documentation.
+The Swap System periodically rotates bots - each bot leaves after a configurable session and rejoins with a fresh name. See [Swap System](Swap-System.md) for full documentation.
 
 **Configuration (config.yml):**
 ```yaml
@@ -346,11 +346,11 @@ Each bot gets a random personality multiplier when swap starts:
 
 | Archetype | Session Modifier |
 |-----------|-----------------|
-| **quiet** | 2.0× — stays extended periods |
-| **passive** | 1.4× — below-average activity |
-| **normal** | 1.0× — typical session |
-| **active** | 0.7× — leaves more often |
-| **chatty** | 0.5× — quick popper |
+| **quiet** | 2.0× - stays extended periods |
+| **passive** | 1.4× - below-average activity |
+| **normal** | 1.0× - typical session |
+| **active** | 0.7× - leaves more often |
+| **chatty** | 0.5× - quick popper |
 
 ---
 
@@ -368,11 +368,11 @@ Monitor live with `/fpp stats` or `/fpp stats --detailed`.
 
 ### 📈 **Optimization Strategies**
 
-1. **Start small** — Begin with 5–10 bots and increase gradually
-2. **Disable unused systems** — Turn off chunk-loading, head-ai, or physics if not needed
-3. **Tune intervals** — Increase `chunk-loading.update-interval` and `head-ai.turn-speed` thresholds
-4. **Use `/fpp freeze`** — Freeze idle bots to stop their AI ticks
-5. **Monitor TPS** — Use `/fpp stats` to watch for performance impact
+1. **Start small** - Begin with 5-10 bots and increase gradually
+2. **Disable unused systems** - Turn off chunk-loading, head-ai, or physics if not needed
+3. **Tune intervals** - Increase `chunk-loading.update-interval` and `head-ai.turn-speed` thresholds
+4. **Use `/fpp freeze`** - Freeze idle bots to stop their AI ticks
+5. **Monitor TPS** - Use `/fpp stats` to watch for performance impact
 
 ---
 
@@ -463,11 +463,11 @@ body:
 
 ## 📚 **Related Documentation**
 
-- **[Skin System](Skin-System.md)** — Bot visual appearance
-- **[Fake Chat](Fake-Chat.md)** — Chat AI configuration
-- **[Swap System](Swap-System.md)** — Session rotation details
-- **[Configuration](Configuration.md)** — All behaviour settings
-- **[FAQ](FAQ.md#performance-issues)** — Optimization tips
+- **[Skin System](Skin-System.md)** - Bot visual appearance
+- **[Fake Chat](Fake-Chat.md)** - Chat AI configuration
+- **[Swap System](Swap-System.md)** - Session rotation details
+- **[Configuration](Configuration.md)** - All behaviour settings
+- **[FAQ](FAQ.md#performance-issues)** - Optimization tips
 
 ---
 

@@ -7,16 +7,16 @@
 
 ## 🎯 Quick Navigation
 
-- [🚨 **Emergency Fixes**](#-emergency-fixes) — Critical issues needing immediate attention
-- [⚙️ **Installation Problems**](#️-installation-problems) — Setup and startup issues  
-- [🎮 **Command Issues**](#-command-issues) — Permission and usage problems
-- [🎭 **Bot Behavior**](#-bot-behavior) — Physical bodies, movement, AI issues
-- [🎨 **Skin Problems**](#-skin-problems) — Skin loading and display issues
-- [📊 **Performance Issues**](#-performance-issues) — TPS drops and lag
-- [🔧 **Configuration Help**](#-configuration-help) — Settings and options
-- [🔗 **Integration Issues**](#-integration-issues) — PlaceholderAPI, LuckPerms problems
-- [💾 **Database Problems**](#-database-problems) — Storage and migration issues
-- [🐛 **Weird Bugs**](#-weird-bugs) — Unusual behavior and edge cases
+- [🚨 **Emergency Fixes**](#-emergency-fixes) - Critical issues needing immediate attention
+- [⚙️ **Installation Problems**](#️-installation-problems) - Setup and startup issues  
+- [🎮 **Command Issues**](#-command-issues) - Permission and usage problems
+- [🎭 **Bot Behavior**](#-bot-behavior) - Physical bodies, movement, AI issues
+- [🎨 **Skin Problems**](#-skin-problems) - Skin loading and display issues
+- [📊 **Performance Issues**](#-performance-issues) - TPS drops and lag
+- [🔧 **Configuration Help**](#-configuration-help) - Settings and options
+- [🔗 **Integration Issues**](#-integration-issues) - PlaceholderAPI, LuckPerms problems
+- [💾 **Database Problems**](#-database-problems) - Storage and migration issues
+- [🐛 **Weird Bugs**](#-weird-bugs) - Unusual behavior and edge cases
 
 ---
 
@@ -432,9 +432,9 @@ logging:
 ```
 
 **If bots are still executing commands (v1.5.5 or earlier):**
-1. **Update to v1.5.6+** — automatic command blocking included
+1. **Update to v1.5.6+** - automatic command blocking included
 2. **Check plugin version:** `/fpp` or `/plugins`
-3. **No configuration needed** — works out of the box
+3. **No configuration needed** - works out of the box
 
 ---
 
@@ -471,9 +471,9 @@ logging:
 ```
 
 **If bots are still being teleported (v1.5.5 or earlier):**
-1. **Update to v1.5.6+** — automatic spawn protection included
+1. **Update to v1.5.6+** - automatic spawn protection included
 2. **Check plugin version:** `/fpp` or `/plugins`
-3. **No configuration needed** — works out of the box
+3. **No configuration needed** - works out of the box
 
 **Manual Workaround (older versions):**
 ```yaml
@@ -844,7 +844,7 @@ database:
 body:
   enabled: true
   
-# Portal handling is automatic — FPP uses PDC-based entity recovery
+# Portal handling is automatic - FPP uses PDC-based entity recovery
 # to restore bots pushed through portals.
 ```
 
@@ -1032,6 +1032,6 @@ rm plugins/fpp-*.jar
 **🎉 Most issues have simple solutions! Don't hesitate to ask for help in our Discord community.**
 
 For additional help, see:
-- **[Getting Started](Getting-Started.md)** — Setup and installation guide
-- **[Commands](Commands.md)** — Complete command reference  
-- **[Configuration](Configuration.md)** — Detailed configuration guide
+- **[Getting Started](Getting-Started.md)** - Setup and installation guide
+- **[Commands](Commands.md)** - Complete command reference  
+- **[Configuration](Configuration.md)** - Detailed configuration guide

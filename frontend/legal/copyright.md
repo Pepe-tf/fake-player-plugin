@@ -13,7 +13,7 @@
 ## Copyright Notice
 
 ```
-Copyright © 2024–2026 Bill_Hub (El_Pepes)
+Copyright © 2024-2026 Bill_Hub (El_Pepes)
 All Rights Reserved.
 
 Fake Player Plugin ("FPP")
@@ -33,7 +33,7 @@ This copyright notice applies to:
 
 ## Current License Status
 
-### ⚠️ Proprietary — All Rights Reserved
+### ⚠️ Proprietary - All Rights Reserved
 
 Fake Player Plugin is currently distributed as **proprietary, closed-source software**. The source code is **not publicly available**.
 
@@ -70,7 +70,7 @@ When the open-source transition occurs:
 - The license will be updated to the **MIT License** (see below)
 - Community contributions (bug fixes, features, pull requests) will be welcomed
 - The compiled binary will remain freely available from all current distribution platforms
-- Existing users will not need to take any action — the Plugin will continue to work as-is
+- Existing users will not need to take any action - the Plugin will continue to work as-is
 
 ### Why Not Open Source Yet?
 
@@ -93,7 +93,7 @@ When the open-source transition is complete, the following license will apply:
 ```
 MIT License
 
-Copyright (c) 2024–2026 Bill_Hub (El_Pepes)
+Copyright (c) 2024-2026 Bill_Hub (El_Pepes)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -152,13 +152,13 @@ Fake Player Plugin bundles or depends on the following third-party components. T
 - **Author:** lucko and contributors
 - **License:** MIT License
 - **Purpose:** Per-bot permission groups and prefix/suffix integration
-- **Note:** Soft dependency — FPP works without it
+- **Note:** Soft dependency - FPP works without it
 
 ### PlaceholderAPI (Optional)
 - **Author:** PlaceholderAPI contributors
 - **License:** GPL-3.0
 - **Purpose:** Placeholder expansion for server plugins
-- **Note:** Soft dependency — FPP works without it
+- **Note:** Soft dependency - FPP works without it
 
 ### marked.js (Website)
 - **Author:** Christopher Jeffrey and contributors
@@ -192,9 +192,9 @@ You may not:
 
 Until the MIT License transition, if you reference, review, or showcase Fake Player Plugin in public content (YouTube videos, blog posts, server advertisements, etc.), we ask that you:
 
-1. **Credit the Plugin** — Reference "Fake Player Plugin by Bill_Hub"
-2. **Link to official sources** — Modrinth, SpigotMC, Hangar, or BuiltByBit
-3. **Do not misrepresent** — Accurately represent features and limitations
+1. **Credit the Plugin** - Reference "Fake Player Plugin by Bill_Hub"
+2. **Link to official sources** - Modrinth, SpigotMC, Hangar, or BuiltByBit
+3. **Do not misrepresent** - Accurately represent features and limitations
 
 ---
 
@@ -223,11 +223,11 @@ We will investigate all legitimate DMCA notices and take appropriate action.
 
 To be notified when the open-source release happens:
 
-- 💬 **Join the Discord:** https://discord.gg/QSN7f67nkJ — announcements are posted here first
-- 📦 **Follow on Modrinth:** https://modrinth.com/plugin/fake-player-plugin-(fpp) — follow the project for release notifications
+- 💬 **Join the Discord:** https://discord.gg/QSN7f67nkJ - announcements are posted here first
+- 📦 **Follow on Modrinth:** https://modrinth.com/plugin/fake-player-plugin-(fpp) - follow the project for release notifications
 
 ---
 
-*Copyright © 2024–2026 Bill_Hub (El_Pepes). All rights reserved.*
-*Fake Player Plugin — Not affiliated with Mojang AB or Microsoft Corporation.*
+*Copyright © 2024-2026 Bill_Hub (El_Pepes). All rights reserved.*
+*Fake Player Plugin - Not affiliated with Mojang AB or Microsoft Corporation.*
 
