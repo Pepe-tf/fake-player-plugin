@@ -442,7 +442,7 @@ Bot chat uses the server's real chat pipeline (`Player.chat()`), so formatting i
 - Shift+right-click any bot to open a 6-row settings chest — no command needed
 - Categories: ⚙ General · 💬 Chat · ⚔ PvP · 📋 Cmds · ⚠ Danger
 - Toggle freeze, head-AI, chat tier, AI personality, stored commands, and bot deletion
-- Controlled by `bot-interaction.shift-right-click-settings` config key
+- Controlled by `bot-interaction.shift-right-click-settings` config key.
 
 **Area Mining Mode**
 - `/fpp mine <bot> --pos1` / `--pos2` — select a cuboid mining region
