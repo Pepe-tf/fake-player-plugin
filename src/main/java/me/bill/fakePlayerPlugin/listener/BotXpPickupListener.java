@@ -15,83 +15,55 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.persistence.PersistentDataType;
 
-/**
- * Controls XP pickup for bots.
- *
- * <ul>
- *   <li>{@link PlayerPickupExperienceEvent} - Paper-native, <em>cancellable</em> event fired
- *       when a player physically absorbs an XP orb. Cancelling it keeps the orb in the world
- *       and is equivalent to how {@code EntityPickupItemEvent} works for items.</li>
- *   <li>{@link PlayerExpChangeEvent} - secondary backup that zeroes out programmatic XP grants
- *       (e.g. {@code /xp add}) when pickup is disabled, in case the orb event was bypassed.</li>
- * </ul>
- */
 public class BotXpPickupListener implements Listener {
 
-    private final FakePlayerPlugin plugin;
-    private final FakePlayerManager manager;
+  private final FakePlayerPlugin plugin;
+  private final FakePlayerManager manager;
 
-    public BotXpPickupListener(FakePlayerPlugin plugin, FakePlayerManager manager) {
-        this.plugin = plugin;
-        this.manager = manager;
+  public BotXpPickupListener(FakePlayerPlugin plugin, FakePlayerManager manager) {
+    this.plugin = plugin;
+    this.manager = manager;
+  }
+
+  @EventHandler(priority = EventPriority.NORMAL)
+  public void onBotXpOrbPickup(PlayerPickupExperienceEvent event) {
+    if (!isFakeBotBody(event.getPlayer())) return;
+
+    FakePlayer fp = manager.getByUuid(event.getPlayer().getUniqueId());
+    if (fp == null) return;
+
+    if (!Config.bodyPickUpXp() || !fp.isPickUpXpEnabled() || isOnXpCooldown(event.getPlayer())) {
+      event.setCancelled(true);
     }
+  }
 
-    // ── Physical orb pickup ───────────────────────────────────────────────────
+  @EventHandler(priority = EventPriority.NORMAL)
+  public void onBotXpChange(PlayerExpChangeEvent event) {
+    if (!isFakeBotBody(event.getPlayer())) return;
 
-    /**
-     * Primary gate - cancels the XP orb pickup entirely when disabled or on cooldown.
-     * Runs at NORMAL so anti-grief plugins still get first say (matching the item pickup handler).
-     */
-    @EventHandler(priority = EventPriority.NORMAL)
-    public void onBotXpOrbPickup(PlayerPickupExperienceEvent event) {
-        if (!isFakeBotBody(event.getPlayer())) return;
+    FakePlayer fp = manager.getByUuid(event.getPlayer().getUniqueId());
+    if (fp == null) return;
 
-        FakePlayer fp = manager.getByUuid(event.getPlayer().getUniqueId());
-        if (fp == null) return;
-
-        // Block XP pickup when the global config gate is off OR the per-bot flag is off.
-        if (!Config.bodyPickUpXp() || !fp.isPickUpXpEnabled() || isOnXpCooldown(event.getPlayer())) {
-            event.setCancelled(true);
-        }
+    if (!Config.bodyPickUpXp() || !fp.isPickUpXpEnabled() || isOnXpCooldown(event.getPlayer())) {
+      event.setAmount(0);
     }
+  }
 
-    // ── Programmatic XP grants (e.g. /xp add) ────────────────────────────────
+  private boolean isFakeBotBody(Entity entity) {
+    if (!(entity instanceof Player)) return false;
+    if (FakePlayerManager.FAKE_PLAYER_KEY == null) return false;
+    String val =
+        entity
+            .getPersistentDataContainer()
+            .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING);
+    return val != null && val.startsWith(FakePlayerBody.VISUAL_PDC_VALUE);
+  }
 
-    /**
-     * Secondary gate - covers XP added via commands or API when there is no orb to cancel.
-     * Uses {@code setAmount(0)} since the event is not cancellable via {@code setCancelled}.
-     */
-    @EventHandler(priority = EventPriority.NORMAL)
-    public void onBotXpChange(PlayerExpChangeEvent event) {
-        if (!isFakeBotBody(event.getPlayer())) return;
-
-        FakePlayer fp = manager.getByUuid(event.getPlayer().getUniqueId());
-        if (fp == null) return;
-
-        if (!Config.bodyPickUpXp() || !fp.isPickUpXpEnabled() || isOnXpCooldown(event.getPlayer())) {
-            event.setAmount(0);
-        }
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /** PDC-based bot detection - same logic as {@code FakePlayerEntityListener.isFakeBotBody()}. */
-    private boolean isFakeBotBody(Entity entity) {
-        if (!(entity instanceof Player)) return false;
-        if (FakePlayerManager.FAKE_PLAYER_KEY == null) return false;
-        String val = entity.getPersistentDataContainer()
-                .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING);
-        return val != null && val.startsWith(FakePlayerBody.VISUAL_PDC_VALUE);
-    }
-
-    /** Returns {@code true} if the bot player is currently on a post-/fpp-xp cooldown. */
-    private boolean isOnXpCooldown(Player player) {
-        XpCommand xpCmd = plugin.getXpCommand();
-        if (xpCmd == null) return false;
-        FakePlayer fp = manager.getByUuid(player.getUniqueId());
-        if (fp == null) return false;
-        return xpCmd.isOnXpCooldown(fp.getUuid());
-    }
+  private boolean isOnXpCooldown(Player player) {
+    XpCommand xpCmd = plugin.getXpCommand();
+    if (xpCmd == null) return false;
+    FakePlayer fp = manager.getByUuid(player.getUniqueId());
+    if (fp == null) return false;
+    return xpCmd.isOnXpCooldown(fp.getUuid());
+  }
 }
-
-

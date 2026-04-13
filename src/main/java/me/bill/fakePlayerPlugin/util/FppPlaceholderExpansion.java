@@ -1,5 +1,9 @@
 package me.bill.fakePlayerPlugin.util;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
@@ -8,211 +12,156 @@ import me.bill.fakePlayerPlugin.fakeplayer.RemoteBotEntry;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.Location;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-/**
- * PlaceholderAPI expansion for ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ.
- *
- * <p>Register with {@link #register()} after PlaceholderAPI is detected.
- * Placeholders marked <b>player</b> return personalised values when a
- * real online player is the context; they fall back gracefully when {@code null}.
- *
- * <h3>Server-wide</h3>
- * <table>
- *   <tr><td>{@code %fpp_count%}</td><td>Active bot count (local + remote in NETWORK mode)</td></tr>
- *   <tr><td>{@code %fpp_local_count%}</td><td>Bots on THIS server only</td></tr>
- *   <tr><td>{@code %fpp_network_count%}</td><td>Bots on OTHER servers only (0 in LOCAL mode)</td></tr>
- *   <tr><td>{@code %fpp_max%}</td><td>Global max-bots cap (∞ if 0)</td></tr>
- *   <tr><td>{@code %fpp_real%}</td><td>Real (non-bot) players online</td></tr>
- *   <tr><td>{@code %fpp_total%}</td><td>Real players + bots combined (network-wide)</td></tr>
- *   <tr><td>{@code %fpp_online%}</td><td>Alias for %fpp_total%</td></tr>
- *   <tr><td>{@code %fpp_frozen%}</td><td>Number of frozen bots (local only)</td></tr>
- *   <tr><td>{@code %fpp_names%}</td><td>Comma-joined display names (local + remote in NETWORK mode)</td></tr>
- *   <tr><td>{@code %fpp_network_names%}</td><td>Comma-joined display names of remote-server bots only</td></tr>
- *   <tr><td>{@code %fpp_chat%}</td><td>{@code on}/{@code off} - fake-chat</td></tr>
- *   <tr><td>{@code %fpp_skin%}</td><td>{@code auto}/{@code custom}/{@code off} - active skin mode</td></tr>
- *   <tr><td>{@code %fpp_body%}</td><td>{@code on}/{@code off} - physical body</td></tr>
- *   <tr><td>{@code %fpp_pushable%}</td><td>{@code on}/{@code off} - body pushable</td></tr>
- *   <tr><td>{@code %fpp_damageable%}</td><td>{@code on}/{@code off} - body damageable</td></tr>
- *   <tr><td>{@code %fpp_tab%}</td><td>{@code on}/{@code off} - tab-list visibility</td></tr>
- *   <tr><td>{@code %fpp_max_health%}</td><td>Bot max-health setting</td></tr>
- *   <tr><td>{@code %fpp_version%}</td><td>Plugin version</td></tr>
- *   <tr><td>{@code %fpp_network%}</td><td>{@code on}/{@code off} - NETWORK database mode active</td></tr>
- *   <tr><td>{@code %fpp_server_id%}</td><td>This server's {@code database.server-id} value</td></tr>
- *   <tr><td>{@code %fpp_persistence%}</td><td>{@code on}/{@code off} - bot persistence on restart</td></tr>
- *   <tr><td>{@code %fpp_spawn_cooldown%}</td><td>Configured spawn cooldown in seconds (0 = off)</td></tr>
- * </table>
- *
- * <h3>Player-relative (requires online player context)</h3>
- * <table>
- *   <tr><td>{@code %fpp_user_count%}</td><td>Bots owned by this player</td></tr>
- *   <tr><td>{@code %fpp_user_max%}</td><td>Personal bot limit for this player</td></tr>
- *   <tr><td>{@code %fpp_user_names%}</td><td>Comma-separated names of this player's bots</td></tr>
- * </table>
- *
- * <h3>Per-world dynamic</h3>
- * <table>
- *   <tr><td>{@code %fpp_count_<world>%}</td><td>Bots in the named world</td></tr>
- *   <tr><td>{@code %fpp_real_<world>%}</td><td>Real players in the named world</td></tr>
- *   <tr><td>{@code %fpp_total_<world>%}</td><td>Real + bots in the named world</td></tr>
- * </table>
- */
 public final class FppPlaceholderExpansion extends PlaceholderExpansion {
 
-    private final FakePlayerPlugin  plugin;
-    private final FakePlayerManager manager;
+  private final FakePlayerPlugin plugin;
+  private final FakePlayerManager manager;
 
-    public FppPlaceholderExpansion(FakePlayerPlugin plugin, FakePlayerManager manager) {
-        this.plugin  = plugin;
-        this.manager = manager;
-    }
+  public FppPlaceholderExpansion(FakePlayerPlugin plugin, FakePlayerManager manager) {
+    this.plugin = plugin;
+    this.manager = manager;
+  }
 
-    @Override public @NotNull String getIdentifier() { return "fpp"; }
-    @Override public @NotNull String getAuthor()     { return String.join(", ", plugin.getPluginMeta().getAuthors()); }
-    @Override public @NotNull String getVersion()    { return plugin.getPluginMeta().getVersion(); }
-    @Override public          boolean persist()       { return true; }
+  @Override
+  public @NotNull String getIdentifier() {
+    return "fpp";
+  }
 
-    @Override
-    public String onRequest(OfflinePlayer player, @NotNull String params) {
-        int localBots  = manager.getCount();
-        // In NETWORK mode include bots from all other proxy servers in the count
-        Collection<RemoteBotEntry> remoteEntries = Config.isNetworkMode()
-                ? plugin.getRemoteBotCache().getAll()
-                : List.of();
-        int remoteBots = remoteEntries.size();
-        int bots  = localBots + remoteBots;
-        // Bots are NMS ServerPlayer entities that go through placeNewPlayer(), so they
-        // appear in Bukkit.getOnlinePlayers().  Subtract local bots to get the true
-        // real-player count and prevent double-counting in %fpp_total%.
-        int real  = Math.max(0, Bukkit.getOnlinePlayers().size() - localBots);
+  @Override
+  public @NotNull String getAuthor() {
+    return String.join(", ", plugin.getPluginMeta().getAuthors());
+  }
 
-        return switch (params.toLowerCase()) {
+  @Override
+  public @NotNull String getVersion() {
+    return plugin.getPluginMeta().getVersion();
+  }
 
-            // ── Server-wide counts ────────────────────────────────────────────
-            case "count"         -> String.valueOf(bots);
-            case "local_count"   -> String.valueOf(localBots);   // this server only
-            case "network_count" -> String.valueOf(remoteBots);  // other servers only
-            case "max"           -> Config.maxBots() == 0 ? "∞" : String.valueOf(Config.maxBots());
-            case "real"          -> String.valueOf(real);
-            case "total"         -> String.valueOf(real + bots);
-            case "online"        -> String.valueOf(real + bots);   // friendlier alias for %fpp_total%
+  @Override
+  public boolean persist() {
+    return true;
+  }
 
-            // ── Server-wide state ─────────────────────────────────────────────
-            case "frozen"     -> String.valueOf(manager.getActivePlayers().stream()
-                                    .filter(FakePlayer::isFrozen).count());
-            case "names" -> {
-                // Network-wide: local names + remote names when in NETWORK mode
-                Stream<String> localNames = manager.getActivePlayers().stream()
-                        .map(FakePlayer::getDisplayName);
-                if (Config.isNetworkMode()) {
-                    Stream<String> remoteNames = remoteEntries.stream()
-                            .map(RemoteBotEntry::displayName);
-                    yield Stream.concat(localNames, remoteNames).collect(Collectors.joining(", "));
-                }
-                yield localNames.collect(Collectors.joining(", "));
-            }
-            case "network_names" -> remoteEntries.stream()
-                    .map(RemoteBotEntry::displayName)
-                    .collect(Collectors.joining(", "));
-            case "chat"       -> Config.fakeChatEnabled()  ? "on" : "off";
-            // Returns actual skin mode: "auto", "custom", or "off"
-            case "skin"       -> Config.skinMode();
-            case "body"       -> Config.spawnBody()        ? "on" : "off";
-            case "pushable"   -> Config.bodyPushable()     ? "on" : "off";
-            case "damageable" -> Config.bodyDamageable()   ? "on" : "off";
-            case "tab"        -> Config.tabListEnabled()   ? "on" : "off";
-            case "max_health" -> String.valueOf(Config.maxHealth());
-            case "version"    -> plugin.getPluginMeta().getVersion();
+  @Override
+  public String onRequest(OfflinePlayer player, @NotNull String params) {
+    int localBots = manager.getCount();
 
-            // ── Network / proxy state ─────────────────────────────────────────
-            case "network"        -> Config.isNetworkMode()      ? "on" : "off";
-            case "server_id"      -> Config.serverId();
-            case "persistence"    -> Config.persistOnRestart()   ? "on" : "off";
-            case "spawn_cooldown" -> String.valueOf(Config.spawnCooldown());
+    Collection<RemoteBotEntry> remoteEntries =
+        Config.isNetworkMode() ? plugin.getRemoteBotCache().getAll() : List.of();
+    int remoteBots = remoteEntries.size();
+    int bots = localBots + remoteBots;
 
-            // ── Player-relative ────────────────────────────────────────────────
-            case "user_count" -> {
-                if (player == null) yield "0";
-                yield String.valueOf(manager.getBotsOwnedBy(player.getUniqueId()).size());
-            }
-            case "user_max" -> {
-                if (player == null) yield String.valueOf(Config.userBotLimit());
-                Player online = player.getPlayer();
-                if (online == null) yield String.valueOf(Config.userBotLimit());
-                int personal = Perm.resolveUserBotLimit(online);
-                yield personal < 0 ? String.valueOf(Config.userBotLimit()) : String.valueOf(personal);
-            }
-            case "user_names" -> {
-                if (player == null) yield "";
-                List<FakePlayer> owned = manager.getBotsOwnedBy(player.getUniqueId());
-                yield owned.stream()
-                        .map(FakePlayer::getDisplayName)
-                        .collect(Collectors.joining(", "));
-            }
+    int real = Math.max(0, Bukkit.getOnlinePlayers().size() - localBots);
 
-            // ── Per-world dynamic: %fpp_count_<world>%  %fpp_real_<world>%  %fpp_total_<world>% ──
-            default -> {
-                if (params.startsWith("count_")) {
-                    String w = params.substring(6);
-                    yield String.valueOf(countBotsInWorld(w));
-                }
-                if (params.startsWith("real_")) {
-                    String w = params.substring(5);
-                    yield String.valueOf(countRealInWorld(w));
-                }
-                if (params.startsWith("total_")) {
-                    String w = params.substring(6);
-                    yield String.valueOf(countBotsInWorld(w) + countRealInWorld(w));
-                }
-                yield null;
-            }
-        };
-    }
+    return switch (params.toLowerCase()) {
+      case "count" -> String.valueOf(bots);
+      case "local_count" -> String.valueOf(localBots);
+      case "network_count" -> String.valueOf(remoteBots);
+      case "max" -> Config.maxBots() == 0 ? "∞" : String.valueOf(Config.maxBots());
+      case "real" -> String.valueOf(real);
+      case "total" -> String.valueOf(real + bots);
+      case "online" -> String.valueOf(real + bots);
 
-    // ── Per-world helpers ─────────────────────────────────────────────────────
-
-    /** Bots whose live body (or last spawn location) is in {@code worldName} (case-insensitive). */
-    private int countBotsInWorld(String worldName) {
-        return (int) manager.getActivePlayers().stream()
-                .filter(fp -> worldName.equalsIgnoreCase(getBotWorldName(fp)))
-                .count();
-    }
-
-    /** The world name for a bot: live NMS Player position first, then spawn location. */
-    private static String getBotWorldName(FakePlayer fp) {
-        Entity body = fp.getPhysicsEntity();
-        if (body != null && body.isValid()) {
-            World w = body.getLocation().getWorld();
-            if (w != null) return w.getName();
+      case "frozen" ->
+          String.valueOf(manager.getActivePlayers().stream().filter(FakePlayer::isFrozen).count());
+      case "names" -> {
+        Stream<String> localNames =
+            manager.getActivePlayers().stream().map(FakePlayer::getDisplayName);
+        if (Config.isNetworkMode()) {
+          Stream<String> remoteNames = remoteEntries.stream().map(RemoteBotEntry::displayName);
+          yield Stream.concat(localNames, remoteNames).collect(Collectors.joining(", "));
         }
-        Location sl = fp.getSpawnLocation();
-        if (sl != null && sl.getWorld() != null) return sl.getWorld().getName();
-        return "";
-    }
+        yield localNames.collect(Collectors.joining(", "));
+      }
+      case "network_names" ->
+          remoteEntries.stream().map(RemoteBotEntry::displayName).collect(Collectors.joining(", "));
+      case "chat" -> Config.fakeChatEnabled() ? "on" : "off";
 
-    /** Real (non-bot) players in a world, case-insensitive world name. */
-    private int countRealInWorld(String worldName) {
-        World world = Bukkit.getWorld(worldName);
-        if (world == null) {
-            world = Bukkit.getWorlds().stream()
-                    .filter(w -> w.getName().equalsIgnoreCase(worldName))
-                    .findFirst().orElse(null);
+      case "skin" -> Config.skinMode();
+      case "body" -> Config.spawnBody() ? "on" : "off";
+      case "pushable" -> Config.bodyPushable() ? "on" : "off";
+      case "damageable" -> Config.bodyDamageable() ? "on" : "off";
+      case "tab" -> Config.tabListEnabled() ? "on" : "off";
+      case "max_health" -> String.valueOf(Config.maxHealth());
+      case "version" -> plugin.getPluginMeta().getVersion();
+
+      case "network" -> Config.isNetworkMode() ? "on" : "off";
+      case "server_id" -> Config.serverId();
+      case "persistence" -> Config.persistOnRestart() ? "on" : "off";
+      case "spawn_cooldown" -> String.valueOf(Config.spawnCooldown());
+
+      case "user_count" -> {
+        if (player == null) yield "0";
+        yield String.valueOf(manager.getBotsOwnedBy(player.getUniqueId()).size());
+      }
+      case "user_max" -> {
+        if (player == null) yield String.valueOf(Config.userBotLimit());
+        Player online = player.getPlayer();
+        if (online == null) yield String.valueOf(Config.userBotLimit());
+        int personal = Perm.resolveUserBotLimit(online);
+        yield personal < 0 ? String.valueOf(Config.userBotLimit()) : String.valueOf(personal);
+      }
+      case "user_names" -> {
+        if (player == null) yield "";
+        List<FakePlayer> owned = manager.getBotsOwnedBy(player.getUniqueId());
+        yield owned.stream().map(FakePlayer::getDisplayName).collect(Collectors.joining(", "));
+      }
+
+      default -> {
+        if (params.startsWith("count_")) {
+          String w = params.substring(6);
+          yield String.valueOf(countBotsInWorld(w));
         }
-        if (world == null) return 0;
-        // Count bots in this world so we can subtract them from getPlayers()
-        // (bots appear in world.getPlayers() since they are real NMS ServerPlayer entities)
-        int botsInWorld = countBotsInWorld(worldName);
-        return Math.max(0, world.getPlayers().size() - botsInWorld);
+        if (params.startsWith("real_")) {
+          String w = params.substring(5);
+          yield String.valueOf(countRealInWorld(w));
+        }
+        if (params.startsWith("total_")) {
+          String w = params.substring(6);
+          yield String.valueOf(countBotsInWorld(w) + countRealInWorld(w));
+        }
+        yield null;
+      }
+    };
+  }
+
+  private int countBotsInWorld(String worldName) {
+    return (int)
+        manager.getActivePlayers().stream()
+            .filter(fp -> worldName.equalsIgnoreCase(getBotWorldName(fp)))
+            .count();
+  }
+
+  private static String getBotWorldName(FakePlayer fp) {
+    Entity body = fp.getPhysicsEntity();
+    if (body != null && body.isValid()) {
+      World w = body.getLocation().getWorld();
+      if (w != null) return w.getName();
     }
+    Location sl = fp.getSpawnLocation();
+    if (sl != null && sl.getWorld() != null) return sl.getWorld().getName();
+    return "";
+  }
+
+  private int countRealInWorld(String worldName) {
+    World world = Bukkit.getWorld(worldName);
+    if (world == null) {
+      world =
+          Bukkit.getWorlds().stream()
+              .filter(w -> w.getName().equalsIgnoreCase(worldName))
+              .findFirst()
+              .orElse(null);
+    }
+    if (world == null) return 0;
+
+    int botsInWorld = countBotsInWorld(worldName);
+    return Math.max(0, world.getPlayers().size() - botsInWorld);
+  }
 }
-

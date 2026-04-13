@@ -1,5 +1,10 @@
 package me.bill.fakePlayerPlugin.fakeplayer;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.util.*;
 import me.bill.fakePlayerPlugin.fakeplayer.network.FakeConnection;
 import me.bill.fakePlayerPlugin.fakeplayer.network.FakeServerGamePacketListenerImpl;
 import me.bill.fakePlayerPlugin.util.FppLogger;
@@ -7,1286 +12,972 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.net.InetAddress;
-import java.util.*;
-
-/**
- * Reflection-based NMS {@code ServerPlayer} factory and physics driver.
- *
-     * <h3>How physics work (matching the hello09x/fakeplayer reference plugin)</h3>
-     * <ol>
-     *   <li>Spawn: create a real {@code ServerPlayer} and call
-     *       {@code PlayerList.placeNewPlayer()} with a FakeChannel-backed
-     *       connection.  {@code placeNewPlayer()} creates a vanilla
-     *       {@code ServerGamePacketListenerImpl} (SGPL) and sends a spawn-position
-     *       packet - setting {@code awaitingPositionFromClient} on that SGPL.</li>
-     *   <li>After {@code placeNewPlayer()}, create a fresh
-     *       {@link FakeServerGamePacketListenerImpl} (a SGPL subclass whose
-     *       {@code send()} is a no-op).  This fresh instance has
-     *       {@code awaitingPositionFromClient == null} and it can never be set
-     *       (because {@code send()} discards all packets).  Assign it to
-     *       {@code ServerPlayer.connection} via reflection.</li>
-     *   <li>Every tick: the server's PlayerList calls {@code handle.connection.tick()}.
-     *       Since {@code awaitingPositionFromClient} is always null on our fake
-     *       listener, no position correction runs.  We also call
-     *       {@code ServerPlayer.doTick()} to drive gravity and collision.</li>
-     * </ol>
-     */
 public final class NmsPlayerSpawner {
 
-    // ── Initialisation state ───────────────────────────────────────────────────
-    private static volatile boolean initialized = false;
-    private static volatile boolean failed = false;
+  private static volatile boolean initialized = false;
+  private static volatile boolean failed = false;
 
-    // ── CraftBukkit helpers ────────────────────────────────────────────────────
-    private static Method craftPlayerGetHandleMethod;
-    private static Method craftServerGetServerMethod;
-    private static Method craftWorldGetHandleMethod;
+  private static Method craftPlayerGetHandleMethod;
+  private static Method craftServerGetServerMethod;
+  private static Method craftWorldGetHandleMethod;
 
-    // ── NMS classes ───────────────────────────────────────────────────────────
-    private static Class<?> minecraftServerClass;
-    private static Class<?> serverLevelClass;
-    private static Class<?> serverPlayerClass;
-    private static Class<?> clientInformationClass;
-    private static Class<?> connectionClass;
-    private static Class<?> commonListenerCookieClass;
-    private static Class<?> serverGamePacketListenerClass;
-    private static Class<?> packetFlowClass;
+  private static Class<?> minecraftServerClass;
+  private static Class<?> serverLevelClass;
+  private static Class<?> serverPlayerClass;
+  private static Class<?> clientInformationClass;
+  private static Class<?> connectionClass;
+  private static Class<?> commonListenerCookieClass;
+  private static Class<?> serverGamePacketListenerClass;
+  private static Class<?> packetFlowClass;
 
-    // ── NMS constructors / methods ─────────────────────────────────────────────
-    private static Constructor<?> gameProfileConstructor;
-    private static Method setPosMethod;
-    private static Method doTickMethod;
-    private static Method getPlayerListMethod;
+  private static Constructor<?> gameProfileConstructor;
+  private static Method setPosMethod;
+  private static Method doTickMethod;
+  private static Method getPlayerListMethod;
 
-    // ── Previous-position fields (xo/yo/zo) ───────────────────────────────────
-    private static Field xoField;
-    private static Field yoField;
-    private static Field zoField;
+  private static Field xoField;
+  private static Field yoField;
+  private static Field zoField;
 
-    // ── LivingEntity.jumping flag (for swim AI) ────────────────────────────────
-    private static Field jumpingField;
+  private static Field jumpingField;
 
-    // ── LivingEntity.yHeadRot field (for head AI) ─────────────────────────────────
-    private static Field yHeadRotField;
+  private static Field yHeadRotField;
 
-    // ── LivingEntity movement input fields (for move command) ──────────────────────
-    /** Forward/backward input (-1.0 to 1.0). Negative = backward. */
-    private static Field zzaField;
-    /** Left/right strafe input (-1.0 to 1.0). Positive = left, negative = right. */
-    private static Field xxaField;
+  private static Field zzaField;
 
-    // ── ServerPlayer.connection field ─────────────────────────────────────────
-    /** Used to replace the vanilla SGPL with {@link FakeServerGamePacketListenerImpl}. */
-    private static Field connectionFieldInPlayer;
+  private static Field xxaField;
 
-    // ── ServerPlayer.attack method (for PVP AI) ────────────────────────────────
-    /** Used to make bot perform actual attack on target entity. */
-    private static Method attackMethod;
+  private static Field connectionFieldInPlayer;
 
-    // ── PlayerList lifecycle ──────────────────────────────────────────────────
-    /**
-     * {@code PlayerList.remove(EntityPlayer)} - removes the bot through the proper
-     * server-side lifecycle (saves data, fires {@code PlayerQuitEvent}, removes entity
-     * from world).  Used instead of {@code player.kick()} so the save path is
-     * guaranteed even when the fake Netty pipeline's {@code fireChannelInactive()} is a no-op.
-     */
-    private static Method playerListRemoveMethod;
+  private static Method attackMethod;
 
-    // ── WorldNBTStorage (PlayerDataStorage) - pre-spawn file creation ─────────
-    /**
-     * The {@code WorldNBTStorage} (a.k.a. {@code PlayerDataStorage}) field {@code s}
-     * on {@code PlayerList}.  Holds the player-file I/O backend.
-     */
-    private static java.lang.reflect.Field playerDataStorageField;
-    /**
-     * {@code WorldNBTStorage.a(EntityHuman)} - saves player NBT to
-     * {@code world/playerdata/<uuid>.dat}.  Called <em>before</em> {@code placeNewPlayer()}
-     * when no file yet exists so Paper/CMI/Essentials see the bot as a returning player
-     * ({@code hasPlayedBefore() == true}) on every subsequent spawn.
-     */
-    private static Method playerDataSaveMethod;
-    /**
-     * {@code WorldNBTStorage.getPlayerDir()} - returns the {@code File} pointing at
-     * the {@code world/playerdata/} directory.  Used to check whether
-     * {@code <uuid>.dat} already exists before attempting a pre-spawn save.
-     */
-    private static Method getPlayerDirMethod;
+  private static Method playerListRemoveMethod;
 
-    // ── ClientInformation cache ────────────────────────────────────────────────
-    private static Object clientInfoDefault;
+  private static java.lang.reflect.Field playerDataStorageField;
 
-    // ── First-tick tracking ────────────────────────────────────────────────────
-    private static final Set<UUID> firstTickSet =
-            Collections.synchronizedSet(new HashSet<>());
+  private static Method playerDataSaveMethod;
 
-    // ── Skin-parts (DATA_PLAYER_MODE_CUSTOMISATION entity metadata) ────────────
-    /** Cached {@code EntityDataAccessor<Byte>} for the skin-customisation metadata slot. */
-    private static Object skinPartsDataAccessor     = null;
-    /** Cached {@code SynchedEntityData.set(EntityDataAccessor, Object)} method. */
-    private static Method synchedEntityDataSetMethod = null;
-    /** Cached {@code Entity.entityData} field (holds the {@code SynchedEntityData} instance). */
-    private static Field  entityDataFieldForSkinParts = null;
+  private static Method getPlayerDirMethod;
 
-    private NmsPlayerSpawner() {}
+  private static Object clientInfoDefault;
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Initialisation
-    // ══════════════════════════════════════════════════════════════════════════
+  private static final Set<UUID> firstTickSet = Collections.synchronizedSet(new HashSet<>());
 
-    /** Initialise NMS reflection. Safe to call multiple times; subsequent calls are no-ops. */
-    public static synchronized void init() {
-        if (initialized || failed) return;
+  private static Object skinPartsDataAccessor = null;
+
+  private static Method synchedEntityDataSetMethod = null;
+
+  private static Field entityDataFieldForSkinParts = null;
+
+  private NmsPlayerSpawner() {}
+
+  public static synchronized void init() {
+    if (initialized || failed) return;
+    try {
+
+      String packageName = Bukkit.getServer().getClass().getPackage().getName();
+      String ver = packageName.substring(packageName.lastIndexOf('.') + 1);
+      String cbPkg =
+          ver.equals("craftbukkit") ? "org.bukkit.craftbukkit" : "org.bukkit.craftbukkit." + ver;
+      FppLogger.debug("NmsPlayerSpawner: CraftBukkit package = " + cbPkg);
+
+      Class<?> craftServerClass = Class.forName(cbPkg + ".CraftServer");
+      Class<?> craftWorldClass = Class.forName(cbPkg + ".CraftWorld");
+      Class<?> craftPlayerClass = Class.forName(cbPkg + ".entity.CraftPlayer");
+      ClassLoader nmsLoader = craftServerClass.getClassLoader();
+
+      craftServerGetServerMethod = craftServerClass.getMethod("getServer");
+      craftWorldGetHandleMethod = craftWorldClass.getMethod("getHandle");
+      craftPlayerGetHandleMethod = craftPlayerClass.getMethod("getHandle");
+
+      minecraftServerClass = nmsLoader.loadClass("net.minecraft.server.MinecraftServer");
+      try {
+        serverLevelClass = nmsLoader.loadClass("net.minecraft.server.level.ServerLevel");
+        serverPlayerClass = nmsLoader.loadClass("net.minecraft.server.level.ServerPlayer");
+        FppLogger.debug("NmsPlayerSpawner: using Mojang-mapped NMS names");
+      } catch (ClassNotFoundException e) {
+        serverLevelClass = nmsLoader.loadClass("net.minecraft.server.level.WorldServer");
+        serverPlayerClass = nmsLoader.loadClass("net.minecraft.server.level.EntityPlayer");
+        FppLogger.debug("NmsPlayerSpawner: using Spigot-mapped NMS names");
+      }
+
+      try {
+        connectionClass = nmsLoader.loadClass("net.minecraft.network.Connection");
+      } catch (ClassNotFoundException e) {
+        connectionClass = nmsLoader.loadClass("net.minecraft.network.NetworkManager");
+      }
+      try {
+        commonListenerCookieClass =
+            nmsLoader.loadClass("net.minecraft.server.network.CommonListenerCookie");
+      } catch (ClassNotFoundException ignored) {
+      }
+      try {
+        serverGamePacketListenerClass =
+            nmsLoader.loadClass("net.minecraft.server.network.ServerGamePacketListenerImpl");
+      } catch (ClassNotFoundException e) {
         try {
-            // ── CraftBukkit package ────────────────────────────────────────────
-            String packageName = Bukkit.getServer().getClass().getPackage().getName();
-            String ver = packageName.substring(packageName.lastIndexOf('.') + 1);
-            String cbPkg = ver.equals("craftbukkit")
-                    ? "org.bukkit.craftbukkit"
-                    : "org.bukkit.craftbukkit." + ver;
-            FppLogger.debug("NmsPlayerSpawner: CraftBukkit package = " + cbPkg);
-
-            Class<?> craftServerClass = Class.forName(cbPkg + ".CraftServer");
-            Class<?> craftWorldClass  = Class.forName(cbPkg + ".CraftWorld");
-            Class<?> craftPlayerClass = Class.forName(cbPkg + ".entity.CraftPlayer");
-            ClassLoader nmsLoader = craftServerClass.getClassLoader();
-
-            // ── CraftBukkit accessors ──────────────────────────────────────────
-            craftServerGetServerMethod = craftServerClass.getMethod("getServer");
-            craftWorldGetHandleMethod  = craftWorldClass.getMethod("getHandle");
-            craftPlayerGetHandleMethod = craftPlayerClass.getMethod("getHandle");
-
-            // ── NMS server classes ─────────────────────────────────────────────
-            minecraftServerClass = nmsLoader.loadClass("net.minecraft.server.MinecraftServer");
-            try {
-                serverLevelClass  = nmsLoader.loadClass("net.minecraft.server.level.ServerLevel");
-                serverPlayerClass = nmsLoader.loadClass("net.minecraft.server.level.ServerPlayer");
-                FppLogger.debug("NmsPlayerSpawner: using Mojang-mapped NMS names");
-            } catch (ClassNotFoundException e) {
-                serverLevelClass  = nmsLoader.loadClass("net.minecraft.server.level.WorldServer");
-                serverPlayerClass = nmsLoader.loadClass("net.minecraft.server.level.EntityPlayer");
-                FppLogger.debug("NmsPlayerSpawner: using Spigot-mapped NMS names");
-            }
-
-            // ── Network classes ────────────────────────────────────────────────
-            try {
-                connectionClass = nmsLoader.loadClass("net.minecraft.network.Connection");
-            } catch (ClassNotFoundException e) {
-                connectionClass = nmsLoader.loadClass("net.minecraft.network.NetworkManager");
-            }
-            try {
-                commonListenerCookieClass =
-                        nmsLoader.loadClass("net.minecraft.server.network.CommonListenerCookie");
-            } catch (ClassNotFoundException ignored) {}
-            try {
-                serverGamePacketListenerClass =
-                        nmsLoader.loadClass("net.minecraft.server.network.ServerGamePacketListenerImpl");
-            } catch (ClassNotFoundException e) {
-                try {
-                    serverGamePacketListenerClass =
-                            nmsLoader.loadClass("net.minecraft.server.network.PlayerConnection");
-                } catch (ClassNotFoundException ignored) {}
-            }
-            try {
-                packetFlowClass = nmsLoader.loadClass("net.minecraft.network.protocol.PacketFlow");
-            } catch (ClassNotFoundException ignored) {}
-
-            // ── ClientInformation ──────────────────────────────────────────────
-            try {
-                clientInformationClass =
-                        nmsLoader.loadClass("net.minecraft.server.level.ClientInformation");
-                try {
-                    clientInfoDefault = clientInformationClass.getMethod("createDefault").invoke(null);
-                    FppLogger.debug("NmsPlayerSpawner: ClientInformation.createDefault() cached");
-                } catch (Exception ignored) {}
-            } catch (ClassNotFoundException ignored) {}
-
-            // ── GameProfile ────────────────────────────────────────────────────
-            Class<?> gameProfileClass = Class.forName("com.mojang.authlib.GameProfile");
-            gameProfileConstructor = gameProfileClass.getConstructor(UUID.class, String.class);
-
-            // ── PlayerList accessor ────────────────────────────────────────────
-            getPlayerListMethod = minecraftServerClass.getMethod("getPlayerList");
-
-            // ── setPos(double, double, double) ────────────────────────────────
-            for (Method m : serverPlayerClass.getMethods()) {
-                if ("setPos".equals(m.getName()) && m.getParameterCount() == 3) {
-                    Class<?>[] p = m.getParameterTypes();
-                    if (p[0] == double.class && p[1] == double.class && p[2] == double.class) {
-                        setPosMethod = m;
-                        break;
-                    }
-                }
-            }
-            if (setPosMethod == null)
-                setPosMethod = findMethodBySignature(serverPlayerClass, 3,
-                        double.class, double.class, double.class);
-
-            // ── doTick() ──────────────────────────────────────────────────────
-            doTickMethod = findMethod(serverPlayerClass, "doTick", 0);
-            if (doTickMethod == null) doTickMethod = findMethod(serverPlayerClass, "tick", 0);
-            if (doTickMethod != null) {
-                FppLogger.debug("NmsPlayerSpawner: doTick cached as " + doTickMethod.getName() + "()");
-            } else {
-                FppLogger.warn("NmsPlayerSpawner: doTick() not found - bots will have no physics");
-            }
-
-            // ── xo/yo/zo previous-position fields ─────────────────────────────
-            Class<?> entityClass;
-            try {
-                entityClass = nmsLoader.loadClass("net.minecraft.world.entity.Entity");
-            } catch (ClassNotFoundException e) {
-                entityClass = serverPlayerClass;
-            }
-            xoField = findFieldByName(entityClass, "xo");
-            yoField = findFieldByName(entityClass, "yo");
-            zoField = findFieldByName(entityClass, "zo");
-            FppLogger.debug("NmsPlayerSpawner: xo/yo/zo fields "
-                    + (xoField != null ? "cached" : "not found"));
-
-            // ── jumping field (LivingEntity) - used by swim AI ─────────────────
-            try {
-                Class<?> livingEntityClass =
-                        nmsLoader.loadClass("net.minecraft.world.entity.LivingEntity");
-                jumpingField = findFieldByName(livingEntityClass, "jumping");
-            } catch (ClassNotFoundException ignored) {
-                // Fallback: walk up from ServerPlayer (covers re-mapped jars)
-                jumpingField = findFieldByName(serverPlayerClass, "jumping");
-            }
-            FppLogger.debug("NmsPlayerSpawner: jumping field "
-                    + (jumpingField != null ? "cached" : "not found - swim AI inactive"));
-
-            // ── yHeadRot field (LivingEntity) - used by head AI ───────────────
-            // findFieldByName walks the whole superclass chain, so passing
-            // serverPlayerClass is enough even though yHeadRot lives in LivingEntity.
-            yHeadRotField = findFieldByName(serverPlayerClass, "yHeadRot");
-            FppLogger.debug("NmsPlayerSpawner: yHeadRot field "
-                    + (yHeadRotField != null ? "cached" : "not found - head AI will rely on setRotation only"));
-
-            // ── LivingEntity movement input fields (for move command) ──────────────────────
-            /** Forward/backward input (-1.0 to 1.0). Negative = backward. */
-            zzaField = findFieldByName(serverPlayerClass, "zza");
-            /** Left/right strafe input (-1.0 to 1.0). Positive = left, negative = right. */
-            xxaField = findFieldByName(serverPlayerClass, "xxa");
-            FppLogger.debug("NmsPlayerSpawner: movement input fields "
-                    + (zzaField != null && xxaField != null ? "cached" : "not found - move command inactive"));
-
-            // ── ServerPlayer.connection field ─────────────────────────────────
-            // Used after placeNewPlayer() to replace the vanilla SGPL with our
-            // FakeServerGamePacketListenerImpl (fresh instance, no awaitingPositionFromClient).
-            if (serverGamePacketListenerClass != null) {
-                connectionFieldInPlayer = findFieldByName(serverPlayerClass, "connection");
-                if (connectionFieldInPlayer == null)
-                    connectionFieldInPlayer = findFieldByName(serverPlayerClass, "playerConnection");
-                if (connectionFieldInPlayer == null)
-                    connectionFieldInPlayer = findFieldByName(serverPlayerClass, "playerGameConnection");
-                if (connectionFieldInPlayer == null) {
-                    for (Field f : getAllDeclaredFields(serverPlayerClass)) {
-                        if (serverGamePacketListenerClass.isAssignableFrom(f.getType())
-                                || f.getType().isAssignableFrom(serverGamePacketListenerClass)) {
-                            f.setAccessible(true);
-                            connectionFieldInPlayer = f;
-                            break;
-                        }
-                    }
-                }
-                if (connectionFieldInPlayer != null) {
-                    FppLogger.debug("NmsPlayerSpawner: connection field = "
-                            + connectionFieldInPlayer.getName());
-                } else {
-                    FppLogger.warn("NmsPlayerSpawner: ServerPlayer.connection field not found"
-                            + " - fake listener injection will be skipped");
-                }
-            }
-
-            // ── ServerPlayer.attack(Entity) method (for PVP AI) ───────────────────
-            try {
-                Class<?> entityClassForAttack = nmsLoader.loadClass("net.minecraft.world.entity.Entity");
-                attackMethod = findMethod(serverPlayerClass, "attack", 1, entityClassForAttack);
-                if (attackMethod != null) {
-                    FppLogger.debug("NmsPlayerSpawner: attack(Entity) method cached");
-                } else {
-                    FppLogger.warn("NmsPlayerSpawner: attack(Entity) method not found - PVP bots will use fallback damage");
-                }
-            } catch (Exception e) {
-                FppLogger.warn("NmsPlayerSpawner: Failed to cache attack method: " + e.getMessage());
-            }
-
-            // ── PlayerList.remove / WorldNBTStorage save ────────────────────────
-            // remove(EntityPlayer) - proper despawn path: saves data, fires
-            //   PlayerQuitEvent, removes entity from world. Used instead of kick()
-            //   to guarantee the save even when FakeChannelPipeline is a no-op.
-            // WorldNBTStorage.a(EntityHuman) - save() - called BEFORE placeNewPlayer()
-            //   when no <uuid>.dat file exists yet, ensuring Paper sees the bot as a
-            //   returning player (hasPlayedBefore=true) on every subsequent spawn.
-            //   Also used via getPlayerDir() to check for the pre-existing file.
-            try {
-                Class<?> playerListClass = getPlayerListMethod.getReturnType();
-                playerListRemoveMethod = findMethod(playerListClass, "remove", 1);
-
-                // WorldNBTStorage is held in field "s" on PlayerList.
-                // Scan by type to be robust against obfuscation renames across versions.
-                for (java.lang.reflect.Field f : playerListClass.getDeclaredFields()) {
-                    String typeName = f.getType().getSimpleName();
-                    if (typeName.contains("WorldNBTStorage") || typeName.contains("PlayerDataStorage")) {
-                        f.setAccessible(true);
-                        playerDataStorageField = f;
-                        break;
-                    }
-                }
-                if (playerDataStorageField != null) {
-                    Class<?> storageClass = playerDataStorageField.getType();
-                    // getPlayerDir() - Mojang-mapped name is preserved in Paper
-                    try { getPlayerDirMethod = storageClass.getMethod("getPlayerDir"); } catch (Exception ignored) {}
-                    // void a(EntityHuman) - the save overload (load returns Optional, not void)
-                    for (java.lang.reflect.Method m : storageClass.getDeclaredMethods()) {
-                        if ("a".equals(m.getName()) && m.getParameterCount() == 1
-                                && m.getReturnType() == void.class) {
-                            m.setAccessible(true);
-                            playerDataSaveMethod = m;
-                            break;
-                        }
-                    }
-                }
-                FppLogger.debug("NmsPlayerSpawner: PlayerList lifecycle - remove="
-                        + (playerListRemoveMethod != null ? "ok" : "missing")
-                        + " storage=" + (playerDataStorageField != null ? "ok" : "missing")
-                        + " save=" + (playerDataSaveMethod != null ? "ok" : "missing")
-                        + " getPlayerDir=" + (getPlayerDirMethod != null ? "ok" : "missing"));
-            } catch (Exception e) {
-                FppLogger.debug("NmsPlayerSpawner: PlayerList lifecycle init failed: " + e.getMessage());
-            }
-
-            initialized = true;
-            FppLogger.info("NmsPlayerSpawner initialised (doTick=" + (doTickMethod != null)
-                    + ", connectionField=" + (connectionFieldInPlayer != null)
-                    + ", attack=" + (attackMethod != null)
-                    + ", playerDataDir=" + (getPlayerDirMethod != null) + ")");
-
-            // ── Skin-parts entity metadata (DATA_PLAYER_MODE_CUSTOMISATION) ────
-            // Done after initialized=true so forceAllSkinParts() can use the already-
-            // cached craftPlayerGetHandleMethod if init() is somehow called twice.
-            try {
-                Class<?> playerNmsClass;
-                try {
-                    playerNmsClass = nmsLoader.loadClass("net.minecraft.world.entity.player.Player");
-                } catch (ClassNotFoundException ignored) {
-                    playerNmsClass = serverPlayerClass;
-                }
-                // Mojang-mapped field name for the skin-customisation entity data accessor
-                Field spField = findFieldByName(playerNmsClass, "DATA_PLAYER_MODE_CUSTOMISATION");
-                if (spField != null && java.lang.reflect.Modifier.isStatic(spField.getModifiers())) {
-                    spField.setAccessible(true);
-                    skinPartsDataAccessor = spField.get(null);
-                }
-
-                // SynchedEntityData.set(EntityDataAccessor, Object)
-                Class<?> syncDataClass =
-                        nmsLoader.loadClass("net.minecraft.network.syncher.SynchedEntityData");
-                for (Method m : syncDataClass.getDeclaredMethods()) {
-                    if ("set".equals(m.getName()) && m.getParameterCount() == 2) {
-                        m.setAccessible(true);
-                        synchedEntityDataSetMethod = m;
-                        break;
-                    }
-                }
-
-                // Entity.entityData field (walks full hierarchy via findFieldByName)
-                entityDataFieldForSkinParts = findFieldByName(serverPlayerClass, "entityData");
-
-                FppLogger.debug("NmsPlayerSpawner: skin-parts init - accessor="
-                        + (skinPartsDataAccessor != null)
-                        + " entityData=" + (entityDataFieldForSkinParts != null)
-                        + " setMethod=" + (synchedEntityDataSetMethod != null));
-            } catch (Exception e) {
-                FppLogger.debug("NmsPlayerSpawner: skin-parts init failed (non-fatal): " + e.getMessage());
-            }
-
-        } catch (Exception e) {
-            failed = true;
-            FppLogger.error("NmsPlayerSpawner.init() failed: " + e.getMessage());
+          serverGamePacketListenerClass =
+              nmsLoader.loadClass("net.minecraft.server.network.PlayerConnection");
+        } catch (ClassNotFoundException ignored) {
         }
-    }
+      }
+      try {
+        packetFlowClass = nmsLoader.loadClass("net.minecraft.network.protocol.PacketFlow");
+      } catch (ClassNotFoundException ignored) {
+      }
 
-    /** Returns {@code true} when NMS spawning is available. */
-    public static boolean isAvailable() {
-        if (!initialized && !failed) init();
-        return initialized;
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Spawn
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Spawns a fake {@code ServerPlayer} at the given location (no skin).
-     *
-     * @return the Bukkit {@link Player} wrapper, or {@code null} on failure
-     */
-    public static Player spawnFakePlayer(UUID uuid, String name,
-                                         World world, double x, double y, double z) {
-        return spawnFakePlayer(uuid, name, null, world, x, y, z);
-    }
-
-    /**
-     * Spawns a fake {@code ServerPlayer} at the given location with an optional skin.
-     *
-     * @param skin optional skin to inject into the {@code GameProfile} (may be {@code null})
-     * @return the Bukkit {@link Player} wrapper, or {@code null} on failure
-     */
-    public static Player spawnFakePlayer(UUID uuid, String name, SkinProfile skin,
-                                         World world, double x, double y, double z) {
-        if (!isAvailable()) {
-            FppLogger.warn("NmsPlayerSpawner not available - cannot spawn " + name);
-            return null;
-        }
+      try {
+        clientInformationClass =
+            nmsLoader.loadClass("net.minecraft.server.level.ClientInformation");
         try {
-            // ── GameProfile ────────────────────────────────────────────────────
-            Object gameProfile = gameProfileConstructor.newInstance(uuid, name);
-            if (skin != null && skin.isValid()) {
-                try {
-                    SkinProfileInjector.apply(gameProfile, skin);
-                    FppLogger.debug("NmsPlayerSpawner: injected skin for '" + name + "'");
-                } catch (Exception e) {
-                    FppLogger.warn("NmsPlayerSpawner: skin injection failed: " + e.getMessage());
-                }
-            }
-
-            Object minecraftServer = craftServerGetServerMethod.invoke(Bukkit.getServer());
-            Object serverLevel     = craftWorldGetHandleMethod.invoke(world);
-            Object clientInfo      = getClientInformation();
-
-            Object serverPlayer = createServerPlayer(minecraftServer, serverLevel, gameProfile, clientInfo);
-            if (serverPlayer == null) {
-                FppLogger.warn("NmsPlayerSpawner: failed to create ServerPlayer for " + name);
-                return null;
-            }
-
-            if (setPosMethod != null) setPosMethod.invoke(serverPlayer, x, y, z);
-            initPreviousPosition(serverPlayer, x, y, z);
-
-            // ── Create FakeChannel-backed connection ───────────────────────────
-            Object conn = createFakeConnection();
-            if (conn == null) {
-                FppLogger.warn("NmsPlayerSpawner: failed to create fake connection for " + name);
-                return null;
-            }
-
-            // ── Ensure playerdata file exists before placeNewPlayer() ─────────
-            // Creates world/playerdata/<uuid>.dat if it does not yet exist by calling
-            // WorldNBTStorage.save() on the freshly-created (but not yet placed) player.
-            // placeNewPlayer() calls playerIo.load() internally - when the file exists,
-            // Paper sets isFirstJoin=false, so Bukkit's hasPlayedBefore() returns true.
-            // This prevents CMI, Essentials, and other plugins from treating the bot as
-            // a brand-new player on every respawn with the same name+UUID.
-            FppLogger.debug("NmsPlayerSpawner: spawning '" + name + "' uuid=" + uuid);
-            ensurePlayerDataExists(minecraftServer, serverPlayer, name, uuid);
-
-            // ── Place into world ───────────────────────────────────────────────
-            // placeNewPlayer() creates a vanilla SGPL, assigns it to serverPlayer.connection,
-            // and sends the spawn-position packet → sets awaitingPositionFromClient on SGPL.
-            boolean placed = placePlayer(minecraftServer, conn, serverPlayer, gameProfile, clientInfo);
-            if (!placed) {
-                FppLogger.warn("NmsPlayerSpawner: placeNewPlayer failed for " + name);
-                return null;
-            }
-
-            // Restore position (placeNewPlayer may teleport to spawn)
-            if (setPosMethod != null) setPosMethod.invoke(serverPlayer, x, y, z);
-            initPreviousPosition(serverPlayer, x, y, z);
-
-            // ── Replace vanilla SGPL with FakeServerGamePacketListenerImpl ─────
-            // The vanilla SGPL has awaitingPositionFromClient set; our fresh fake
-            // listener starts with null and its send() is a no-op so it stays null.
-            injectFakeListener(minecraftServer, conn, serverPlayer, gameProfile, clientInfo);
-
-            Method getBukkitEntity = serverPlayerClass.getMethod("getBukkitEntity");
-            Object entity = getBukkitEntity.invoke(serverPlayer);
-            if (entity instanceof Player result) {
-                result.setGameMode(org.bukkit.GameMode.SURVIVAL);
-                // Force all skin-overlay layers visible (jacket, hat, sleeves, pants).
-                // Ensures outer layers show even if ClientInformation.createDefault()
-                // returns modelCustomisation = 0 on this server version.
-                forceAllSkinParts(result);
-                firstTickSet.add(uuid);
-                FppLogger.debug("NmsPlayerSpawner: spawned " + name + " (" + uuid + ")");
-                return result;
-            }
-
-            FppLogger.warn("NmsPlayerSpawner: getBukkitEntity did not return a Player for " + name);
-            return null;
-
-        } catch (Exception e) {
-            FppLogger.error("NmsPlayerSpawner.spawnFakePlayer failed for " + name + ": " + e.getMessage());
-            FppLogger.debug(Arrays.toString(e.getStackTrace()));
-            return null;
+          clientInfoDefault = clientInformationClass.getMethod("createDefault").invoke(null);
+          FppLogger.debug("NmsPlayerSpawner: ClientInformation.createDefault() cached");
+        } catch (Exception ignored) {
         }
-    }
+      } catch (ClassNotFoundException ignored) {
+      }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Physics tick
-    // ══════════════════════════════════════════════════════════════════════════
+      Class<?> gameProfileClass = Class.forName("com.mojang.authlib.GameProfile");
+      gameProfileConstructor = gameProfileClass.getConstructor(UUID.class, String.class);
 
-    /**
-     * Drives one game-tick of physics for the given bot via {@code ServerPlayer.doTick()}.
-     *
-     * <p>Since {@code handle.connection} is now a {@link FakeServerGamePacketListenerImpl}
-     * with {@code awaitingPositionFromClient == null}, the server's own
-     * {@code connection.tick()} (called by PlayerList) does not snap the bot back.
-     * We call {@code doTick()} to run gravity, collision, fluid drag, etc.
-     *
-     * <p>On the first tick we pin {@code xo/yo/zo} to prevent phantom displacement,
-     * and restore the position afterwards in case a plugin (ClearFog, Multiverse)
-     * moved the bot during its first tick.
-     */
-    public static void tickPhysics(Player bot) {
-        if (!initialized || doTickMethod == null || craftPlayerGetHandleMethod == null) return;
-        if (!bot.isOnline() || !bot.isValid() || bot.isDead()) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      getPlayerListMethod = minecraftServerClass.getMethod("getPlayerList");
 
-            if (firstTickSet.remove(bot.getUniqueId())) {
-                // ── First tick ─────────────────────────────────────────────────
-                org.bukkit.Location loc = bot.getLocation();
-                double x = loc.getX(), y = loc.getY(), z = loc.getZ();
-
-                initPreviousPosition(nmsPlayer, x, y, z);
-                doTickMethod.invoke(nmsPlayer);
-
-                // Restore in case a plugin moved the bot on its first tick
-                if (setPosMethod != null) setPosMethod.invoke(nmsPlayer, x, y, z);
-                initPreviousPosition(nmsPlayer, x, y, z);
-
-            } else {
-                // ── Normal tick ────────────────────────────────────────────────
-                doTickMethod.invoke(nmsPlayer);
-            }
-
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.tickPhysics failed for "
-                    + bot.getName() + ": " + e.getMessage());
+      for (Method m : serverPlayerClass.getMethods()) {
+        if ("setPos".equals(m.getName()) && m.getParameterCount() == 3) {
+          Class<?>[] p = m.getParameterTypes();
+          if (p[0] == double.class && p[1] == double.class && p[2] == double.class) {
+            setPosMethod = m;
+            break;
+          }
         }
-    }
+      }
+      if (setPosMethod == null)
+        setPosMethod =
+            findMethodBySignature(serverPlayerClass, 3, double.class, double.class, double.class);
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Position helper
-    // ══════════════════════════════════════════════════════════════════════════
+      doTickMethod = findMethod(serverPlayerClass, "doTick", 0);
+      if (doTickMethod == null) doTickMethod = findMethod(serverPlayerClass, "tick", 0);
+      if (doTickMethod != null) {
+        FppLogger.debug("NmsPlayerSpawner: doTick cached as " + doTickMethod.getName() + "()");
+      } else {
+        FppLogger.warn("NmsPlayerSpawner: doTick() not found - bots will have no physics");
+      }
 
-    /**
-     * Directly sets the NMS entity position via {@code ServerPlayer.setPos(x, y, z)}.
-     * Used by head-AI and teleport commands to reposition bots server-side.
-     */
-    public static void setPosition(Player bot, double x, double y, double z) {
-        if (!initialized || setPosMethod == null || craftPlayerGetHandleMethod == null) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
-            setPosMethod.invoke(nmsPlayer, x, y, z);
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.setPosition failed: " + e.getMessage());
-        }
-    }
+      Class<?> entityClass;
+      try {
+        entityClass = nmsLoader.loadClass("net.minecraft.world.entity.Entity");
+      } catch (ClassNotFoundException e) {
+        entityClass = serverPlayerClass;
+      }
+      xoField = findFieldByName(entityClass, "xo");
+      yoField = findFieldByName(entityClass, "yo");
+      zoField = findFieldByName(entityClass, "zo");
+      FppLogger.debug(
+          "NmsPlayerSpawner: xo/yo/zo fields " + (xoField != null ? "cached" : "not found"));
 
-    /**
-     * Sets the NMS {@code LivingEntity.jumping} flag on the given bot.
-     *
-     * <p>When {@code true} the entity's next physics tick will apply the "swim up"
-     * impulse (vanilla: +0.04 m/s per tick in water), exactly replicating a player
-     * holding the spacebar / jump key while submerged.  The flag is transient - NMS
-     * clears it after each tick unless we re-apply it, so this must be called every
-     * tick the bot should continue swimming.
-     *
-     * @param bot     the bot whose jump state should be modified
-     * @param jumping {@code true} to swim/jump, {@code false} to stop
-     */
-    public static void setJumping(Player bot, boolean jumping) {
-        if (!initialized || jumpingField == null || craftPlayerGetHandleMethod == null) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
-            jumpingField.setBoolean(nmsPlayer, jumping);
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.setJumping failed: " + e.getMessage());
-        }
-    }
+      try {
+        Class<?> livingEntityClass = nmsLoader.loadClass("net.minecraft.world.entity.LivingEntity");
+        jumpingField = findFieldByName(livingEntityClass, "jumping");
+      } catch (ClassNotFoundException ignored) {
 
-    /**
-     * Sets the NMS {@code LivingEntity.yHeadRot} field on the given bot so that
-     * the head rotates independently of the body yaw.  Called every tick by the
-     * head-AI loop in {@code FakePlayerManager} after a smooth lerp step.
-     *
-     * @param bot the bot whose head yaw should be updated
-     * @param yaw the target head yaw in degrees (same range as Bukkit yaw)
-     */
-    public static void setHeadYaw(Player bot, float yaw) {
-        if (!initialized || craftPlayerGetHandleMethod == null) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
-            if (yHeadRotField != null) {
-                yHeadRotField.setFloat(nmsPlayer, yaw);
-            }
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.setHeadYaw failed: " + e.getMessage());
-        }
-    }
+        jumpingField = findFieldByName(serverPlayerClass, "jumping");
+      }
+      FppLogger.debug(
+          "NmsPlayerSpawner: jumping field "
+              + (jumpingField != null ? "cached" : "not found - swim AI inactive"));
 
-    /**
-     * Makes the bot perform a real NMS attack on the target entity.
-     *
-     * <p>This uses the bot's NMS {@code ServerPlayer.attack(Entity)} method,
-     * which triggers proper combat mechanics including critical hits, knockback,
-     * damage events, and all vanilla attack logic.
-     *
-     * <p>If the attack method is unavailable (reflection failed), this falls back
-     * to {@code target.damage(dmg, bot)} which applies damage but skips vanilla
-     * combat mechanics.
-     *
-     * @param bot    the attacking bot (Bukkit Player)
-     * @param target the entity being attacked (Bukkit Player or LivingEntity)
-     * @param damage fallback damage amount (used only if reflection fails)
-     */
-    public static void performAttack(Player bot, org.bukkit.entity.Entity target, double damage) {
-        if (!initialized || craftPlayerGetHandleMethod == null) {
-            // Fallback: direct damage
-            if (target instanceof org.bukkit.entity.Damageable damageable) {
-                damageable.damage(damage, bot);
-            }
-            return;
-        }
+      yHeadRotField = findFieldByName(serverPlayerClass, "yHeadRot");
+      FppLogger.debug(
+          "NmsPlayerSpawner: yHeadRot field "
+              + (yHeadRotField != null
+                  ? "cached"
+                  : "not found - head AI will rely on setRotation only"));
 
-        try {
-            Object nmsBot = craftPlayerGetHandleMethod.invoke(bot);
-            Object nmsTarget = craftPlayerGetHandleMethod.invoke(target);
+      zzaField = findFieldByName(serverPlayerClass, "zza");
 
-            if (attackMethod != null && nmsTarget != null) {
-                // Use real NMS attack - this triggers all vanilla combat mechanics
-                attackMethod.invoke(nmsBot, nmsTarget);
-            } else {
-                // Fallback: direct damage
-                if (target instanceof org.bukkit.entity.Damageable damageable) {
-                    damageable.damage(damage, bot);
-                }
-            }
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.performAttack failed: " + e.getMessage());
-            // Final fallback
-            if (target instanceof org.bukkit.entity.Damageable damageable) {
-                damageable.damage(damage, bot);
-            }
-        }
-    }
+      xxaField = findFieldByName(serverPlayerClass, "xxa");
+      FppLogger.debug(
+          "NmsPlayerSpawner: movement input fields "
+              + (zzaField != null && xxaField != null
+                  ? "cached"
+                  : "not found - move command inactive"));
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Movement control (for move command)
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Sets the forward/backward movement input for a bot (-1.0 to 1.0).
-     * <p>Mimics W (forward = 1.0) / S (backward = -1.0) key presses.</p>
-     * 
-     * @param bot the bot to control
-     * @param forward 1.0 = forward, -1.0 = backward, 0 = no movement
-     */
-    public static void setMovementForward(Player bot, float forward) {
-        if (!initialized || zzaField == null || craftPlayerGetHandleMethod == null) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
-            zzaField.setFloat(nmsPlayer, forward);
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.setMovementForward failed: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Sets the left/right strafe movement input for a bot (-1.0 to 1.0).
-     * <p>Mimics A (left = 1.0) / D (right = -1.0) key presses.</p>
-     * 
-     * @param bot the bot to control
-     * @param strafe 1.0 = left, -1.0 = right, 0 = no strafe
-     */
-    public static void setMovementStrafe(Player bot, float strafe) {
-        if (!initialized || xxaField == null || craftPlayerGetHandleMethod == null) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
-            xxaField.setFloat(nmsPlayer, strafe);
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.setMovementStrafe failed: " + e.getMessage());
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Remove
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Removes a fake player from the server using the proper server-side lifecycle path.
-     *
-     * <h3>Removal sequence</h3>
-     * <ol>
-     *   <li><b>Explicit save</b> - {@code player.saveData()} writes
-     *       {@code world/playerdata/<uuid>.dat} before anything else.  This is the
-     *       primary guarantee that the file exists for the next {@code placeNewPlayer()}
-     *       call; it is intentionally done here even though {@code PlayerList.remove()}
-     *       (step 2) also saves.</li>
-     *   <li><b>{@code PlayerList.remove(nmsPlayer)}</b> (preferred) - saves data again,
-     *       fires {@code PlayerQuitEvent}, removes from the server player list, and
-     *       removes the entity from the world via
-     *       {@code ServerLevel.removePlayerImmediately()}.  This is the correct lifecycle
-     *       path that Paper uses for real player disconnections.</li>
-     *   <li><b>Kick fallback</b> - if {@code PlayerList.remove()} is not available or
-     *       fails (e.g. reflection error on an unusual build), falls back to
-     *       {@code player.kick(Component.empty())}.  The empty reason bypasses
-     *       {@code FakePlayerKickListener}'s "cancel all kicks" guard.</li>
-     * </ol>
-     *
-     * <p>By replacing the old kick-only approach with a direct {@code PlayerList.remove()}
-     * call we eliminate the dependency on the fake Netty pipeline's
-     * {@code fireChannelInactive()} firing {@code handleDisconnection()} - a path that is
-     * a no-op with our fake channel.  The result is reliable playerdata persistence on
-     * every despawn.
-     */
-    public static void removeFakePlayer(Player player) {
-        if (player == null) return;
-        try {
-            firstTickSet.remove(player.getUniqueId());
-            if (player.isOnline()) {
-                final String name = player.getName();
-                final UUID   uuid = player.getUniqueId();
-
-                FppLogger.debug("NmsPlayerSpawner: removing '" + name + "' uuid=" + uuid);
-
-                // Step 1: Explicit save - guarantees world/playerdata/<uuid>.dat exists
-                // for the next placeNewPlayer() regardless of what the removal path does.
-                try {
-                    player.saveData();
-                    FppLogger.debug("NmsPlayerSpawner: saved playerdata for '"
-                            + name + "' uuid=" + uuid);
-                } catch (Exception e) {
-                    FppLogger.warn("NmsPlayerSpawner: saveData failed for '"
-                            + name + "' uuid=" + uuid + ": " + e.getMessage());
-                }
-
-                // Step 2: Remove via PlayerList.remove(nmsPlayer) - proper lifecycle path.
-                // Fires PlayerQuitEvent, saves data again, removes from player list,
-                // and calls ServerLevel.removePlayerImmediately() to drop the entity.
-                boolean removedViaPlayerList = false;
-                if (initialized
-                        && craftPlayerGetHandleMethod  != null
-                        && craftServerGetServerMethod  != null
-                        && getPlayerListMethod         != null
-                        && playerListRemoveMethod      != null) {
-                    try {
-                        Object nmsPlayer       = craftPlayerGetHandleMethod.invoke(player);
-                        Object minecraftServer = craftServerGetServerMethod.invoke(
-                                org.bukkit.Bukkit.getServer());
-                        Object playerList      = getPlayerListMethod.invoke(minecraftServer);
-                        playerListRemoveMethod.invoke(playerList, nmsPlayer);
-                        removedViaPlayerList = true;
-                        FppLogger.debug("NmsPlayerSpawner: removed '" + name
-                                + "' via PlayerList.remove() uuid=" + uuid);
-                    } catch (Exception e) {
-                        FppLogger.debug("NmsPlayerSpawner: PlayerList.remove failed for '"
-                                + name + "' uuid=" + uuid + ": " + e.getMessage()
-                                + " - falling back to kick");
-                    }
-                }
-
-                // Step 3: Fallback - kick with empty reason when PlayerList.remove() was
-                // unavailable or failed.  Empty reason bypasses FakePlayerKickListener.
-                if (!removedViaPlayerList && player.isOnline()) {
-                    player.kick(net.kyori.adventure.text.Component.empty());
-                }
-            }
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.removeFakePlayer failed for "
-                    + player.getName() + ": " + e.getMessage());
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Pre-spawn playerdata helper
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Ensures {@code world/playerdata/<uuid>.dat} exists on disk <em>before</em>
-     * {@link #placePlayer(Object, Object, Object, Object, Object)} is called.
-     *
-     * <h3>Why this is needed</h3>
-     * <p>{@code PlayerList.placeNewPlayer()} internally calls
-     * {@code playerIo.load(player)}.  If the file does not exist, {@code load()}
-     * returns {@code Optional.empty()}, Paper sets {@code isFirstJoin = true}, and
-     * Bukkit's {@link org.bukkit.entity.Player#hasPlayedBefore()} returns
-     * {@code false}.  Plugins such as CMI, Essentials, and similar management
-     * suites read {@code hasPlayedBefore()} to decide whether to show a
-     * "joined for the first time!" announcement and to run first-join workflows.
-     * Without a pre-existing file, bots are treated as brand-new players on every
-     * single despawn+respawn cycle.
-     *
-     * <h3>Implementation</h3>
-     * <ol>
-     *   <li>Obtain {@code WorldNBTStorage} via {@code PlayerList.s}.</li>
-     *   <li>Call {@code getPlayerDir()} to find the physical directory.</li>
-     *   <li>If {@code <uuid>.dat} already exists → log "returning player", return.</li>
-     *   <li>If it does not exist → call {@code WorldNBTStorage.a(EntityHuman)} (the
-     *       save overload) on the freshly-constructed {@code serverPlayer}.  This writes
-     *       a valid compressed-NBT file containing the bot's default initial state
-     *       (empty inventory, default health, the position we just set).  On the next
-     *       {@code placeNewPlayer()} call, {@code load()} finds the file and sets
-     *       {@code isFirstJoin = false} - the bot is recognised as a returning player.</li>
-     * </ol>
-     *
-     * <p>If the reflection objects are unavailable (older/remapped server), the method
-     * returns silently; behaviour degrades to the old "first-time join" state but no
-     * exception is thrown.
-     *
-     * @param minecraftServer NMS {@code MinecraftServer} instance
-     * @param serverPlayer    freshly constructed NMS {@code ServerPlayer} (not yet placed)
-     * @param name            bot name (for logging)
-     * @param uuid            bot UUID (for logging and filename)
-     */
-    private static void ensurePlayerDataExists(Object minecraftServer, Object serverPlayer,
-                                               String name, UUID uuid) {
-        if (playerDataStorageField == null) {
-            FppLogger.debug("NmsPlayerSpawner: ensurePlayerDataExists skipped"
-                    + " - WorldNBTStorage field not cached (name=" + name + " uuid=" + uuid + ")");
-            return;
-        }
-        try {
-            Object playerList        = getPlayerListMethod.invoke(minecraftServer);
-            Object playerDataStorage = playerDataStorageField.get(playerList);
-
-            // ── Check whether <uuid>.dat already exists ────────────────────────
-            if (getPlayerDirMethod != null) {
-                java.io.File playerDir  = (java.io.File) getPlayerDirMethod.invoke(playerDataStorage);
-                java.io.File playerFile = new java.io.File(playerDir, uuid + ".dat");
-                if (playerFile.exists()) {
-                    FppLogger.debug("NmsPlayerSpawner: playerdata found for '"
-                            + name + "' uuid=" + uuid + " - returning player");
-                    return;
-                }
-            }
-
-            // ── File does not exist - write initial data to prevent first-join ─
-            if (playerDataSaveMethod != null) {
-                playerDataSaveMethod.invoke(playerDataStorage, serverPlayer);
-                FppLogger.debug("NmsPlayerSpawner: created initial playerdata for '"
-                        + name + "' uuid=" + uuid
-                        + " - will be treated as returning player on next spawn");
-            } else {
-                FppLogger.debug("NmsPlayerSpawner: playerdata file missing but save method"
-                        + " not cached - first-join message may appear (name=" + name + ")");
-            }
-        } catch (Exception e) {
-            // Non-fatal - placeNewPlayer() will proceed regardless.
-            FppLogger.warn("NmsPlayerSpawner: ensurePlayerDataExists failed for '"
-                    + name + "' uuid=" + uuid + ": " + e.getMessage());
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Skin-parts helper
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Forces the {@code DATA_PLAYER_MODE_CUSTOMISATION} entity-metadata byte to
-     * {@code 0x7F} (all seven skin-overlay layers visible: cape, jacket, left/right
-     * sleeve, left/right pants, hat) on the given bot entity.
-     *
-     * <p>This is a no-op when the reflection setup failed at startup (graceful
-     * degradation: bots will still spawn, just potentially without the outer
-     * skin layers).
-     *
-     * <p>Called:
-     * <ul>
-     *   <li>Right after {@code placeNewPlayer()} in {@link #spawnFakePlayer} to set
-     *       the correct value before the initial entity-metadata packet is sent.</li>
-     *   <li>After {@code Player.setPlayerProfile()} in
-     *       {@code FakePlayerBody#applyPaperSkin} because Paper's profile-refresh
-     *       may re-send entity metadata with default values.</li>
-     * </ul>
-     */
-    /**
-     * Triggers the NMS {@code ServerPlayer.startUsingItem(InteractionHand.MAIN_HAND)} call.
-     * This makes Minecraft start the eating animation for the bot's current main-hand item
-     * and broadcasts the "isHandActive" entity metadata to nearby clients automatically.
-     *
-     * <p>The bot's {@code doTick()} loop (called by {@link #tickPhysics}) will process the
-     * item-use timer each tick, play eating sounds, show particles, and call
-     * {@code completeUsingItem()} after the vanilla eatin€g duration (32 ticks for food).
-     */
-    public static void startUsingMainHandItem(Player bot) {
-        if (!initialized || craftPlayerGetHandleMethod == null) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
-            ClassLoader cl   = nmsPlayer.getClass().getClassLoader();
-
-            // Resolve InteractionHand enum
-            Class<?> interactionHandClass = cl.loadClass("net.minecraft.world.InteractionHand");
-            Object[] hands = interactionHandClass.getEnumConstants();
-            if (hands == null || hands.length == 0) return;
-            Object mainHand = hands[0]; // MAIN_HAND is the first constant
-
-            // Find and call startUsingItem(InteractionHand)
-            for (Method m : nmsPlayer.getClass().getMethods()) {
-                if (m.getParameterCount() == 1
-                        && m.getParameterTypes()[0] == interactionHandClass) {
-                    String name = m.getName();
-                    if (name.equals("startUsingItem") || name.equals("c")) {
-                        m.setAccessible(true);
-                        m.invoke(nmsPlayer, mainHand);
-                        return;
-                    }
-                }
-            }
-            // Fallback: try all methods with one InteractionHand parameter
-            for (Method m : nmsPlayer.getClass().getMethods()) {
-                if (m.getParameterCount() == 1
-                        && m.getParameterTypes()[0] == interactionHandClass) {
-                    m.setAccessible(true);
-                    m.invoke(nmsPlayer, mainHand);
-                    return;
-                }
-            }
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.startUsingMainHandItem failed: " + e.getMessage());
-        }
-    }
-
-    public static void forceAllSkinParts(Player bot) {
-        if (!initialized
-                || skinPartsDataAccessor == null
-                || entityDataFieldForSkinParts == null
-                || synchedEntityDataSetMethod == null
-                || craftPlayerGetHandleMethod == null) return;
-        try {
-            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
-            Object entityData = entityDataFieldForSkinParts.get(nmsPlayer);
-            // 0x7F = 0111 1111 - all seven skin-overlay bits set
-            synchedEntityDataSetMethod.invoke(entityData, skinPartsDataAccessor, (byte) 0x7F);
-            FppLogger.debug("NmsPlayerSpawner: skin-parts forced to 0x7F for " + bot.getName());
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner.forceAllSkinParts failed for "
-                    + bot.getName() + ": " + e.getMessage());
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Internal helpers
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Creates a fresh {@link FakeServerGamePacketListenerImpl} and assigns it to
-     * {@code serverPlayer.connection}, replacing the vanilla SGPL created by
-     * {@code placeNewPlayer()} (which has {@code awaitingPositionFromClient} set).
-     *
-     * <p>The fresh instance starts with {@code awaitingPositionFromClient == null}
-     * and its {@code send()} override discards all packets, so that field can never
-     * be populated.  This means the server's {@code connection.tick()} runs harmlessly
-     * and bots have proper physics instead of floating.
-     *
-     * <p>Critically, the {@code Connection}'s own {@code packetListener} field (used by
-     * {@code Connection.handleDisconnection()} to call {@code onDisconnect()}) is also
-     * updated to the fake listener.  Without this second update, double-disconnect on bot
-     * death routes through the vanilla SGPL - which has no "Already retired" guard - and
-     * causes an {@link IllegalStateException} crash on Paper 1.21+.
-     */
-    private static void injectFakeListener(Object minecraftServer, Object conn,
-                                           Object serverPlayer,
-                                           Object gameProfile, Object clientInfo) {
+      if (serverGamePacketListenerClass != null) {
+        connectionFieldInPlayer = findFieldByName(serverPlayerClass, "connection");
+        if (connectionFieldInPlayer == null)
+          connectionFieldInPlayer = findFieldByName(serverPlayerClass, "playerConnection");
+        if (connectionFieldInPlayer == null)
+          connectionFieldInPlayer = findFieldByName(serverPlayerClass, "playerGameConnection");
         if (connectionFieldInPlayer == null) {
-            FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener - connection field not found");
-            return;
-        }
-        try {
-            Object cookie = createCookieDynamic(gameProfile, clientInfo);
-            if (cookie == null) {
-                FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener - cookie creation failed");
-                return;
+          for (Field f : getAllDeclaredFields(serverPlayerClass)) {
+            if (serverGamePacketListenerClass.isAssignableFrom(f.getType())
+                || f.getType().isAssignableFrom(serverGamePacketListenerClass)) {
+              f.setAccessible(true);
+              connectionFieldInPlayer = f;
+              break;
             }
-
-            FakeServerGamePacketListenerImpl fakeListener =
-                    FakeServerGamePacketListenerImpl.create(
-                            minecraftServer, conn, serverPlayer, cookie);
-
-            // 1. Replace serverPlayer.connection (prevents awaitingPositionFromClient snap)
-            connectionFieldInPlayer.set(serverPlayer, fakeListener);
-            FppLogger.debug("NmsPlayerSpawner: FakeServerGamePacketListenerImpl injected into serverPlayer.connection");
-
-            // 2. Replace Connection.packetListener with the same fake listener so that
-            //    Connection.handleDisconnection() calls OUR onDisconnect() override (which
-            //    suppresses the "Already retired" ISE on double-disconnect) rather than the
-            //    vanilla SGPL's onDisconnect() (which has no such guard).
-            //    placeNewPlayer() set conn.packetListener = vanillaSGPL; we scan the Connection
-            //    object's fields at runtime to find and replace that exact reference.
-            injectPacketListenerIntoConnection(conn, fakeListener);
-
-        } catch (Exception e) {
-            FppLogger.warn("NmsPlayerSpawner: fake listener injection failed: " + e.getMessage());
-            FppLogger.debug(Arrays.toString(e.getStackTrace()));
+          }
         }
-    }
+        if (connectionFieldInPlayer != null) {
+          FppLogger.debug(
+              "NmsPlayerSpawner: connection field = " + connectionFieldInPlayer.getName());
+        } else {
+          FppLogger.warn(
+              "NmsPlayerSpawner: ServerPlayer.connection field not found"
+                  + " - fake listener injection will be skipped");
+        }
+      }
 
-    /**
-     * Finds the field inside the NMS {@code Connection} object that currently holds the
-     * vanilla {@code ServerGamePacketListenerImpl} set by {@code placeNewPlayer()} and
-     * replaces it with {@code fakeListener}.
-     *
-     * <p>This is required so that {@code Connection.handleDisconnection()} routes
-     * {@code onDisconnect()} calls through our override (which silences the
-     * "Already retired" crash on double-disconnect when a bot is slain).
-     *
-     * <p>Detection strategy: scan all non-static fields in the full {@code Connection}
-     * class hierarchy and replace the first one whose current value is an instance of
-     * {@code ServerGamePacketListenerImpl}.  This is version-agnostic and works even
-     * when the field is renamed across MC versions.
-     */
-    private static void injectPacketListenerIntoConnection(Object conn,
-                                                            FakeServerGamePacketListenerImpl fakeListener) {
-        if (conn == null || serverGamePacketListenerClass == null) return;
-        try {
-            for (Field f : getAllDeclaredFields(conn.getClass())) {
-                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
-                try {
-                    f.setAccessible(true);
-                    Object val = f.get(conn);
-                    if (val != null && serverGamePacketListenerClass.isInstance(val)) {
-                        f.set(conn, fakeListener);
-                        FppLogger.debug("NmsPlayerSpawner: Connection." + f.getName()
-                                + " updated to FakeServerGamePacketListenerImpl"
-                                + " (was " + val.getClass().getSimpleName() + ")");
-                        return; // only one such field should exist
-                    }
-                } catch (Exception ignored) {}
+      try {
+        Class<?> entityClassForAttack = nmsLoader.loadClass("net.minecraft.world.entity.Entity");
+        attackMethod = findMethod(serverPlayerClass, "attack", 1, entityClassForAttack);
+        if (attackMethod != null) {
+          FppLogger.debug("NmsPlayerSpawner: attack(Entity) method cached");
+        } else {
+          FppLogger.warn(
+              "NmsPlayerSpawner: attack(Entity) method not found - PVP bots will use fallback"
+                  + " damage");
+        }
+      } catch (Exception e) {
+        FppLogger.warn("NmsPlayerSpawner: Failed to cache attack method: " + e.getMessage());
+      }
+
+      try {
+        Class<?> playerListClass = getPlayerListMethod.getReturnType();
+        playerListRemoveMethod = findMethod(playerListClass, "remove", 1);
+
+        for (java.lang.reflect.Field f : playerListClass.getDeclaredFields()) {
+          String typeName = f.getType().getSimpleName();
+          if (typeName.contains("WorldNBTStorage") || typeName.contains("PlayerDataStorage")) {
+            f.setAccessible(true);
+            playerDataStorageField = f;
+            break;
+          }
+        }
+        if (playerDataStorageField != null) {
+          Class<?> storageClass = playerDataStorageField.getType();
+
+          try {
+            getPlayerDirMethod = storageClass.getMethod("getPlayerDir");
+          } catch (Exception ignored) {
+          }
+
+          for (java.lang.reflect.Method m : storageClass.getDeclaredMethods()) {
+            if ("a".equals(m.getName())
+                && m.getParameterCount() == 1
+                && m.getReturnType() == void.class) {
+              m.setAccessible(true);
+              playerDataSaveMethod = m;
+              break;
             }
-            FppLogger.debug("NmsPlayerSpawner: Connection packetListener field not found"
-                    + " - onDisconnect override may not fire on double-disconnect");
-        } catch (Exception e) {
-            FppLogger.debug("NmsPlayerSpawner: injectPacketListenerIntoConnection failed: " + e.getMessage());
+          }
         }
+        FppLogger.debug(
+            "NmsPlayerSpawner: PlayerList lifecycle - remove="
+                + (playerListRemoveMethod != null ? "ok" : "missing")
+                + " storage="
+                + (playerDataStorageField != null ? "ok" : "missing")
+                + " save="
+                + (playerDataSaveMethod != null ? "ok" : "missing")
+                + " getPlayerDir="
+                + (getPlayerDirMethod != null ? "ok" : "missing"));
+      } catch (Exception e) {
+        FppLogger.debug("NmsPlayerSpawner: PlayerList lifecycle init failed: " + e.getMessage());
+      }
+
+      initialized = true;
+      FppLogger.info(
+          "NmsPlayerSpawner initialised (doTick="
+              + (doTickMethod != null)
+              + ", connectionField="
+              + (connectionFieldInPlayer != null)
+              + ", attack="
+              + (attackMethod != null)
+              + ", playerDataDir="
+              + (getPlayerDirMethod != null)
+              + ")");
+
+      try {
+        Class<?> playerNmsClass;
+        try {
+          playerNmsClass = nmsLoader.loadClass("net.minecraft.world.entity.player.Player");
+        } catch (ClassNotFoundException ignored) {
+          playerNmsClass = serverPlayerClass;
+        }
+
+        Field spField = findFieldByName(playerNmsClass, "DATA_PLAYER_MODE_CUSTOMISATION");
+        if (spField != null && java.lang.reflect.Modifier.isStatic(spField.getModifiers())) {
+          spField.setAccessible(true);
+          skinPartsDataAccessor = spField.get(null);
+        }
+
+        Class<?> syncDataClass =
+            nmsLoader.loadClass("net.minecraft.network.syncher.SynchedEntityData");
+        for (Method m : syncDataClass.getDeclaredMethods()) {
+          if ("set".equals(m.getName()) && m.getParameterCount() == 2) {
+            m.setAccessible(true);
+            synchedEntityDataSetMethod = m;
+            break;
+          }
+        }
+
+        entityDataFieldForSkinParts = findFieldByName(serverPlayerClass, "entityData");
+
+        FppLogger.debug(
+            "NmsPlayerSpawner: skin-parts init - accessor="
+                + (skinPartsDataAccessor != null)
+                + " entityData="
+                + (entityDataFieldForSkinParts != null)
+                + " setMethod="
+                + (synchedEntityDataSetMethod != null));
+      } catch (Exception e) {
+        FppLogger.debug("NmsPlayerSpawner: skin-parts init failed (non-fatal): " + e.getMessage());
+      }
+
+    } catch (Exception e) {
+      failed = true;
+      FppLogger.error("NmsPlayerSpawner.init() failed: " + e.getMessage());
+    }
+  }
+
+  public static boolean isAvailable() {
+    if (!initialized && !failed) init();
+    return initialized;
+  }
+
+  public static Player spawnFakePlayer(
+      UUID uuid, String name, World world, double x, double y, double z) {
+    return spawnFakePlayer(uuid, name, null, world, x, y, z);
+  }
+
+  public static Player spawnFakePlayer(
+      UUID uuid, String name, SkinProfile skin, World world, double x, double y, double z) {
+    if (!isAvailable()) {
+      FppLogger.warn("NmsPlayerSpawner not available - cannot spawn " + name);
+      return null;
+    }
+    try {
+
+      Object gameProfile = gameProfileConstructor.newInstance(uuid, name);
+      if (skin != null && skin.isValid()) {
+        try {
+          SkinProfileInjector.apply(gameProfile, skin);
+          FppLogger.debug("NmsPlayerSpawner: injected skin for '" + name + "'");
+        } catch (Exception e) {
+          FppLogger.warn("NmsPlayerSpawner: skin injection failed: " + e.getMessage());
+        }
+      }
+
+      Object minecraftServer = craftServerGetServerMethod.invoke(Bukkit.getServer());
+      Object serverLevel = craftWorldGetHandleMethod.invoke(world);
+      Object clientInfo = getClientInformation();
+
+      Object serverPlayer =
+          createServerPlayer(minecraftServer, serverLevel, gameProfile, clientInfo);
+      if (serverPlayer == null) {
+        FppLogger.warn("NmsPlayerSpawner: failed to create ServerPlayer for " + name);
+        return null;
+      }
+
+      if (setPosMethod != null) setPosMethod.invoke(serverPlayer, x, y, z);
+      initPreviousPosition(serverPlayer, x, y, z);
+
+      Object conn = createFakeConnection();
+      if (conn == null) {
+        FppLogger.warn("NmsPlayerSpawner: failed to create fake connection for " + name);
+        return null;
+      }
+
+      FppLogger.debug("NmsPlayerSpawner: spawning '" + name + "' uuid=" + uuid);
+      ensurePlayerDataExists(minecraftServer, serverPlayer, name, uuid);
+
+      boolean placed = placePlayer(minecraftServer, conn, serverPlayer, gameProfile, clientInfo);
+      if (!placed) {
+        FppLogger.warn("NmsPlayerSpawner: placeNewPlayer failed for " + name);
+        return null;
+      }
+
+      if (setPosMethod != null) setPosMethod.invoke(serverPlayer, x, y, z);
+      initPreviousPosition(serverPlayer, x, y, z);
+
+      injectFakeListener(minecraftServer, conn, serverPlayer, gameProfile, clientInfo);
+
+      Method getBukkitEntity = serverPlayerClass.getMethod("getBukkitEntity");
+      Object entity = getBukkitEntity.invoke(serverPlayer);
+      if (entity instanceof Player result) {
+        result.setGameMode(org.bukkit.GameMode.SURVIVAL);
+
+        forceAllSkinParts(result);
+        firstTickSet.add(uuid);
+        FppLogger.debug("NmsPlayerSpawner: spawned " + name + " (" + uuid + ")");
+        return result;
+      }
+
+      FppLogger.warn("NmsPlayerSpawner: getBukkitEntity did not return a Player for " + name);
+      return null;
+
+    } catch (Exception e) {
+      FppLogger.error(
+          "NmsPlayerSpawner.spawnFakePlayer failed for " + name + ": " + e.getMessage());
+      FppLogger.debug(Arrays.toString(e.getStackTrace()));
+      return null;
+    }
+  }
+
+  public static void tickPhysics(Player bot) {
+    if (!initialized || doTickMethod == null || craftPlayerGetHandleMethod == null) return;
+    if (!bot.isOnline() || !bot.isValid() || bot.isDead()) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+
+      if (firstTickSet.remove(bot.getUniqueId())) {
+
+        org.bukkit.Location loc = bot.getLocation();
+        double x = loc.getX(), y = loc.getY(), z = loc.getZ();
+
+        initPreviousPosition(nmsPlayer, x, y, z);
+        doTickMethod.invoke(nmsPlayer);
+
+        if (setPosMethod != null) setPosMethod.invoke(nmsPlayer, x, y, z);
+        initPreviousPosition(nmsPlayer, x, y, z);
+
+      } else {
+
+        doTickMethod.invoke(nmsPlayer);
+      }
+
+    } catch (Exception e) {
+      FppLogger.debug(
+          "NmsPlayerSpawner.tickPhysics failed for " + bot.getName() + ": " + e.getMessage());
+    }
+  }
+
+  public static void setPosition(Player bot, double x, double y, double z) {
+    if (!initialized || setPosMethod == null || craftPlayerGetHandleMethod == null) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      setPosMethod.invoke(nmsPlayer, x, y, z);
+    } catch (Exception e) {
+      FppLogger.debug("NmsPlayerSpawner.setPosition failed: " + e.getMessage());
+    }
+  }
+
+  public static void setJumping(Player bot, boolean jumping) {
+    if (!initialized || jumpingField == null || craftPlayerGetHandleMethod == null) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      jumpingField.setBoolean(nmsPlayer, jumping);
+    } catch (Exception e) {
+      FppLogger.debug("NmsPlayerSpawner.setJumping failed: " + e.getMessage());
+    }
+  }
+
+  public static void setHeadYaw(Player bot, float yaw) {
+    if (!initialized || craftPlayerGetHandleMethod == null) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      if (yHeadRotField != null) {
+        yHeadRotField.setFloat(nmsPlayer, yaw);
+      }
+    } catch (Exception e) {
+      FppLogger.debug("NmsPlayerSpawner.setHeadYaw failed: " + e.getMessage());
+    }
+  }
+
+  public static void performAttack(Player bot, org.bukkit.entity.Entity target, double damage) {
+    if (!initialized || craftPlayerGetHandleMethod == null) {
+
+      if (target instanceof org.bukkit.entity.Damageable damageable) {
+        damageable.damage(damage, bot);
+      }
+      return;
     }
 
-    /**
-     * Creates a {@link FakeConnection}-backed NMS connection.
-     *
-     * <p>{@link FakeConnection} extends {@code Connection} directly and overrides
-     * all {@code send()} overloads as no-ops.  This prevents vanilla
-     * {@code Connection.send()}'s side-effects (protocol-state registers,
-     * pending-packet queues, callback notifications) from running during
-     * {@code placeNewPlayer()}, which is what creates the phantom
-     * "Anonymous User" / UUID-0 ghost entry in server player-list tools.
-     */
-    private static Object createFakeConnection() {
-        try {
-            FakeConnection conn = new FakeConnection(InetAddress.getLoopbackAddress());
-            FppLogger.debug("NmsPlayerSpawner: FakeConnection created (direct Connection subclass)");
-            return conn;
+    try {
+      Object nmsBot = craftPlayerGetHandleMethod.invoke(bot);
+      Object nmsTarget = craftPlayerGetHandleMethod.invoke(target);
 
-        } catch (Exception e) {
-            FppLogger.warn("NmsPlayerSpawner.createFakeConnection failed: " + e.getMessage());
-            return null;
+      if (attackMethod != null && nmsTarget != null) {
+
+        attackMethod.invoke(nmsBot, nmsTarget);
+      } else {
+
+        if (target instanceof org.bukkit.entity.Damageable damageable) {
+          damageable.damage(damage, bot);
         }
+      }
+    } catch (Exception e) {
+      FppLogger.debug("NmsPlayerSpawner.performAttack failed: " + e.getMessage());
+
+      if (target instanceof org.bukkit.entity.Damageable damageable) {
+        damageable.damage(damage, bot);
+      }
     }
+  }
 
-    /** Returns a cached or freshly created {@code ClientInformation} instance. */
-    private static Object getClientInformation() {
-        if (clientInfoDefault != null) return clientInfoDefault;
-        if (clientInformationClass == null) return null;
-        try {
-            return clientInformationClass.getMethod("createDefault").invoke(null);
-        } catch (Exception e) {
-            return null;
-        }
+  public static void setMovementForward(Player bot, float forward) {
+    if (!initialized || zzaField == null || craftPlayerGetHandleMethod == null) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      zzaField.setFloat(nmsPlayer, forward);
+    } catch (Exception e) {
+      FppLogger.debug("NmsPlayerSpawner.setMovementForward failed: " + e.getMessage());
     }
+  }
 
-    /** Creates a {@code ServerPlayer} using the best-matching available constructor. */
-    private static Object createServerPlayer(Object minecraftServer, Object serverLevel,
-                                             Object gameProfile, Object clientInfo) {
-        // 4-arg: ServerPlayer(MinecraftServer, ServerLevel, GameProfile, ClientInformation)
-        if (clientInfo != null && clientInformationClass != null) {
-            try {
-                Constructor<?> ctor = serverPlayerClass.getConstructor(
-                        minecraftServerClass, serverLevelClass,
-                        gameProfile.getClass(), clientInformationClass);
-                return ctor.newInstance(minecraftServer, serverLevel, gameProfile, clientInfo);
-            } catch (NoSuchMethodException ignored) {
-            } catch (Exception e) {
-                FppLogger.debug("4-arg ServerPlayer ctor failed: " + e.getMessage());
-            }
-        }
-        // 3-arg fallback: ServerPlayer(MinecraftServer, ServerLevel, GameProfile)
-        try {
-            Constructor<?> ctor = serverPlayerClass.getConstructor(
-                    minecraftServerClass, serverLevelClass, gameProfile.getClass());
-            return ctor.newInstance(minecraftServer, serverLevel, gameProfile);
-        } catch (Exception e) {
-            FppLogger.error("NmsPlayerSpawner: no ServerPlayer constructor matched: " + e.getMessage());
-            return null;
-        }
+  public static void setMovementStrafe(Player bot, float strafe) {
+    if (!initialized || xxaField == null || craftPlayerGetHandleMethod == null) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      xxaField.setFloat(nmsPlayer, strafe);
+    } catch (Exception e) {
+      FppLogger.debug("NmsPlayerSpawner.setMovementStrafe failed: " + e.getMessage());
     }
+  }
 
-    /**
-     * Adds the bot to the world via {@code PlayerList.placeNewPlayer(Connection, ServerPlayer, Cookie)}.
-     *
-     * @return {@code true} if the player was successfully placed
-     */
-    private static boolean placePlayer(Object minecraftServer, Object conn,
-                                       Object serverPlayer, Object gameProfile, Object clientInfo) {
+  public static void removeFakePlayer(Player player) {
+    if (player == null) return;
+    try {
+      firstTickSet.remove(player.getUniqueId());
+      if (player.isOnline()) {
+        final String name = player.getName();
+        final UUID uuid = player.getUniqueId();
+
+        FppLogger.debug("NmsPlayerSpawner: removing '" + name + "' uuid=" + uuid);
+
         try {
+          player.saveData();
+          FppLogger.debug("NmsPlayerSpawner: saved playerdata for '" + name + "' uuid=" + uuid);
+        } catch (Exception e) {
+          FppLogger.warn(
+              "NmsPlayerSpawner: saveData failed for '"
+                  + name
+                  + "' uuid="
+                  + uuid
+                  + ": "
+                  + e.getMessage());
+        }
+
+        boolean removedViaPlayerList = false;
+        if (initialized
+            && craftPlayerGetHandleMethod != null
+            && craftServerGetServerMethod != null
+            && getPlayerListMethod != null
+            && playerListRemoveMethod != null) {
+          try {
+            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(player);
+            Object minecraftServer =
+                craftServerGetServerMethod.invoke(org.bukkit.Bukkit.getServer());
             Object playerList = getPlayerListMethod.invoke(minecraftServer);
-            if (conn == null || commonListenerCookieClass == null) {
-                FppLogger.debug("placeNewPlayer skipped (conn=" + conn + ")");
-                return false;
-            }
-            Object cookie = createCookieDynamic(gameProfile, clientInfo);
-            if (cookie == null) return false;
-
-            Method placeMethod = findMethod(playerList.getClass(), "placeNewPlayer", 3);
-            if (placeMethod != null) {
-                placeMethod.setAccessible(true);
-                placeMethod.invoke(playerList, conn, serverPlayer, cookie);
-                return true;
-            }
-            FppLogger.warn("NmsPlayerSpawner: placeNewPlayer(3-arg) not found on PlayerList");
-        } catch (Exception e) {
-            FppLogger.warn("NmsPlayerSpawner.placePlayer failed: " + e.getMessage());
+            playerListRemoveMethod.invoke(playerList, nmsPlayer);
+            removedViaPlayerList = true;
+            FppLogger.debug(
+                "NmsPlayerSpawner: removed '" + name + "' via PlayerList.remove() uuid=" + uuid);
+          } catch (Exception e) {
+            FppLogger.debug(
+                "NmsPlayerSpawner: PlayerList.remove failed for '"
+                    + name
+                    + "' uuid="
+                    + uuid
+                    + ": "
+                    + e.getMessage()
+                    + " - falling back to kick");
+          }
         }
+
+        if (!removedViaPlayerList && player.isOnline()) {
+          player.kick(net.kyori.adventure.text.Component.empty());
+        }
+      }
+    } catch (Exception e) {
+      FppLogger.debug(
+          "NmsPlayerSpawner.removeFakePlayer failed for "
+              + player.getName()
+              + ": "
+              + e.getMessage());
+    }
+  }
+
+  private static void ensurePlayerDataExists(
+      Object minecraftServer, Object serverPlayer, String name, UUID uuid) {
+    if (playerDataStorageField == null) {
+      FppLogger.debug(
+          "NmsPlayerSpawner: ensurePlayerDataExists skipped"
+              + " - WorldNBTStorage field not cached (name="
+              + name
+              + " uuid="
+              + uuid
+              + ")");
+      return;
+    }
+    try {
+      Object playerList = getPlayerListMethod.invoke(minecraftServer);
+      Object playerDataStorage = playerDataStorageField.get(playerList);
+
+      if (getPlayerDirMethod != null) {
+        java.io.File playerDir = (java.io.File) getPlayerDirMethod.invoke(playerDataStorage);
+        java.io.File playerFile = new java.io.File(playerDir, uuid + ".dat");
+        if (playerFile.exists()) {
+          FppLogger.debug(
+              "NmsPlayerSpawner: playerdata found for '"
+                  + name
+                  + "' uuid="
+                  + uuid
+                  + " - returning player");
+          return;
+        }
+      }
+
+      if (playerDataSaveMethod != null) {
+        playerDataSaveMethod.invoke(playerDataStorage, serverPlayer);
+        FppLogger.debug(
+            "NmsPlayerSpawner: created initial playerdata for '"
+                + name
+                + "' uuid="
+                + uuid
+                + " - will be treated as returning player on next spawn");
+      } else {
+        FppLogger.debug(
+            "NmsPlayerSpawner: playerdata file missing but save method"
+                + " not cached - first-join message may appear (name="
+                + name
+                + ")");
+      }
+    } catch (Exception e) {
+
+      FppLogger.warn(
+          "NmsPlayerSpawner: ensurePlayerDataExists failed for '"
+              + name
+              + "' uuid="
+              + uuid
+              + ": "
+              + e.getMessage());
+    }
+  }
+
+  public static void startUsingMainHandItem(Player bot) {
+    if (!initialized || craftPlayerGetHandleMethod == null) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      ClassLoader cl = nmsPlayer.getClass().getClassLoader();
+
+      Class<?> interactionHandClass = cl.loadClass("net.minecraft.world.InteractionHand");
+      Object[] hands = interactionHandClass.getEnumConstants();
+      if (hands == null || hands.length == 0) return;
+      Object mainHand = hands[0];
+
+      for (Method m : nmsPlayer.getClass().getMethods()) {
+        if (m.getParameterCount() == 1 && m.getParameterTypes()[0] == interactionHandClass) {
+          String name = m.getName();
+          if (name.equals("startUsingItem") || name.equals("c")) {
+            m.setAccessible(true);
+            m.invoke(nmsPlayer, mainHand);
+            return;
+          }
+        }
+      }
+
+      for (Method m : nmsPlayer.getClass().getMethods()) {
+        if (m.getParameterCount() == 1 && m.getParameterTypes()[0] == interactionHandClass) {
+          m.setAccessible(true);
+          m.invoke(nmsPlayer, mainHand);
+          return;
+        }
+      }
+    } catch (Exception e) {
+      FppLogger.debug("NmsPlayerSpawner.startUsingMainHandItem failed: " + e.getMessage());
+    }
+  }
+
+  public static void forceAllSkinParts(Player bot) {
+    if (!initialized
+        || skinPartsDataAccessor == null
+        || entityDataFieldForSkinParts == null
+        || synchedEntityDataSetMethod == null
+        || craftPlayerGetHandleMethod == null) return;
+    try {
+      Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+      Object entityData = entityDataFieldForSkinParts.get(nmsPlayer);
+
+      synchedEntityDataSetMethod.invoke(entityData, skinPartsDataAccessor, (byte) 0x7F);
+      FppLogger.debug("NmsPlayerSpawner: skin-parts forced to 0x7F for " + bot.getName());
+    } catch (Exception e) {
+      FppLogger.debug(
+          "NmsPlayerSpawner.forceAllSkinParts failed for " + bot.getName() + ": " + e.getMessage());
+    }
+  }
+
+  private static void injectFakeListener(
+      Object minecraftServer,
+      Object conn,
+      Object serverPlayer,
+      Object gameProfile,
+      Object clientInfo) {
+    if (connectionFieldInPlayer == null) {
+      FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener - connection field not found");
+      return;
+    }
+    try {
+      Object cookie = createCookieDynamic(gameProfile, clientInfo);
+      if (cookie == null) {
+        FppLogger.warn("NmsPlayerSpawner: cannot inject fake listener - cookie creation failed");
+        return;
+      }
+
+      FakeServerGamePacketListenerImpl fakeListener =
+          FakeServerGamePacketListenerImpl.create(minecraftServer, conn, serverPlayer, cookie);
+
+      connectionFieldInPlayer.set(serverPlayer, fakeListener);
+      FppLogger.debug(
+          "NmsPlayerSpawner: FakeServerGamePacketListenerImpl injected into"
+              + " serverPlayer.connection");
+
+      injectPacketListenerIntoConnection(conn, fakeListener);
+
+    } catch (Exception e) {
+      FppLogger.warn("NmsPlayerSpawner: fake listener injection failed: " + e.getMessage());
+      FppLogger.debug(Arrays.toString(e.getStackTrace()));
+    }
+  }
+
+  private static void injectPacketListenerIntoConnection(
+      Object conn, FakeServerGamePacketListenerImpl fakeListener) {
+    if (conn == null || serverGamePacketListenerClass == null) return;
+    try {
+      for (Field f : getAllDeclaredFields(conn.getClass())) {
+        if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+        try {
+          f.setAccessible(true);
+          Object val = f.get(conn);
+          if (val != null && serverGamePacketListenerClass.isInstance(val)) {
+            f.set(conn, fakeListener);
+            FppLogger.debug(
+                "NmsPlayerSpawner: Connection."
+                    + f.getName()
+                    + " updated to FakeServerGamePacketListenerImpl"
+                    + " (was "
+                    + val.getClass().getSimpleName()
+                    + ")");
+            return;
+          }
+        } catch (Exception ignored) {
+        }
+      }
+      FppLogger.debug(
+          "NmsPlayerSpawner: Connection packetListener field not found"
+              + " - onDisconnect override may not fire on double-disconnect");
+    } catch (Exception e) {
+      FppLogger.debug(
+          "NmsPlayerSpawner: injectPacketListenerIntoConnection failed: " + e.getMessage());
+    }
+  }
+
+  private static Object createFakeConnection() {
+    try {
+      FakeConnection conn = new FakeConnection(InetAddress.getLoopbackAddress());
+      FppLogger.debug("NmsPlayerSpawner: FakeConnection created (direct Connection subclass)");
+      return conn;
+
+    } catch (Exception e) {
+      FppLogger.warn("NmsPlayerSpawner.createFakeConnection failed: " + e.getMessage());
+      return null;
+    }
+  }
+
+  private static Object getClientInformation() {
+    if (clientInfoDefault != null) return clientInfoDefault;
+    if (clientInformationClass == null) return null;
+    try {
+      return clientInformationClass.getMethod("createDefault").invoke(null);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private static Object createServerPlayer(
+      Object minecraftServer, Object serverLevel, Object gameProfile, Object clientInfo) {
+
+    if (clientInfo != null && clientInformationClass != null) {
+      try {
+        Constructor<?> ctor =
+            serverPlayerClass.getConstructor(
+                minecraftServerClass,
+                serverLevelClass,
+                gameProfile.getClass(),
+                clientInformationClass);
+        return ctor.newInstance(minecraftServer, serverLevel, gameProfile, clientInfo);
+      } catch (NoSuchMethodException ignored) {
+      } catch (Exception e) {
+        FppLogger.debug("4-arg ServerPlayer ctor failed: " + e.getMessage());
+      }
+    }
+
+    try {
+      Constructor<?> ctor =
+          serverPlayerClass.getConstructor(
+              minecraftServerClass, serverLevelClass, gameProfile.getClass());
+      return ctor.newInstance(minecraftServer, serverLevel, gameProfile);
+    } catch (Exception e) {
+      FppLogger.error("NmsPlayerSpawner: no ServerPlayer constructor matched: " + e.getMessage());
+      return null;
+    }
+  }
+
+  private static boolean placePlayer(
+      Object minecraftServer,
+      Object conn,
+      Object serverPlayer,
+      Object gameProfile,
+      Object clientInfo) {
+    try {
+      Object playerList = getPlayerListMethod.invoke(minecraftServer);
+      if (conn == null || commonListenerCookieClass == null) {
+        FppLogger.debug("placeNewPlayer skipped (conn=" + conn + ")");
         return false;
+      }
+      Object cookie = createCookieDynamic(gameProfile, clientInfo);
+      if (cookie == null) return false;
+
+      Method placeMethod = findMethod(playerList.getClass(), "placeNewPlayer", 3);
+      if (placeMethod != null) {
+        placeMethod.setAccessible(true);
+        placeMethod.invoke(playerList, conn, serverPlayer, cookie);
+        return true;
+      }
+      FppLogger.warn("NmsPlayerSpawner: placeNewPlayer(3-arg) not found on PlayerList");
+    } catch (Exception e) {
+      FppLogger.warn("NmsPlayerSpawner.placePlayer failed: " + e.getMessage());
+    }
+    return false;
+  }
+
+  private static Object createCookieDynamic(Object gameProfile, Object clientInfo) {
+    if (commonListenerCookieClass == null) return null;
+
+    try {
+      Method factory =
+          commonListenerCookieClass.getMethod(
+              "createInitial", gameProfile.getClass(), boolean.class);
+      return factory.invoke(null, gameProfile, false);
+    } catch (Exception ignored) {
     }
 
-    /**
-     * Dynamically creates a {@code CommonListenerCookie} by trying the static factory
-     * first, then constructors in ascending order of parameter count.
-     */
-    private static Object createCookieDynamic(Object gameProfile, Object clientInfo) {
-        if (commonListenerCookieClass == null) return null;
+    for (Constructor<?> c : commonListenerCookieClass.getDeclaredConstructors()) {
+      c.setAccessible(true);
+      Class<?>[] p = c.getParameterTypes();
+      if (p.length > 0 && p[p.length - 1].getSimpleName().contains("DefaultConstructorMarker")) {
+        continue;
+      }
+      try {
+        Object result =
+            switch (p.length) {
+              case 1 -> c.newInstance(gameProfile);
+              case 2 -> c.newInstance(gameProfile, 0);
+              case 3 -> c.newInstance(gameProfile, 0, clientInfo);
+              case 4 -> c.newInstance(gameProfile, 0, clientInfo, false);
+              case 5 -> c.newInstance(gameProfile, 0, clientInfo, false, false);
+              case 7 ->
+                  c.newInstance(
+                      gameProfile, 0, clientInfo, false, null, Collections.emptySet(), null);
+              default -> null;
+            };
+        if (result != null) return result;
+      } catch (Exception ignored) {
+      }
+    }
+    FppLogger.debug("NmsPlayerSpawner: no CommonListenerCookie constructor succeeded");
+    return null;
+  }
 
-        // Try static factory: CommonListenerCookie.createInitial(GameProfile, boolean)
-        try {
-            Method factory = commonListenerCookieClass.getMethod("createInitial",
-                    gameProfile.getClass(), boolean.class);
-            return factory.invoke(null, gameProfile, false);
-        } catch (Exception ignored) {}
+  private static void initPreviousPosition(Object nmsPlayer, double x, double y, double z) {
+    try {
+      if (xoField != null) xoField.setDouble(nmsPlayer, x);
+      if (yoField != null) yoField.setDouble(nmsPlayer, y);
+      if (zoField != null) zoField.setDouble(nmsPlayer, z);
+    } catch (Exception ignored) {
+    }
+  }
 
-        // Fallback: try constructors
-        for (Constructor<?> c : commonListenerCookieClass.getDeclaredConstructors()) {
-            c.setAccessible(true);
-            Class<?>[] p = c.getParameterTypes();
-            if (p.length > 0
-                    && p[p.length - 1].getSimpleName().contains("DefaultConstructorMarker")) {
-                continue;
-            }
-            try {
-                Object result = switch (p.length) {
-                    case 1 -> c.newInstance(gameProfile);
-                    case 2 -> c.newInstance(gameProfile, 0);
-                    case 3 -> c.newInstance(gameProfile, 0, clientInfo);
-                    case 4 -> c.newInstance(gameProfile, 0, clientInfo, false);
-                    case 5 -> c.newInstance(gameProfile, 0, clientInfo, false, false);
-                    case 7 -> c.newInstance(gameProfile, 0, clientInfo, false,
-                            null, Collections.emptySet(), null);
-                    default -> null;
-                };
-                if (result != null) return result;
-            } catch (Exception ignored) {}
+  private static Method findMethod(Class<?> clazz, String name, int paramCount) {
+    Class<?> cur = clazz;
+    while (cur != null && cur != Object.class) {
+      for (Method m : cur.getDeclaredMethods()) {
+        if (m.getName().equals(name) && m.getParameterCount() == paramCount) {
+          m.setAccessible(true);
+          return m;
         }
-        FppLogger.debug("NmsPlayerSpawner: no CommonListenerCookie constructor succeeded");
-        return null;
+      }
+      cur = cur.getSuperclass();
     }
+    return null;
+  }
 
-    /** Sets the entity's xo/yo/zo fields to suppress first-tick phantom movement. */
-    private static void initPreviousPosition(Object nmsPlayer, double x, double y, double z) {
-        try {
-            if (xoField != null) xoField.setDouble(nmsPlayer, x);
-            if (yoField != null) yoField.setDouble(nmsPlayer, y);
-            if (zoField != null) zoField.setDouble(nmsPlayer, z);
-        } catch (Exception ignored) {}
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Reflection utilities
-    // ══════════════════════════════════════════════════════════════════════════
-
-    private static Method findMethod(Class<?> clazz, String name, int paramCount) {
-        Class<?> cur = clazz;
-        while (cur != null && cur != Object.class) {
-            for (Method m : cur.getDeclaredMethods()) {
-                if (m.getName().equals(name) && m.getParameterCount() == paramCount) {
-                    m.setAccessible(true);
-                    return m;
-                }
-            }
-            cur = cur.getSuperclass();
+  private static Method findMethod(
+      Class<?> clazz, String name, int paramCount, Class<?>... paramTypes) {
+    Class<?> cur = clazz;
+    while (cur != null && cur != Object.class) {
+      for (Method m : cur.getDeclaredMethods()) {
+        if (!m.getName().equals(name) || m.getParameterCount() != paramCount) continue;
+        if (paramTypes.length == 0) {
+          m.setAccessible(true);
+          return m;
         }
-        return null;
-    }
 
-    private static Method findMethod(Class<?> clazz, String name, int paramCount, Class<?>... paramTypes) {
-        Class<?> cur = clazz;
-        while (cur != null && cur != Object.class) {
-            for (Method m : cur.getDeclaredMethods()) {
-                if (!m.getName().equals(name) || m.getParameterCount() != paramCount) continue;
-                if (paramTypes.length == 0) {
-                    m.setAccessible(true);
-                    return m;
-                }
-                // Check parameter types are assignable
-                Class<?>[] mParams = m.getParameterTypes();
-                boolean match = true;
-                for (int i = 0; i < paramTypes.length && i < mParams.length; i++) {
-                    if (!mParams[i].isAssignableFrom(paramTypes[i])) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (match) {
-                    m.setAccessible(true);
-                    return m;
-                }
-            }
-            cur = cur.getSuperclass();
+        Class<?>[] mParams = m.getParameterTypes();
+        boolean match = true;
+        for (int i = 0; i < paramTypes.length && i < mParams.length; i++) {
+          if (!mParams[i].isAssignableFrom(paramTypes[i])) {
+            match = false;
+            break;
+          }
         }
-        return null;
+        if (match) {
+          m.setAccessible(true);
+          return m;
+        }
+      }
+      cur = cur.getSuperclass();
     }
+    return null;
+  }
 
-    private static Method findMethodBySignature(Class<?> clazz, int paramCount, Class<?>... paramTypes) {
-        Class<?> cur = clazz;
-        while (cur != null && cur != Object.class) {
-            for (Method m : cur.getDeclaredMethods()) {
-                if (m.getParameterCount() == paramCount
-                        && Arrays.equals(m.getParameterTypes(), paramTypes)) {
-                    m.setAccessible(true);
-                    return m;
-                }
-            }
-            cur = cur.getSuperclass();
+  private static Method findMethodBySignature(
+      Class<?> clazz, int paramCount, Class<?>... paramTypes) {
+    Class<?> cur = clazz;
+    while (cur != null && cur != Object.class) {
+      for (Method m : cur.getDeclaredMethods()) {
+        if (m.getParameterCount() == paramCount
+            && Arrays.equals(m.getParameterTypes(), paramTypes)) {
+          m.setAccessible(true);
+          return m;
         }
-        return null;
+      }
+      cur = cur.getSuperclass();
     }
+    return null;
+  }
 
-    private static Field findFieldByName(Class<?> clazz, String name) {
-        Class<?> cur = clazz;
-        while (cur != null && cur != Object.class) {
-            for (Field f : cur.getDeclaredFields()) {
-                if (f.getName().equals(name)) {
-                    f.setAccessible(true);
-                    return f;
-                }
-            }
-            cur = cur.getSuperclass();
+  private static Field findFieldByName(Class<?> clazz, String name) {
+    Class<?> cur = clazz;
+    while (cur != null && cur != Object.class) {
+      for (Field f : cur.getDeclaredFields()) {
+        if (f.getName().equals(name)) {
+          f.setAccessible(true);
+          return f;
         }
-        return null;
+      }
+      cur = cur.getSuperclass();
     }
+    return null;
+  }
 
-    private static List<Field> getAllDeclaredFields(Class<?> clazz) {
-        List<Field> fields = new ArrayList<>();
-        Class<?> cur = clazz;
-        while (cur != null && cur != Object.class) {
-            Collections.addAll(fields, cur.getDeclaredFields());
-            cur = cur.getSuperclass();
-        }
-        return fields;
+  private static List<Field> getAllDeclaredFields(Class<?> clazz) {
+    List<Field> fields = new ArrayList<>();
+    Class<?> cur = clazz;
+    while (cur != null && cur != Object.class) {
+      Collections.addAll(fields, cur.getDeclaredFields());
+      cur = cur.getSuperclass();
     }
+    return fields;
+  }
 }
-
-
