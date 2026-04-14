@@ -29,7 +29,7 @@ public final class WaypointCommand implements FppCommand {
 
   @Override
   public String getUsage() {
-    return "create <route> | add <route> | remove <route> <index> | delete <route> | clear <route>"
+    return "add <route> | [create <route>] | remove <route> <index> | delete <route> | clear <route>"
                + " | list [route]";
   }
 
@@ -89,7 +89,12 @@ public final class WaypointCommand implements FppCommand {
           sender.sendMessage(Lang.get("wp-invalid-name", "name", name));
           return true;
         }
+        // Auto-create the route if it doesn't exist yet — no need for a separate /wp create step.
+        boolean isNew = !store.hasRoute(name);
         int count = store.addPos(name, player.getLocation());
+        if (isNew) {
+          sender.sendMessage(Lang.get("wp-route-auto-created", "name", name));
+        }
         sender.sendMessage(
             Lang.get(
                 "wp-pos-added",

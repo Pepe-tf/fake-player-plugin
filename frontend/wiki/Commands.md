@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP command reference - v1.6.2**  
+> **Complete FPP command reference - v1.6.3**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`
 
 ---
@@ -24,7 +24,7 @@
 | `/fpp place <bot> [once\|stop]` | `fpp.place` | Continuous or one-shot block placing |
 | `/fpp use <bot>` | `fpp.useitem` | Use / activate the block the bot is looking at |
 | `/fpp storage <bot> ...` | `fpp.storage` | Manage supply containers for mine/place |
-| `/fpp waypoint <route> ...` | `fpp.waypoint` | Manage named patrol routes |
+| `/fpp waypoint <route> ...` | `fpp.waypoint` | Manage named patrol routes (`add` auto-creates the route) |
 | `/fpp xp <bot>` | `fpp.xp` | Transfer bot XP to yourself |
 | `/fpp cmd <bot> ...` | `fpp.cmd` | Execute or store right-click commands |
 | `/fpp rename <old> <new>` | `fpp.rename` / `fpp.rename.own` | Rename an active bot |
@@ -125,6 +125,8 @@ Remove one bot, all bots, or a random subset.
 /fpp despawn all
 /fpp despawn random 3
 ```
+
+> ⚠️ **Startup safety guard:** `despawn all`, `despawn --random <n>`, and `despawn --num <n>` are **blocked** while bot persistence restoration is in progress at startup (the ~2–3 second restore window). A message is shown to the sender when this occurs. Single-bot despawn (`/fpp despawn <name>`) is unaffected.
 
 Permission: `fpp.delete`
 
@@ -316,14 +318,19 @@ Permission: `fpp.storage`
 ### 🗺️ `/fpp waypoint`
 
 ```text
-/fpp waypoint <route> add
-/fpp waypoint <route> remove
-/fpp waypoint <route> list
-/fpp waypoint <route> clear
-/fpp wp <route> ...
+/fpp wp add <route>
+/fpp wp remove <route> <index>
+/fpp wp delete <route>
+/fpp wp clear <route>
+/fpp wp list [route]
+/fpp wp create <route>        (optional — add auto-creates)
 ```
 
+Alias: `/fpp waypoint`
+
 Manage named routes used by `/fpp move --wp`.
+
+> 💡 **Auto-create:** `/fpp wp add <route>` automatically creates the route if it doesn't exist yet. An in-chat tip is shown when this happens. The explicit `/fpp wp create <route>` command still works but is now optional.
 
 Permission: `fpp.waypoint`
 

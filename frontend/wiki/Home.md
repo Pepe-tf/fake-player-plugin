@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin - Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.6.2 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
+> **Version:** 1.6.3 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
 
 ---
 
@@ -132,57 +132,18 @@
 
 ---
 
-## 🆕 What's New in v1.6.2
+## 🆕 What's New in v1.6.3
 
-### 🤖 **AI Conversations**
-- Bots now respond to `/msg`, `/tell`, `/whisper` with AI-generated replies matching their personality
-- 7 provider support: OpenAI · Anthropic · Groq · Google Gemini · Ollama · Copilot/Azure · Custom
-- Per-bot personalities via `.txt` files in `plugins/FakePlayerPlugin/personalities/`
-- Bundled sample personalities: `friendly`, `grumpy`, `noob`
-- Full `/fpp personality` command for assigning and managing personalities
+### 🛡️ **Despawn Safety Guard**
+- `despawn all`, `despawn --random`, and `despawn --num` are now blocked during the bot restore window at startup — prevents startup-queued console commands from killing bots mid-restore
+- A clear message is shown to the sender when a bulk despawn is blocked
 
-### ⚙️ **Per-Bot Settings GUI**
-- Shift+right-click any bot to open a 6-row settings chest — no command needed
-- Categories: General · Chat · PvP · Cmds · Danger
-- Toggle freeze, head-AI, chat tier, AI personality, stored commands, rename, and bot deletion
+### 🗺️ **Waypoint Auto-Create**
+- `/fpp wp add <route>` now auto-creates the route if it doesn't exist — no separate `create` step needed
+- An in-chat tip is shown when the route is implicitly created
+- `/fpp wp create` still works but is now optional
 
-### 🛠️ **New Commands**
-- `/fpp place` — continuous or one-shot block placing with supply-container restocking
-- `/fpp storage` — register named supply containers for mine/place jobs
-- `/fpp use` — bot activates the block it's looking at
-- `/fpp waypoint` — manage named patrol routes; bots walk them via `/fpp move --wp`
-- `/fpp rename` — rename any bot with full state preservation
-- `/fpp personality` — assign AI personalities to bots
-- `/fpp badword` — manage the runtime badword filter list
-- `/fpp mine --pos1/--pos2/--start` — area-selection cuboid mining mode
-
-### ⛏️ **Area Mining System**
-- Select a cuboid region with `/fpp mine <bot> --pos1` and `--pos2`
-- Start continuous mining with `/fpp mine <bot> --start`
-- Auto-restocks from registered supply containers when inventory fills
-- Selections persist across restarts in `data/mine-selections.yml`
-
-### 💾 **Task Persistence**
-- Mine/use/place/patrol tasks now survive server restarts via `fpp_bot_tasks` DB table
-- Bots automatically resume their job after rebooting
-
-### 🧭 **Navigation & Interaction Engine**
-- `PathfindingService` — centralised shared navigation service
-- `NavigationRequest` with atomic nav→action lock handoff
-- `BotNavUtil` — shared navigation utilities
-- `StorageInteractionHelper` — shared container interaction lifecycle
-
-### 🎒 **Per-Bot Item & XP Pickup**
-- Toggle pickup per-bot in the settings GUI
-- Toggling off immediately drops current inventory / XP to ground
-- `BotXpPickupListener` gates both pickup events
-
-### 📋 **Config Reorganization**
-- Config reorganized into **10 clearly numbered sections** with better flow
-- Added `bot-interaction`, `ai-conversations`, `badword-filter` sections
-- `pathfinding` integrated into section 4 (AI & Navigation)
-
-**See [📋 Changelog](Changelog.md) for the full release notes.**
+See [📋 Changelog](Changelog.md) for full v1.6.2 release notes and the complete version history.
 
 ---
 
@@ -275,6 +236,12 @@ FPP is open source under the MIT License! Check our [GitHub repository](https://
 - Code contributions and pull requests  
 - Documentation improvements
 - Community support
+
+### 💖 **Support the Project**
+Donations are completely optional — every contribution goes directly toward improving the plugin:
+- [GitHub Sponsors](https://github.com/sponsors/Pepe-tf)
+- [Patreon](https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)
+- [Ko-fi](https://ko-fi.com/fakeplayerplugin)
 
 ---
 

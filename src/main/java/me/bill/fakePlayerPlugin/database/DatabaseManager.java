@@ -416,13 +416,43 @@ public class DatabaseManager {
 
   private void migrate() {
     int current = getSchemaVersion();
+
+    // Guard: a schema_version of 0 (or negative) would cause MIGRATIONS[v-1] to access
+    // MIGRATIONS[-1] and crash with ArrayIndexOutOfBoundsException.  This can happen when
+    // the fpp_meta row is manually edited or the DB is freshly created on a very old schema
+    // that pre-dates the meta table.  Treat anything < 1 as "start of history" = version 1.
+    if (current < 1) {
+      FppLogger.warn(
+          "DB schema_version="
+              + current
+              + " is invalid (expected >= 1). "
+              + "Treating as v1 to avoid a migration crash. All schema steps will be applied.");
+      current = 1;
+    }
+
+    if (current >= SCHEMA_VERSION) {
+      Config.debugDatabase("DB schema is current (v" + current + "). No migration needed.");
+      return;
+    }
+
+    FppLogger.info(
+        "Applying DB schema migration v"
+            + current
+            + " → v"
+            + SCHEMA_VERSION
+            + " ("
+            + (SCHEMA_VERSION - current)
+            + " step(s))…");
+
     for (int v = current; v < SCHEMA_VERSION; v++) {
       for (String sql : MIGRATIONS[v - 1]) {
         if (!sql.isEmpty()) execSilent(sql);
       }
       setSchemaVersion(v + 1);
-      Config.debug("DB migrated v" + v + " → v" + (v + 1));
+      FppLogger.info("  DB schema: v" + v + " → v" + (v + 1));
     }
+
+    FppLogger.info("DB schema migration complete (now at v" + SCHEMA_VERSION + ").");
   }
 
   private int getSchemaVersion() {
@@ -849,9 +879,11 @@ public class DatabaseManager {
   public List<BotRecord> getActiveSessions() {
     List<BotRecord> list = new ArrayList<>();
     if (!isAlive()) return list;
+    // NOTE: the column is `removed_at`, NOT `ended_at` — using the wrong name caused every
+    // bot-persistence restore to silently fail and return an empty list.
     try (PreparedStatement ps =
         connection.prepareStatement(
-            "SELECT * FROM fpp_bot_sessions WHERE ended_at IS NULL AND " + serverCond())) {
+            "SELECT * FROM fpp_bot_sessions WHERE removed_at IS NULL AND " + serverCond())) {
       bindServer(ps, 1);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) list.add(mapSession(rs));
@@ -888,14 +920,17 @@ public class DatabaseManager {
   public List<BotRecord> getSessionsBySpawner(String playerName, int limit) {
     List<BotRecord> list = new ArrayList<>();
     if (!isAlive()) return list;
+    // serverAnd() embeds the server_id directly as a literal in the SQL string (no '?'),
+    // so there are exactly 2 bind parameters: spawned_by and limit.
+    // Previously bindServer() was also called here which tried to bind a non-existent 3rd
+    // parameter, causing a SQLException in LOCAL mode and returning an empty list.
     try (PreparedStatement ps =
         connection.prepareStatement(
             "SELECT * FROM fpp_bot_sessions WHERE spawned_by=?"
                 + serverAnd()
                 + " ORDER BY spawned_at DESC LIMIT ?")) {
       ps.setString(1, playerName);
-      int next = bindServer(ps, 2);
-      ps.setInt(next, limit);
+      ps.setInt(2, limit);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) list.add(mapSession(rs));
       }
@@ -912,14 +947,15 @@ public class DatabaseManager {
   public List<BotRecord> getSessionsByBot(String botName, int limit) {
     List<BotRecord> list = new ArrayList<>();
     if (!isAlive()) return list;
+    // Same fix as getSessionsBySpawner: serverAnd() is a literal SQL fragment (no '?'),
+    // so we must NOT call bindServer() here.  Only 2 bind params: bot_name and limit.
     try (PreparedStatement ps =
         connection.prepareStatement(
             "SELECT * FROM fpp_bot_sessions WHERE bot_name=?"
                 + serverAnd()
                 + " ORDER BY spawned_at DESC LIMIT ?")) {
       ps.setString(1, botName);
-      int next = bindServer(ps, 2);
-      ps.setInt(next, limit);
+      ps.setInt(2, limit);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) list.add(mapSession(rs));
       }
@@ -932,13 +968,15 @@ public class DatabaseManager {
   public List<BotRecord> getSessionsByUuid(UUID botUuid) {
     List<BotRecord> list = new ArrayList<>();
     if (!isAlive()) return list;
+    // serverAnd() is a literal SQL fragment (no '?') — only 1 bind param: bot_uuid.
+    // Previously bindServer(ps, 2) was called here which tried to bind a non-existent
+    // 2nd parameter, causing a SQLException in LOCAL mode.
     try (PreparedStatement ps =
         connection.prepareStatement(
             "SELECT * FROM fpp_bot_sessions WHERE bot_uuid=?"
                 + serverAnd()
                 + " ORDER BY spawned_at DESC")) {
       ps.setString(1, botUuid.toString());
-      bindServer(ps, 2);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) list.add(mapSession(rs));
       }
@@ -951,14 +989,14 @@ public class DatabaseManager {
   public List<BotRecord> getSessionsByReason(String reason, int limit) {
     List<BotRecord> list = new ArrayList<>();
     if (!isAlive()) return list;
+    // serverAnd() is a literal SQL fragment (no '?') — only 2 bind params: remove_reason and limit.
     try (PreparedStatement ps =
         connection.prepareStatement(
             "SELECT * FROM fpp_bot_sessions WHERE remove_reason=?"
                 + serverAnd()
                 + " ORDER BY removed_at DESC LIMIT ?")) {
       ps.setString(1, reason);
-      int next = bindServer(ps, 2);
-      ps.setInt(next, limit);
+      ps.setInt(2, limit);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) list.add(mapSession(rs));
       }

@@ -1,11 +1,11 @@
 [CENTER][SIZE=7][B]ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)[/B][/SIZE]
 
-[SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
+[SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.6.2  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.6.3  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
-[URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]
+[URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]  [URL='https://github.com/sponsors/Pepe-tf'][B][COLOR=#EA4AAA]💖 GitHub Sponsors[/COLOR][/B][/URL]  [URL='https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink'][B][COLOR=#FF424D]🎗 Patreon[/COLOR][/B][/URL]
 [/CENTER]
 
 [HR][/HR]
@@ -85,7 +85,7 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]/fpp[/FONT][/TD][TD]Plugin info — version, active bots, download links[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp help [page][/FONT][/TD][TD]Interactive GUI help menu — paginated, permission-filtered, click-navigable[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp spawn [amount] [--name <name>][/FONT][/TD][TD]Spawn fake player(s) at your location[/TD][/TR]
-[TR][TD][FONT=monospace]/fpp despawn <name|all|random [n]>[/FONT][/TD][TD]Remove a bot by name, remove all, or remove a random set[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp despawn <name|all|--random [n]|--num <n>>[/FONT][/TD][TD]Remove a bot by name, remove all, remove random N, or remove N oldest (blocked during persistence restore)[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp list[/FONT][/TD][TD]List all active bots with uptime and location[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp freeze <name|all> [on|off][/FONT][/TD][TD]Freeze or unfreeze bots — frozen bots are immovable; shown with ❄ in list/stats[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp inventory <bot>[/FONT][/TD][TD]Open the bot's full 54-slot inventory GUI (alias: /fpp inv)[/TD][/TR]
@@ -97,7 +97,7 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]/fpp place <bot> [once|stop][/FONT][/TD][TD]Continuous or one-shot block placing[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp storage <bot> [name|--list|--remove|--clear][/FONT][/TD][TD]Register supply containers for mine/place restocking[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp use <bot>[/FONT][/TD][TD]Bot right-clicks / activates the block it's looking at[/TD][/TR]
-[TR][TD][FONT=monospace]/fpp waypoint <name> [add|remove|list|clear][/FONT][/TD][TD]Manage named patrol route waypoints[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp waypoint <name> [create|add|remove|list|clear][/FONT][/TD][TD]Manage named patrol route waypoints ([FONT=monospace]add[/FONT] auto-creates the route)[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp xp <bot>[/FONT][/TD][TD]Transfer all of a bot's XP to yourself[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp cmd <bot> <command>[/FONT][/TD][TD]Execute a command on a bot; --add/--clear/--show manage its stored right-click command[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp rename <old> <new>[/FONT][/TD][TD]Rename a bot preserving all state (inventory, XP, LP group, tasks)[/TD][/TR]
@@ -439,6 +439,23 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 [HR][/HR]
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
+
+[SIZE=5][B]v1.6.3[/B][/SIZE] [I](2026-04-14)[/I]
+
+[B]🛡️ Despawn Safety Guard[/B]
+[LIST]
+[*][FONT=monospace]despawn all[/FONT], [FONT=monospace]--random <n>[/FONT], and [FONT=monospace]--num <n>[/FONT] are now blocked while bot persistence restoration is in progress at startup — prevents startup-queued console commands from killing bots mid-restore during the ~2–3 second restore window
+[*]New lang key [FONT=monospace]delete-restore-in-progress[/FONT] shown to sender when the operation is blocked
+[*]Single-bot despawn ([FONT=monospace]/fpp despawn <name>[/FONT]) is [B]not[/B] affected — only bulk operations
+[/LIST]
+
+[B]🗺️ Waypoint Auto-Create[/B]
+[LIST]
+[*][FONT=monospace]/fpp wp add <route>[/FONT] now [B]auto-creates[/B] the route if it doesn't exist — no separate [FONT=monospace]create[/FONT] step needed
+[*]In-chat tip shown via new [FONT=monospace]wp-route-auto-created[/FONT] lang key when a route is implicitly created
+[*][FONT=monospace]/fpp wp create[/FONT] still exists and is valid, but is now optional
+[*][FONT=monospace]wp-usage[/FONT] updated so [FONT=monospace]add[/FONT] leads the usage string; [FONT=monospace]wp-list-empty[/FONT] hint updated to point directly to [FONT=monospace]/fpp wp add <route>[/FONT]
+[/LIST]
 
 [SIZE=5][B]v1.6.2[/B][/SIZE] [I](2026-04-12)[/I]
 
@@ -914,7 +931,7 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 
 If you enjoy FPP and want to help keep it going, consider buying me a coffee:
 
-[CENTER][URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL][/CENTER]
+[CENTER][URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]  [URL='https://github.com/sponsors/Pepe-tf'][B][COLOR=#EA4AAA]💖 GitHub Sponsors[/COLOR][/B][/URL]  [URL='https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink'][B][COLOR=#FF424D]🎗 Support on Patreon[/COLOR][/B][/URL][/CENTER]
 
 Donations are completely optional. Every contribution goes directly toward improving the plugin.
 
@@ -931,12 +948,14 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 [*][URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL] — download
 [*][URL='https://fakeplayerplugin.xyz']Wiki[/URL] — documentation
 [*][URL='https://ko-fi.com/fakeplayerplugin']Ko-fi[/URL] — support the project
+[*][URL='https://github.com/sponsors/Pepe-tf']GitHub Sponsors[/URL] — support the project
+[*][URL='https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink']Patreon[/URL] — support the project
 [*][URL='https://discord.gg/QSN7f67nkJ']Discord[/URL] — support & feedback
 [*][URL='https://github.com/Pepe-tf/Fake-Player-Plugin-Public-']GitHub[/URL] — source & issues
 [/LIST]
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.2[/I]
+[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.3[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fakeplayerplugin.xyz']Wiki[/URL][/CENTER]

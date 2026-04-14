@@ -1,8 +1,25 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.2** · Released: 2026-04-12 · Config version: **53**  
+> Latest version: **v1.6.3** · Released: 2026-04-14 · Config version: **53**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+
+---
+
+## v1.6.3 *(2026-04-14)*
+
+### 🛡️ Despawn Safety Guard
+- `despawn all`, `despawn --random <n>`, and `despawn --num <n>` are now blocked while `FakePlayerManager.isRestorationInProgress()` is true at startup
+- Prevents startup-queued console commands from killing bots mid-restore during the ~2–3 second persistence restoration window
+- New lang key `delete-restore-in-progress` shown to sender when a bulk despawn is attempted during the restore window
+- Single-bot despawn (`/fpp despawn <name>`) is **not** affected — only bulk operations
+
+### 🗺️ Waypoint Auto-Create
+- `/fpp wp add <route>` now **auto-creates** the route if it doesn't exist — no separate `/fpp wp create <route>` step required
+- When a new route is implicitly created, an in-chat tip is shown via the new `wp-route-auto-created` lang key
+- `/fpp wp create` still exists and is valid, but is now optional
+- `wp-usage` updated so `add` leads the usage string and `create` is shown as optional
+- `wp-list-empty` hint updated to point directly to `/fpp wp add <route>` instead of the two-step create+add flow
 
 ---
 

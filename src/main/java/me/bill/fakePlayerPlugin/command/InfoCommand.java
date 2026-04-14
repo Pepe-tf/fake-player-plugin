@@ -94,6 +94,19 @@ public class InfoCommand implements FppCommand {
     }
 
     String sub = args[0].toLowerCase();
+
+    // "bot" and "spawner" require a second argument — the name to look up.
+    // Without it, args[0] would be used as the name (e.g. literally "spawner"),
+    // producing a confusing "no records" result.
+    if ((sub.equals("bot") || sub.equals("spawner")) && args.length < 2) {
+      sender.sendMessage(
+          Component.empty()
+              .append(Component.text("Usage: ").color(LABEL))
+              .append(
+                  Component.text("/fpp info " + sub + " <name>").color(ACCENT)));
+      return true;
+    }
+
     String name = args.length > 1 ? args[1] : args[0];
 
     FakePlayer live =
@@ -113,7 +126,7 @@ public class InfoCommand implements FppCommand {
     }
 
     switch (sub) {
-      case "bot" -> showBotSessions(sender, args.length > 1 ? name : args[0]);
+      case "bot" -> showBotSessions(sender, name);
       case "spawner" -> showSpawnerSessions(sender, name);
       default -> showBotSessions(sender, args[0]);
     }

@@ -51,6 +51,12 @@ public class DeleteCommand implements FppCommand {
         sender.sendMessage(Lang.get("no-permission"));
         return true;
       }
+      // Block bulk despawn while persistence restore is running to prevent
+      // startup-queued console commands from killing bots that are mid-restore.
+      if (manager.isRestorationInProgress()) {
+        sender.sendMessage(Lang.get("delete-restore-in-progress"));
+        return true;
+      }
       int count = manager.getCount();
       if (count == 0) {
         sender.sendMessage(Lang.get("delete-none"));
@@ -64,6 +70,10 @@ public class DeleteCommand implements FppCommand {
     if (args[0].equalsIgnoreCase("--random")) {
       if (Perm.missing(sender, Perm.DELETE)) {
         sender.sendMessage(Lang.get("no-permission"));
+        return true;
+      }
+      if (manager.isRestorationInProgress()) {
+        sender.sendMessage(Lang.get("delete-restore-in-progress"));
         return true;
       }
       int count = 1;
@@ -93,6 +103,10 @@ public class DeleteCommand implements FppCommand {
     if (args[0].equalsIgnoreCase("--num")) {
       if (Perm.missing(sender, Perm.DELETE)) {
         sender.sendMessage(Lang.get("no-permission"));
+        return true;
+      }
+      if (manager.isRestorationInProgress()) {
+        sender.sendMessage(Lang.get("delete-restore-in-progress"));
         return true;
       }
       if (args.length < 2) {

@@ -24,14 +24,40 @@ public final class ConfigMigrator {
 
     rawDebug = cfg.getBoolean("debug", false) || cfg.getBoolean("logging.debug.startup", false);
 
-    int stored = cfg.getInt("config-version", 0);
+    int stored = cfg.getInt("config-version", -1);
+
+    // A stored value of -1 means the key was entirely absent from the config file
+    // (i.e. a very old or hand-crafted config with no version stamp).
+    // Values < 0 are never written by the plugin, so flag them clearly.
+    if (stored < 0) {
+      FppLogger.warn(
+          "═══════════════════════════════════════════════════════════════════");
+      FppLogger.warn(
+          "  ⚠  FPP: config.yml has no 'config-version' key (unknown legacy)  ⚠");
+      FppLogger.warn(
+          "  All migration steps will be applied to bring it up to date.");
+      FppLogger.warn(
+          "  A backup is being created before any changes are written.");
+      FppLogger.warn(
+          "═══════════════════════════════════════════════════════════════════");
+      stored = 0; // treat as "start of history"
+    }
 
     if (stored >= CURRENT_VERSION) {
       log("config is current (v" + stored + "). No migration needed.");
       return false;
     }
 
-    String fromLabel = stored == 0 ? "legacy" : "v" + stored;
+    String fromLabel = stored == 0 ? "legacy/unknown" : "v" + stored;
+
+    // Always print the migration banner at INFO level so admins can see it in logs
+    // even when debug mode is off — this answers "what version did I migrate from?"
+    FppLogger.info(
+        "Config migration starting: "
+            + fromLabel
+            + " → v"
+            + CURRENT_VERSION
+            + ". Creating backup first…");
     if (rawDebug) {
       FppLogger.section("Config Migration");
       FppLogger.info("Upgrading config from " + fromLabel + " → v" + CURRENT_VERSION + "…");
@@ -59,6 +85,8 @@ public final class ConfigMigrator {
     if (stored < 18) anyChange |= v17to18(cfg);
     if (stored < 19) anyChange |= v18to19(cfg);
     if (stored < 20) anyChange |= v19to20(cfg);
+    // v20→v21 was a housekeeping-only bump (no structural key changes)
+    if (stored < 21) anyChange |= v20to21(cfg);
     if (stored < 22) anyChange |= v21to22(cfg);
     if (stored < 23) anyChange |= v22to23(cfg);
     if (stored < 24) anyChange |= v23to24(cfg);
@@ -66,6 +94,8 @@ public final class ConfigMigrator {
     if (stored < 26) anyChange |= v25to26(cfg);
     if (stored < 27) anyChange |= v26to27(cfg);
     if (stored < 28) anyChange |= v27to28(cfg);
+    // v28→v29 was a housekeeping-only bump (no structural key changes)
+    if (stored < 29) anyChange |= v28to29(cfg);
     if (stored < 30) anyChange |= v29to30(cfg);
     if (stored < 31) anyChange |= v30to31(cfg);
     if (stored < 32) anyChange |= v31to32(cfg);
@@ -81,6 +111,8 @@ public final class ConfigMigrator {
     if (stored < 42) anyChange |= v41to42(cfg);
     if (stored < 43) anyChange |= v42to43(cfg);
     if (stored < 44) anyChange |= v43to44(cfg);
+    // v44→v45 was a housekeeping-only bump (no structural key changes)
+    if (stored < 45) anyChange |= v44to45(cfg);
     if (stored < 46) anyChange |= v45to46(cfg);
     if (stored < 47) anyChange |= v46to47(cfg);
     if (stored < 48) anyChange |= v47to48(cfg);
@@ -474,6 +506,17 @@ public final class ConfigMigrator {
     return any;
   }
 
+  /**
+   * v20→v21: housekeeping version bump — no structural config key changes in this release.
+   * This step was missing from the migration chain, causing configs stamped as v20 to skip
+   * directly to v21→v22 without an explicit v21 marker.  Adding it as a no-op ensures the
+   * chain is complete and future steps targeting v21 are unambiguous.
+   */
+  private static boolean v20to21(YamlConfiguration cfg) {
+    log("v20→v21", "housekeeping stamp (no structural changes)");
+    return false;
+  }
+
   private static boolean v21to22(YamlConfiguration cfg) {
     boolean any = false;
     if (!cfg.contains("tab-list.show-bots")) {
@@ -553,6 +596,16 @@ public final class ConfigMigrator {
       changed = true;
     }
     return changed;
+  }
+
+  /**
+   * v28→v29: housekeeping version bump — no structural config key changes in this release.
+   * This step was missing from the migration chain; configs stamped v28 would skip directly
+   * to v29→v30 without an explicit v29 marker.
+   */
+  private static boolean v28to29(YamlConfiguration cfg) {
+    log("v28→v29", "housekeeping stamp (no structural changes)");
+    return false;
   }
 
   private static boolean v29to30(YamlConfiguration cfg) {
@@ -911,6 +964,16 @@ public final class ConfigMigrator {
       log("v43→v44", "removed peak-hours.auto-enable-swap (feature removed)");
       return true;
     }
+    return false;
+  }
+
+  /**
+   * v44→v45: housekeeping version bump — no structural config key changes in this release.
+   * This step was missing from the migration chain; configs stamped v44 would skip directly
+   * to v45→v46 without an explicit v45 marker.
+   */
+  private static boolean v44to45(YamlConfiguration cfg) {
+    log("v44→v45", "housekeeping stamp (no structural changes)");
     return false;
   }
 

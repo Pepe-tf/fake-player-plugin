@@ -1,6 +1,6 @@
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)
 
-> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, LuckPerms integration, proxy network support, and full hot-reload.
+> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, LuckPerms integration, proxy network support, and full hot-reload.
 
 [![Version](https://img.shields.io/modrinth/v/fake-player-plugin-%28fpp%29?style=flat-square&label=version&color=0079FF&logo=modrinth)](https://modrinth.com/plugin/fake-player-plugin-(fpp))
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
@@ -11,6 +11,8 @@
 [![Modrinth](https://img.shields.io/badge/Modrinth-FPP-00AF5C?style=flat-square&logo=modrinth)](https://modrinth.com/plugin/fake-player-plugin-(fpp))
 [![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/QSN7f67nkJ)
 [![Wiki](https://img.shields.io/badge/Wiki-fakeplayerplugin.xyz-7B8EF0?style=flat-square)](https://fakeplayerplugin.xyz)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Sponsor-EA4AAA?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/Pepe-tf)
+[![Patreon](https://img.shields.io/badge/Patreon-Support%20FPP-FF424D?style=flat-square&logo=patreon&logoColor=white)](https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)
 
 ---
 
@@ -90,7 +92,7 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp` | Plugin info — version, active bots, download links |
 | `/fpp help [page]` | Interactive GUI help menu — paginated, permission-filtered, click-navigable |
 | `/fpp spawn [amount] [--name <name>]` | Spawn fake player(s) at your location |
-| `/fpp despawn <name\|all\|random [n]>` | Remove a bot by name, remove all, or remove a random set |
+| `/fpp despawn <name\|all\|--random [n]\|--num <n>>` | Remove a bot by name, remove all, remove random N, or remove N oldest (blocked during persistence restore) |
 | `/fpp list` | List all active bots with uptime and location |
 | `/fpp freeze <name\|all> [on\|off]` | Freeze or unfreeze bots — frozen bots are immovable |
 | `/fpp inventory <bot>` | Open the bot's full 54-slot inventory GUI (alias: `/fpp inv`) |
@@ -102,7 +104,7 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp place <bot> [once\|stop]` | Continuous or one-shot block placing |
 | `/fpp storage <bot> [name\|--list\|--remove\|--clear]` | Register supply containers for mine/place restocking |
 | `/fpp use <bot>` | Bot right-clicks / activates the block it's looking at |
-| `/fpp waypoint <name> [add\|remove\|list\|clear]` | Manage named patrol route waypoints |
+| `/fpp waypoint <name> [create\|add\|remove\|list\|clear]` | Manage named patrol route waypoints (`add` auto-creates the route) |
 | `/fpp xp <bot>` | Transfer all of a bot's XP to yourself |
 | `/fpp cmd <bot> <command>` | Execute a command on a bot (or `--add`/`--clear`/`--show` for stored right-click command) |
 | `/fpp rename <old> <new>` | Rename a bot preserving all state (inventory, XP, LP group, tasks) |
@@ -423,6 +425,21 @@ Bot chat uses the server's real chat pipeline (`Player.chat()`), so formatting i
 ---
 
 ## Changelog
+
+### v1.6.3 *(2026-04-14)*
+
+**Despawn Safety Guard**
+- `despawn all`, `--random <n>`, and `--num <n>` are now blocked while bot persistence restoration is in progress at startup — prevents startup-queued console commands from killing bots mid-restore during the ~2–3 second restore window
+- New lang key `delete-restore-in-progress` shown to sender when the operation is blocked
+- Single-bot despawn (`/fpp despawn <name>`) is not affected — only bulk operations
+
+**Waypoint Auto-Create**
+- `/fpp wp add <route>` now auto-creates the route if it doesn't exist — no separate `create` step needed
+- In-chat tip shown via new `wp-route-auto-created` lang key when a route is implicitly created
+- `/fpp wp create` still exists and is valid, but is now optional
+- `wp-usage` updated so `add` leads the usage string; `wp-list-empty` hint updated to point directly to `/fpp wp add <route>`
+
+---
 
 ### v1.6.2 *(2026-04-12)*
 
@@ -755,6 +772,8 @@ Bot chat uses the server's real chat pipeline (`Player.chat()`), so formatting i
 ## Support the Project
 
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20FPP-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/fakeplayerplugin)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Sponsor-EA4AAA?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/Pepe-tf)
+[![Patreon](https://img.shields.io/badge/Patreon-Support%20FPP-FF424D?style=flat-square&logo=patreon&logoColor=white)](https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)
 
 Donations are completely optional. Every contribution goes directly toward improving the plugin.
 
@@ -770,9 +789,11 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 - [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) — download
 - [Wiki](https://fakeplayerplugin.xyz) — documentation
 - [Ko-fi](https://ko-fi.com/fakeplayerplugin) — support the project
+- [GitHub Sponsors](https://github.com/sponsors/Pepe-tf) — support the project
+- [Patreon](https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink) — support the project
 - [Discord](https://discord.gg/QSN7f67nkJ) — support & feedback
 - [GitHub](https://github.com/Pepe-tf/fake-player-plugin) — **open-source repository · source, issues & pull requests**
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.6.2 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.6.3 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*

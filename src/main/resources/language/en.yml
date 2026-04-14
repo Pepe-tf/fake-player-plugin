@@ -89,6 +89,8 @@ spawn-cooldown: "{prefix}<red>ᴘʟᴇᴀꜱᴇ ᴡᴀɪᴛ <white>{seconds}s<re
 delete-success:        "{prefix}<#0079FF>{name}</#0079FF> <gray>ʜᴀꜱ ʙᴇᴇɪɴ <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
 delete-all:            "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
 delete-none:           "{prefix}<red>ɴᴏ ʙᴏᴛꜱ ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ."
+# Shown when a bulk despawn is attempted while bot persistence restore is still running
+delete-restore-in-progress: "{prefix}<red>ʙᴏᴛ ʀᴇꜱᴛᴏʀᴀᴛɪᴏɴ ɪꜱ ɪɴ ᴘʀᴏɢʀᴇꜱꜱ — ᴘʟᴇᴀꜱᴇ ᴡᴀɪᴛ ᴀ ꜰᴇᴡ ꜱᴇᴄᴏɴᴅꜱ ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ."
 delete-not-found:      "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red> ᴡᴀꜱ ꜰᴏᴜɴᴅ."
 # {count} — number of bots randomly despawned
 delete-random-success: "{prefix}<#0079FF>{count}</#0079FF> <gray>ʀᴀɴᴅᴏᴍ ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ᴅɪꜱᴄᴏɴɴᴇᴄᴛᴇᴅ<gray>."
@@ -486,7 +488,7 @@ use-stopped-all:  "{prefix}<gray>ꜱᴛᴏᴘᴘᴇᴅ ᴀʟʟ ʙᴏᴛꜱ ꜰʀ
 # {count} — number of positions in route / number of routes
 # {num}   — 1-based entry number in a list
 # {x},{y},{z},{world} — position coordinates
-wp-usage:              "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp wp create <route></#0079FF> <gray>| <#0079FF>add <route></#0079FF> <gray>| <#0079FF>remove <route> <index></#0079FF> <gray>| <#0079FF>delete <route></#0079FF> <gray>| <#0079FF>clear <route></#0079FF> <gray>| <#0079FF>list [route]</#0079FF><gray>."
+wp-usage:              "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp wp add <route></#0079FF> <gray>| <#0079FF>remove <route> <index></#0079FF> <gray>| <#0079FF>delete <route></#0079FF> <gray>| <#0079FF>clear <route></#0079FF> <gray>| <#0079FF>list [route]</#0079FF><gray>."
 wp-create-usage:       "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp wp create <route></#0079FF><gray>."
 wp-add-usage:          "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp wp add <route></#0079FF><gray>."
 wp-remove-usage:       "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp wp remove <route> <index></#0079FF><gray>."
@@ -497,10 +499,12 @@ wp-not-found:          "{prefix}<red>ɴᴏ ᴡᴀʏᴘᴏɪɴᴛ ʀᴏᴜᴛᴇ 
 wp-invalid-index:      "{prefix}<red><white>{input}<red> ɪꜱ ɴᴏᴛ ᴀ ᴠᴀʟɪᴅ ɪɴᴅᴇx. ᴜꜱᴇ ᴀ ɴᴜᴍʙᴇʀ ꜱᴛᴀʀᴛɪɴɢ ꜰʀᴏᴍ 1."
 wp-index-out-of-range: "{prefix}<red>ɪɴᴅᴇx <white>{index}<red> ɪꜱ ᴏᴜᴛ ᴏꜰ ʀᴀɴɢᴇ ꜰᴏʀ <#0079FF>{name}</#0079FF> <dark_gray>(<white>{count}</white> ᴘᴏꜱɪᴛɪᴏɴ(ꜱ)<dark_gray>)<red>."
 wp-pos-added:          "{prefix}<gray>ᴘᴏꜱɪᴛɪᴏɴ <white>#{index}</white> <gray>ᴀᴅᴅᴇᴅ ᴛᴏ ʀᴏᴜᴛᴇ <#0079FF>{name}</#0079FF><gray>: <dark_gray>{x}, {y}, {z}<gray>."
+# Shown when /fpp wp add creates a new route implicitly (no prior /wp create needed)
+wp-route-auto-created: "{prefix}<gray>ʀᴏᴜᴛᴇ <#0079FF>{name}</#0079FF><gray> ᴅɪᴅ ɴᴏᴛ ᴇxɪꜱᴛ ʏᴇᴛ — ᴄʀᴇᴀᴛᴇᴅ ɪᴛ ꜰᴏʀ ʏᴏᴜ. <dark_gray>(ᴛɪᴘ: <white>/fpp wp create {name}</white> ꜰɪʀꜱᴛ ɴᴇxᴛ ᴛɪᴍᴇ<dark_gray>)"
 wp-pos-removed:        "{prefix}<gray>ᴘᴏꜱɪᴛɪᴏɴ <white>#{index}</white> <gray>ʀᴇᴍᴏᴠᴇᴅ ꜰʀᴏᴍ ʀᴏᴜᴛᴇ <#0079FF>{name}</#0079FF><gray>."
 wp-deleted:            "{prefix}<gray>ᴡᴀʏᴘᴏɪɴᴛ ʀᴏᴜᴛᴇ <#0079FF>{name}</#0079FF><gray> ᴅᴇʟᴇᴛᴇᴅ."
 wp-cleared:            "{prefix}<gray>ᴄʟᴇᴀʀᴇᴅ ᴀʟʟ ᴘᴏꜱɪᴛɪᴏɴꜱ ꜰʀᴏᴍ ʀᴏᴜᴛᴇ <#0079FF>{name}</#0079FF><gray>."
-wp-list-empty:         "{prefix}<red>ɴᴏ ᴡᴀʏᴘᴏɪɴᴛ ʀᴏᴜᴛᴇꜱ ᴅᴇꜰɪɴᴇᴅ. ᴜꜱᴇ <white>/fpp wp create <route></white> ᴛʜᴇɴ <white>/fpp wp add <route></white> ᴛᴏ ʙᴜɪʟᴅ ᴏɴᴇ."
+wp-list-empty:         "{prefix}<red>ɴᴏ ᴡᴀʏᴘᴏɪɴᴛ ʀᴏᴜᴛᴇꜱ ᴅᴇꜰɪɴᴇᴅ. ᴜꜱᴇ <white>/fpp wp add <route></white> ᴛᴏ ʙᴜɪʟᴅ ᴏɴᴇ."
 wp-created:            "{prefix}<gray>ᴡᴀʏᴘᴏɪɴᴛ ʀᴏᴜᴛᴇ <#0079FF>{name}</#0079FF><gray> ᴄʀᴇᴀᴛᴇᴅ. ᴜꜱᴇ <white>/fpp wp add {name}</white> ᴛᴏ ᴀᴅᴅ ᴘᴏꜱɪᴛɪᴏɴꜱ."
 wp-already-exists:     "{prefix}<red>ᴀ ᴡᴀʏᴘᴏɪɴᴛ ʀᴏᴜᴛᴇ ɴᴀᴍᴇᴅ <white>{name}<red> ᴀʟʀᴇᴀᴅʏ ᴇxɪꜱᴛꜱ."
 wp-list-header:        "{prefix}<gray>ᴡᴀʏᴘᴏɪɴᴛ ʀᴏᴜᴛᴇꜱ <dark_gray>(<white>{count}</white>)<gray>:"

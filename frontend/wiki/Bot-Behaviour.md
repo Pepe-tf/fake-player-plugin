@@ -273,7 +273,9 @@ The bot continuously recalculates as the target moves.
 /fpp move <bot> --wp <route>
 ```
 
-The bot walks a named route created with `/fpp waypoint`.
+The bot walks a named route built with `/fpp waypoint`.
+
+No prior `/fpp wp create` step needed — `/fpp wp add <route>` creates the route automatically on first use.
 
 ### Stop movement
 
