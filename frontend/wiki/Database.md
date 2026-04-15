@@ -2,7 +2,7 @@
 
 FPP stores bot sessions, restart state, analytics, and task persistence in a database.
 
-> **Current plugin line:** v1.6.2  
+> **Current plugin line:** v1.6.4  
 > **Default backend:** SQLite  
 > **Optional backend:** MySQL  
 > **Important persistence feature:** active mine/use/place/patrol tasks survive restart
@@ -131,6 +131,7 @@ Stores the bot's last known:
 - world / coordinates / rotation
 - LP group
 - frozen/chat/item/XP settings and other persistent bot state (depending on schema level)
+- per-bot overrides: head-AI, nav-parkour, nav-break-blocks, nav-place-blocks, swim-AI, chunk-load-radius (schema v14)
 
 ### `fpp_sleeping_bots`
 

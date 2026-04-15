@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP command reference - v1.6.3**  
+> **Complete FPP command reference - v1.6.4**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`
 
 ---

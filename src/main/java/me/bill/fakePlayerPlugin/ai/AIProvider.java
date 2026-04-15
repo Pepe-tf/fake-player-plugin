@@ -5,12 +5,12 @@ import java.util.concurrent.CompletableFuture;
 
 public interface AIProvider {
 
-  String getName();
+    String getName();
 
-  boolean isAvailable();
+    boolean isAvailable();
 
-  CompletableFuture<String> generateResponse(
-      List<ChatMessage> messages, String botName, String personality);
+    CompletableFuture<String> generateResponse(
+            List<ChatMessage> messages, String botName, String personality);
 
-  record ChatMessage(String role, String content) {}
+    record ChatMessage(String role, String content) {}
 }

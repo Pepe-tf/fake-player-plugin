@@ -1,17 +1,17 @@
 package me.bill.fakePlayerPlugin.fakeplayer;
 
 public enum BotCombatMode {
-  CRYSTAL,
+    CRYSTAL,
 
-  SWORD,
+    SWORD,
 
-  FIST;
+    FIST;
 
-  public String getDisplayName() {
-    return switch (this) {
-      case CRYSTAL -> "Crystal PVP";
-      case SWORD -> "Sword";
-      case FIST -> "Fist";
-    };
-  }
+    public String getDisplayName() {
+        return switch (this) {
+            case CRYSTAL -> "Crystal PVP";
+            case SWORD -> "Sword";
+            case FIST -> "Fist";
+        };
+    }
 }

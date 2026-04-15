@@ -1,8 +1,33 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.3** · Released: 2026-04-14 · Config version: **53**  
+> Latest version: **v1.6.4** · Released: 2026-04-16 · Config version: **55**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+
+---
+
+## v1.6.4 *(2026-04-16)*
+
+### 🏊 Per-Bot Swim AI & Chunk Load Radius
+- Each bot now has an individual **swim AI toggle** — override the global `swim-ai.enabled` per-bot without restarting
+- Each bot now has an individual **chunk load radius** — `-1` = follow global `chunk-loading.radius`, `0` = disable chunk loading for this bot, `1-N` = fixed radius (capped at global max)
+- Both fields are initialised from the global config at spawn, fully persisted across restarts (DB column + YAML key), and editable at runtime via `BotSettingGui` or programmatically
+
+### ⚙️ BotSettingGui General Tab Expanded
+- General tab now has **7 action slots**: Frozen · Head-AI · Swim-AI *(new)* · Chunk-Load-Radius *(new, numeric prompt)* · Pick-Up-Items · Pick-Up-XP · Rename
+- Chunk-load-radius uses a chat-input numeric prompt (same interaction model as `/fpp settings` numeric fields); type a number or `-1` to reset to global
+
+### ⚔ BotSettingGui PvP Tab
+- PvP category now shows full coming-soon override previews: difficulty, combat-mode, critting, s-tapping, strafing, shielding, speed-buffs, jump-reset, random, gear, defensive-mode
+
+### 💾 DB Schema v14
+- `fpp_active_bots` gains two new columns: `swim_ai_enabled BOOLEAN DEFAULT 1`, `chunk_load_radius INT DEFAULT -1`
+- `updateBotAllSettings` and `ActiveBotRow` extended with `swimAiEnabled` and `chunkLoadRadius`
+- Fully backward-compatible — existing rows receive safe defaults on schema upgrade
+
+### 📋 Config v53 → v55
+- v53→v54: `body.drop-items-on-despawn: false` injected into existing installs (preserves pre-1.6.2 behaviour; new installs default `true`)
+- v54→v55: per-bot swim / chunk field persistence wired up
 
 ---
 

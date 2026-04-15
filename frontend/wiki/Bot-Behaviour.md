@@ -98,9 +98,9 @@ This is different from the global `/fpp settings` GUI.
 
 ### Categories
 
-- ⚙ **General** — freeze toggle, head-AI toggle, rename action
+- ⚙ **General** — freeze toggle, head-AI toggle, swim-AI toggle, chunk-load-radius, pick-up-items toggle, pick-up-xp toggle, rename action
 - 💬 **Chat** — chat enabled/disabled, tier, AI personality
-- ⚔ **PvP** — reserved for PvP systems
+- ⚔ **PvP** — PvP AI settings (coming soon — difficulty, combat-mode, critting, strafing, shielding, etc.)
 - 📋 **Cmds** — set / clear stored RC command
 - ⚠ **Danger** — delete bot
 
@@ -155,6 +155,26 @@ swim-ai:
 ```
 
 When enabled, bots automatically swim upward in water or lava like a player holding jump.
+
+Per-bot override: each bot has its own `swimAiEnabled` toggle (initialised from the global config at spawn). Toggle it in `BotSettingGui` General tab or programmatically via `fp.setSwimAiEnabled(boolean)`.
+
+---
+
+## Chunk Loading
+
+```yaml
+chunk-loading:
+  enabled: true
+  radius: "auto"
+  update-interval: 20
+```
+
+Per-bot override: each bot has its own `chunkLoadRadius` field:
+- `-1` = follow global `chunk-loading.radius`
+- `0` = disable chunk loading for this bot
+- `1-N` = fixed chunk radius (capped at global max)
+
+Set it in `BotSettingGui` General tab (numeric chat prompt) or programmatically via `fp.setChunkLoadRadius(int)`.
 
 ---
 

@@ -3,15 +3,15 @@ package me.bill.fakePlayerPlugin.fakeplayer;
 import java.util.UUID;
 
 public record RemoteBotEntry(
-    String serverId,
-    UUID uuid,
-    String name,
-    String displayName,
-    String packetProfileName,
-    String skinValue,
-    String skinSignature) {
+        String serverId,
+        UUID uuid,
+        String name,
+        String displayName,
+        String packetProfileName,
+        String skinValue,
+        String skinSignature) {
 
-  public boolean hasSkin() {
-    return skinValue != null && !skinValue.isBlank();
-  }
+    public boolean hasSkin() {
+        return skinValue != null && !skinValue.isBlank();
+    }
 }

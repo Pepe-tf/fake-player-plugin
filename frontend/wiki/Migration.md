@@ -1,6 +1,6 @@
 # 🔧 Migration & Backups
 
-> **Current plugin line:** 1.6.2  
+> **Current plugin line:** 1.6.4  
 > **Bundled config stamp:** 53  
 > **Current migration target:** 55
 
@@ -195,7 +195,7 @@ The current config history important to modern installs is:
 | 52 | Added player-chat reaction era fake-chat improvements |
 | 53 | Reworked chunk-loading radius semantics (`"auto"` vs `0`) in the bundled config line |
 | 54 | Added `body.drop-items-on-despawn` |
-| 55 | Added shared pathfinding tuning keys and latest migration target updates |
+| 55 | Per-bot swim AI and chunk-load-radius persistence wired up; shared pathfinding tuning keys |
 
 ### Additional 1.6.x-era structural additions
 

@@ -1,6 +1,6 @@
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)
 
-> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, LuckPerms integration, proxy network support, and full hot-reload.
+> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, LuckPerms integration, proxy network support, and full hot-reload.
 
 [![Version](https://img.shields.io/modrinth/v/fake-player-plugin-%28fpp%29?style=flat-square&label=version&color=0079FF&logo=modrinth)](https://modrinth.com/plugin/fake-player-plugin-(fpp))
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
@@ -426,6 +426,31 @@ Bot chat uses the server's real chat pipeline (`Player.chat()`), so formatting i
 
 ## Changelog
 
+### v1.6.4 *(2026-04-16)*
+
+**Per-Bot Swim AI & Chunk Load Radius**
+- Each bot now has an individual **swim AI toggle** — override the global `swim-ai.enabled` per-bot without restarting
+- Each bot now has an individual **chunk load radius** — `-1` = follow global `chunk-loading.radius`, `0` = disable chunk loading for this bot, `1-N` = fixed radius (capped at global max)
+- Both fields are initialised from the global config at spawn, fully persisted across restarts (DB column + YAML key), and editable at runtime
+
+**BotSettingGui General Tab Expanded**
+- General tab now has **7 action slots**: Frozen · Head-AI · Swim-AI *(new)* · Chunk-Load-Radius *(new, numeric prompt)* · Pick-Up-Items · Pick-Up-XP · Rename
+- Chunk-load-radius uses a chat-input numeric prompt (same interaction model as `/fpp settings` numeric fields); type a number or `-1` to reset to global
+
+**BotSettingGui PvP Tab**
+- PvP category now shows full coming-soon override previews: difficulty, combat-mode, critting, s-tapping, strafing, shielding, speed-buffs, jump-reset, random, gear, defensive-mode
+
+**DB Schema v14**
+- `fpp_active_bots` gains two new columns: `swim_ai_enabled BOOLEAN DEFAULT 1`, `chunk_load_radius INT DEFAULT -1`
+- `updateBotAllSettings` and `ActiveBotRow` extended with `swimAiEnabled` and `chunkLoadRadius`
+- Fully backward-compatible — existing rows receive safe defaults on schema upgrade
+
+**Config v53 → v55**
+- v53→v54: `body.drop-items-on-despawn: false` injected into existing installs (preserves pre-1.6.2 behaviour; new installs default `true`)
+- v54→v55: per-bot swim / chunk field persistence wired up
+
+---
+
 ### v1.6.3 *(2026-04-14)*
 
 **Despawn Safety Guard**
@@ -796,4 +821,4 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.6.3 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.6.4 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*

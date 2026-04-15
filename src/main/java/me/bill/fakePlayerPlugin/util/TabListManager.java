@@ -5,14 +5,14 @@ import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 
 public final class TabListManager {
 
-  @SuppressWarnings("unused")
-  public TabListManager(FakePlayerPlugin plugin, FakePlayerManager botManager) {}
+    @SuppressWarnings("unused")
+    public TabListManager(FakePlayerPlugin plugin, FakePlayerManager botManager) {}
 
-  public void start() {}
+    public void start() {}
 
-  public void reload() {}
+    public void reload() {}
 
-  public void shutdown() {}
+    public void shutdown() {}
 
-  public void updateNow() {}
+    public void updateNow() {}
 }

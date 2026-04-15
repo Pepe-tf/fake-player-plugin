@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin - Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.6.3 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
+> **Version:** 1.6.4 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
 
 ---
 
@@ -125,25 +125,27 @@
 - **Whitelist Support** - Protect VIP players
 
 ### ⚙️ **Configuration**
-- **53 Config Versions** - Automatic migration system with backup before every change
+- **55 Config Versions** - Automatic migration system with backup before every change
 - **Hot Reload** - Change settings without restart via `/fpp reload`
 - **Backup System** - Automatic timestamped backups before any migration
 - **In-Game Settings GUI** - Toggle booleans and tune numbers without touching files
 
 ---
 
-## 🆕 What's New in v1.6.3
+## 🆕 What's New in v1.6.4
 
-### 🛡️ **Despawn Safety Guard**
-- `despawn all`, `despawn --random`, and `despawn --num` are now blocked during the bot restore window at startup — prevents startup-queued console commands from killing bots mid-restore
-- A clear message is shown to the sender when a bulk despawn is blocked
+### 🏊 **Per-Bot Swim AI & Chunk Load Radius**
+- Each bot now has an individual **swim AI toggle** and **chunk load radius** — override the global config per-bot without restarting
+- Both fields are initialised from global config at spawn, fully persisted, and editable in `BotSettingGui`
 
-### 🗺️ **Waypoint Auto-Create**
-- `/fpp wp add <route>` now auto-creates the route if it doesn't exist — no separate `create` step needed
-- An in-chat tip is shown when the route is implicitly created
-- `/fpp wp create` still works but is now optional
+### ⚙️ **BotSettingGui General Tab Expanded**
+- General tab now has **7 action slots**: Frozen · Head-AI · Swim-AI · Chunk-Load-Radius · Pick-Up-Items · Pick-Up-XP · Rename
+- PvP tab now shows full coming-soon override previews
 
-See [📋 Changelog](Changelog.md) for full v1.6.2 release notes and the complete version history.
+### 💾 **DB Schema v14**
+- `fpp_active_bots` gains `swim_ai_enabled` and `chunk_load_radius` columns — backward-compatible
+
+See [📋 Changelog](Changelog.md) for full v1.6.4 release notes and the complete version history.
 
 ---
 

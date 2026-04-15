@@ -347,6 +347,8 @@ Important `radius` behavior in current config:
 - `0` = do not load chunks at all
 - positive number = fixed chunk radius
 
+Per-bot override: each bot has its own `chunkLoadRadius` field (`-1` = follow global, `0` = disable, `1-N` = fixed). Editable in `BotSettingGui` General tab.
+
 ---
 
 ## `head-ai`
@@ -376,6 +378,8 @@ swim-ai:
 ```
 
 When enabled, bots swim upward in water/lava like a real player holding jump.
+
+Per-bot override: each bot has its own `swimAiEnabled` toggle (initialised from the global config at spawn). Editable in `BotSettingGui` General tab.
 
 ---
 

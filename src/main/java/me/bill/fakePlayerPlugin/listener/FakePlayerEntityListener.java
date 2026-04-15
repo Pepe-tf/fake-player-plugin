@@ -1,6 +1,5 @@
 package me.bill.fakePlayerPlugin.listener;
 
-import java.util.UUID;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast;
@@ -11,6 +10,7 @@ import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerBody;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.fakeplayer.PacketHelper;
 import me.bill.fakePlayerPlugin.util.WorldGuardHelper;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -30,257 +30,269 @@ import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.UUID;
+
 public class FakePlayerEntityListener implements Listener {
 
-  private final FakePlayerPlugin plugin;
-  private final FakePlayerManager manager;
-  private final ChunkLoader chunkLoader;
+    private final FakePlayerPlugin plugin;
+    private final FakePlayerManager manager;
+    private final ChunkLoader chunkLoader;
 
-  public FakePlayerEntityListener(
-      FakePlayerPlugin plugin, FakePlayerManager manager, ChunkLoader chunkLoader) {
-    this.plugin = plugin;
-    this.manager = manager;
-    this.chunkLoader = chunkLoader;
-  }
+    public FakePlayerEntityListener(
+            FakePlayerPlugin plugin, FakePlayerManager manager, ChunkLoader chunkLoader) {
+        this.plugin = plugin;
+        this.manager = manager;
+        this.chunkLoader = chunkLoader;
+    }
 
-  @EventHandler(priority = EventPriority.LOWEST)
-  public void onEntityDamage(EntityDamageEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
 
-    if (!Config.bodyDamageable()) {
+        if (!Config.bodyDamageable()) {
 
-      if (event instanceof EntityDamageByEntityEvent) {
+            if (event instanceof EntityDamageByEntityEvent) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        if (event instanceof EntityDamageByEntityEvent byEntity
+                && byEntity.getDamager() instanceof Player
+                && plugin.isWorldGuardAvailable()
+                && !WorldGuardHelper.isPvpAllowed(event.getEntity().getLocation())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (!event.isCancelled() && event.getEntity() instanceof Player p) {
+            FakePlayer fp = manager.getByEntity(p);
+            if (fp != null) {
+                fp.addDamageTaken(event.getFinalDamage());
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityDamageConfirmed(EntityDamageEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
+        if (!Config.hurtSound()) return;
+        Location loc = event.getEntity().getLocation();
+        if (loc.getWorld() != null) {
+            loc.getWorld()
+                    .playSound(loc, Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBotDamagedByPlayer(EntityDamageByEntityEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
+        if (!(event.getEntity() instanceof Player victim)) return;
+        if (!(event.getDamager() instanceof Player attacker)) return;
+
+        FakePlayer fp = manager.getByEntity(victim);
+        if (fp == null) return;
+
+        if (fp.getBotType() != BotType.PVP) return;
+
+        if (manager.getPvpAI() != null) {
+            manager.getPvpAI().onBotAttacked(victim.getUniqueId(), attacker.getUniqueId());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onEntityPortal(EntityPortalEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
         event.setCancelled(true);
-        return;
-      }
+        Config.debug(
+                "Blocked portal traversal for bot body: "
+                        + event.getEntity()
+                                .getPersistentDataContainer()
+                                .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
     }
 
-    if (event instanceof EntityDamageByEntityEvent byEntity
-        && byEntity.getDamager() instanceof Player
-        && plugin.isWorldGuardAvailable()
-        && !WorldGuardHelper.isPvpAllowed(event.getEntity().getLocation())) {
-      event.setCancelled(true);
-      return;
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onEntityTeleport(EntityTeleportEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
+        org.bukkit.Location from = event.getFrom();
+        org.bukkit.Location to = event.getTo();
+        if (to == null || from.getWorld() == null || to.getWorld() == null) return;
+        if (from.getWorld().equals(to.getWorld())) return;
+        event.setCancelled(true);
+        Config.debug(
+                "Blocked cross-world teleport for bot body: "
+                        + event.getEntity()
+                                .getPersistentDataContainer()
+                                .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
     }
 
-    if (!event.isCancelled() && event.getEntity() instanceof Player p) {
-      FakePlayer fp = manager.getByEntity(p);
-      if (fp != null) {
-        fp.addDamageTaken(event.getFinalDamage());
-      }
-    }
-  }
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntityDeath(EntityDeathEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
 
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  public void onEntityDamageConfirmed(EntityDamageEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
-    if (!Config.hurtSound()) return;
-    Location loc = event.getEntity().getLocation();
-    if (loc.getWorld() != null) {
-      loc.getWorld().playSound(loc, Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
-    }
-  }
+        FakePlayer fp = manager.getByEntity(event.getEntity());
+        if (fp == null) return;
 
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  public void onBotDamagedByPlayer(EntityDamageByEntityEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
-    if (!(event.getEntity() instanceof Player victim)) return;
-    if (!(event.getDamager() instanceof Player attacker)) return;
+        if (fp.getBotType() != me.bill.fakePlayerPlugin.fakeplayer.BotType.PVP
+                && Config.suppressDrops()) {
+            event.getDrops().clear();
+            event.setDroppedExp(0);
+        }
 
-    FakePlayer fp = manager.getByEntity(victim);
-    if (fp == null) return;
+        Player killer = event.getEntity().getKiller();
+        if (killer != null) {
 
-    if (fp.getBotType() != BotType.PVP) return;
+            String displayName =
+                    fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
+            BotBroadcast.broadcastKill(killer.getName(), displayName);
+        }
 
-    if (manager.getPvpAI() != null) {
-      manager.getPvpAI().onBotAttacked(victim.getUniqueId(), attacker.getUniqueId());
-    }
-  }
+        fp.incrementDeathCount();
+        fp.setAlive(false);
 
-  @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-  public void onEntityPortal(EntityPortalEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
-    event.setCancelled(true);
-    Config.debug(
-        "Blocked portal traversal for bot body: "
-            + event
-                .getEntity()
-                .getPersistentDataContainer()
-                .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
-  }
+        final String name = fp.getName();
 
-  @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-  public void onEntityTeleport(EntityTeleportEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
-    org.bukkit.Location from = event.getFrom();
-    org.bukkit.Location to = event.getTo();
-    if (to == null || from.getWorld() == null || to.getWorld() == null) return;
-    if (from.getWorld().equals(to.getWorld())) return;
-    event.setCancelled(true);
-    Config.debug(
-        "Blocked cross-world teleport for bot body: "
-            + event
-                .getEntity()
-                .getPersistentDataContainer()
-                .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
-  }
+        fp.setPlayer(null);
+        manager.removeFromEntityIndex(event.getEntity().getEntityId());
 
-  @EventHandler(priority = EventPriority.MONITOR)
-  public void onEntityDeath(EntityDeathEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
+        if (Config.respawnOnDeath()) {
 
-    FakePlayer fp = manager.getByEntity(event.getEntity());
-    if (fp == null) return;
+            int delay = Math.max(1, Config.respawnDelay());
+            if (chunkLoader != null) chunkLoader.releaseForBot(fp);
 
-    if (fp.getBotType() != me.bill.fakePlayerPlugin.fakeplayer.BotType.PVP
-        && Config.suppressDrops()) {
-      event.getDrops().clear();
-      event.setDroppedExp(0);
-    }
+            fp.setRespawning(true);
+            final Player deadPlayer = (event.getEntity() instanceof Player p2) ? p2 : null;
+            final UUID botUuid = fp.getUuid();
 
-    Player killer = event.getEntity().getKiller();
-    if (killer != null) {
-
-      String displayName =
-          fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
-      BotBroadcast.broadcastKill(killer.getName(), displayName);
-    }
-
-    fp.incrementDeathCount();
-    fp.setAlive(false);
-
-    final String name = fp.getName();
-
-    fp.setPlayer(null);
-    manager.removeFromEntityIndex(event.getEntity().getEntityId());
-
-    if (Config.respawnOnDeath()) {
-
-      int delay = Math.max(1, Config.respawnDelay());
-      if (chunkLoader != null) chunkLoader.releaseForBot(fp);
-
-      fp.setRespawning(true);
-      final Player deadPlayer = (event.getEntity() instanceof Player p2) ? p2 : null;
-      final UUID botUuid = fp.getUuid();
-
-      Bukkit.getScheduler()
-          .runTaskLater(
-              plugin,
-              () -> {
-                if (deadPlayer == null || !deadPlayer.isOnline()) {
-                  fp.setRespawning(false);
-                  manager.removeByName(name);
-                  return;
-                }
-
-                deadPlayer.spigot().respawn();
-
-                Bukkit.getScheduler()
+            Bukkit.getScheduler()
                     .runTaskLater(
+                            plugin,
+                            () -> {
+                                if (deadPlayer == null || !deadPlayer.isOnline()) {
+                                    fp.setRespawning(false);
+                                    manager.removeByName(name);
+                                    return;
+                                }
+
+                                deadPlayer.spigot().respawn();
+
+                                Bukkit.getScheduler()
+                                        .runTaskLater(
+                                                plugin,
+                                                () -> {
+                                                    Player newEntity = Bukkit.getPlayer(botUuid);
+                                                    if (newEntity == null || newEntity.isDead()) {
+
+                                                        fp.setRespawning(false);
+                                                        if (newEntity == null)
+                                                            manager.removeByName(name);
+                                                        return;
+                                                    }
+
+                                                    fp.setPlayer(newEntity);
+                                                    fp.setAlive(true);
+                                                    manager.registerEntityIndex(
+                                                            newEntity.getEntityId(), fp);
+
+                                                    try {
+                                                        if (FakePlayerManager.FAKE_PLAYER_KEY
+                                                                != null) {
+                                                            newEntity
+                                                                    .getPersistentDataContainer()
+                                                                    .set(
+                                                                            FakePlayerManager
+                                                                                    .FAKE_PLAYER_KEY,
+                                                                            PersistentDataType
+                                                                                    .STRING,
+                                                                            FakePlayerBody
+                                                                                            .VISUAL_PDC_VALUE
+                                                                                    + ":"
+                                                                                    + fp.getName());
+                                                        }
+                                                    } catch (Exception ignored) {
+                                                    }
+
+                                                    try {
+                                                        var attr =
+                                                                newEntity.getAttribute(
+                                                                        Attribute.MAX_HEALTH);
+                                                        if (attr != null) {
+                                                            double hp = Config.maxHealth();
+                                                            attr.setBaseValue(hp);
+                                                            newEntity.setHealth(hp);
+                                                        }
+                                                    } catch (Exception ignored) {
+                                                    }
+
+                                                    fp.setRespawning(false);
+                                                },
+                                                2L);
+                            },
+                            delay);
+
+        } else {
+
+            if (chunkLoader != null) chunkLoader.releaseForBot(fp);
+            if (event.getEntity() instanceof Player deadPlayer) {
+                Bukkit.getScheduler()
+                        .runTaskLater(
+                                plugin,
+                                () -> {
+                                    me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner
+                                            .removeFakePlayer(deadPlayer);
+                                },
+                                20L);
+            }
+            Bukkit.getScheduler()
+                    .runTaskLater(
+                            plugin,
+                            () -> {
+                                for (Player p : Bukkit.getOnlinePlayers())
+                                    PacketHelper.sendTabListRemove(p, fp);
+
+                                manager.removeByName(name);
+                            },
+                            20L);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onBotRespawn(PlayerRespawnEvent event) {
+        FakePlayer fp = manager.getByName(event.getPlayer().getName());
+        if (fp == null || !fp.isRespawning()) return;
+        Location spawnLoc = fp.getSpawnLocation();
+        if (spawnLoc != null && spawnLoc.getWorld() != null) {
+            event.setRespawnLocation(spawnLoc);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onEntityPickupItem(EntityPickupItemEvent event) {
+        if (!isFakeBotBody(event.getEntity())) return;
+
+        FakePlayer fp = manager.getByUuid(event.getEntity().getUniqueId());
+        if (fp == null) return;
+
+        if (!Config.bodyPickUpItems() || !fp.isPickUpItemsEnabled()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        Bukkit.getScheduler()
+                .runTask(
                         plugin,
                         () -> {
-                          Player newEntity = Bukkit.getPlayer(botUuid);
-                          if (newEntity == null || newEntity.isDead()) {
-
-                            fp.setRespawning(false);
-                            if (newEntity == null) manager.removeByName(name);
-                            return;
-                          }
-
-                          fp.setPlayer(newEntity);
-                          fp.setAlive(true);
-                          manager.registerEntityIndex(newEntity.getEntityId(), fp);
-
-                          try {
-                            if (FakePlayerManager.FAKE_PLAYER_KEY != null) {
-                              newEntity
-                                  .getPersistentDataContainer()
-                                  .set(
-                                      FakePlayerManager.FAKE_PLAYER_KEY,
-                                      PersistentDataType.STRING,
-                                      FakePlayerBody.VISUAL_PDC_VALUE + ":" + fp.getName());
-                            }
-                          } catch (Exception ignored) {
-                          }
-
-                          try {
-                            var attr = newEntity.getAttribute(Attribute.MAX_HEALTH);
-                            if (attr != null) {
-                              double hp = Config.maxHealth();
-                              attr.setBaseValue(hp);
-                              newEntity.setHealth(hp);
-                            }
-                          } catch (Exception ignored) {
-                          }
-
-                          fp.setRespawning(false);
-                        },
-                        2L);
-              },
-              delay);
-
-    } else {
-
-      if (chunkLoader != null) chunkLoader.releaseForBot(fp);
-      if (event.getEntity() instanceof Player deadPlayer) {
-        Bukkit.getScheduler()
-            .runTaskLater(
-                plugin,
-                () -> {
-                  me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
-                },
-                20L);
-      }
-      Bukkit.getScheduler()
-          .runTaskLater(
-              plugin,
-              () -> {
-                for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
-
-                manager.removeByName(name);
-              },
-              20L);
-    }
-  }
-
-  @EventHandler(priority = EventPriority.HIGH)
-  public void onBotRespawn(PlayerRespawnEvent event) {
-    FakePlayer fp = manager.getByName(event.getPlayer().getName());
-    if (fp == null || !fp.isRespawning()) return;
-    Location spawnLoc = fp.getSpawnLocation();
-    if (spawnLoc != null && spawnLoc.getWorld() != null) {
-      event.setRespawnLocation(spawnLoc);
-    }
-  }
-
-  @EventHandler(priority = EventPriority.NORMAL)
-  public void onEntityPickupItem(EntityPickupItemEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
-
-    FakePlayer fp = manager.getByUuid(event.getEntity().getUniqueId());
-    if (fp == null) return;
-
-    if (!Config.bodyPickUpItems() || !fp.isPickUpItemsEnabled()) {
-      event.setCancelled(true);
-      return;
+                            var invCmd = plugin.getInventoryCommand();
+                            if (invCmd != null) invCmd.refreshOpenGui(fp.getUuid());
+                        });
     }
 
-    Bukkit.getScheduler()
-        .runTask(
-            plugin,
-            () -> {
-              var invCmd = plugin.getInventoryCommand();
-              if (invCmd != null) invCmd.refreshOpenGui(fp.getUuid());
-            });
-  }
-
-  private boolean isFakeBotBody(Entity entity) {
-    if (!(entity instanceof Player)) return false;
-    if (FakePlayerManager.FAKE_PLAYER_KEY == null) return false;
-    String val =
-        entity
-            .getPersistentDataContainer()
-            .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING);
-    return val != null && val.startsWith(FakePlayerBody.VISUAL_PDC_VALUE);
-  }
+    private boolean isFakeBotBody(Entity entity) {
+        if (!(entity instanceof Player)) return false;
+        if (FakePlayerManager.FAKE_PLAYER_KEY == null) return false;
+        String val =
+                entity.getPersistentDataContainer()
+                        .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING);
+        return val != null && val.startsWith(FakePlayerBody.VISUAL_PDC_VALUE);
+    }
 }

@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed automatically. Do NOT edit.
-config-version: 53
+config-version: 60
 language: en
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -54,16 +54,15 @@ bot-name:
   user-format:  'bot-{spawner}-{num}'  # Used for /fpp spawn (user tier)
 
 # ── Skins ─────────────────────────────────────────────────────────────────────
-# mode: auto   — Mojang skin matching the bot name. Best for online-mode servers.
-#               Bots with generated names show default Steve / Alex.
-# mode: custom — Full control: per-bot overrides, pool, and skins/ folder.
-# mode: off    — No skin. All bots use default Steve / Alex appearance.
+# mode: player — Copy / fetch player skins by name (legacy alias: auto).
+# mode: random — Use overrides, pool, and skins/ folder (legacy alias: custom).
+# mode: none   — No custom skin. All bots use default Steve / Alex appearance.
 skin:
-  mode: auto
-  guaranteed-skin: false        # false = bots with no Mojang account use Steve/Alex
+  mode: player
+  guaranteed-skin: true         # true = bots that can't resolve their name always use a fallback skin
   clear-cache-on-reload: true
 
-  # ── custom mode only ──────────────────────────────────────────────────────
+  # ── random mode only ──────────────────────────────────────────────────────
   overrides: {}                 # Per-bot override: bot-name: minecraft-username
   pool: []                      # Random skin pool — list of Minecraft usernames
   use-skin-folder: true         # Scan plugins/FakePlayerPlugin/skins/ for PNG files
@@ -582,7 +581,7 @@ logging:
     luckperms: false    # LuckPerms group sync and prefix refresh
     network: false      # Velocity/Bungee plugin messaging and remote bot sync
     config-sync: false  # Config push/pull activity
-    skin: false         # Skin loading and injection
+    skin: false          # Skin loading and injection
     database: false     # DB init, migrations, and session writes
     chat: false         # Bot chat AI scheduling, reactions, and event triggers
     swap: false         # Swap / session-rotation leave + rejoin lifecycle
@@ -590,6 +589,24 @@ logging:
 # ── Update Checker ────────────────────────────────────────────────────────────
 update-checker:
   enabled: true   # Check for new plugin versions on startup and /fpp reload
+
+# ── NameTag Integration ───────────────────────────────────────────────────────
+# Soft-dependency on the NameTag plugin (lode.gg). These settings only apply
+# when NameTag is installed alongside FakePlayerPlugin.
+nametag-integration:
+  # Prevent spawning a bot whose --name matches a real player's current NameTag
+  # nick. Blocks the spawn and sends 'spawn-name-taken-nick' to the sender.
+  block-nick-conflicts: true
+  # After each bot spawns, remove it from NameTag's internal player cache.
+  # This prevents NameTag from treating bots as real players and attempting to
+  # store or apply nick data to them. If a bot already has a nick set via NameTag,
+  # the cache entry is preserved (see sync-nick-as-rename below).
+  bot-isolation: true
+  # When a bot has a NameTag nick set (e.g. via /nick BotA Steve), automatically
+  # trigger FPP's rename command so the bot's actual Minecraft name becomes "Steve".
+  # The rename is silent (console-only output) and preserves all bot state.
+  # Requires bot-isolation: true. Default false — opt in consciously.
+  sync-nick-as-rename: false
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 # Anonymous usage statistics via FastStats. No personal data collected.

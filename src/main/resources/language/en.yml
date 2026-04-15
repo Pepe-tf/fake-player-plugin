@@ -63,6 +63,7 @@ spawn-badword-auto-prefixed: "{prefix}<yellow>⚠ <gray>ɴᴀᴍᴇ '<red>{origi
 badword-filter-empty-warning: "{prefix}<yellow>⚠ <gray>ʙᴀᴅᴡᴏʀᴅ ꜰɪʟᴛᴇʀ ɪꜱ <white>ᴇɴᴀʙʟᴇᴅ <gray>ʙᴜᴛ <red>ɴᴏ ꜱᴏᴜʀᴄᴇꜱ ᴀʀᴇ ᴀᴄᴛɪᴠᴇ<gray>. <dark_gray>ᴇɴᴀʙʟᴇ <white>badword-filter.use-global-list <dark_gray>ᴏʀ ᴀᴅᴅ ᴡᴏʀᴅꜱ ᴛᴏ <white>badword-filter.words <dark_gray>/ <white>bad-words.yml<dark_gray>, ᴛʜᴇɴ ʀᴜɴ <white>/fpp reload<dark_gray>."
 spawn-name-taken:         "{prefix}<red>ᴀ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name} <red>ɪꜱ ᴀʟʀᴇᴀᴅʏ ᴀᴄᴛɪᴠᴇ."
 spawn-name-taken-player:  "{prefix}<red>ᴀ ʀᴇᴀʟ ᴘʟᴀʏᴇʀ ɴᴀᴍᴇᴅ <white>{name} <red>ɪꜱ ᴀʟʀᴇᴀᴅʏ ᴏɴʟɪɴᴇ."
+spawn-name-taken-nick:    "{prefix}<red>ᴀ ᴘʟᴀʏᴇʀ ɪꜱ ᴄᴜʀʀᴇɴᴛʟʏ ɴɪᴄᴋᴇᴅ ᴀꜱ <white>{name}<red>. <gray>ᴄʜᴏᴏꜱᴇ ᴀ ᴅɪꜰꜰᴇʀᴇɴᴛ ʙᴏᴛ ɴᴀᴍᴇ."
 spawn-no-names-left:      "{prefix}<red>ᴀʟʟ ɴᴀᴍᴇꜱ ɪɴ ᴛʜᴇ ᴘᴏᴏʟ ᴀʀᴇ ɪɴ ᴜꜱᴇ. <gray>ʀᴇᴅᴜᴄᴇ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ ᴏʀ ᴀᴅᴅ ᴍᴏʀᴇ ɴᴀᴍᴇꜱ."
 
 # ── Console / location errors ──────────────────────────────────────────────────

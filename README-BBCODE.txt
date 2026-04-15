@@ -1,8 +1,8 @@
 [CENTER][SIZE=7][B]ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)[/B][/SIZE]
 
-[SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
+[SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.6.3  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.6.4  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]  [URL='https://github.com/sponsors/Pepe-tf'][B][COLOR=#EA4AAA]💖 GitHub Sponsors[/COLOR][/B][/URL]  [URL='https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink'][B][COLOR=#FF424D]🎗 Patreon[/COLOR][/B][/URL]
@@ -439,6 +439,39 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 [HR][/HR]
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
+
+[SIZE=5][B]v1.6.4[/B][/SIZE] [I](2026-04-16)[/I]
+
+[B]🏊 Per-Bot Swim AI & Chunk Load Radius[/B]
+[LIST]
+[*]Each bot now has an individual [B]swim AI toggle[/B] — override the global [FONT=monospace]swim-ai.enabled[/FONT] per-bot without restarting
+[*]Each bot now has an individual [B]chunk load radius[/B] — [FONT=monospace]-1[/FONT] = follow global radius, [FONT=monospace]0[/FONT] = disable chunk loading for this bot, [FONT=monospace]1-N[/FONT] = fixed radius (capped at global max)
+[*]Both fields initialised from global config at spawn, fully persisted across restarts (DB column + YAML), editable at runtime
+[/LIST]
+
+[B]⚙️ BotSettingGui General Tab Expanded[/B]
+[LIST]
+[*]General tab now has [B]7 action slots[/B]: Frozen · Head-AI · Swim-AI [I](new)[/I] · Chunk-Load-Radius [I](new, numeric prompt)[/I] · Pick-Up-Items · Pick-Up-XP · Rename
+[*]Chunk-load-radius uses a chat-input numeric prompt — type a number or [FONT=monospace]-1[/FONT] to reset to global default
+[/LIST]
+
+[B]⚔ BotSettingGui PvP Tab[/B]
+[LIST]
+[*]PvP category now shows coming-soon override previews: difficulty · combat-mode · critting · s-tapping · strafing · shielding · speed-buffs · jump-reset · random · gear · defensive-mode
+[/LIST]
+
+[B]💾 DB Schema v14[/B]
+[LIST]
+[*][FONT=monospace]fpp_active_bots[/FONT] gains two new columns: [FONT=monospace]swim_ai_enabled BOOLEAN DEFAULT 1[/FONT] and [FONT=monospace]chunk_load_radius INT DEFAULT -1[/FONT]
+[*][FONT=monospace]updateBotAllSettings[/FONT] and [FONT=monospace]ActiveBotRow[/FONT] extended with [FONT=monospace]swimAiEnabled[/FONT] and [FONT=monospace]chunkLoadRadius[/FONT]
+[*]Fully backward-compatible — existing rows receive safe defaults on schema upgrade
+[/LIST]
+
+[B]📋 Config v53 → v55[/B]
+[LIST]
+[*]v53→v54: [FONT=monospace]body.drop-items-on-despawn: false[/FONT] injected into existing installs (preserves pre-1.6.2 behaviour; new installs default [FONT=monospace]true[/FONT])
+[*]v54→v55: per-bot swim / chunk field persistence wired up
+[/LIST]
 
 [SIZE=5][B]v1.6.3[/B][/SIZE] [I](2026-04-14)[/I]
 
@@ -956,6 +989,6 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.3[/I]
+[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.4[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fakeplayerplugin.xyz']Wiki[/URL][/CENTER]

@@ -6,7 +6,7 @@
 
     <groupId>me.bill</groupId>
     <artifactId>fpp</artifactId>
-    <version>1.6.3</version>
+    <version>1.6.4</version>
     <packaging>jar</packaging>
 
     <name>fpp</name>
@@ -367,6 +367,16 @@
             <version>7.0.12</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- NameTag (lode.gg) — soft optional. NameTagHelper uses pure reflection so there
+             is NO compile-time dependency on gg.lode.* classes; this entry is kept only
+             for IDE auto-complete. Remove if it causes issues — the build works without it. -->
+        <!-- <dependency>
+            <groupId>gg.lode</groupId>
+            <artifactId>nametag-api</artifactId>
+            <version>1.0.7</version>
+            <scope>provided</scope>
+        </dependency> -->
 
         <!-- FastStats — anonymous usage analytics (shaded + relocated) -->
         <dependency>
