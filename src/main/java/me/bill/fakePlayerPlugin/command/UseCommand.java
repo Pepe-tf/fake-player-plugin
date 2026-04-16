@@ -55,7 +55,7 @@ public final class UseCommand implements FppCommand {
 
     @Override
     public String getUsage() {
-        return "<bot> [once|stop]  |  stop";
+        return "<bot> [--once|--stop]  |  --stop";
     }
 
     @Override
@@ -80,10 +80,12 @@ public final class UseCommand implements FppCommand {
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("stop") && args.length == 1) {
-            stopAll();
-            sender.sendMessage(Lang.get("use-stopped-all"));
-            return true;
+        if (args[0].equalsIgnoreCase("stop") || args[0].equalsIgnoreCase("--stop")) {
+            if (args.length == 1) {
+                stopAll();
+                sender.sendMessage(Lang.get("use-stopped-all"));
+                return true;
+            }
         }
 
         String botName = args[0];
@@ -99,13 +101,19 @@ public final class UseCommand implements FppCommand {
             return true;
         }
 
-        if (args.length >= 2 && args[1].equalsIgnoreCase("stop")) {
-            cancelAll(fp.getUuid());
-            sender.sendMessage(Lang.get("use-stopped", "name", fp.getDisplayName()));
-            return true;
+        if (args.length >= 2) {
+            String action = args[1].toLowerCase();
+            if (action.equals("stop") || action.equals("--stop")) {
+                cancelAll(fp.getUuid());
+                sender.sendMessage(Lang.get("use-stopped", "name", fp.getDisplayName()));
+                return true;
+            }
         }
 
-        boolean once = args.length >= 2 && args[1].equalsIgnoreCase("once");
+        boolean once =
+                args.length >= 2
+                        && (args[1].equalsIgnoreCase("once")
+                                || args[1].equalsIgnoreCase("--once"));
 
         Location dest =
                 (sender instanceof Player sp)
@@ -137,15 +145,18 @@ public final class UseCommand implements FppCommand {
         if (args.length == 1) {
             String prefix = args[0].toLowerCase();
             List<String> out = new ArrayList<>();
+            if ("--stop".startsWith(prefix)) out.add("--stop");
             if ("stop".startsWith(prefix)) out.add("stop");
             for (FakePlayer fp : manager.getActivePlayers())
                 if (fp.getName().toLowerCase().startsWith(prefix)) out.add(fp.getName());
             return out;
         }
 
-        if (args.length == 2 && !args[0].equalsIgnoreCase("stop")) {
+        if (args.length == 2 && !args[0].equalsIgnoreCase("stop") && !args[0].equalsIgnoreCase("--stop")) {
             String prefix = args[1].toLowerCase();
             List<String> out = new ArrayList<>();
+            if ("--once".startsWith(prefix)) out.add("--once");
+            if ("--stop".startsWith(prefix)) out.add("--stop");
             if ("once".startsWith(prefix)) out.add("once");
             if ("stop".startsWith(prefix)) out.add("stop");
             return out;

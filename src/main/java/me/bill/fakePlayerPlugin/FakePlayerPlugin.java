@@ -67,6 +67,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
     private me.bill.fakePlayerPlugin.command.MineCommand mineCommand;
     private me.bill.fakePlayerPlugin.command.PlaceCommand placeCommand;
     private me.bill.fakePlayerPlugin.command.UseCommand useCommand;
+    private me.bill.fakePlayerPlugin.command.AttackCommand attackCommand;
     private PathfindingService pathfindingService;
     private me.bill.fakePlayerPlugin.command.WaypointStore waypointStore;
     private me.bill.fakePlayerPlugin.command.StorageStore storageStore;
@@ -272,6 +273,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 new me.bill.fakePlayerPlugin.command.BadwordCommand(this, fakePlayerManager));
         commandManager.register(new StatsCommand(fakePlayerManager, databaseManager));
         commandManager.register(new FreezeCommand(fakePlayerManager));
+        commandManager.register(new me.bill.fakePlayerPlugin.command.PingCommand(fakePlayerManager));
         commandManager.register(new LpInfoCommand(this, fakePlayerManager));
         commandManager.register(new RankCommand(this, fakePlayerManager));
         commandManager.register(new AlertCommand(this));
@@ -314,6 +316,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 new me.bill.fakePlayerPlugin.command.UseCommand(
                         this, fakePlayerManager, pathfindingService);
         commandManager.register(useCommand);
+        attackCommand =
+                new me.bill.fakePlayerPlugin.command.AttackCommand(
+                        this, fakePlayerManager, pathfindingService);
+        commandManager.register(attackCommand);
 
         BotSettingGui botSettingGui = new BotSettingGui(this, fakePlayerManager);
         inventoryCommand = new InventoryCommand(fakePlayerManager, this, botSettingGui);
@@ -328,6 +334,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         botPersistence.setMineCommand(mineCommand);
         botPersistence.setPlaceCommand(placeCommand);
         botPersistence.setUseCommand(useCommand);
+        botPersistence.setAttackCommand(attackCommand);
         botPersistence.setWaypointStore(waypointStore);
 
         var fppCmd = getCommand("fpp");
@@ -708,6 +715,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
         return useCommand;
     }
 
+    public me.bill.fakePlayerPlugin.command.AttackCommand getAttackCommand() {
+        return attackCommand;
+    }
+
     public PathfindingService getPathfindingService() {
         return pathfindingService;
     }
@@ -743,6 +754,16 @@ public final class FakePlayerPlugin extends JavaPlugin {
     public void setUpdateNotification(Component c) {
         this.updateNotificationMessage = c;
     }
+
+    /** Latest version string from the update checker — null until the first check completes. */
+    private volatile String latestKnownVersion = null;
+    /** True when the running version is newer than the latest stable release (beta/dev build). */
+    private volatile boolean runningBeta = false;
+
+    public String getLatestKnownVersion() { return latestKnownVersion; }
+    public void setLatestKnownVersion(String v) { this.latestKnownVersion = v; }
+    public boolean isRunningBeta() { return runningBeta; }
+    public void setRunningBeta(boolean b) { this.runningBeta = b; }
 
     private void ensureDataDirectories() {
         java.io.File root = getDataFolder();

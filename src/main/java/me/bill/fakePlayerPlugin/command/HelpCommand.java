@@ -25,6 +25,7 @@ public class HelpCommand implements FppCommand {
     private final CommandManager manager;
 
     private volatile HelpGui helpGui = null;
+    private volatile String lastLabel = "fpp";
 
     public HelpCommand(CommandManager manager) {
         this.manager = manager;
@@ -32,6 +33,11 @@ public class HelpCommand implements FppCommand {
 
     public void setHelpGui(HelpGui gui) {
         this.helpGui = gui;
+    }
+
+    /** Called by CommandManager just before execute() so the GUI knows which alias was used. */
+    public void setLastLabel(String label) {
+        this.lastLabel = label;
     }
 
     @Override
@@ -58,7 +64,7 @@ public class HelpCommand implements FppCommand {
     public boolean execute(CommandSender sender, String[] args) {
 
         if (sender instanceof Player player && helpGui != null) {
-            helpGui.open(player);
+            helpGui.open(player, lastLabel);
             return true;
         }
 

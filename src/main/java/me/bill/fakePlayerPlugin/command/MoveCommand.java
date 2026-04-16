@@ -48,7 +48,7 @@ public final class MoveCommand implements FppCommand {
 
     @Override
     public String getUsage() {
-        return "<bot|all> <player>  |  <bot|all> --wp <route> [--random]  |  <bot|all> --stop";
+        return "<bot|all> --to <player>  |  <bot|all> --wp <route> [--random]  |  <bot|all> --stop";
     }
 
     @Override
@@ -156,6 +156,38 @@ public final class MoveCommand implements FppCommand {
                                     "count",
                                     String.valueOf(route.size())));
                 }
+                return true;
+            }
+
+            if (flag.equals("--to")) {
+                if (args.length < 3) {
+                    sender.sendMessage(Lang.get("move-usage"));
+                    return true;
+                }
+                Player target = Bukkit.getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage(Lang.get("player-not-found", "player", args[2]));
+                    return true;
+                }
+                if (!bot.getWorld().equals(target.getWorld())) {
+                    sender.sendMessage(
+                            Lang.get(
+                                    "move-different-world",
+                                    "name",
+                                    fp.getDisplayName(),
+                                    "player",
+                                    target.getName()));
+                    return true;
+                }
+                cancelNavigation(bot.getUniqueId());
+                startNavigation(bot, target);
+                sender.sendMessage(
+                        Lang.get(
+                                "move-navigating",
+                                "name",
+                                fp.getDisplayName(),
+                                "player",
+                                target.getName()));
                 return true;
             }
 
@@ -467,8 +499,14 @@ public final class MoveCommand implements FppCommand {
         } else if (args.length == 2) {
             String in = args[1].toLowerCase();
 
-            for (String flag : List.of("--wp", "--stop")) if (flag.startsWith(in)) out.add(flag);
+            for (String flag : List.of("--to", "--wp", "--stop")) if (flag.startsWith(in)) out.add(flag);
 
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (manager.getByName(p.getName()) == null
+                        && p.getName().toLowerCase().startsWith(in)) out.add(p.getName());
+            }
+        } else if (args.length == 3 && args[1].equalsIgnoreCase("--to")) {
+            String in = args[2].toLowerCase();
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (manager.getByName(p.getName()) == null
                         && p.getName().toLowerCase().startsWith(in)) out.add(p.getName());

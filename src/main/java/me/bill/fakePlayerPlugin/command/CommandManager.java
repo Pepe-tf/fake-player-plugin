@@ -104,6 +104,8 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         }
 
         Config.debug(sender.getName() + " executed: fpp " + String.join(" ", args));
+        // Pass the root command label to HelpCommand so the GUI can display the correct prefix
+        if (sub instanceof HelpCommand hc) hc.setLastLabel(label);
         sub.execute(sender, Arrays.copyOfRange(args, 1, args.length));
         return true;
     }

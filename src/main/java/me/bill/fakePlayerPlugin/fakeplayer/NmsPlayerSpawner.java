@@ -519,7 +519,10 @@ public final class NmsPlayerSpawner {
 
         try {
             Object nmsBot = craftPlayerGetHandleMethod.invoke(bot);
-            Object nmsTarget = craftPlayerGetHandleMethod.invoke(target);
+
+            // Use CraftEntity.getHandle() for the target — NOT CraftPlayer.getHandle().
+            // The target can be any entity type (zombie, skeleton, etc.), not just a player.
+            Object nmsTarget = target.getClass().getMethod("getHandle").invoke(target);
 
             if (attackMethod != null && nmsTarget != null) {
 
@@ -682,6 +685,52 @@ public final class NmsPlayerSpawner {
                             + ": "
                             + e.getMessage());
         }
+    }
+
+    public static void setPing(Player bot, int pingMs) {
+        if (bot == null || !initialized) return;
+        try {
+            Object nmsPlayer = craftBukkitGetHandle(bot);
+            if (nmsPlayer == null) return;
+            Field latencyField = findFieldByType(nmsPlayer.getClass(), int.class, "latency");
+            if (latencyField != null) {
+                latencyField.setAccessible(true);
+                latencyField.set(nmsPlayer, Math.max(0, pingMs));
+            }
+        } catch (Exception e) {
+            me.bill.fakePlayerPlugin.config.Config.debugNms("setPing failed: " + e.getMessage());
+        }
+    }
+
+    private static Object craftBukkitGetHandle(Player player) {
+        try {
+            return player.getClass().getMethod("getHandle").invoke(player);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static Field findFieldByType(Class<?> clazz, Class<?> type, String preferredName) {
+        for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Field f : c.getDeclaredFields()) {
+                if (f.getType() == type && f.getName().equals(preferredName)) {
+                    return f;
+                }
+            }
+        }
+        for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Field f : c.getDeclaredFields()) {
+                if (f.getType() == type
+                        && (f.getName().contains("latency")
+                                || f.getName().contains("ping")
+                                || f.getName().contains("ping")
+                                || f.getName().contains("Latency")
+                                || f.getName().contains("Ping"))) {
+                    return f;
+                }
+            }
+        }
+        return null;
     }
 
     public static void startUsingMainHandItem(Player bot) {

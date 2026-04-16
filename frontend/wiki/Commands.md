@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP command reference - v1.6.4**  
+> **Complete FPP command reference - v1.6.5**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`
 
 ---
@@ -30,6 +30,8 @@
 | `/fpp rename <old> <new>` | `fpp.rename` / `fpp.rename.own` | Rename an active bot |
 | `/fpp personality ...` | `fpp.personality` | Assign AI personalities to bots |
 | `/fpp badword ...` | `fpp.badword` | Manage runtime badword list |
+| `/fpp ping [<bot>] [--ping <ms>\|--random] [--count <n>]` | `fpp.ping` | Set simulated tab-list ping |
+| `/fpp attack <bot> [--stop]` | `fpp.attack` | PvE attack — walk to sender, attack entities |
 | `/fpp chat ...` | `fpp.chat` | Control fake chat globally or per-bot |
 | `/fpp freeze ...` | `fpp.freeze` | Freeze or unfreeze bots |
 | `/fpp swap ...` | `fpp.swap` | Session rotation controls |
@@ -652,6 +654,46 @@ Permission: `fpp.reload`
 
 ---
 
+### 📡 `/fpp ping`
+
+```text
+/fpp ping [<bot>]
+/fpp ping [<bot>] --ping <ms>
+/fpp ping [<bot>] --random
+/fpp ping --random --count <n>
+```
+
+Set the simulated tab-list latency (ping bar) for one or all bots.
+
+- No flag → shows the bot's current ping
+- `--ping <ms>` → set a specific latency (0–9999 ms)
+- `--random` → assign a random realistic value
+- `--count <n>` → target N random bots at once
+
+**Permissions**
+- `fpp.ping` — view current ping
+- `fpp.ping.set` — set a specific value with `--ping`
+- `fpp.ping.random` — assign random distribution with `--random`
+- `fpp.ping.bulk` — target multiple bots with `--count`
+
+---
+
+### ⚔ `/fpp attack`
+
+```text
+/fpp attack <bot>
+/fpp attack <bot> --stop
+```
+
+Bot walks to the command sender's position, mirrors the sender's look direction, and continuously attacks nearby entities (PvE).
+
+- Respects 1.9+ attack cooldown and item-specific cooldowns dynamically
+- `--stop` cancels the attack loop
+
+Permission: `fpp.attack`
+
+---
+
 ## 🔐 Permission Quick Reference
 
 ```yaml
@@ -677,6 +719,8 @@ fpp.rename
 fpp.rename.own
 fpp.personality
 fpp.badword
+fpp.ping
+fpp.attack
 ```
 
 For the full permission list, see [Permissions](Permissions.md).

@@ -171,6 +171,9 @@ public class FakePlayerManager {
                             for (FakePlayer fp : activePlayers.values()) {
                                 for (Player p : online) {
                                     PacketHelper.sendTabListDisplayNameUpdate(p, fp);
+                                    if (fp.hasCustomPing()) {
+                                        PacketHelper.sendTabListLatencyUpdate(p, fp);
+                                    }
                                 }
                             }
                         },
@@ -1336,7 +1339,8 @@ public class FakePlayerManager {
             final FakePlayer target = fp;
             Runnable doVisualRemove =
                     () -> {
-                        despawningBotIds.put(target.getUuid(), target.getDisplayName());
+                        String despawnName = resolveDespawnDisplayName(target);
+                        despawningBotIds.put(target.getUuid(), despawnName);
                         try {
                             FakePlayerBody.removeAll(target);
                         } finally {
@@ -1453,7 +1457,8 @@ public class FakePlayerManager {
                         dropBotContents(target);
                     }
 
-                    despawningBotIds.put(target.getUuid(), target.getDisplayName());
+                    String despawnName = resolveDespawnDisplayName(target);
+                    despawningBotIds.put(target.getUuid(), despawnName);
                     try {
 
                         FakePlayerBody.removeAll(target);
@@ -1669,6 +1674,10 @@ public class FakePlayerManager {
 
                 PacketHelper.sendTabListAdd(player, fp);
             }
+
+            if (fp.hasCustomPing()) {
+                PacketHelper.sendTabListLatencyUpdate(player, fp);
+            }
         }
     }
 
@@ -1873,6 +1882,19 @@ public class FakePlayerManager {
         return actionLockedBots.containsKey(botUuid);
     }
 
+    /**
+     * Updates the yaw/pitch of the action-lock location for a bot that is already locked.
+     * This allows the per-tick rotation snap to use the new values instead of the original ones.
+     * Used by AttackCommand to mirror the sender's look direction each tick.
+     */
+    public void updateActionLockRotation(UUID botUuid, float yaw, float pitch) {
+        Location loc = actionLockedBots.get(botUuid);
+        if (loc != null) {
+            loc.setYaw(yaw);
+            loc.setPitch(pitch);
+        }
+    }
+
     public void lockForNavigation(UUID botUuid) {
         navLockedBots.add(botUuid);
     }
@@ -2050,6 +2072,32 @@ public class FakePlayerManager {
                         + "'. Check bot-name.user-format / bot-name.admin-format in config.yml.");
 
         return sanitized.isBlank() ? context : sanitized;
+    }
+
+    public void applyPing(FakePlayer fp, int pingMs) {
+        fp.setPing(pingMs);
+        me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.setPing(fp.getPlayer(), pingMs);
+        if (Config.tabListEnabled()) {
+            for (Player p : cachedOnlinePlayers) {
+                PacketHelper.sendTabListLatencyUpdate(p, fp);
+            }
+        }
+    }
+
+    private String resolveDespawnDisplayName(FakePlayer fp) {        if (plugin.isNameTagAvailable()) {
+            try {
+                String freshNick =
+                        me.bill.fakePlayerPlugin.util.NameTagHelper.getNick(fp.getUuid());
+                if (freshNick != null && !freshNick.isEmpty()) {
+                    return freshNick;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        if (fp.getNameTagNick() != null && !fp.getNameTagNick().isEmpty()) {
+            return fp.getNameTagNick();
+        }
+        return fp.getDisplayName();
     }
 
     private String pickRandomSkinName() {
@@ -2230,6 +2278,10 @@ public class FakePlayerManager {
                 fp.isNavBreakBlocks(),
                 fp.isNavPlaceBlocks(),
                 fp.isSwimAiEnabled(),
-                fp.getChunkLoadRadius());
+                fp.getChunkLoadRadius(),
+                fp.isPveEnabled(),
+                fp.getPveRange(),
+                fp.getPvePriority(),
+                fp.getPveMobType());
     }
 }

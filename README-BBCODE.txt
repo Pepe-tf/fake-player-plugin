@@ -1,8 +1,8 @@
 [CENTER][SIZE=7][B]ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)[/B][/SIZE]
 
-[SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, NameTag plugin integration, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
+[SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, tab-list ping simulation, PvE attack automation, NameTag plugin integration, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.6.4  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.6.5  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]  [URL='https://github.com/sponsors/Pepe-tf'][B][COLOR=#EA4AAA]💖 GitHub Sponsors[/COLOR][/B][/URL]  [URL='https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink'][B][COLOR=#FF424D]🎗 Patreon[/COLOR][/B][/URL]
@@ -37,6 +37,8 @@ FPP adds fake players to your server that look and behave like real ones:
 [*][B]Per-bot settings GUI[/B] — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvP · Cmds · Danger)
 [*][B]AI conversations[/B] — bots respond to [FONT=monospace]/msg[/FONT] with AI-generated replies; 7 providers (OpenAI, Groq, Anthropic, Gemini, Ollama, Copilot, Custom); per-bot personalities via [FONT=monospace]personalities/[/FONT] folder
 [*][B]Badword filter[/B] — case-insensitive with leet-speak normalization, auto-rename bad names, remote word list
+[*][B]Set bot ping[/B] — simulate realistic tab-list latency per bot with [FONT=monospace]/fpp ping[/FONT]; fixed, random, or bulk modes
+[*][B]PvE attack automation[/B] — bots walk to the sender and attack nearby entities with [FONT=monospace]/fpp attack[/FONT]
 [*][B]NameTag integration[/B] — nick-conflict guard, bot isolation from nick cache, skin sync, auto-rename via nick
 [*][B]LuckPerms[/B] — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 [*][B]Proxy/network support[/B] — Velocity & BungeeCord cross-server chat, alerts, and shared database
@@ -104,6 +106,8 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]/fpp cmd <bot> <command>[/FONT][/TD][TD]Execute a command on a bot; --add/--clear/--show manage its stored right-click command[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp rename <old> <new>[/FONT][/TD][TD]Rename a bot preserving all state (inventory, XP, LP group, tasks)[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp personality <bot> set|reset|show[/FONT][/TD][TD]Assign or clear AI personality per bot[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>][/FONT][/TD][TD]Set simulated tab-list ping for one or all bots[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp attack <bot> [--stop][/FONT][/TD][TD]Bot walks to sender and attacks nearby entities (PvE)[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp badword add|remove|list|reload[/FONT][/TD][TD]Manage the runtime badword filter list[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp chat [on|off|status][/FONT][/TD][TD]Toggle the fake chat system[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp swap [on|off|status|now <bot>|list|info <bot>][/FONT][/TD][TD]Toggle / manage the bot swap/rotation system[/TD][/TR]
@@ -164,6 +168,8 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]fpp.rename.own[/FONT][/TD][TD]Rename only bots the sender personally spawned[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.personality[/FONT][/TD][TD]Assign AI personalities to bots[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.badword[/FONT][/TD][TD]Manage the runtime badword filter list[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.ping[/FONT][/TD][TD]View/set simulated tab-list ping for bots[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.attack[/FONT][/TD][TD]PvE attack automation[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.migrate[/FONT][/TD][TD]Backup, migrate, and export database[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.alert[/FONT][/TD][TD]Broadcast network-wide admin alerts[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.sync[/FONT][/TD][TD]Push/pull config across proxy network[/TD][/TR]
@@ -174,9 +180,9 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TABLE="width: 100%"]
 [TR][TD][B]Permission[/B][/TD][TD][B]Description[/B][/TD][/TR]
 [TR][TD][FONT=monospace]fpp.use[/FONT][/TD][TD]All user-tier commands (granted by default)[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.user.spawn[/FONT][/TD][TD]Spawn your own bot (limited by fpp.spawn.limit.<num>)[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.user.tph[/FONT][/TD][TD]Teleport your bot to you[/TD][/TR]
-[TR][TD][FONT=monospace]fpp.user.xp[/FONT][/TD][TD]Transfer a bot's XP to yourself[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.spawn.user[/FONT][/TD][TD]Spawn your own bot (limited by fpp.spawn.limit.<num>)[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.tph[/FONT][/TD][TD]Teleport your bot to you[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.xp[/FONT][/TD][TD]Transfer a bot's XP to yourself[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.info.user[/FONT][/TD][TD]View your bot's location and uptime[/TD][/TR]
 [/TABLE]
 
@@ -208,7 +214,7 @@ Located at [FONT=monospace]plugins/FakePlayerPlugin/config.yml[/FONT]. Run [FONT
 [TR][TD][FONT=monospace]spawn-cooldown[/FONT][/TD][TD]Seconds between /fpp spawn uses per player (0 = off)[/TD][/TR]
 [TR][TD][FONT=monospace]bot-name[/FONT][/TD][TD]Admin/user display name format (admin-format, user-format)[/TD][/TR]
 [TR][TD][FONT=monospace]luckperms[/FONT][/TD][TD]default-group — LP group assigned to every new bot at spawn[/TD][/TR]
-[TR][TD][FONT=monospace]skin[/FONT][/TD][TD]Skin mode (auto/custom/off), guaranteed skin, fallback chain and pool[/TD][/TR]
+[TR][TD][FONT=monospace]skin[/FONT][/TD][TD]Skin mode (player/random/none — legacy: auto/custom/off), guaranteed skin, 1000-player fallback pool, DB cache[/TD][/TR]
 [TR][TD][FONT=monospace]body[/FONT][/TD][TD]Physical entity (enabled), pushable, damageable, pick-up-items, pick-up-xp, drop-items-on-despawn[/TD][/TR]
 [TR][TD][FONT=monospace]persistence[/FONT][/TD][TD]Whether bots rejoin on server restart; task state (mine/place/patrol) also persisted[/TD][/TR]
 [TR][TD][FONT=monospace]join-delay / leave-delay[/FONT][/TD][TD]Random delay range (ticks) for natural join/leave timing[/TD][/TR]
@@ -243,13 +249,16 @@ Three modes — set with [FONT=monospace]skin.mode[/FONT]:
 [TABLE="width: 100%"]
 [TR][TD][B]Mode[/B][/TD][TD][B]Behaviour[/B][/TD][/TR]
 [TR][TD][FONT=monospace]auto[/FONT] [I](default)[/I][/TD][TD]Fetches a real Mojang skin matching the bot's name[/TD][/TR]
-[TR][TD][FONT=monospace]custom[/FONT][/TD][TD]Full control — per-bot overrides, a skins/ PNG folder, and a random pool[/TD][/TR]
-[TR][TD][FONT=monospace]off[/FONT][/TD][TD]No skin — bots use the default Steve/Alex appearance[/TD][/TR]
+[TR][TD][FONT=monospace]player[/FONT] [I](default)[/I][/TD][TD]Fetches a real Mojang skin matching the bot's name[/TD][/TR]
+[TR][TD][FONT=monospace]random[/FONT][/TD][TD]Full control — per-bot overrides, a skins/ PNG folder, and a random pool[/TD][/TR]
+[TR][TD][FONT=monospace]none[/FONT][/TD][TD]No skin — bots use the default Steve/Alex appearance[/TD][/TR]
 [/TABLE]
 
-[B]Skin fallback[/B] ([FONT=monospace]skin.guaranteed-skin[/FONT], default [FONT=monospace]false[/FONT]) — when [FONT=monospace]false[/FONT], bots whose name has no matching Mojang account use the default Steve/Alex appearance. Set to [FONT=monospace]true[/FONT] to attempt a skin fetch even for generated names.
+[B]Skin fallback[/B] ([FONT=monospace]skin.guaranteed-skin[/FONT], default [FONT=monospace]true[/FONT]) — bots whose name has no matching Mojang account get a random skin from the built-in 1000-player fallback pool. Set to [FONT=monospace]false[/FONT] to use the default Steve/Alex appearance instead.
 
-In [FONT=monospace]custom[/FONT] mode the resolution pipeline is: per-bot override → [FONT=monospace]skins/<name>.png[/FONT] → random PNG from [FONT=monospace]skins/[/FONT] folder → random entry from [FONT=monospace]pool[/FONT] → Mojang API for the bot's own name.
+[B]Legacy aliases:[/B] [FONT=monospace]auto[/FONT] = [FONT=monospace]player[/FONT], [FONT=monospace]custom[/FONT] = [FONT=monospace]random[/FONT], [FONT=monospace]off[/FONT] = [FONT=monospace]none[/FONT] — all still accepted.
+
+In [FONT=monospace]random[/FONT] mode the resolution pipeline is: per-bot override → [FONT=monospace]skins/<name>.png[/FONT] → random PNG from [FONT=monospace]skins/[/FONT] folder → random entry from [FONT=monospace]pool[/FONT] → Mojang API for the bot's own name.
 
 [HR][/HR]
 
@@ -441,6 +450,38 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 [HR][/HR]
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
+
+[SIZE=5][B]v1.6.5[/B][/SIZE] [I](2026-04-17)[/I]
+
+[B]📡 Tab-List Ping Simulation (/fpp ping)[/B]
+[LIST]
+[*]New [FONT=monospace]/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>][/FONT] command — set the visible tab-list latency for one or all bots
+[*][FONT=monospace]--ping <ms>[/FONT] sets a specific latency (0–9999); [FONT=monospace]--random[/FONT] assigns random realistic values; no flag shows current ping
+[*][FONT=monospace]--count <n>[/FONT] targets N random bots for bulk operations
+[*]4 granular permissions: [FONT=monospace]fpp.ping[/FONT] (view), [FONT=monospace]fpp.ping.set[/FONT] (set), [FONT=monospace]fpp.ping.random[/FONT] (random), [FONT=monospace]fpp.ping.bulk[/FONT] (bulk [FONT=monospace]--count[/FONT])
+[/LIST]
+
+[B]⚔ PvE Attack Automation (/fpp attack)[/B]
+[LIST]
+[*]New [FONT=monospace]/fpp attack <bot> [--stop][/FONT] command — bot walks to the command sender and continuously attacks nearby entities
+[*]Respects 1.9+ attack cooldown and item-specific cooldown timers dynamically
+[*]Permission: [FONT=monospace]fpp.attack[/FONT]
+[/LIST]
+
+[B]🔐 Permission System Restructure[/B]
+[LIST]
+[*]New [FONT=monospace]fpp.admin[/FONT] node as preferred alias for [FONT=monospace]fpp.op[/FONT] — both grant full access identically
+[*]New [FONT=monospace]fpp.despawn[/FONT] node as preferred alias for [FONT=monospace]fpp.delete[/FONT]; new [FONT=monospace]fpp.despawn.bulk[/FONT] and [FONT=monospace]fpp.despawn.own[/FONT] sub-nodes
+[*]Granular sub-nodes for chat, move, mine, place, use, rank, inventory, and ping commands
+[*]New [FONT=monospace]fpp.command[/FONT] (controls /fpp visibility), [FONT=monospace]fpp.plugininfo[/FONT], [FONT=monospace]fpp.spawn.multiple[/FONT], [FONT=monospace]fpp.notify[/FONT]
+[*]All nodes declared in both [FONT=monospace]Perm.java[/FONT] and [FONT=monospace]plugin.yml[/FONT] for LuckPerms tab-completion
+[/LIST]
+
+[B]🎨 Skin Mode Rename[/B]
+[LIST]
+[*][FONT=monospace]skin.mode[/FONT] values renamed: [FONT=monospace]auto[/FONT] → [FONT=monospace]player[/FONT], [FONT=monospace]custom[/FONT] → [FONT=monospace]random[/FONT], [FONT=monospace]off[/FONT] → [FONT=monospace]none[/FONT]
+[*]Legacy values still accepted as aliases — no migration needed
+[/LIST]
 
 [SIZE=5][B]v1.6.4[/B][/SIZE] [I](2026-04-16)[/I]
 
@@ -1016,6 +1057,6 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.4[/I]
+[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.5[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fakeplayerplugin.xyz']Wiki[/URL][/CENTER]

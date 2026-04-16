@@ -119,6 +119,7 @@ public final class UpdateChecker {
 
             if (plugin instanceof me.bill.fakePlayerPlugin.FakePlayerPlugin fpp) {
                 fpp.setUpdateNotification(msg);
+                fpp.setLatestKnownVersion(latestClean);
             }
 
         } else if (isBeta) {
@@ -142,6 +143,8 @@ public final class UpdateChecker {
 
             if (plugin instanceof me.bill.fakePlayerPlugin.FakePlayerPlugin fpp) {
                 fpp.setUpdateNotification(msg);
+                fpp.setLatestKnownVersion(latestClean);
+                fpp.setRunningBeta(true);
             }
 
         } else {
@@ -154,6 +157,7 @@ public final class UpdateChecker {
 
             if (plugin instanceof me.bill.fakePlayerPlugin.FakePlayerPlugin fpp) {
                 fpp.setUpdateNotification(null);
+                fpp.setRunningBeta(false);
             }
         }
     }

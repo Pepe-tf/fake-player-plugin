@@ -27,6 +27,7 @@ public final class PathfindingService {
         MINE,
         PLACE,
         USE,
+        ATTACK,
         SYSTEM
     }
 

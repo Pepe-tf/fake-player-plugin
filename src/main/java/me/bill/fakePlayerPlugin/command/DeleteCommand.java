@@ -4,6 +4,8 @@ import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
+import me.bill.fakePlayerPlugin.util.FlagParser;
+import me.bill.fakePlayerPlugin.util.TextUtil;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -34,7 +36,7 @@ public class DeleteCommand implements FppCommand {
 
     @Override
     public String getUsage() {
-        return "<name|all|--random [num]|--num <num>>";
+        return "<name> | all | --count <n> | --random [--count <n>]";
     }
 
     @Override
@@ -54,7 +56,6 @@ public class DeleteCommand implements FppCommand {
                 sender.sendMessage(Lang.get("no-permission"));
                 return true;
             }
-
             if (manager.isRestorationInProgress()) {
                 sender.sendMessage(Lang.get("delete-restore-in-progress"));
                 return true;
@@ -69,7 +70,9 @@ public class DeleteCommand implements FppCommand {
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("--random")) {
+        boolean firstIsFlag = args[0].startsWith("--");
+
+        if (firstIsFlag) {
             if (Perm.missing(sender, Perm.DELETE)) {
                 sender.sendMessage(Lang.get("no-permission"));
                 return true;
@@ -78,62 +81,44 @@ public class DeleteCommand implements FppCommand {
                 sender.sendMessage(Lang.get("delete-restore-in-progress"));
                 return true;
             }
-            int count = 1;
-            if (args.length >= 2) {
-                try {
-                    count = Integer.parseInt(args[1]);
-                    if (count < 1) throw new NumberFormatException();
-                } catch (NumberFormatException e) {
-                    sender.sendMessage(Lang.get("invalid-number"));
-                    return true;
-                }
+
+            FlagParser p =
+                    new FlagParser(args)
+                            .deprecate("--num", "--count")
+                            .parse();
+
+            for (String w : p.warnings())
+                sender.sendMessage(TextUtil.colorize(w));
+            if (p.hasErrors()) {
+                sender.sendMessage(TextUtil.colorize(p.errorMessage()));
+                return true;
             }
+
+            boolean random = p.hasFlag("--random");
+            int count = p.intFlag("--count", 1);
+            if (p.hasErrors()) {
+                sender.sendMessage(TextUtil.colorize(p.errorMessage()));
+                return true;
+            }
+
             List<FakePlayer> active = new ArrayList<>(manager.getActivePlayers());
             if (active.isEmpty()) {
                 sender.sendMessage(Lang.get("delete-none"));
                 return true;
             }
-            Collections.shuffle(active);
+
+            if (random) {
+                Collections.shuffle(active);
+            }
             int toDelete = Math.min(count, active.size());
             for (int i = 0; i < toDelete; i++) {
                 manager.delete(active.get(i).getName());
             }
             sender.sendMessage(
-                    Lang.get("delete-random-success", "count", String.valueOf(toDelete)));
-            return true;
-        }
-
-        if (args[0].equalsIgnoreCase("--num")) {
-            if (Perm.missing(sender, Perm.DELETE)) {
-                sender.sendMessage(Lang.get("no-permission"));
-                return true;
-            }
-            if (manager.isRestorationInProgress()) {
-                sender.sendMessage(Lang.get("delete-restore-in-progress"));
-                return true;
-            }
-            if (args.length < 2) {
-                sender.sendMessage(Lang.get("despawn-num-usage"));
-                return true;
-            }
-            int count;
-            try {
-                count = Integer.parseInt(args[1]);
-                if (count < 1) throw new NumberFormatException();
-            } catch (NumberFormatException e) {
-                sender.sendMessage(Lang.get("invalid-number"));
-                return true;
-            }
-            List<FakePlayer> active = new ArrayList<>(manager.getActivePlayers());
-            if (active.isEmpty()) {
-                sender.sendMessage(Lang.get("delete-none"));
-                return true;
-            }
-            int toDelete = Math.min(count, active.size());
-            for (int i = 0; i < toDelete; i++) {
-                manager.delete(active.get(i).getName());
-            }
-            sender.sendMessage(Lang.get("delete-num-success", "count", String.valueOf(toDelete)));
+                    Lang.get(
+                            random ? "delete-random-success" : "delete-num-success",
+                            "count",
+                            String.valueOf(toDelete)));
             return true;
         }
 
@@ -176,11 +161,10 @@ public class DeleteCommand implements FppCommand {
             String typed = args[0].toLowerCase();
             if (Perm.has(sender, Perm.DELETE_ALL) && "all".startsWith(typed))
                 suggestions.add("all");
-            if (Perm.has(sender, Perm.DELETE) && "--random".startsWith(typed))
-                suggestions.add("--random");
-            if (Perm.has(sender, Perm.DELETE) && "--num".startsWith(typed))
-                suggestions.add("--num");
-
+            if (Perm.has(sender, Perm.DELETE)) {
+                if ("--random".startsWith(typed)) suggestions.add("--random");
+                if ("--count".startsWith(typed)) suggestions.add("--count");
+            }
             manager.getActivePlayers().stream()
                     .map(FakePlayer::getName)
                     .filter(n -> n.toLowerCase().startsWith(typed))
@@ -188,9 +172,28 @@ public class DeleteCommand implements FppCommand {
             return suggestions;
         }
 
-        if (args.length == 2
-                && (args[0].equalsIgnoreCase("--random") || args[0].equalsIgnoreCase("--num"))) {
-            String typed = args[1];
+        if (args.length == 2) {
+            String prev = args[0].toLowerCase();
+            String typed = args[1].toLowerCase();
+            if (prev.equals("--count") || prev.equals("--random")) {
+                if (prev.equals("--random") && "--count".startsWith(typed))
+                    return List.of("--count");
+                if (prev.equals("--count")) {
+                    List<String> counts = new java.util.ArrayList<>();
+                    int max = Math.min(manager.getCount(), 10);
+                    for (int i = 1; i <= max; i++) {
+                        String s = String.valueOf(i);
+                        if (s.startsWith(typed)) counts.add(s);
+                    }
+                    return counts;
+                }
+            }
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("--random")
+                && args[1].equalsIgnoreCase("--count")) {
+            String typed = args[2];
             List<String> counts = new java.util.ArrayList<>();
             int max = Math.min(manager.getCount(), 10);
             for (int i = 1; i <= max; i++) {
@@ -199,6 +202,7 @@ public class DeleteCommand implements FppCommand {
             }
             return counts;
         }
+
         return Collections.emptyList();
     }
 

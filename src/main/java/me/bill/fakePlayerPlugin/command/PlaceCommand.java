@@ -108,7 +108,7 @@ public final class PlaceCommand implements FppCommand {
 
     @Override
     public String getUsage() {
-        return "<bot> [once|stop]  |  stop";
+        return "<bot> [--once|--stop]  |  --stop";
     }
 
     @Override
@@ -133,7 +133,8 @@ public final class PlaceCommand implements FppCommand {
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("stop") && args.length == 1) {
+        if ((args[0].equalsIgnoreCase("stop") || args[0].equalsIgnoreCase("--stop"))
+                && args.length == 1) {
             stopAll();
             sender.sendMessage(Lang.get("place-stopped-all"));
             return true;
@@ -165,7 +166,7 @@ public final class PlaceCommand implements FppCommand {
             }
 
             switch (action) {
-                case "stop" -> {
+                case "stop", "--stop" -> {
                     cleanupBot(fp.getUuid());
                     sender.sendMessage(Lang.get("place-stopped", "name", fp.getDisplayName()));
                     return true;
@@ -284,7 +285,10 @@ public final class PlaceCommand implements FppCommand {
             }
         }
 
-        boolean once = args.length >= 2 && args[1].equalsIgnoreCase("once");
+        boolean once =
+                args.length >= 2
+                        && (args[1].equalsIgnoreCase("once")
+                                || args[1].equalsIgnoreCase("--once"));
         if (args.length == 1 || once) {
             cleanupBot(fp.getUuid());
 
@@ -340,21 +344,24 @@ public final class PlaceCommand implements FppCommand {
         if (args.length == 1) {
             String prefix = args[0].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
+            if ("--stop".startsWith(prefix)) out.add("--stop");
             if ("stop".startsWith(prefix)) out.add("stop");
             for (FakePlayer fp : manager.getActivePlayers())
                 if (fp.getName().toLowerCase(Locale.ROOT).startsWith(prefix)) out.add(fp.getName());
             return out;
         }
 
-        if (args.length == 2 && !args[0].equalsIgnoreCase("stop")) {
+        if (args.length == 2
+                && !args[0].equalsIgnoreCase("stop")
+                && !args[0].equalsIgnoreCase("--stop")) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
             List<String> opts =
                     AREA_MODE_ENABLED
                             ? List.of(
-                                    "--pos1", "--pos2", "--block", "--clear", "start", "status",
-                                    "stop")
-                            : List.of("once", "stop");
+                                    "--pos1", "--pos2", "--block", "--clear", "--start", "--status",
+                                    "--stop", "--once", "stop", "once")
+                            : List.of("--once", "--stop", "once", "stop");
             for (String opt : opts) if (opt.startsWith(prefix)) out.add(opt);
             return out;
         }

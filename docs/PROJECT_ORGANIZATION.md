@@ -15,9 +15,6 @@ fake player plugin/
 │   └── vercel.json          # Vercel deployment config
 ├── docs/                    # 🆕 Internal documentation & release notes
 ├── libs/                    # 🆕 External libraries & build tools
-│   ├── proguard/            # 🆕 ProGuard obfuscation
-│   │   ├── proguard.jar     # ProGuard 7.6.1 executable
-│   │   └── fpp.conf         # ProGuard configuration
 │   ├── api-5.5.jar          # LuckPerms API
 │   ├── authlib-4.0.43.jar   # Mojang AuthLib
 │   ├── paper-1.21.11-mojang-mapped.jar  # Paper API
@@ -35,10 +32,6 @@ fake player plugin/
 
 ## Key Changes Made
 
-### ✅ ProGuard Organization
-- **Moved** `proguard/` → `libs/proguard/`
-- **Updated** `pom.xml` paths: `${basedir}/libs/proguard/proguard.jar`
-- **Updated** ProGuard config relative paths: `../api-5.5.jar` etc.
 
 ### ✅ Frontend Isolation  
 - **Moved** Node.js artifacts to `build/` directory:
@@ -53,18 +46,17 @@ fake player plugin/
 - **Root** now contains only essential project files
 
 ### ✅ Clean Root Directory
-**Before:** 20+ files including temp configs, build logs, stale ProGuard files  
+**Before:** 20+ files including temp configs, build logs  
 **After:** 12 essential items (directories + core files)
 
-## Build Commands (Unchanged)
+## Build Commands
 
 ```bash
-# Main build - produces obfuscated JAR
+# Main build - produces production JAR
 mvn -DskipTests clean package
 
 # Output files:
-# target/fpp-1.4.22.jar           (debug/unobfuscated)  
-# target/fpp-1.4.22-obfuscated.jar (DEPLOY THIS ONE)
+# target/fpp-1.6.5.jar (DEPLOY THIS ONE)
 ```
 
 ## Benefits
@@ -72,13 +64,13 @@ mvn -DskipTests clean package
 1. **Cleaner Root** - Only essential files visible
 2. **Logical Grouping** - Related files together (libs/, docs/, build/)
 3. **Easier Navigation** - Clear separation of concerns
-4. **Build Integration** - ProGuard seamlessly integrated in Maven lifecycle
+4. **Simplified Build** - Streamlined Maven build process
 5. **Maintainability** - Easy to find and update configurations
 
 ## Verification Status ✅
 
-- [x] Maven build works with new ProGuard paths
-- [x] Obfuscation still produces `target/fpp-1.4.22-obfuscated.jar`
+- [x] Maven build works correctly
+- [x] Build produces `target/fpp-1.6.5.jar`
 - [x] All library references resolve correctly
 - [x] No broken file references in pom.xml
 

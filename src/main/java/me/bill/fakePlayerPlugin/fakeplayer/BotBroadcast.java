@@ -37,11 +37,28 @@ public final class BotBroadcast {
         return MiniMessage.miniMessage().deserialize(converted, nameResolver);
     }
 
-    public static Component joinComponent(FakePlayer fp) {
+    private static String resolveDisplayName(FakePlayer fp) {
+        me.bill.fakePlayerPlugin.FakePlayerPlugin plugin =
+                me.bill.fakePlayerPlugin.FakePlayerPlugin.getInstance();
+        if (plugin != null && plugin.isNameTagAvailable()) {
+            try {
+                String freshNick =
+                        me.bill.fakePlayerPlugin.util.NameTagHelper.getNick(fp.getUuid());
+                if (freshNick != null && !freshNick.isEmpty()) {
+                    fp.setNameTagNick(freshNick);
+                    return freshNick;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        if (fp.getNameTagNick() != null && !fp.getNameTagNick().isEmpty()) {
+            return fp.getNameTagNick();
+        }
+        return fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
+    }
 
-        String displayName =
-                fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
-        return buildMessage("bot-join", displayName);
+    public static Component joinComponent(FakePlayer fp) {
+        return buildMessage("bot-join", resolveDisplayName(fp));
     }
 
     public static Component leaveComponent(String displayName) {
@@ -50,10 +67,7 @@ public final class BotBroadcast {
 
     public static void broadcastJoin(FakePlayer fp) {
         if (!Config.joinMessage()) return;
-
-        String displayName =
-                fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
-        send(buildMessage("bot-join", displayName));
+        send(buildMessage("bot-join", resolveDisplayName(fp)));
     }
 
     public static void broadcastJoinByDisplayName(String displayName) {
@@ -63,10 +77,7 @@ public final class BotBroadcast {
 
     public static void broadcastLeave(FakePlayer fp) {
         if (!Config.leaveMessage()) return;
-
-        String displayName =
-                fp.getRawDisplayName() != null ? fp.getRawDisplayName() : fp.getDisplayName();
-        send(buildMessage("bot-leave", displayName));
+        send(buildMessage("bot-leave", resolveDisplayName(fp)));
     }
 
     public static void broadcastLeaveByDisplayName(String displayName) {

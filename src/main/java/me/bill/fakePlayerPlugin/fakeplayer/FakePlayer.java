@@ -94,7 +94,15 @@ public final class FakePlayer {
 
     private int chunkLoadRadius = -1;
 
+    // ── Per-bot PvE (attack --mob) settings ──────────────────────────────────
+    private boolean pveEnabled = false;
+    private double pveRange = Config.attackMobDefaultRange();
+    private String pvePriority = Config.attackMobDefaultPriority(); // "nearest" | "lowest-health"
+    private String pveMobType = null; // null = all hostile, otherwise EntityType name
+
     private volatile String nameTagNick = null;
+
+    private int ping = -1;
 
     public FakePlayer(UUID uuid, String name, PlayerProfile profile) {
         this.uuid = uuid;
@@ -412,6 +420,18 @@ public final class FakePlayer {
         this.cachedNmsDisplaySource = null;
     }
 
+    public int getPing() {
+        return ping;
+    }
+
+    public void setPing(int ping) {
+        this.ping = (ping < 0) ? -1 : Math.min(ping, 9999);
+    }
+
+    public boolean hasCustomPing() {
+        return ping >= 0;
+    }
+
     public SkinProfile getResolvedSkin() {
         return resolvedSkin;
     }
@@ -469,4 +489,18 @@ public final class FakePlayer {
     public void setPacketProfileName(String n) {
         this.packetProfileName = (n == null || n.isBlank()) ? this.name : n;
     }
+
+    // ── PvE (attack --mob) per-bot overrides ─────────────────────────────────
+
+    public boolean isPveEnabled() { return pveEnabled; }
+    public void setPveEnabled(boolean v) { this.pveEnabled = v; }
+
+    public double getPveRange() { return pveRange; }
+    public void setPveRange(double v) { this.pveRange = v; }
+
+    public String getPvePriority() { return pvePriority; }
+    public void setPvePriority(String v) { this.pvePriority = v; }
+
+    public String getPveMobType() { return pveMobType; }
+    public void setPveMobType(String v) { this.pveMobType = v; }
 }

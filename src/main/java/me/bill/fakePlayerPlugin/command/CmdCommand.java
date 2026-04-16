@@ -44,7 +44,7 @@ public final class CmdCommand implements FppCommand {
 
     @Override
     public boolean canUse(CommandSender sender) {
-        return Perm.has(sender, Perm.CMD);
+        return Perm.hasAny(sender, Perm.CMD, Perm.CMD_LEGACY);
     }
 
     @Override

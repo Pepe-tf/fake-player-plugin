@@ -1,6 +1,6 @@
 # 🔧 Migration & Backups
 
-> **Current plugin line:** 1.6.4  
+> **Current plugin line:** 1.6.5  
 > **Bundled config stamp:** 60  
 > **Current migration target:** 60
 

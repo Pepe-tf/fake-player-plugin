@@ -593,6 +593,15 @@ update-checker:
 # ── NameTag Integration ───────────────────────────────────────────────────────
 # Soft-dependency on the NameTag plugin (lode.gg). These settings only apply
 # when NameTag is installed alongside FakePlayerPlugin.
+# ── Attack Mob Targeting ──────────────────────────────────────────────────────
+# Defaults for /fpp attack --mob (PvE auto-targeting mode).
+attack-mob:
+  default-range: 8.0          # Detection radius in blocks (overridden with --range)
+  default-priority: nearest   # nearest | lowest-health
+  smooth-rotation-speed: 12.0 # Degrees per tick for head rotation toward target
+  retarget-interval: 10       # Ticks between scanning for a new target (when idle)
+  line-of-sight: true         # Require unobstructed line of sight to target
+
 nametag-integration:
   # Prevent spawning a bot whose --name matches a real player's current NameTag
   # nick. Blocks the spawn and sends 'spawn-name-taken-nick' to the sender.

@@ -6,7 +6,7 @@
 
     <groupId>me.bill</groupId>
     <artifactId>fpp</artifactId>
-    <version>1.6.4</version>
+    <version>1.6.5</version>
     <packaging>jar</packaging>
 
     <name>fpp</name>
@@ -16,23 +16,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Server plugins folder — override with -Ddeploy.dir=... or edit here -->
         <deploy.dir>${user.home}/Desktop/dmc/plugins</deploy.dir>
-        <!-- Default to skipping ProGuard so package still succeeds in workspaces that
-             only contain the ProGuard config files. A profile below automatically
-             re-enables obfuscation when the local ProGuard jar bundle is present. -->
-        <skip.proguard>true</skip.proguard>
         <!-- Local build output folder inside the project root -->
         <build.output.dir>${basedir}/build</build.output.dir>
-        <!-- Java executable used to run ProGuard.
-             The bundled proguard.jar has a runtime incompatibility with JDK 25 —
-             it crashes with NoClassDefFoundError: org/json/JSONException when run
-             under JDK 25. Use JDK 17 or 21 to run ProGuard.
-             Override on the command line: -Dproguard.java="C:\path\to\java.exe" -->
-        <proguard.java>C:/Program Files/Java/jdk-17/bin/java.exe</proguard.java>
-        <!-- JDK home for the ProGuard execution JDK (must match proguard.java above).
-             ProGuard preverification needs java.base.jmod to resolve java.lang.Object
-             for LUB (least-upper-bound) computation in StackMapTable generation.
-             Override with -Dproguard.jdk.home=... if your JDK 17 is elsewhere. -->
-        <proguard.jdk.home>C:/Program Files/Java/jdk-17</proguard.jdk.home>
     </properties>
 
     <build>
@@ -98,114 +83,35 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>proguard-obfuscation</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${skip.proguard}</skip>
-                            <!-- Use JDK 17 to run ProGuard: the bundled proguard.jar supports
-                                 class files up to version 65 (Java 21). JDK 25 jmods are version 69
-                                 and would cause a parse error. JDK 17 jmods are version 61 — safe.
-                                 Override with -Dproguard.java=<path> if JDK 17 is elsewhere. -->
-                            <executable>${proguard.java}</executable>
-                            <arguments>
-                                <!-- Use -cp instead of -jar so we can include org.json.jar
-                                     (required by ProGuard's internal jsonprinter utility). -->
-                                <argument>-cp</argument>
-                                <argument>${basedir}/libs/proguard/proguard.jar${path.separator}${basedir}/libs/proguard/org.json.jar</argument>
-                                <argument>proguard.ProGuard</argument>
-                                <argument>@${basedir}/libs/proguard/fpp.conf</argument>
-                                <!-- Inject java.base.jmod as a library jar so ProGuard can resolve
-                                     java.lang.Object during preverification (LUB computation for
-                                     StackMapTable generation). Without this, ProGuard throws
-                                     IncompleteClassHierarchyException even for non-MySQL classes
-                                     because Object itself is unknown. -->
-                                <argument>-libraryjars</argument>
-                                <argument>${proguard.jdk.home}/jmods/java.base.jmod(!**.jar;!module-info.class)</argument>
-                                <!-- MySQL and SQLite are filtered OUT of -injars so ProGuard's
-                                     preverification never processes their internal methods (they
-                                     reference classes outside our library set and would crash with
-                                     IncompleteClassHierarchyException). They are merged back into
-                                     the obfuscated JAR by the antrun step below. -->
-                                <argument>-injars</argument>
-                                <argument>${project.build.directory}/${project.build.finalName}.jar(!com/mysql/**,!org/sqlite/**)</argument>
-                                <argument>-outjars</argument>
-                                <argument>${project.build.directory}/${project.build.finalName}-obfuscated.jar</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Auto-deploy: copy obfuscated JAR to server plugins folder after ProGuard -->
+            <!-- Auto-deploy: copy JAR to server plugins folder after build -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <version>3.1.0</version>
                 <executions>
                     <execution>
-                        <id>deploy-obfuscated-jar</id>
+                        <id>deploy-jar</id>
                         <phase>package</phase>
                         <goals>
                             <goal>run</goal>
                         </goals>
                         <configuration>
                             <target>
-                                <!-- If ProGuard was skipped/unavailable, seed the expected
-                                     obfuscated output path with the shaded jar so the rest of
-                                     the deploy pipeline still copies a complete plugin jar. -->
-                                <copy
-                                    file="${project.build.directory}/${project.build.finalName}.jar"
-                                    tofile="${project.build.directory}/${project.build.finalName}-obfuscated.jar"
-                                    overwrite="false"
-                                    failonerror="false" />
-
-                                <!-- Merge MySQL + SQLite classes back into the obfuscated JAR.
-                                     They were excluded from -injars so ProGuard's preverification
-                                     never tries to analyse their internal method bodies (which
-                                     reference JDK types outside our library set). Their original
-                                     class files (already containing correct StackMapTable from their
-                                     own compilation) are merged verbatim from the pre-ProGuard JAR. -->
-                                <zip destfile="${project.build.directory}/${project.build.finalName}-obfuscated.jar"
-                                     update="true">
-                                    <zipfileset src="${project.build.directory}/${project.build.finalName}.jar"
-                                                includes="com/mysql/**,org/sqlite/**"/>
-                                </zip>
-
                                 <!-- Copy to project-local build/ folder -->
                                 <mkdir dir="${build.output.dir}" />
                                 <copy
-                                    file="${project.build.directory}/${project.build.finalName}-obfuscated.jar"
-                                    tofile="${build.output.dir}/fpp.jar"
-                                    overwrite="true"
-                                    failonerror="false" />
-                                <copy
                                     file="${project.build.directory}/${project.build.finalName}.jar"
                                     tofile="${build.output.dir}/fpp.jar"
-                                    overwrite="false"
+                                    overwrite="true"
                                     failonerror="false" />
                                 <echo level="info" message="[FPP] Build output: ${build.output.dir}/fpp.jar" />
 
-                                <!-- Also deploy to server plugins folder -->
+                                <!-- Deploy to server plugins folder -->
                                 <mkdir dir="${deploy.dir}" />
-                                <!-- Primary: deploy obfuscated jar (produced by ProGuard) -->
-                                <copy
-                                    file="${project.build.directory}/${project.build.finalName}-obfuscated.jar"
-                                    tofile="${deploy.dir}/fpp.jar"
-                                    overwrite="true"
-                                    failonerror="false" />
-                                <!-- Fallback: deploy non-obfuscated jar when ProGuard is skipped/missing -->
                                 <copy
                                     file="${project.build.directory}/${project.build.finalName}.jar"
                                     tofile="${deploy.dir}/fpp.jar"
-                                    overwrite="false"
+                                    overwrite="true"
                                     failonerror="false" />
                                 <echo level="info" message="[FPP] Deployed JAR to: ${deploy.dir}/fpp.jar" />
                             </target>
@@ -235,19 +141,6 @@
         </resources>
     </build>
 
-    <profiles>
-        <profile>
-            <id>local-proguard-bundle</id>
-            <activation>
-                <file>
-                    <exists>${basedir}/libs/proguard/proguard.jar</exists>
-                </file>
-            </activation>
-            <properties>
-                <skip.proguard>false</skip.proguard>
-            </properties>
-        </profile>
-    </profiles>
 
     <repositories>
         <repository>
@@ -270,17 +163,8 @@
             <id>faststats-releases</id>
             <url>https://repo.faststats.dev/releases</url>
         </repository>
-        <!-- guardsquare removed from <repositories>: ProGuard is run via a local JAR
-             (exec-maven-plugin), not as a Maven dependency. It was causing spurious
-             "No such host" warnings for every SNAPSHOT artifact resolution. -->
     </repositories>
 
-    <pluginRepositories>
-        <pluginRepository>
-            <id>guardsquare</id>
-            <url>https://repository.guardsquare.com/content/repositories/releases</url>
-        </pluginRepository>
-    </pluginRepositories>
 
     <dependencies>
         <!-- Paper public API — the only compile-time dependency needed -->

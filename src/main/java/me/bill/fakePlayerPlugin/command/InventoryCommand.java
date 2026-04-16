@@ -104,12 +104,12 @@ public class InventoryCommand implements FppCommand, Listener {
 
     @Override
     public String getPermission() {
-        return Perm.INVENTORY;
+        return Perm.INVENTORY_CMD;
     }
 
     @Override
     public boolean canUse(CommandSender sender) {
-        return Perm.has(sender, Perm.INVENTORY);
+        return Perm.has(sender, Perm.INVENTORY_CMD);
     }
 
     @Override
@@ -578,7 +578,7 @@ public class InventoryCommand implements FppCommand, Listener {
             return;
         }
 
-        if (!Perm.has(player, Perm.INVENTORY)) return;
+        if (!Perm.has(player, Perm.INVENTORY_RIGHTCLICK)) return;
         event.setCancelled(true);
         openGui(player, fp);
         player.sendMessage(Lang.get("inv-opened", "name", fp.getDisplayName()));

@@ -58,6 +58,8 @@ public final class PacketHelper {
 
     private static volatile Object cachedUpdateDisplayNameActions = null;
 
+    private static volatile Object cachedUpdateLatencyActions = null;
+
     private static volatile Constructor<?> cachedEntryCtorWinner = null;
 
     private static volatile Class<?>[] cachedEntryCtorParamTypes = null;
@@ -272,7 +274,8 @@ public final class PacketHelper {
                 fp.setCachedNmsDisplay(displayName, dispStr);
             }
 
-            Object entry = buildEntry(fp.getUuid(), profile, displayName);
+            int latency = fp.hasCustomPing() ? fp.getPing() : 0;
+            Object entry = buildEntryWithLatency(fp.getUuid(), profile, displayName, latency);
             Object actions = buildActionSet();
 
             sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, buildSecondArg(entry)));
@@ -591,6 +594,48 @@ public final class PacketHelper {
                             cachedUpdateDisplayNameActions, buildSecondArg(entry)));
         } catch (Exception e) {
 
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void sendTabListLatencyUpdate(Player receiver, FakePlayer fp) {
+        if (!ensureReady()) return;
+        try {
+            Object nms = getHandle(receiver);
+
+            Object profile = fp.getCachedTabListGameProfile();
+            if (profile == null) {
+                profile =
+                        gameProfileCtor != null
+                                ? gameProfileCtor.newInstance(fp.getUuid(), fp.getName())
+                                : gameProfileClass.getDeclaredConstructors()[0].newInstance(
+                                        fp.getUuid(), fp.getName());
+                fp.setCachedTabListGameProfile(profile);
+            }
+
+            Object displayName = fp.getCachedNmsDisplayComponent();
+            if (displayName == null) {
+                Component adv = MiniMessage.miniMessage().deserialize(fp.getDisplayName());
+                displayName = adventureToNms(adv);
+                fp.setCachedNmsDisplay(displayName, fp.getDisplayName());
+            }
+
+            int latency = fp.hasCustomPing() ? fp.getPing() : 0;
+            Object entry = buildEntryWithLatency(fp.getUuid(), profile, displayName, latency);
+
+            if (cachedUpdateLatencyActions == null) {
+                Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
+                cachedUpdateLatencyActions = EnumSet.of(Enum.valueOf(e, "UPDATE_LATENCY"));
+            }
+
+            sendPacket(
+                    nms,
+                    playerInfoUpdateCtor.newInstance(
+                            cachedUpdateLatencyActions, buildSecondArg(entry)));
+            Config.debugPackets(
+                    "Tab LATENCY → " + receiver.getName() + " for " + fp.getName() + " ping=" + latency);
+        } catch (Exception e) {
+            Config.debugPackets("sendTabListLatencyUpdate failed: " + e.getMessage());
         }
     }
 
@@ -1015,9 +1060,14 @@ public final class PacketHelper {
 
     private static Object buildEntry(UUID uuid, Object profile, Object displayName)
             throws Exception {
+        return buildEntryWithLatency(uuid, profile, displayName, 0);
+    }
+
+    private static Object buildEntryWithLatency(
+            UUID uuid, Object profile, Object displayName, int latency) throws Exception {
         if (cachedEntryCtorWinner != null) {
             return cachedEntryCtorWinner.newInstance(
-                    mapEntryArgs(cachedEntryCtorParamTypes, uuid, profile, displayName));
+                    mapEntryArgs(cachedEntryCtorParamTypes, uuid, profile, displayName, latency));
         }
         Constructor<?>[] ctors = playerInfoUpdateEntryClass.getDeclaredConstructors();
         Arrays.sort(ctors, (a, b) -> b.getParameterCount() - a.getParameterCount());
@@ -1027,8 +1077,12 @@ public final class PacketHelper {
             try {
                 Object result =
                         ctor.newInstance(
-                                mapEntryArgs(ctor.getParameterTypes(), uuid, profile, displayName));
-
+                                mapEntryArgs(
+                                        ctor.getParameterTypes(),
+                                        uuid,
+                                        profile,
+                                        displayName,
+                                        latency));
                 cachedEntryCtorParamTypes = ctor.getParameterTypes();
                 cachedEntryCtorWinner = ctor;
                 return result;
@@ -1065,6 +1119,11 @@ public final class PacketHelper {
 
     private static Object[] mapEntryArgs(
             Class<?>[] types, UUID uuid, Object profile, Object displayName) {
+        return mapEntryArgs(types, uuid, profile, displayName, 0);
+    }
+
+    private static Object[] mapEntryArgs(
+            Class<?>[] types, UUID uuid, Object profile, Object displayName, int latency) {
         Object[] args = new Object[types.length];
         for (int i = 0; i < types.length; i++) {
             args[i] =
@@ -1073,7 +1132,7 @@ public final class PacketHelper {
                         case "GameProfile" -> profile;
 
                         case "boolean" -> true;
-                        case "int" -> 0;
+                        case "int" -> latency;
                         case "GameType" -> gameTypeSurvival;
                         case "Component" -> displayName;
                         default -> null;

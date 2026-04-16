@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DatabaseManager {
 
-    private static final int SCHEMA_VERSION = 15;
+    private static final int SCHEMA_VERSION = 16;
 
     public static int getCurrentSchemaVersion() {
         return SCHEMA_VERSION;
@@ -100,7 +100,11 @@ public class DatabaseManager {
                     + "  nav_break_blocks BOOLEAN DEFAULT 0,"
                     + "  nav_place_blocks BOOLEAN DEFAULT 0,"
                     + "  swim_ai_enabled  BOOLEAN DEFAULT 1,"
-                    + "  chunk_load_radius INT     DEFAULT -1"
+                    + "  chunk_load_radius INT     DEFAULT -1,"
+                    + "  pve_enabled      BOOLEAN DEFAULT 0,"
+                    + "  pve_range        DOUBLE  DEFAULT 16.0,"
+                    + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
+                    + "  pve_mob_type     VARCHAR(64) DEFAULT NULL"
                     + ")";
 
     private static final String CREATE_ACTIVE_MYSQL =
@@ -131,7 +135,11 @@ public class DatabaseManager {
                     + "  nav_break_blocks BOOLEAN DEFAULT 0,"
                     + "  nav_place_blocks BOOLEAN DEFAULT 0,"
                     + "  swim_ai_enabled  BOOLEAN DEFAULT 1,"
-                    + "  chunk_load_radius INT     DEFAULT -1"
+                    + "  chunk_load_radius INT     DEFAULT -1,"
+                    + "  pve_enabled      BOOLEAN DEFAULT 0,"
+                    + "  pve_range        DOUBLE  DEFAULT 16.0,"
+                    + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
+                    + "  pve_mob_type     VARCHAR(64) DEFAULT NULL"
                     + ")";
 
     private static final String CREATE_SLEEPING_SQLITE =
@@ -335,6 +343,13 @@ public class DatabaseManager {
                     + "  cached_at         BIGINT       NOT NULL"
                     + ")",
             "CREATE INDEX IF NOT EXISTS idx_skin_cache_cached_at ON fpp_skin_cache(cached_at)"
+        },
+        // v15 → v16: PvE/attack per-bot settings
+        {
+            "ALTER TABLE fpp_active_bots ADD COLUMN pve_enabled      BOOLEAN DEFAULT 0",
+            "ALTER TABLE fpp_active_bots ADD COLUMN pve_range        DOUBLE  DEFAULT 16.0",
+            "ALTER TABLE fpp_active_bots ADD COLUMN pve_priority     VARCHAR(16) DEFAULT NULL",
+            "ALTER TABLE fpp_active_bots ADD COLUMN pve_mob_type     VARCHAR(64) DEFAULT NULL"
         }
     };
 
@@ -1026,6 +1041,26 @@ public class DatabaseManager {
             chunkLoadRadius = rs.getInt("chunk_load_radius");
         } catch (SQLException ignored) {
         }
+        boolean pveEnabled = false;
+        try {
+            pveEnabled = rs.getBoolean("pve_enabled");
+        } catch (SQLException ignored) {
+        }
+        double pveRange = Config.attackMobDefaultRange();
+        try {
+            pveRange = rs.getDouble("pve_range");
+        } catch (SQLException ignored) {
+        }
+        String pvePriority = null;
+        try {
+            pvePriority = rs.getString("pve_priority");
+        } catch (SQLException ignored) {
+        }
+        String pveMobType = null;
+        try {
+            pveMobType = rs.getString("pve_mob_type");
+        } catch (SQLException ignored) {
+        }
         return new ActiveBotRow(
                 rs.getString("bot_uuid"),
                 rs.getString("bot_name"),
@@ -1052,7 +1087,11 @@ public class DatabaseManager {
                 navBreakBlocks,
                 navPlaceBlocks,
                 swimAiEnabled,
-                chunkLoadRadius);
+                chunkLoadRadius,
+                pveEnabled,
+                pveRange,
+                pvePriority,
+                pveMobType);
     }
 
     public List<BotRecord> getActiveSessions() {
@@ -1956,9 +1995,14 @@ public class DatabaseManager {
             boolean navBreakBlocks,
             boolean navPlaceBlocks,
             boolean swimAiEnabled,
-            int chunkLoadRadius) {
+            int chunkLoadRadius,
+            boolean pveEnabled,
+            double pveRange,
+            String pvePriority,
+            String pveMobType) {
         if (!isAlive()) return;
         final String tier = chatTier, rcc = rightClickCmd, pers = aiPersonality;
+        final String pvePri = pvePriority, pveMob = pveMobType;
         enqueue(
                 () -> {
                     if (!isAlive()) return;
@@ -1966,7 +2010,8 @@ public class DatabaseManager {
                             "UPDATE fpp_active_bots SET"
                                 + " frozen=?,chat_enabled=?,chat_tier=?,right_click_cmd=?,"
                                 + "ai_personality=?,pickup_items=?,pickup_xp=?,head_ai_enabled=?,"
-                                + "nav_parkour=?,nav_break_blocks=?,nav_place_blocks=?,swim_ai_enabled=?,chunk_load_radius=?"
+                                + "nav_parkour=?,nav_break_blocks=?,nav_place_blocks=?,swim_ai_enabled=?,chunk_load_radius=?,"
+                                + "pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?"
                                 + " WHERE bot_uuid=?";
                     try (PreparedStatement ps = connection.prepareStatement(sql)) {
                         ps.setBoolean(1, frozen);
@@ -1985,7 +2030,13 @@ public class DatabaseManager {
                         ps.setBoolean(11, navPlaceBlocks);
                         ps.setBoolean(12, swimAiEnabled);
                         ps.setInt(13, chunkLoadRadius);
-                        ps.setString(14, uuid);
+                        ps.setBoolean(14, pveEnabled);
+                        ps.setDouble(15, pveRange);
+                        if (pvePri != null) ps.setString(16, pvePri);
+                        else ps.setNull(16, java.sql.Types.VARCHAR);
+                        if (pveMob != null) ps.setString(17, pveMob);
+                        else ps.setNull(17, java.sql.Types.VARCHAR);
+                        ps.setString(18, uuid);
                         ps.executeUpdate();
                     } catch (SQLException e) {
                         FppLogger.error("DB updateBotAllSettings: " + e.getMessage());
@@ -2161,7 +2212,11 @@ public class DatabaseManager {
             boolean navBreakBlocks,
             boolean navPlaceBlocks,
             boolean swimAiEnabled,
-            int chunkLoadRadius) {}
+            int chunkLoadRadius,
+            boolean pveEnabled,
+            double pveRange,
+            String pvePriority,
+            String pveMobType) {}
 
     public record SleepingBotRow(
             int sleepOrder,

@@ -1,6 +1,6 @@
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)
 
-> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, NameTag plugin integration, LuckPerms integration, proxy network support, and full hot-reload.
+> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, tab-list ping simulation, PvE attack automation, NameTag plugin integration, LuckPerms integration, proxy network support, and full hot-reload.
 
 [![Version](https://img.shields.io/modrinth/v/fake-player-plugin-%28fpp%29?style=flat-square&label=version&color=0079FF&logo=modrinth)](https://modrinth.com/plugin/fake-player-plugin-(fpp))
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
@@ -46,6 +46,8 @@ FPP adds fake players to your server that look and behave like real ones:
 - **Per-bot settings GUI** — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvP · Cmds · Danger)
 - **AI conversations** — bots respond to `/msg` with AI-generated replies; 7 providers (OpenAI, Groq, Anthropic, Gemini, Ollama, Copilot, Custom); per-bot personalities via `personalities/` folder
 - **Badword filter** — case-insensitive with leet-speak normalization, auto-rename bad names, remote word list
+- **Set bot ping** — simulate realistic tab-list latency per bot with `/fpp ping`; fixed, random, or bulk modes
+- **PvE attack automation** — bots walk to the sender and attack nearby entities with `/fpp attack`
 - **NameTag integration** — nick-conflict guard, bot isolation from nick cache, skin sync, auto-rename via nick
 - **LuckPerms** — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 - **Proxy/network support** — Velocity & BungeeCord cross-server chat, alerts, and shared database
@@ -112,6 +114,8 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp rename <old> <new>` | Rename a bot preserving all state (inventory, XP, LP group, tasks) |
 | `/fpp personality <bot> set\|reset\|show` | Assign or clear AI personality per bot |
 | `/fpp personality list\|reload` | List available personality files or reload them |
+| `/fpp ping [<bot>] [--ping <ms>\|--random] [--count <n>]` | Set simulated tab-list ping for one or all bots |
+| `/fpp attack <bot> [--stop]` | Bot walks to sender and attacks nearby entities (PvE) |
 | `/fpp badword add\|remove\|list\|reload` | Manage the runtime badword list |
 | `/fpp chat [on\|off\|status]` | Toggle the fake chat system |
 | `/fpp swap [on\|off\|status\|now <bot>\|list\|info <bot>]` | Toggle / manage the bot swap/rotation system |
@@ -170,6 +174,8 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `fpp.rename.own` | Rename only bots the sender personally spawned |
 | `fpp.personality` | Assign AI personalities to bots |
 | `fpp.badword` | Manage the runtime badword filter list |
+| `fpp.ping` | View/set simulated tab-list ping for bots |
+| `fpp.attack` | PvE attack automation |
 | `fpp.migrate` | Data migration and backup utilities |
 | `fpp.alert` | Broadcast network-wide admin alerts |
 | `fpp.sync` | Push/pull config across proxy network |
@@ -179,9 +185,9 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | Permission | Description |
 |------------|-------------|
 | `fpp.use` | All user-tier commands (granted by default) |
-| `fpp.user.spawn` | Spawn your own bot (limited by `fpp.spawn.limit.<num>`) |
-| `fpp.user.tph` | Teleport your bot to you |
-| `fpp.user.xp` | Transfer a bot's XP to yourself |
+| `fpp.spawn.user` | Spawn your own bot (limited by `fpp.spawn.limit.<num>`) |
+| `fpp.tph` | Teleport your bot to you |
+| `fpp.xp` | Transfer a bot's XP to yourself |
 | `fpp.info.user` | View your bot's location and uptime |
 
 ### Bot Limits
@@ -212,7 +218,7 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` after any ch
 | `spawn-cooldown` | Seconds between `/fpp spawn` uses per player (`0` = off) |
 | `bot-name` | Display name format for admin/user bots (`admin-format`, `user-format`) |
 | `luckperms` | `default-group` — LP group assigned to every new bot at spawn |
-| `skin` | Skin mode (`auto` / `custom` / `off`), `guaranteed-skin` toggle, pool, `skins/` folder |
+| `skin` | Skin mode (`player` / `random` / `none`), `guaranteed-skin` toggle, pool, `skins/` folder |
 | `badword-filter` | Name profanity filter — leet-speak normalization, remote word list, auto-rename |
 | `bot-interaction` | Right-click / shift-right-click settings GUI toggles |
 | `body` | Physical entity (`enabled`), `pushable`, `damageable`, `pick-up-items`, `pick-up-xp`, `drop-items-on-despawn` |
@@ -264,169 +270,58 @@ Bundled personalities: `friendly`, `grumpy`, `noob`.
 
 ---
 
-
+## Skin System
 
 Three modes — set with `skin.mode`:
 
 | Mode | Behaviour |
 |------|-----------|
-| `auto` *(default)* | Fetches a real Mojang skin matching the bot's name |
-| `custom` | Full control — per-bot overrides, a `skins/` PNG folder, and a random pool |
-| `off` | No skin — bots use the default Steve/Alex appearance |
+| `player` *(default)* | Fetches a real Mojang skin matching the bot's name |
+| `random` | Full control — per-bot overrides, a `skins/` PNG folder, and a random pool |
+| `none` | No skin — bots use the default Steve/Alex appearance |
 
-**Skin fallback** (`skin.guaranteed-skin`, default `false`) — when `false`, bots whose name has no matching Mojang account use the default Steve/Alex appearance. Set to `true` to attempt a skin fetch even for generated names.
+> **Legacy aliases:** `auto` = `player`, `custom` = `random`, `off` = `none` — all still accepted.
 
-In `custom` mode the resolution pipeline is: per-bot override → `skins/<name>.png` → random PNG from `skins/` folder → random entry from `pool` → Mojang API for the bot's own name.
+**Skin fallback** (`skin.guaranteed-skin`, default `true`) — bots whose name has no matching Mojang account get a random skin from the built-in 1000-player fallback pool. Set to `false` to use the default Steve/Alex appearance instead.
 
----
-
-## LuckPerms Integration
-
-FPP treats bots as real NMS ServerPlayer entities — LuckPerms detects them as online players automatically.
-
-- **`luckperms.default-group`** — assigns every new bot to an LP group at spawn (blank = LP's built-in `default`)
-- **`/fpp rank <bot> <group>`** — change an individual bot's LP group at runtime, no respawn needed
-- **`/fpp rank random <group> [num|all]`** — assign a group to random bots
-- **`/fpp rank list`** — see each bot's current group at a glance
-- **`/fpp lpinfo [bot]`** — diagnose prefix, weight, rank index, and packet profile name
-- **Tab-list ordering** — `~fpp` scoreboard team keeps all bots below real players regardless of LP weight
-- **Prefix/suffix** — bots use LuckPerms prefix/suffix automatically (real NMS entities — LP detects them natively)
-
-```yaml
-luckperms:
-  default-group: ""   # e.g. "default", "vip", "admin"
-```
-
----
-
-## Proxy & Network Support
-
-FPP supports multi-server **Velocity** and **BungeeCord** proxy networks.
-
-Enable NETWORK mode on every backend server:
-
-```yaml
-database:
-  enabled: true
-  mode: "NETWORK"
-  server-id: "survival"   # unique per server
-  mysql-enabled: true
-  mysql:
-    host: "mysql.example.com"
-    database: "fpp_network"
-    username: "fpp_user"
-    password: "your_password"
-```
-
-**Cross-server features in NETWORK mode:**
-- Fake chat messages broadcast to all servers on the proxy
-- `/fpp alert <message>` — network-wide admin alert
-- Bot join/leave messages visible network-wide
-- Remote bot tab-list entries synced across servers
-- Per-server isolation — each server only manages its own bots
-
----
-
-## Config Sync
-
-Keep all servers' configurations in sync automatically:
-
-```yaml
-config-sync:
-  mode: "AUTO_PULL"   # DISABLED | MANUAL | AUTO_PULL | AUTO_PUSH
-```
-
-| Mode | Behaviour |
-|------|-----------|
-| `DISABLED` | No syncing (default) |
-| `MANUAL` | Only sync via `/fpp sync` commands |
-| `AUTO_PULL` | Auto-pull latest config on every startup/reload |
-| `AUTO_PUSH` | Push local changes to the network automatically |
-
-Files synced: `config.yml`, `bot-names.yml`, `bot-messages.yml`, `language/en.yml`
-
-Server-specific keys that NEVER sync: `database.server-id`, `database.mysql.*`, `debug`
-
----
-
-## PlaceholderAPI
-
-When [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) is installed, FPP registers its placeholders automatically — no restart needed.
-
-> Full Documentation: [PLACEHOLDERAPI.md](PLACEHOLDERAPI.md)
-
-FPP provides **29+ placeholders** organized into five categories:
-
-### Server-Wide
-
-| Placeholder | Value |
-|-------------|-------|
-| `%fpp_count%` | Number of currently active bots (local + remote in NETWORK mode) |
-| `%fpp_local_count%` | Bots running on **this** server only |
-| `%fpp_network_count%` | Bots running on **other** proxy servers (NETWORK mode) |
-| `%fpp_max%` | Global max-bots limit (or `∞`) |
-| `%fpp_real%` | Real (non-bot) players online |
-| `%fpp_total%` | Total players (real + bots) |
-| `%fpp_online%` | Alias for `%fpp_total%` |
-| `%fpp_frozen%` | Number of currently frozen bots |
-| `%fpp_names%` | Comma-separated list of bot display names (local + remote in NETWORK mode) |
-| `%fpp_network_names%` | Display names of bots on **other** proxy servers only |
-| `%fpp_version%` | Plugin version string |
-
-### Config State
-
-| Placeholder | Values | Config Key |
-|-------------|--------|------------|
-| `%fpp_chat%` | `on` / `off` | `fake-chat.enabled` |
-| `%fpp_swap%` | `on` / `off` | `swap.enabled` |
-| `%fpp_body%` | `on` / `off` | `body.enabled` |
-| `%fpp_pushable%` | `on` / `off` | `body.pushable` |
-| `%fpp_damageable%` | `on` / `off` | `body.damageable` |
-| `%fpp_tab%` | `on` / `off` | `tab-list.enabled` |
-| `%fpp_skin%` | `auto` / `custom` / `off` | `skin.mode` |
-| `%fpp_max_health%` | number | `combat.max-health` |
-| `%fpp_persistence%` | `on` / `off` | `persistence.enabled` |
-
-### Network / Proxy
-
-| Placeholder | Value |
-|-------------|-------|
-| `%fpp_network%` | `on` when `database.mode: NETWORK`, otherwise `off` |
-| `%fpp_server_id%` | Value of `database.server-id` |
-| `%fpp_spawn_cooldown%` | Configured cooldown in seconds (`0` = off) |
-
-### Per-World
-
-| Placeholder | Value |
-|-------------|-------|
-| `%fpp_count_<world>%` | Bots in world (e.g. `%fpp_count_world_nether%`) |
-| `%fpp_real_<world>%` | Real players in world |
-| `%fpp_total_<world>%` | Total (real + bots) in world |
-
-### Player-Relative
-
-| Placeholder | Value |
-|-------------|-------|
-| `%fpp_user_count%` | Bots owned by the player |
-| `%fpp_user_max%` | Bot limit for the player |
-| `%fpp_user_names%` | Comma-separated names of player's bots |
-
----
-
-## Bot Names & Chat
-
-| File | Purpose |
-|------|---------|
-| `bot-names.yml` | Random name pool. 1–16 chars, letters/digits/underscores. `/fpp reload` to update. |
-| `bot-messages.yml` | Random chat messages. Supports `{name}` and `{random_player}` placeholders. |
-
-When the name pool runs out, FPP generates names automatically (`Bot1234`, etc.).
-
-Bot chat uses the server's real chat pipeline (`Player.chat()`), so formatting is handled by your existing chat plugin (LuckPerms, EssentialsX, etc.). For bodyless or proxy-remote bots, the `fake-chat.remote-format` key controls how messages appear (MiniMessage, supports `{name}` and `{message}` placeholders).
+In `random` mode the resolution pipeline is: per-bot override → `skins/<name>.png` → random PNG from `skins/` folder → random entry from `pool` → Mojang API for the bot's own name.
 
 ---
 
 ## Changelog
+
+### v1.6.5 *(2026-04-17)*
+
+**Tab-List Ping Simulation (`/fpp ping`)**
+- New `/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>]` command — set the visible tab-list latency for one or all bots
+- `--ping <ms>` sets a specific latency (0–9999); `--random` assigns random realistic values; no flag shows current ping
+- `--count <n>` targets N random bots for bulk operations
+- 4 granular permissions: `fpp.ping` (view), `fpp.ping.set` (set), `fpp.ping.random` (random), `fpp.ping.bulk` (bulk `--count`)
+
+**PvE Attack Automation (`/fpp attack`)**
+- New `/fpp attack <bot> [--stop]` command — bot walks to the command sender and continuously attacks nearby entities
+- Respects 1.9+ attack cooldown and item-specific cooldown timers dynamically
+- Permission: `fpp.attack`
+
+**Permission System Restructure**
+- New `fpp.admin` node as preferred alias for `fpp.op` — both grant full access identically
+- New `fpp.despawn` node as preferred alias for `fpp.delete`; new `fpp.despawn.bulk` and `fpp.despawn.own` sub-nodes
+- Granular sub-nodes for chat (`fpp.chat.global`, `.tier`, `.mute`, `.say`), move (`fpp.move.to`, `.waypoint`, `.stop`), mine (`fpp.mine.start`, `.once`, `.stop`, `.area`), place (`fpp.place.start`, `.once`, `.stop`), use (`fpp.useitem.start`, `.once`, `.stop`), rank (`fpp.rank.set`, `.clear`, `.bulk`), inventory (`fpp.inventory.cmd`, `.rightclick`), ping (`fpp.ping.set`, `.random`, `.bulk`)
+- New `fpp.command` (controls `/fpp` visibility), `fpp.plugininfo` (full info panel), `fpp.spawn.multiple`/`.mass`/`.coords`, `fpp.notify` (update notifications)
+- All nodes declared in both `Perm.java` and `plugin.yml` for LuckPerms tab-completion
+
+**Skin Mode Rename**
+- `skin.mode` values renamed: `auto` → `player`, `custom` → `random`, `off` → `none`
+- Legacy values still accepted as aliases — no migration needed for existing configs
+
+**FlagParser Utility**
+- New reusable command argument/flag parser with deprecation aliases, duplicate detection, and conflict detection
+- Used by `/fpp ping` and available for future commands
+
+**UpdateChecker Beta Detection**
+- `latestKnownVersion` and `isRunningBeta` fields on plugin — detects when running a build newer than the latest published release
+
+---
 
 ### v1.6.4 *(2026-04-16)*
 
@@ -846,4 +741,4 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.6.4 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.6.5 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*

@@ -92,7 +92,7 @@ public final class MineCommand implements FppCommand {
 
     @Override
     public String getUsage() {
-        return "<bot> [once|stop|--pos1|--pos2|start]  |  stop";
+        return "<bot> [--once|--stop|--pos1|--pos2|--start]  |  --stop";
     }
 
     @Override
@@ -118,7 +118,8 @@ public final class MineCommand implements FppCommand {
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("stop") && args.length == 1) {
+        if ((args[0].equalsIgnoreCase("stop") || args[0].equalsIgnoreCase("--stop"))
+                && args.length == 1) {
             stopAll();
             sender.sendMessage(Lang.get("mine-stopped-all"));
             return true;
@@ -159,7 +160,7 @@ public final class MineCommand implements FppCommand {
             }
 
             switch (action) {
-                case "stop" -> {
+                case "stop", "--stop" -> {
                     cleanupBot(fp.getUuid());
                     sender.sendMessage(Lang.get("mine-stopped", "name", fp.getDisplayName()));
                     return true;
@@ -235,7 +236,10 @@ public final class MineCommand implements FppCommand {
             }
         }
 
-        boolean once = args.length >= 2 && args[1].equalsIgnoreCase("once");
+        boolean once =
+                args.length >= 2
+                        && (args[1].equalsIgnoreCase("once")
+                                || args[1].equalsIgnoreCase("--once"));
         stopAreaJob(fp.getUuid(), false);
         cancelAll(fp.getUuid());
 
@@ -265,6 +269,7 @@ public final class MineCommand implements FppCommand {
         if (args.length == 1) {
             String prefix = args[0].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
+            if ("--stop".startsWith(prefix)) out.add("--stop");
             if ("stop".startsWith(prefix)) out.add("stop");
             for (FakePlayer fp : manager.getActivePlayers()) {
                 if (fp.getName().toLowerCase(Locale.ROOT).startsWith(prefix)) out.add(fp.getName());
@@ -272,20 +277,24 @@ public final class MineCommand implements FppCommand {
             return out;
         }
 
-        if (args.length == 2 && !args[0].equalsIgnoreCase("stop")) {
+        if (args.length == 2
+                && !args[0].equalsIgnoreCase("stop")
+                && !args[0].equalsIgnoreCase("--stop")) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
             List<String> options =
                     AREA_MODE_ENABLED
                             ? List.of(
+                                    "--once",
+                                    "--stop",
                                     "once",
                                     "stop",
                                     "--pos1",
                                     "--pos2",
-                                    "start",
+                                    "--start",
                                     "--status",
                                     "--clear")
-                            : List.of("once", "stop");
+                            : List.of("--once", "--stop", "once", "stop");
             for (String option : options) {
                 if (option.startsWith(prefix)) out.add(option);
             }

@@ -59,7 +59,7 @@ Bots use vanilla Steve/Alex appearance only.
 
 ---
 
-## SkinManager (v1.6.4+)
+## SkinManager (v1.6.4+, skin.mode renamed in v1.6.5)
 
 The `SkinManager` class centralises all skin resolution, caching, and application:
 

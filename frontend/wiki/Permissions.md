@@ -1,7 +1,7 @@
 ﻿# 🔐 Permissions
 
-> **Complete permission reference - v1.6.4**  
-> FPP uses **`fpp.op`** for admins and **`fpp.use`** for user-tier access.  
+> **Complete permission reference - v1.6.5**  
+> FPP uses **`fpp.op`** (alias **`fpp.admin`**) for admins and **`fpp.use`** for user-tier access.  
 > All nodes are declared in `plugin.yml` so they appear in LuckPerms tab-completion.
 
 ---
@@ -9,11 +9,13 @@
 ## 🏗️ Permission Structure
 
 ```text
-fpp.op                  # Admin wildcard (default: op)
+fpp.admin               # Admin wildcard — preferred (default: op)
+fpp.op                  # Admin wildcard — legacy alias (default: op)
 fpp.use                 # User wildcard (default: true)
 fpp.spawn.limit.<N>     # Personal bot limits (1-100)
 fpp.bypass.maxbots      # Ignore global bot cap
 fpp.bypass.cooldown     # Ignore spawn cooldown
+fpp.command             # Controls /fpp visibility (default: true)
 ```
 
 ### Important note about user nodes
@@ -75,6 +77,11 @@ Current nodes are:
 | `fpp.rename.own` | `/fpp rename` | Rename only bots the sender spawned |
 | `fpp.personality` | `/fpp personality` | Manage AI personalities |
 | `fpp.badword` | `/fpp badword` | Manage runtime badword list |
+| `fpp.ping` | `/fpp ping` | View/set simulated tab-list ping |
+| `fpp.ping.set` | `/fpp ping --ping <ms>` | Set a specific ping value |
+| `fpp.ping.random` | `/fpp ping --random` | Assign random ping distribution |
+| `fpp.ping.bulk` | `/fpp ping --count <n>` | Target multiple bots at once |
+| `fpp.attack` | `/fpp attack` | PvE attack — walk to sender, attack entities |
 
 ### Network / proxy
 
@@ -175,6 +182,35 @@ Grant `fpp.spawn.limit.<N>` to set a player's personal cap. FPP always uses the 
 ---
 
 ## 🧩 Permission Notes
+
+### `fpp.admin` vs `fpp.op`
+
+- `fpp.admin` — **new preferred name** for the admin wildcard (v1.6.5+)
+- `fpp.op` — legacy admin wildcard, still fully supported
+- Both are identical in effect — `fpp.admin` is a parent of `fpp.op`
+
+### `fpp.despawn` vs `fpp.delete`
+
+- `fpp.despawn` — **new preferred name** for the despawn permission (v1.6.5+)
+- `fpp.delete` — legacy despawn permission, still fully supported
+- `fpp.despawn.bulk` — mass despawn (`all`, `--random`, `--num`)
+- `fpp.despawn.own` — despawn only bots the sender spawned
+
+### Granular sub-nodes (v1.6.5+)
+
+Most commands now have granular sub-nodes for fine-grained control:
+
+- **Chat:** `fpp.chat.global`, `fpp.chat.tier`, `fpp.chat.mute`, `fpp.chat.say`
+- **Move:** `fpp.move.to`, `fpp.move.waypoint`, `fpp.move.stop`
+- **Mine:** `fpp.mine.start`, `fpp.mine.once`, `fpp.mine.stop`, `fpp.mine.area`
+- **Place:** `fpp.place.start`, `fpp.place.once`, `fpp.place.stop`
+- **Use:** `fpp.useitem.start`, `fpp.useitem.once`, `fpp.useitem.stop`
+- **Rank:** `fpp.rank.set`, `fpp.rank.clear`, `fpp.rank.bulk`
+- **Inventory:** `fpp.inventory.cmd`, `fpp.inventory.rightclick`
+- **Ping:** `fpp.ping.set`, `fpp.ping.random`, `fpp.ping.bulk`
+- **Spawn:** `fpp.spawn.multiple`, `fpp.spawn.mass`, `fpp.spawn.name`, `fpp.spawn.coords`
+
+The parent node (e.g. `fpp.mine`) grants all its sub-nodes automatically.
 
 ### `fpp.rename` vs `fpp.rename.own`
 

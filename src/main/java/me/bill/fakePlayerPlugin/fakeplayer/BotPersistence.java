@@ -5,6 +5,7 @@ import me.bill.fakePlayerPlugin.command.MineCommand;
 import me.bill.fakePlayerPlugin.command.MoveCommand;
 import me.bill.fakePlayerPlugin.command.PlaceCommand;
 import me.bill.fakePlayerPlugin.command.UseCommand;
+import me.bill.fakePlayerPlugin.command.AttackCommand;
 import me.bill.fakePlayerPlugin.command.WaypointStore;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.util.FppLogger;
@@ -48,6 +49,7 @@ public final class BotPersistence {
     private MineCommand mineCommand;
     private PlaceCommand placeCommand;
     private UseCommand useCommand;
+    private AttackCommand attackCommand;
     private WaypointStore waypointStore;
 
     public void setMoveCommand(MoveCommand cmd) {
@@ -64,6 +66,10 @@ public final class BotPersistence {
 
     public void setUseCommand(UseCommand cmd) {
         this.useCommand = cmd;
+    }
+
+    public void setAttackCommand(AttackCommand cmd) {
+        this.attackCommand = cmd;
     }
 
     public void setWaypointStore(WaypointStore s) {
@@ -232,12 +238,30 @@ public final class BotPersistence {
                 }
             }
 
+            String attackWorld = null;
+            double attackX = 0, attackY = 0, attackZ = 0;
+            float attackYaw = 0, attackPitch = 0;
+            boolean attackOnce = false;
+            if (attackCommand != null) {
+                Location attackLoc = attackCommand.getActiveAttackLocation(fp.getUuid());
+                if (attackLoc != null && attackLoc.getWorld() != null) {
+                    attackWorld = attackLoc.getWorld().getName();
+                    attackX = attackLoc.getX();
+                    attackY = attackLoc.getY();
+                    attackZ = attackLoc.getZ();
+                    attackYaw = attackLoc.getYaw();
+                    attackPitch = attackLoc.getPitch();
+                    attackOnce = attackCommand.isActiveAttackOnce(fp.getUuid());
+                }
+            }
+
             if (rcc != null
                     || patrolRoute != null
                     || mineWorld != null
                     || useWorld != null
                     || areaPos1World != null
-                    || placeWorld != null) {
+                    || placeWorld != null
+                    || attackWorld != null) {
                 snap.put(
                         uuidStr,
                         new TaskEntry(
@@ -273,7 +297,14 @@ public final class BotPersistence {
                                 placeZ,
                                 placeYaw,
                                 placePitch,
-                                placeOnce));
+                                placeOnce,
+                                attackWorld,
+                                attackX,
+                                attackY,
+                                attackZ,
+                                attackYaw,
+                                attackPitch,
+                                attackOnce));
             }
         }
         return snap;
@@ -317,6 +348,15 @@ public final class BotPersistence {
                 yaml.set(sec + "place-yaw", (double) t.placeYaw());
                 yaml.set(sec + "place-pitch", (double) t.placePitch());
                 yaml.set(sec + "place-once", t.placeOnce());
+            }
+            if (t.attackWorld() != null) {
+                yaml.set(sec + "attack-world", t.attackWorld());
+                yaml.set(sec + "attack-x", t.attackX());
+                yaml.set(sec + "attack-y", t.attackY());
+                yaml.set(sec + "attack-z", t.attackZ());
+                yaml.set(sec + "attack-yaw", (double) t.attackYaw());
+                yaml.set(sec + "attack-pitch", (double) t.attackPitch());
+                yaml.set(sec + "attack-once", t.attackOnce());
             }
             if (t.areaPos1World() != null && t.areaPos2World() != null) {
                 yaml.set(sec + "area-pos1-world", t.areaPos1World());
@@ -411,6 +451,22 @@ public final class BotPersistence {
                                 t.placeYaw(),
                                 t.placePitch(),
                                 t.placeOnce(),
+                                null,
+                                false));
+            }
+            if (t.attackWorld() != null) {
+                rows.add(
+                        new me.bill.fakePlayerPlugin.database.DatabaseManager.BotTaskRow(
+                                uuid,
+                                serverId,
+                                "ATTACK",
+                                t.attackWorld(),
+                                t.attackX(),
+                                t.attackY(),
+                                t.attackZ(),
+                                t.attackYaw(),
+                                t.attackPitch(),
+                                t.attackOnce(),
                                 null,
                                 false));
             }
@@ -544,6 +600,10 @@ public final class BotPersistence {
             section.put("nav-place-blocks", fp.isNavPlaceBlocks());
             section.put("swim-ai-enabled", fp.isSwimAiEnabled());
             section.put("chunk-load-radius", fp.getChunkLoadRadius());
+            section.put("pve-enabled", fp.isPveEnabled());
+            section.put("pve-range", fp.getPveRange());
+            if (fp.getPvePriority() != null) section.put("pve-priority", fp.getPvePriority());
+            if (fp.getPveMobType() != null) section.put("pve-mob-type", fp.getPveMobType());
             Player bot = fp.getPlayer();
             if (bot != null) {
                 section.put("xp-total", bot.getTotalExperience());
@@ -628,7 +688,11 @@ public final class BotPersistence {
                                         row.navParkour(),
                                         row.navBreakBlocks(),
                                         row.navPlaceBlocks(),
-                                        row.rightClickCmd()));
+                                        row.rightClickCmd(),
+                                        row.pveEnabled(),
+                                        row.pveRange(),
+                                        row.pvePriority(),
+                                        row.pveMobType()));
                     } catch (Exception e) {
                         FppLogger.warn("Skipping malformed DB active-bot row: " + e.getMessage());
                     }
@@ -713,6 +777,14 @@ public final class BotPersistence {
                 String chatTier = ctRaw instanceof String s2 ? s2 : null;
                 Object apRaw = map.get("ai-personality");
                 String aiPersonality = apRaw instanceof String s3 ? s3 : null;
+                Object pveEnRaw = map.get("pve-enabled");
+                boolean pveEnabled = pveEnRaw instanceof Boolean pve && pve;
+                Object pveRgRaw = map.get("pve-range");
+                double pveRange = pveRgRaw instanceof Number prn ? prn.doubleValue() : Config.attackMobDefaultRange();
+                Object pvePrRaw = map.get("pve-priority");
+                String pvePriority = pvePrRaw instanceof String pps ? pps : null;
+                Object pveMtRaw = map.get("pve-mob-type");
+                String pveMobType = pveMtRaw instanceof String pmt ? pmt : null;
                 if (name == null || worldName == null) continue;
                 saved.add(
                         new SavedBot(
@@ -742,7 +814,11 @@ public final class BotPersistence {
                                 navParkour,
                                 navBreakBlocks,
                                 navPlaceBlocks,
-                                rightClickCommand));
+                                rightClickCommand,
+                                pveEnabled,
+                                pveRange,
+                                pvePriority,
+                                pveMobType));
             } catch (Exception e) {
                 FppLogger.warn(
                         "Skipping malformed bot entry in " + FILE_NAME + ": " + e.getMessage());
@@ -799,6 +875,10 @@ public final class BotPersistence {
             fp.setNavParkour(sb.navParkour);
             fp.setNavBreakBlocks(sb.navBreakBlocks);
             fp.setNavPlaceBlocks(sb.navPlaceBlocks);
+            fp.setPveEnabled(sb.pveEnabled);
+            fp.setPveRange(sb.pveRange);
+            if (sb.pvePriority != null) fp.setPvePriority(sb.pvePriority);
+            if (sb.pveMobType != null) fp.setPveMobType(sb.pveMobType);
             if (sb.chatTier != null) fp.setChatTier(sb.chatTier);
 
             if (sb.aiPersonality != null) fp.setAiPersonality(sb.aiPersonality);
@@ -808,6 +888,17 @@ public final class BotPersistence {
             }
 
             manager.persistBotSettings(fp);
+
+            // Resume PvE mob attack if it was enabled before shutdown
+            if (fp.isPveEnabled()) {
+                final FakePlayer pveBot = fp;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    var attackCmd = plugin.getAttackCommand();
+                    if (attackCmd != null && pveBot.getPlayer() != null && pveBot.getPlayer().isOnline()) {
+                        attackCmd.startMobModeFromSettings(pveBot);
+                    }
+                }, 15L);
+            }
         }
 
         if (loadedTasks != null) {
@@ -1002,6 +1093,26 @@ public final class BotPersistence {
                                                             + "'.");
                                         }
                                     }
+
+                                    if (task.attackWorld() != null && attackCommand != null) {
+                                        World w = Bukkit.getWorld(task.attackWorld());
+                                        if (w != null && w.equals(bot.getWorld())) {
+                                            Location attackLoc =
+                                                    new Location(
+                                                            w,
+                                                            task.attackX(),
+                                                            task.attackY(),
+                                                            task.attackZ(),
+                                                            task.attackYaw(),
+                                                            task.attackPitch());
+                                            attackCommand.resumeAttacking(
+                                                    restored, task.attackOnce(), attackLoc);
+                                            Config.debug(
+                                                    "Resumed attack task for bot '"
+                                                            + restored.getName()
+                                                            + "'.");
+                                        }
+                                    }
                                 },
                                 25L);
             }
@@ -1126,6 +1237,15 @@ public final class BotPersistence {
             double areaPos2Y = sec.getDouble("area-pos2-y");
             double areaPos2Z = sec.getDouble("area-pos2-z");
             boolean areaActive = sec.getBoolean("area-active", false);
+
+            String attackWorld = sec.getString("attack-world");
+            double attackX = sec.getDouble("attack-x");
+            double attackY = sec.getDouble("attack-y");
+            double attackZ = sec.getDouble("attack-z");
+            float attackYaw = (float) sec.getDouble("attack-yaw");
+            float attackPitch = (float) sec.getDouble("attack-pitch");
+            boolean attackOnce = sec.getBoolean("attack-once", false);
+
             loadedTasks.put(
                     uuidStr,
                     new TaskEntry(
@@ -1161,7 +1281,14 @@ public final class BotPersistence {
                             placeZ,
                             placeYaw,
                             placePitch,
-                            placeOnce));
+                            placeOnce,
+                            attackWorld,
+                            attackX,
+                            attackY,
+                            attackZ,
+                            attackYaw,
+                            attackPitch,
+                            attackOnce));
         }
         Config.debug(
                 "Loaded task state for "
@@ -1188,6 +1315,7 @@ public final class BotPersistence {
             var mine = tasks.get("MINE");
             var use = tasks.get("USE");
             var place = tasks.get("PLACE");
+            var attack = tasks.get("ATTACK");
             result.put(
                     uuid,
                     new TaskEntry(
@@ -1223,7 +1351,14 @@ public final class BotPersistence {
                             place != null ? place.posZ() : 0,
                             place != null ? place.posYaw() : 0f,
                             place != null ? place.posPitch() : 0f,
-                            place != null && place.onceFlag()));
+                            place != null && place.onceFlag(),
+                            attack != null ? attack.worldName() : null,
+                            attack != null ? attack.posX() : 0,
+                            attack != null ? attack.posY() : 0,
+                            attack != null ? attack.posZ() : 0,
+                            attack != null ? attack.posYaw() : 0f,
+                            attack != null ? attack.posPitch() : 0f,
+                            attack != null && attack.onceFlag()));
         }
         return result;
     }
@@ -1323,7 +1458,11 @@ public final class BotPersistence {
             boolean navParkour,
             boolean navBreakBlocks,
             boolean navPlaceBlocks,
-            String rightClickCommand) {}
+            String rightClickCommand,
+            boolean pveEnabled,
+            double pveRange,
+            String pvePriority,
+            String pveMobType) {}
 
     private record TaskEntry(
             String rightClickCommand,
@@ -1358,7 +1497,14 @@ public final class BotPersistence {
             double placeZ,
             float placeYaw,
             float placePitch,
-            boolean placeOnce) {}
+            boolean placeOnce,
+            String attackWorld,
+            double attackX,
+            double attackY,
+            double attackZ,
+            float attackYaw,
+            float attackPitch,
+            boolean attackOnce) {}
 
     private record XpEntry(int totalExperience, int level, float progress) {}
 }

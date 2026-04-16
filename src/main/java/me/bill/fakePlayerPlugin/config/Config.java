@@ -1115,4 +1115,25 @@ public final class Config {
     public static boolean nameTagSyncNickAsRename() {
         return cfg.getBoolean("nametag-integration.sync-nick-as-rename", false);
     }
+
+    // ── Attack mob targeting ─────────────────────────────────────────────────
+    public static double attackMobDefaultRange() {
+        return cfg.getDouble("attack-mob.default-range", 8.0);
+    }
+
+    public static String attackMobDefaultPriority() {
+        return cfg.getString("attack-mob.default-priority", "nearest");
+    }
+
+    public static double attackMobSmoothRotationSpeed() {
+        return cfg.getDouble("attack-mob.smooth-rotation-speed", 12.0);
+    }
+
+    public static int attackMobRetargetInterval() {
+        return cfg.getInt("attack-mob.retarget-interval", 10);
+    }
+
+    public static boolean attackMobLineOfSight() {
+        return cfg.getBoolean("attack-mob.line-of-sight", true);
+    }
 }

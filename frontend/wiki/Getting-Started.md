@@ -1,6 +1,6 @@
 # 🚀 Getting Started
 
-> **Your complete setup guide for Fake Player Plugin v1.6.4**  
+> **Your complete setup guide for Fake Player Plugin v1.6.5**  
 > Install it correctly, verify the important systems, and get your first bots online fast.
 
 ---
@@ -49,7 +49,7 @@ Example folder layout after copying the jar:
 
 ```text
 plugins/
-├── fpp-1.6.4.jar
+├── fpp-1.6.5.jar
 ├── PlaceholderAPI-2.11.x.jar      (optional)
 ├── LuckPerms-Bukkit-5.5.x.jar     (optional)
 ├── WorldGuard-Bukkit-7.x.jar      (optional)

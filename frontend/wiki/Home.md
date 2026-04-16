@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin - Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.6.4 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
+> **Version:** 1.6.5 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
 
 ---
 
@@ -132,33 +132,30 @@
 
 ---
 
-## 🆕 What's New in v1.6.4
+## 🆕 What's New in v1.6.5
 
-### 🏷️ **NameTag Plugin Integration**
-- New **soft-dependency** on the [NameTag](https://lode.gg) plugin — fully optional, auto-detected at startup
-- **Nick-conflict guard** — prevents spawning bots with names matching a real player's current NameTag nick
-- **Bot isolation** — removes bots from NameTag's player cache so NameTag doesn't treat them as real players
-- **Sync-nick-as-rename** — auto-rename bots when NameTag assigns them a nick (opt-in)
-- **NameTag skin sync** — bots inherit skins assigned via NameTag
+### 📡 **Tab-List Ping Simulation**
+- New `/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>]` — set the visible tab-list latency for one or all bots
+- 4 granular permissions: `fpp.ping` (view), `fpp.ping.set` (set), `fpp.ping.random` (random), `fpp.ping.bulk` (bulk)
 
-### 🎨 **Skin System Overhaul**
-- New `SkinManager` — centralised skin lifecycle with DB caching, fallback pool, and NameTag priority
-- **1000-player fallback skin pool** hardcoded — bots always get a real-looking skin, even with non-Mojang names
-- **DB skin cache** — `fpp_skin_cache` table avoids repeated Mojang API lookups (7-day TTL)
+### ⚔ **PvE Attack Automation**
+- New `/fpp attack <bot> [--stop]` — bot walks to sender and continuously attacks nearby entities
+- Respects 1.9+ attack cooldown and item-specific cooldowns dynamically
+- Permission: `fpp.attack`
 
-### 🏊 **Per-Bot Swim AI & Chunk Load Radius**
-- Each bot now has an individual **swim AI toggle** and **chunk load radius** — override the global config per-bot without restarting
-- Both fields are initialised from global config at spawn, fully persisted, and editable in `BotSettingGui`
+### 🔐 **Permission System Restructure**
+- `fpp.admin` as preferred alias for `fpp.op`; `fpp.despawn` as preferred alias for `fpp.delete`
+- Granular sub-nodes for chat, move, mine, place, use, rank, inventory, and ping commands
+- New `fpp.command` (visibility), `fpp.plugininfo`, `fpp.spawn.multiple`, `fpp.notify`
 
-### ⚙️ **BotSettingGui General Tab Expanded**
-- General tab now has **7 action slots**: Frozen · Head-AI · Swim-AI · Chunk-Load-Radius · Pick-Up-Items · Pick-Up-XP · Rename
-- PvP tab now shows full coming-soon override previews
+### 🎨 **Skin Mode Rename**
+- `skin.mode` values: `auto` → `player`, `custom` → `random`, `off` → `none` (legacy aliases still accepted)
 
-### 💾 **DB Schema v14 → v15**
-- v14: `fpp_active_bots` gains `swim_ai_enabled` and `chunk_load_radius` columns
-- v15: new `fpp_skin_cache` table for DB-backed skin resolution caching
+### 🔧 **FlagParser & UpdateChecker**
+- Reusable command flag parser with deprecation aliases, duplicate/conflict detection
+- Beta build detection: `latestKnownVersion` and `isRunningBeta` fields
 
-See [📋 Changelog](Changelog.md) for full v1.6.4 release notes and the complete version history.
+See [📋 Changelog](Changelog.md) for full v1.6.5 release notes and the complete version history.
 
 ---
 
@@ -175,6 +172,7 @@ fpp.op            # Admin wildcard — all commands (default: op)
 ├── fpp.place         fpp.storage      fpp.useitem
 ├── fpp.waypoint      fpp.rename       fpp.personality
 ├── fpp.badword       fpp.settings     fpp.peaks
+├── fpp.ping          fpp.attack       fpp.notify
 └── ... (all admin commands)
 
 fpp.use           # User wildcard — basic commands (default: true / all players)

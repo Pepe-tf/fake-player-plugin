@@ -1,8 +1,42 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.4** · Released: 2026-04-16 · Config version: **60**  
+> Latest version: **v1.6.5** · Released: 2026-04-17 · Config version: **60**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+
+---
+
+## v1.6.5 *(2026-04-17)*
+
+### 📡 Tab-List Ping Simulation
+- New `/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>]` command — set the visible tab-list latency for one or all bots
+- `--ping <ms>` sets a specific latency (0–9999); `--random` assigns random realistic values; no flag shows current ping
+- `--count <n>` targets N random bots for bulk operations
+- 4 granular permissions: `fpp.ping` (view), `fpp.ping.set` (set specific value), `fpp.ping.random` (random distribution), `fpp.ping.bulk` (bulk `--count`)
+
+### ⚔ PvE Attack Automation
+- New `/fpp attack <bot> [--stop]` command — bot walks to the command sender and continuously attacks nearby entities
+- Respects 1.9+ attack cooldown and item-specific cooldown timers dynamically
+- Permission: `fpp.attack`
+
+### 🔐 Permission System Restructure
+- New `fpp.admin` node as the preferred alias for `fpp.op` — both grant full access identically
+- New `fpp.despawn` node as preferred alias for `fpp.delete`; new `fpp.despawn.bulk` and `fpp.despawn.own` sub-nodes
+- Granular sub-nodes for: chat (`fpp.chat.global`, `.tier`, `.mute`, `.say`), move (`fpp.move.to`, `.waypoint`, `.stop`), mine (`fpp.mine.start`, `.once`, `.stop`, `.area`), place (`fpp.place.start`, `.once`, `.stop`), use (`fpp.useitem.start`, `.once`, `.stop`), rank (`fpp.rank.set`, `.clear`, `.bulk`), inventory (`fpp.inventory.cmd`, `.rightclick`), ping (`fpp.ping.set`, `.random`, `.bulk`)
+- New `fpp.command` (controls `/fpp` visibility — default `true`; negate to hide FPP from a group), `fpp.plugininfo` (full info panel on bare `/fpp`), `fpp.spawn.multiple`/`.mass`/`.coords`, `fpp.notify` (update notifications on join)
+- All nodes declared in both `Perm.java` and `plugin.yml` for LuckPerms tab-completion
+
+### 🎨 Skin Mode Rename
+- `skin.mode` values renamed: `auto` → `player`, `custom` → `random`, `off` → `none`
+- Legacy values still accepted as aliases — no migration needed for existing configs
+
+### 🔧 FlagParser Utility
+- New reusable command argument/flag parser with deprecation aliases, duplicate detection, and conflict detection
+- Pattern: `new FlagParser(args).deprecate(...).conflicts(...).parse()` — use in new commands instead of ad-hoc arg scanning
+- Used by `/fpp ping`; available for all future commands
+
+### 🔄 UpdateChecker Beta Detection
+- `latestKnownVersion` and `isRunningBeta` fields on `FakePlayerPlugin` — detects when running a build newer than the latest published release
 
 ---
 

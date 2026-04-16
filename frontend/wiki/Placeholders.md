@@ -4,7 +4,7 @@ FPP registers a full `%fpp_*%` PlaceholderAPI expansion for scoreboard plugins, 
 
 Requirement: [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)
 
-> **Current line:** v1.6.4  
+> **Current line:** v1.6.5  
 > **Placeholder count:** 29+  
 > Registered automatically when PlaceholderAPI is present.
 
@@ -26,7 +26,7 @@ Requirement: [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 | `%fpp_network_names%` | String | Comma-separated remote bot display names only |
 | `%fpp_chat%` | `on` / `off` | Fake-chat state |
 | `%fpp_swap%` | `on` / `off` | Swap state |
-| `%fpp_skin%` | `auto` / `custom` / `off` | Current skin mode |
+| `%fpp_skin%` | `player` / `random` / `none` | Current skin mode (`auto`, `custom`, `off` are legacy aliases still accepted) |
 | `%fpp_body%` | `on` / `off` | Physical body state |
 | `%fpp_pushable%` | `on` / `off` | Whether bodies are pushable |
 | `%fpp_damageable%` | `on` / `off` | Whether bodies can be damaged |
@@ -149,7 +149,7 @@ The old `bot-name.tab-list-format` and `fake-chat.chat-format` style of internal
 %fpp_local_count%    → 15
 %fpp_network_count%  → 7
 %fpp_real%           → 5
-%fpp_skin%           → auto
+%fpp_skin%           → player
 %fpp_network%        → on
 %fpp_server_id%      → survival
 %fpp_user_count%     → 3

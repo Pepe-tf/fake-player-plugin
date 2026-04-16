@@ -1,4 +1,4 @@
-# Bot Names
+# 📛 Bot Names
 
 FPP picks bot names from a pool stored in:
 ```
@@ -86,6 +86,51 @@ bot1, bot2, bot3, ...
 ```
 
 To avoid this, keep your name pool larger than the maximum number of bots you expect to run simultaneously.
+
+---
+
+## Badword Filter
+
+FPP includes a built-in profanity filter to prevent inappropriate bot names.
+
+When enabled, every name is checked before spawning (and on startup restore). The filter applies:
+1. **Raw detection** — case-insensitive substring scan
+2. **Leet-speak normalization** — `0→o`, `1→i`, `3→e`, `4→a`, etc.
+3. **Aggressive mode** (when `auto-detection.enabled: true`) — collapses duplicate characters before scanning
+4. **Regex patterns** — custom patterns from `bad-words.yml` or auto-generated from word list
+
+Word sources (merged at load time):
+- Remote global baseline (`badword-filter.global-list-url` — the CMU bad-word list, fetched on startup)
+- Inline `badword-filter.words` list in `config.yml`
+- Local `plugins/FakePlayerPlugin/bad-words.yml` (custom words + `patterns:` block)
+
+If `auto-rename: true` (default), names that fail the filter get a clean replacement from the pool instead of being hard-blocked.
+
+Whitelist: add exact names to `badword-filter.whitelist` to allow them through unconditionally.
+
+### Key config keys
+
+```yaml
+badword-filter:
+  enabled: true
+  use-global-list: true
+  words: []
+  whitelist: []
+  auto-rename: true
+  auto-detection:
+    enabled: true
+    mode: normal
+```
+
+### Command
+
+```text
+/fpp badword check     # list active bots whose names fail the filter
+/fpp badword update    # rename flagged bots with clean names
+/fpp badword status    # show filter config and word counts
+```
+
+Permission: `fpp.badword`
 
 ---
 
