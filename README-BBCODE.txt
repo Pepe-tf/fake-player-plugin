@@ -2,7 +2,7 @@
 
 [SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, tab-list ping simulation, PvE attack automation, NameTag plugin integration, LuckPerms integration, proxy network support, and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.6.5  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.6.5.1  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fakeplayerplugin.xyz'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]  [URL='https://github.com/sponsors/Pepe-tf'][B][COLOR=#EA4AAA]💖 GitHub Sponsors[/COLOR][/B][/URL]  [URL='https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink'][B][COLOR=#FF424D]🎗 Patreon[/COLOR][/B][/URL]
@@ -450,6 +450,15 @@ Bot chat uses the server's real chat pipeline, so formatting is handled by your 
 [HR][/HR]
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
+
+[SIZE=5][B]v1.6.5.1[/B][/SIZE] [I](2026-04-17)[/I]
+
+[B]⚙️ BotSettingGui Now Publicly Available[/B]
+[LIST]
+[*]Per-bot settings GUI (shift+right-click any bot) is no longer dev-only — available to all users with [FONT=monospace]fpp.settings[/FONT] permission
+[*]Removed developer UUID gate; any player with [FONT=monospace]fpp.settings[/FONT] now opens the 6-row settings chest (General · Chat · PvP · Cmds · Danger)
+[*]Grant [FONT=monospace]fpp.settings[/FONT] via LuckPerms to allow non-op users to manage per-bot settings
+[/LIST]
 
 [SIZE=5][B]v1.6.5[/B][/SIZE] [I](2026-04-17)[/I]
 
@@ -1057,6 +1066,6 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.5[/I]
+[CENTER][I]Built for Paper 1.21.x · Java 21 · FPP v1.6.5.1[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fakeplayerplugin.xyz']Wiki[/URL][/CENTER]

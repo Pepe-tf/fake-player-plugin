@@ -1,6 +1,6 @@
 ﻿# 🔐 Permissions
 
-> **Complete permission reference - v1.6.5**  
+> **Complete permission reference - v1.6.5.1**  
 > FPP uses **`fpp.op`** (alias **`fpp.admin`**) for admins and **`fpp.use`** for user-tier access.  
 > All nodes are declared in `plugin.yml` so they appear in LuckPerms tab-completion.
 
@@ -59,7 +59,7 @@ Current nodes are:
 | `fpp.peaks` | `/fpp peaks` | Peak-hours scheduler |
 | `fpp.rank` | `/fpp rank` | LuckPerms group assignment |
 | `fpp.lpinfo` | `/fpp lpinfo` | LuckPerms diagnostics |
-| `fpp.settings` | `/fpp settings` | Main settings GUI |
+| `fpp.settings` | `/fpp settings` | Main settings GUI (`/fpp settings`) **and** per-bot settings GUI (shift+right-click any bot) |
 
 ### Interaction / automation
 
@@ -229,6 +229,7 @@ fpp.useitem
 ### `/fpp settings` vs per-bot settings GUI
 
 - `/fpp settings` uses `fpp.settings`
+- Shift+right-clicking a bot entity also uses `fpp.settings` — grant this to non-op players to allow per-bot tuning without full admin access
 - shift-right-click bot settings are controlled by interaction config and normal bot interaction access, not a separate public permission node
 
 ---

@@ -43,7 +43,7 @@ FPP adds fake players to your server that look and behave like real ones:
 - **Transfer XP** — drain a bot's entire XP pool to yourself with `/fpp xp`
 - **Named waypoint routes** — save patrol routes; bots walk them on a loop with `/fpp move --wp`
 - **Rename bots** — rename any active bot with full state preservation (inventory, XP, LP group, tasks)
-- **Per-bot settings GUI** — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvP · Cmds · Danger)
+- **Per-bot settings GUI** — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvP · Cmds · Danger) — now available to all users with `fpp.settings` permission
 - **AI conversations** — bots respond to `/msg` with AI-generated replies; 7 providers (OpenAI, Groq, Anthropic, Gemini, Ollama, Copilot, Custom); per-bot personalities via `personalities/` folder
 - **Badword filter** — case-insensitive with leet-speak normalization, auto-rename bad names, remote word list
 - **Set bot ping** — simulate realistic tab-list latency per bot with `/fpp ping`; fixed, random, or bulk modes
@@ -289,6 +289,15 @@ In `random` mode the resolution pipeline is: per-bot override → `skins/<name>.
 ---
 
 ## Changelog
+
+### v1.6.5.1 *(2026-04-17)*
+
+**BotSettingGui Now Publicly Available**
+- Per-bot settings GUI (shift+right-click any bot) is no longer dev-only — available to all users with `fpp.settings` permission
+- Removed developer UUID gate; any player with `fpp.settings` now opens the 6-row settings chest (General · Chat · PvP · Cmds · Danger)
+- Grant `fpp.settings` via LuckPerms to allow non-op users to manage their own bots' per-bot settings
+
+---
 
 ### v1.6.5 *(2026-04-17)*
 
@@ -741,4 +750,4 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.6.5 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.6.5.1 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*

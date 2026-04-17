@@ -132,7 +132,17 @@
 
 ---
 
-## 🆕 What's New in v1.6.5
+## 🆕 What's New in v1.6.5.1
+
+### ⚙️ **BotSettingGui Now Publicly Available**
+- Per-bot settings GUI (shift+right-click any bot) is now available to **all users with `fpp.settings` permission** — no longer dev-only
+- Grant `fpp.settings` via LuckPerms to allow non-op players to manage per-bot settings
+
+See [📋 Changelog](Changelog.md) for full v1.6.5.1 release notes and the complete version history.
+
+---
+
+## 🆕 What was New in v1.6.5
 
 ### 📡 **Tab-List Ping Simulation**
 - New `/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>]` — set the visible tab-list latency for one or all bots

@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP command reference - v1.6.5**  
+> **Complete FPP command reference - v1.6.5.1**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`
 
 ---
@@ -563,6 +563,8 @@ Permission: `fpp.lpinfo`
 Open the main **3-row settings GUI**.
 
 This is the global config GUI, not the per-bot settings chest.
+
+> 💡 **Per-bot settings** (BotSettingGui) are opened by **shift+right-clicking any bot entity** in-world — also uses `fpp.settings` permission. Available to all players granted this permission (default: op).
 
 Categories:
 - General

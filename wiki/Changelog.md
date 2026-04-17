@@ -1,7 +1,7 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.5.17** · Released: 2026-04-07  
+> Latest version: **v1.6.5.1** · Released: 2026-04-17  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
 
 ---

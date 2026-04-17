@@ -1,8 +1,19 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.5** · Released: 2026-04-17 · Config version: **60**  
+> Latest version: **v1.6.5.1** · Released: 2026-04-17 · Config version: **60**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+
+---
+
+## v1.6.5.1 *(2026-04-17)*
+
+### ⚙️ BotSettingGui Now Publicly Available
+- Per-bot settings GUI (shift+right-click any bot entity) is no longer restricted to the developer — it is now available to **all users with `fpp.settings` permission**
+- Removed the developer UUID gate that previously blocked all other players with a "coming soon" message
+- Any player granted `fpp.settings` (default: `op`) can now open the 6-row per-bot settings chest: **General · Chat · PvP · Cmds · Danger**
+- Grant `fpp.settings` via LuckPerms to non-op players to let them manage their own bots' settings without full admin access
+- The `bot-interaction.shift-right-click-settings` config key still controls whether the shift+right-click shortcut is active at all
 
 ---
 

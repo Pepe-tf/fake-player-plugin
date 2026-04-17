@@ -2,7 +2,7 @@
 
 FPP stores bot sessions, restart state, analytics, and task persistence in a database.
 
-> **Current plugin line:** v1.6.5  
+> **Current plugin line:** v1.6.5.1  
 > **Default backend:** SQLite  
 > **Optional backend:** MySQL  
 > **Important persistence feature:** active mine/use/place/patrol tasks survive restart
