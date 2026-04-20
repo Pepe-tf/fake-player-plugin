@@ -1,8 +1,8 @@
 # 🔧 Migration & Backups
 
-> **Current plugin line:** 1.6.5  
-> **Bundled config stamp:** 60  
-> **Current migration target:** 60
+> **Current plugin line:** 1.6.6  
+> **Bundled config stamp:** 63  
+> **Current migration target:** 63
 
 This page covers:
 - automatic config migration

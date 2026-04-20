@@ -161,7 +161,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     private void sendPluginInfo(CommandSender sender) {
         String version = plugin.getPluginMeta().getVersion();
         List<String> authors = plugin.getPluginMeta().getAuthors();
-        String author = authors.isEmpty() ? "Unknown" : String.join(", ", authors);
+        String author = me.bill.fakePlayerPlugin.util.AttributionManager.formatAuthors(authors);
 
         Component divider = TextUtil.colorize(Lang.raw("divider"));
         Component header = TextUtil.colorize(Lang.raw("info-screen-header"));
@@ -268,6 +268,14 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                                                                             + " menu")
                                                                 .color(GRAY))))
                         .append(Component.text(" ꜰᴏʀ ᴀ ʟɪꜱᴛ ᴏꜰ ᴄᴏᴍᴍᴀɴᴅꜱ.").color(GRAY)));
+
+        sender.sendMessage(Component.empty());
+        sender.sendMessage(
+                Component.empty()
+                        .append(Component.text("  ").color(DARK_GRAY))
+                        .append(Component.text("ꜰʀᴇᴇ & ᴏᴘᴇɴ-ꜱᴏᴜʀᴄᴇ").color(GRAY))
+                        .append(Component.text(" · ").color(DARK_GRAY))
+                        .append(Component.text("ɪꜰ ʏᴏᴜ ᴘᴀɪᴅ ꜰᴏʀ ᴛʜɪꜱ, ʏᴏᴜ ᴡᴇʀᴇ ꜱᴄᴀᴍᴍᴇᴅ.").color(GRAY)));
 
         sender.sendMessage(divider);
     }

@@ -8,6 +8,7 @@ import me.bill.fakePlayerPlugin.fakeplayer.ChunkLoader;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerBody;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
+import me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner;
 import me.bill.fakePlayerPlugin.fakeplayer.PacketHelper;
 import me.bill.fakePlayerPlugin.util.WorldGuardHelper;
 
@@ -27,6 +28,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntityTeleportEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -104,11 +106,24 @@ public class FakePlayerEntityListener implements Listener {
     public void onEntityPortal(EntityPortalEvent event) {
         if (!isFakeBotBody(event.getEntity())) return;
         event.setCancelled(true);
+        FakePlayer fp = manager.getByEntityId(event.getEntity().getEntityId());
         Config.debug(
                 "Blocked portal traversal for bot body: "
-                        + event.getEntity()
-                                .getPersistentDataContainer()
-                                .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
+                        + (fp != null ? fp.getName() : "unknown"));
+    }
+
+    /**
+     * Block portal traversal for bot Player entities.
+     * EntityPortalEvent does NOT fire for Player entities — Bukkit fires PlayerPortalEvent instead.
+     * Bots going through portals break their NMS state, so we cancel it.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onPlayerPortal(PlayerPortalEvent event) {
+        if (!isFakeBotBody(event.getPlayer())) return;
+        event.setCancelled(true);
+        Config.debug(
+                "Blocked portal traversal for bot: "
+                        + event.getPlayer().getName());
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -117,13 +132,13 @@ public class FakePlayerEntityListener implements Listener {
         org.bukkit.Location from = event.getFrom();
         org.bukkit.Location to = event.getTo();
         if (to == null || from.getWorld() == null || to.getWorld() == null) return;
-        if (from.getWorld().equals(to.getWorld())) return;
-        event.setCancelled(true);
-        Config.debug(
-                "Blocked cross-world teleport for bot body: "
-                        + event.getEntity()
-                                .getPersistentDataContainer()
-                                .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING));
+        if (!from.getWorld().equals(to.getWorld())) {
+            // Block cross-world teleport for bots
+            event.setCancelled(true);
+            Config.debug(
+                    "Blocked cross-world teleport for bot body: "
+                            + event.getEntity().getName());
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -289,10 +304,7 @@ public class FakePlayerEntityListener implements Listener {
 
     private boolean isFakeBotBody(Entity entity) {
         if (!(entity instanceof Player)) return false;
-        if (FakePlayerManager.FAKE_PLAYER_KEY == null) return false;
-        String val =
-                entity.getPersistentDataContainer()
-                        .get(FakePlayerManager.FAKE_PLAYER_KEY, PersistentDataType.STRING);
-        return val != null && val.startsWith(FakePlayerBody.VISUAL_PDC_VALUE);
+        // Direct O(1) entityIdIndex lookup — no PDC deserialization needed
+        return manager.getByEntityId(entity.getEntityId()) != null;
     }
 }

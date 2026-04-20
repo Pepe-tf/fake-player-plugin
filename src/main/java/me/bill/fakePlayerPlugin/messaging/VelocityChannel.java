@@ -34,17 +34,32 @@ public final class VelocityChannel implements PluginMessageListener {
     public static final String SUBCHANNEL_JOIN = "JOIN";
     public static final String SUBCHANNEL_LEAVE = "LEAVE";
     public static final String SUBCHANNEL_SYNC = "SYNC";
+    public static final String SUBCHANNEL_RESYNC = "RESYNC";
+    public static final String SUBCHANNEL_SERVER_OFFLINE = "SERVER_OFFLINE";
 
     public static final String CHANNEL = "fpp:main";
+
+    /** Direct proxy channel — bypasses BungeeCord Forward so Velocity fires PluginMessageEvent. */
+    public static final String PROXY_CHANNEL = "fpp:proxy";
 
     private static final String BUNGEE_CHANNEL = "BungeeCord";
 
     private final FakePlayerPlugin plugin;
 
-    @SuppressWarnings("unused")
     private final FakePlayerManager manager;
 
     private final java.util.Set<String> recentIds = ConcurrentHashMap.newKeySet();
+
+    /** Set to true when broadcastResyncRequest() is called before any player was online.
+     *  PlayerJoinListener checks this and retries when the first player joins. */
+    private volatile boolean pendingResync = false;
+
+    /** Set to true when bots were restored at startup but no real carrier player was available
+     *  to send plugin messages. PlayerJoinListener re-broadcasts all bots when first real player joins. */
+    private volatile boolean pendingProxyBroadcast = false;
+
+    /** Whether a retry-broadcast task is currently scheduled, to avoid duplicate tasks. */
+    private volatile boolean retryTaskRunning = false;
 
     public VelocityChannel(FakePlayerPlugin plugin, FakePlayerManager manager) {
         this.plugin = plugin;
@@ -68,10 +83,24 @@ public final class VelocityChannel implements PluginMessageListener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> recentIds.remove(msgId), 100L);
     }
 
+    /**
+     * Finds a real (non-bot) online player to use as a plugin-message carrier.
+     * Bots use a {@code FakeConnection} that discards all packets — sending through
+     * a bot would silently drop the message before it reaches Velocity.
+     */
+    private Player findRealCarrierPlayer() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (manager.getByUuid(p.getUniqueId()) == null) {
+                return p; // real player
+            }
+        }
+        return null; // no real player online
+    }
+
     public void sendPluginMessage(String subchannel, String... data) {
-        var online = Bukkit.getOnlinePlayers();
-        if (online.isEmpty()) {
-            Config.debugNetwork("[VelocityChannel] dropped (no players online): " + subchannel);
+        Player carrier = findRealCarrierPlayer();
+        if (carrier == null) {
+            Config.debugNetwork("[VelocityChannel] dropped (no real player online): " + subchannel);
             return;
         }
         try {
@@ -89,27 +118,55 @@ public final class VelocityChannel implements PluginMessageListener {
             outerOut.writeShort(innerBytes.length);
             outerOut.write(innerBytes);
 
-            online.iterator()
-                    .next()
-                    .sendPluginMessage(plugin, BUNGEE_CHANNEL, outerBuf.toByteArray());
+            carrier.sendPluginMessage(plugin, BUNGEE_CHANNEL, outerBuf.toByteArray());
             Config.debugNetwork(
                     "[VelocityChannel] Sent '"
                             + subchannel
                             + "' ("
                             + innerBytes.length
-                            + " bytes).");
+                            + " bytes) via real player: " + carrier.getName() + ".");
         } catch (IOException e) {
             FppLogger.warn("[VelocityChannel] send failed: " + e.getMessage());
         }
     }
 
+    /**
+     * Sends a message directly on the {@link #PROXY_CHANNEL} without BungeeCord Forward wrapping.
+     * This ensures Velocity fires {@code PluginMessageEvent} for the companion proxy plugin.
+     * Called REGARDLESS of network mode — proxy bot-count sync works even on single-server setups.
+     */
+    public void sendDirectToProxy(String subchannel, String... data) {
+        Player carrier = findRealCarrierPlayer();
+        if (carrier == null) {
+            Config.debugNetwork("[VelocityChannel] fpp:proxy send dropped (no real carrier): " + subchannel);
+            return;
+        }
+        try {
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            DataOutputStream out = new DataOutputStream(buf);
+            out.writeUTF(subchannel);
+            for (String f : data) out.writeUTF(f != null ? f : "");
+            byte[] bytes = buf.toByteArray();
+            carrier.sendPluginMessage(plugin, PROXY_CHANNEL, bytes);
+            Config.debugNetwork("[VelocityChannel] Sent '" + subchannel + "' on fpp:proxy (" + bytes.length + " bytes) via " + carrier.getName() + ".");
+        } catch (IOException e) {
+            FppLogger.warn("[FPP-Proxy] sendDirectToProxy failed for '" + subchannel + "': " + e.getMessage());
+        }
+    }
+
     public void broadcastBotSpawn(FakePlayer fp) {
-        if (!Config.isNetworkMode()) return;
         me.bill.fakePlayerPlugin.fakeplayer.SkinProfile skin = fp.getResolvedSkin();
         String skinValue = (skin != null) ? skin.getValue() : "";
         String skinSignature = (skin != null) ? skin.getSignature() : "";
         String msgId = generateAndTrackId();
-        sendPluginMessage(
+
+        // Always notify proxy (works even without NETWORK/MySQL mode)
+        Player realCarrier = findRealCarrierPlayer();
+        if (realCarrier == null) {
+            pendingProxyBroadcast = true;
+            scheduleProxyRetryIfNeeded();
+        }
+        sendDirectToProxy(
                 SUBCHANNEL_BOT_SPAWN,
                 msgId,
                 Config.serverId(),
@@ -119,12 +176,22 @@ public final class VelocityChannel implements PluginMessageListener {
                 fp.getPacketProfileName(),
                 skinValue,
                 skinSignature);
-        Config.debugNetwork(
-                "[VelocityChannel] BOT_SPAWN sent for '"
-                        + fp.getName()
-                        + "' (skin="
-                        + !skinValue.isEmpty()
-                        + ").");
+
+        // Backend-to-backend sync only in NETWORK mode
+        if (Config.isNetworkMode()) {
+            sendPluginMessage(
+                    SUBCHANNEL_BOT_SPAWN,
+                    msgId,
+                    Config.serverId(),
+                    fp.getUuid().toString(),
+                    fp.getName(),
+                    fp.getDisplayName(),
+                    fp.getPacketProfileName(),
+                    skinValue,
+                    skinSignature);
+            Config.debugNetwork(
+                    "[VelocityChannel] BOT_SPAWN BungeeCord Forward sent for '" + fp.getName() + "'.");
+        }
     }
 
     public void broadcastBotDisplayNameUpdate(FakePlayer fp) {
@@ -147,10 +214,16 @@ public final class VelocityChannel implements PluginMessageListener {
     }
 
     public void broadcastBotDespawn(UUID uuid) {
-        if (!Config.isNetworkMode()) return;
         String msgId = generateAndTrackId();
-        sendPluginMessage(SUBCHANNEL_BOT_DESPAWN, msgId, Config.serverId(), uuid.toString());
-        Config.debugNetwork("[VelocityChannel] BOT_DESPAWN sent for " + uuid + ".");
+
+        // Always notify proxy
+        sendDirectToProxy(SUBCHANNEL_BOT_DESPAWN, msgId, Config.serverId(), uuid.toString());
+
+        // Backend-to-backend sync only in NETWORK mode
+        if (Config.isNetworkMode()) {
+            sendPluginMessage(SUBCHANNEL_BOT_DESPAWN, msgId, Config.serverId(), uuid.toString());
+            Config.debugNetwork("[VelocityChannel] BOT_DESPAWN BungeeCord Forward sent for " + uuid + ".");
+        }
     }
 
     public void sendChatToNetwork(
@@ -179,6 +252,98 @@ public final class VelocityChannel implements PluginMessageListener {
         Config.debugNetwork("[VelocityChannel] Global alert sent (id=" + msgId + ").");
     }
 
+    /**
+     * Called at startup (after channels are registered + persistence restore) to ask peer servers
+     * to re-send their current bot lists. If no player is online the message is queued and retried
+     * when the first player joins ({@link #hasPendingResync()} / {@link #clearPendingResync()}).
+     */
+    public void broadcastResyncRequest() {
+        if (!Config.isNetworkMode()) return;
+        if (Bukkit.getOnlinePlayers().isEmpty()) {
+            pendingResync = true;
+            Config.debugNetwork("[VelocityChannel] RESYNC queued (no players online yet).");
+            return;
+        }
+        String msgId = generateAndTrackId();
+        sendPluginMessage(SUBCHANNEL_RESYNC, msgId, Config.serverId());
+        Config.debugNetwork("[VelocityChannel] RESYNC request broadcast.");
+    }
+
+    /**
+     * Called in {@code onDisable} so that peer servers can immediately evict this server's bots
+     * from their {@link RemoteBotCache} and tab lists.
+     */
+    public void broadcastServerOffline() {
+        // During onDisable, Paper rejects both scheduler tasks AND plugin messages.
+        // Guard the entire broadcast — if we can't send, we silently skip.
+        if (!plugin.isEnabled()) {
+            Config.debugNetwork("[VelocityChannel] SERVER_OFFLINE skipped (plugin disabled).");
+            return;
+        }
+
+        String msgId = System.currentTimeMillis() + "-" + ThreadLocalRandom.current().nextInt(1_000_000);
+
+        try {
+            sendDirectToProxy(SUBCHANNEL_SERVER_OFFLINE, msgId, Config.serverId());
+        } catch (Exception e) {
+            Config.debugNetwork("[VelocityChannel] SERVER_OFFLINE fpp:proxy send failed: " + e.getMessage());
+        }
+
+        if (Config.isNetworkMode()) {
+            try {
+                sendPluginMessage(SUBCHANNEL_SERVER_OFFLINE, msgId, Config.serverId());
+                Config.debugNetwork("[VelocityChannel] SERVER_OFFLINE BungeeCord Forward sent.");
+            } catch (Exception e) {
+                Config.debugNetwork("[VelocityChannel] SERVER_OFFLINE BungeeCord send failed: " + e.getMessage());
+            }
+        }
+    }
+
+    public boolean hasPendingResync() {
+        return pendingResync;
+    }
+
+    public void clearPendingResync() {
+        pendingResync = false;
+    }
+
+    public boolean hasPendingProxyBroadcast() {
+        return pendingProxyBroadcast;
+    }
+
+    public void clearPendingProxyBroadcast() {
+        pendingProxyBroadcast = false;
+        retryTaskRunning = false;
+    }
+
+    /**
+     * Schedules a repeating task (every 3 seconds) that re-broadcasts all active bots to the proxy
+     * as soon as a real carrier player is available. Prevents duplicate tasks via {@code retryTaskRunning}.
+     * Cancels itself once the broadcast succeeds.
+     */
+    private void scheduleProxyRetryIfNeeded() {
+        if (retryTaskRunning) return;
+        retryTaskRunning = true;
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            if (!pendingProxyBroadcast) {
+                task.cancel();
+                retryTaskRunning = false;
+                return;
+            }
+            Player carrier = findRealCarrierPlayer();
+            if (carrier == null) {
+                return;
+            }
+            // Carrier found — send all pending bot spawns
+            task.cancel();
+            retryTaskRunning = false;
+            pendingProxyBroadcast = false;
+            for (me.bill.fakePlayerPlugin.fakeplayer.FakePlayer botFp : manager.getActivePlayers()) {
+                broadcastBotSpawn(botFp);
+            }
+        }, 60L, 60L); // 60 ticks = 3 seconds; start after 3 s, repeat every 3 s
+    }
+
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
         if (!CHANNEL.equals(channel)) return;
@@ -196,6 +361,8 @@ public final class VelocityChannel implements PluginMessageListener {
                 case SUBCHANNEL_JOIN -> handleJoin(in);
                 case SUBCHANNEL_LEAVE -> handleLeave(in);
                 case SUBCHANNEL_SYNC -> handleSync(in);
+                case SUBCHANNEL_RESYNC -> handleResync(in);
+                case SUBCHANNEL_SERVER_OFFLINE -> handleServerOffline(in);
                 default ->
                         FppLogger.warn(
                                 "[VelocityChannel] Unknown subchannel: '" + subchannel + "'.");
@@ -418,6 +585,78 @@ public final class VelocityChannel implements PluginMessageListener {
                                     }
                                 });
             }
+        }
+    }
+
+    private void handleResync(DataInputStream in) throws IOException {
+        String msgId = in.readUTF();
+        String originServer = in.readUTF();
+
+        if (isDuplicate(msgId, originServer)) {
+            Config.debugNetwork("[VelocityChannel] RESYNC echo suppressed.");
+            return;
+        }
+        trackIncoming(msgId);
+
+        Config.debugNetwork(
+                "[VelocityChannel] RESYNC requested by '" + originServer + "' — re-broadcasting local bots.");
+
+        // Re-broadcast all currently active local bots so the requesting server can populate
+        // its RemoteBotCache.
+        Bukkit.getScheduler()
+                .runTask(
+                        plugin,
+                        () -> {
+                            for (me.bill.fakePlayerPlugin.fakeplayer.FakePlayer fp :
+                                    manager.getActivePlayers()) {
+                                broadcastBotSpawn(fp);
+                            }
+                        });
+    }
+
+    private void handleServerOffline(DataInputStream in) throws IOException {
+        String msgId = in.readUTF();
+        String originServer = in.readUTF();
+
+        if (isDuplicate(msgId, originServer)) {
+            Config.debugNetwork("[VelocityChannel] SERVER_OFFLINE echo suppressed.");
+            return;
+        }
+        trackIncoming(msgId);
+
+        Config.debugNetwork(
+                "[VelocityChannel] SERVER_OFFLINE from '" + originServer + "' — purging remote bots.");
+
+        RemoteBotCache cache = plugin.getRemoteBotCache();
+        if (cache == null) return;
+
+        // Collect UUIDs belonging to the offline server, evict from cache and tab lists.
+        java.util.List<UUID> evicted = new java.util.ArrayList<>();
+        for (me.bill.fakePlayerPlugin.fakeplayer.RemoteBotEntry entry : cache.getAll()) {
+            if (originServer.equals(entry.serverId())) {
+                evicted.add(entry.uuid());
+            }
+        }
+
+        cache.removeAllFromServer(originServer);
+
+        if (!evicted.isEmpty() && Config.tabListEnabled()) {
+            Bukkit.getScheduler()
+                    .runTask(
+                            plugin,
+                            () -> {
+                                for (Player online : Bukkit.getOnlinePlayers()) {
+                                    for (UUID uuid : evicted) {
+                                        PacketHelper.sendTabListRemoveByUuid(online, uuid);
+                                    }
+                                }
+                                Config.debugNetwork(
+                                        "[VelocityChannel] Removed "
+                                                + evicted.size()
+                                                + " tab entries for offline server '"
+                                                + originServer
+                                                + "'.");
+                            });
         }
     }
 

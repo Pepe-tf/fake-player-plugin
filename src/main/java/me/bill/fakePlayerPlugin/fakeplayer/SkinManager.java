@@ -1072,6 +1072,20 @@ public final class SkinManager {
             return;
         }
 
+        // Prefer an already-resolved skin (e.g. from persistence or a previous session)
+        // This ensures bots keep the same skin across restarts and swap rejoins
+        SkinProfile alreadyResolved = fp.getResolvedSkin();
+        if (alreadyResolved != null && alreadyResolved.isValid()) {
+            Config.debugSkin(
+                    "SkinManager: using already-resolved skin for '"
+                            + fp.getName()
+                            + "' (source="
+                            + alreadyResolved.getSource()
+                            + ")");
+            deliver(callback, alreadyResolved);
+            return;
+        }
+
         SkinProfile cached = getCachedSkinForBot(fp);
         if (cached != null && cached.isValid()) {
             fp.setResolvedSkin(cached);
@@ -1091,10 +1105,12 @@ public final class SkinManager {
                                 SkinProfile nameTagSkin = getPreferredSkin(fp);
                                 if (nameTagSkin != null && nameTagSkin.isValid()) {
                                     fp.setResolvedSkin(nameTagSkin);
+                                    persistSkinToDb(fp, nameTagSkin);
                                     deliver(callback, nameTagSkin);
                                     return;
                                 }
                                 fp.setResolvedSkin(skin);
+                                persistSkinToDb(fp, skin);
                                 deliver(callback, skin);
                             });
         }
@@ -1168,6 +1184,9 @@ public final class SkinManager {
                         if (plugin.getDatabaseManager() != null) {
                             plugin.getDatabaseManager()
                                     .cacheSkin(skinName, value, signature, "mojang:" + skinName);
+                            // Also persist to the active bot row for restart persistence
+                            plugin.getDatabaseManager()
+                                    .updateBotSkin(fp.getUuid().toString(), value, signature);
                         }
 
                         Config.debugSkin(
@@ -1277,6 +1296,7 @@ public final class SkinManager {
                     .getAnyValidSkin(
                             skin -> {
                                 fp.setResolvedSkin(skin);
+                                persistSkinToDb(fp, skin);
                                 deliver(callback, skin);
                             });
             return;
@@ -1288,8 +1308,17 @@ public final class SkinManager {
                         pick,
                         skin -> {
                             fp.setResolvedSkin(skin);
+                            persistSkinToDb(fp, skin);
                             deliver(callback, skin);
                         });
+    }
+
+    private void persistSkinToDb(@NotNull FakePlayer fp, @Nullable SkinProfile skin) {
+        if (skin == null || !skin.isValid()) return;
+        if (plugin.getDatabaseManager() != null) {
+            plugin.getDatabaseManager()
+                    .updateBotSkin(fp.getUuid().toString(), skin.getValue(), skin.getSignature());
+        }
     }
 
     public @Nullable SkinProfile getPreferredSkin(@NotNull FakePlayer fp) {
@@ -1447,6 +1476,11 @@ public final class SkinManager {
             botPlayer.setPlayerProfile(profile);
             NmsPlayerSpawner.forceAllSkinParts(botPlayer);
             bot.setResolvedSkin(new SkinProfile(texture, signature, "direct:" + bot.getName()));
+            // Persist skin to active bot DB row
+            if (plugin.getDatabaseManager() != null) {
+                plugin.getDatabaseManager()
+                        .updateBotSkin(bot.getUuid().toString(), texture, signature);
+            }
             return true;
         } catch (Exception e) {
             FppLogger.warn(

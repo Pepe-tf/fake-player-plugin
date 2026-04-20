@@ -9,11 +9,20 @@ import org.bukkit.entity.Player;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 public final class BotConversationManager {
 
     private final FakePlayerPlugin plugin;
     private final AIProviderRegistry aiRegistry;
+
+    /** Maximum number of simultaneous AI API requests across all bots/players. */
+    private static final int MAX_CONCURRENT_REQUESTS = 3;
+
+    /** Minimum milliseconds between accepting new messages from the same player to ANY bot. */
+    private static final long PER_PLAYER_FLOOD_INTERVAL_MS = 1500;
+
+    private final Semaphore requestSemaphore = new Semaphore(MAX_CONCURRENT_REQUESTS);
 
     private final Map<UUID, Map<UUID, Deque<AIProvider.ChatMessage>>> conversations =
             new ConcurrentHashMap<>();
@@ -23,6 +32,12 @@ public final class BotConversationManager {
     private final Map<UUID, String> botPersonalityNames = new ConcurrentHashMap<>();
 
     private final Map<String, Long> lastResponseTimes = new ConcurrentHashMap<>();
+
+    /** Tracks bot+player pairs that have an AI request currently in-flight. */
+    private final Set<String> inFlightRequests = ConcurrentHashMap.newKeySet();
+
+    /** Per-player timestamp of last accepted message (flood protection). */
+    private final Map<UUID, Long> playerLastMessageTime = new ConcurrentHashMap<>();
 
     public BotConversationManager(FakePlayerPlugin plugin, AIProviderRegistry aiRegistry) {
         this.plugin = plugin;
@@ -43,6 +58,8 @@ public final class BotConversationManager {
 
         String key = bot.getUuid() + ":" + sender.getUniqueId();
         long now = System.currentTimeMillis();
+
+        /* ── Rate-limit: per-conversation cooldown ── */
         long cooldown = Config.aiConversationsCooldown() * 1000L;
         Long lastResponse = lastResponseTimes.get(key);
         if (lastResponse != null && (now - lastResponse) < cooldown) {
@@ -56,6 +73,47 @@ public final class BotConversationManager {
             }
             return;
         }
+
+        /* ── Flood guard: per-player message interval ── */
+        Long lastPlayerMsg = playerLastMessageTime.get(sender.getUniqueId());
+        if (lastPlayerMsg != null && (now - lastPlayerMsg) < PER_PLAYER_FLOOD_INTERVAL_MS) {
+            if (Config.aiConversationsDebug()) {
+                plugin.getLogger()
+                        .info("[AI] Flood guard: ignoring rapid message from " + sender.getName());
+            }
+            return;
+        }
+
+        /* ── In-flight guard: one request per bot+player pair at a time ── */
+        if (!inFlightRequests.add(key)) {
+            if (Config.aiConversationsDebug()) {
+                plugin.getLogger()
+                        .info(
+                                "[AI] Request already in-flight for "
+                                        + sender.getName()
+                                        + " → "
+                                        + bot.getName());
+            }
+            return;
+        }
+
+        /* ── Global concurrency guard ── */
+        if (!requestSemaphore.tryAcquire()) {
+            inFlightRequests.remove(key);
+            if (Config.aiConversationsDebug()) {
+                plugin.getLogger()
+                        .info(
+                                "[AI] Max concurrent AI requests reached ("
+                                        + MAX_CONCURRENT_REQUESTS
+                                        + "), dropping message from "
+                                        + sender.getName());
+            }
+            return;
+        }
+
+        /* Set timestamps optimistically BEFORE the async call */
+        lastResponseTimes.put(key, now);
+        playerLastMessageTime.put(sender.getUniqueId(), now);
 
         Map<UUID, Deque<AIProvider.ChatMessage>> botConversations =
                 conversations.computeIfAbsent(bot.getUuid(), k -> new ConcurrentHashMap<>());
@@ -99,6 +157,7 @@ public final class BotConversationManager {
 
                                                     sendBotReply(bot, sender, response);
 
+                                                    /* Refresh cooldown to response-delivery time */
                                                     lastResponseTimes.put(
                                                             key, System.currentTimeMillis());
 
@@ -128,7 +187,12 @@ public final class BotConversationManager {
                                 ex.printStackTrace();
                             }
                             return null;
-                        });
+                        })
+                .whenComplete((v, ex) -> {
+                    /* Always release concurrency resources regardless of success/failure */
+                    inFlightRequests.remove(key);
+                    requestSemaphore.release();
+                });
     }
 
     private void sendBotReply(FakePlayer bot, Player recipient, String message) {
@@ -165,6 +229,19 @@ public final class BotConversationManager {
                     new IllegalStateException("Rate limited"));
         }
 
+        /* ── In-flight guard for public-chat reactions ── */
+        if (!inFlightRequests.add(rateKey)) {
+            return java.util.concurrent.CompletableFuture.failedFuture(
+                    new IllegalStateException("Request already in-flight"));
+        }
+
+        /* ── Global concurrency guard ── */
+        if (!requestSemaphore.tryAcquire()) {
+            inFlightRequests.remove(rateKey);
+            return java.util.concurrent.CompletableFuture.failedFuture(
+                    new IllegalStateException("Max concurrent AI requests reached"));
+        }
+
         lastResponseTimes.put(rateKey, now);
 
         String personality = resolvePersonality(bot);
@@ -199,6 +276,10 @@ public final class BotConversationManager {
                 .generateResponse(messages, bot.getName(), chatPersonality)
                 .whenComplete(
                         (result, err) -> {
+                            /* Always release concurrency resources */
+                            inFlightRequests.remove(rateKey);
+                            requestSemaphore.release();
+
                             if (err != null) {
 
                                 lastResponseTimes.remove(rateKey);
@@ -281,6 +362,8 @@ public final class BotConversationManager {
         botPersonalities.clear();
         botPersonalityNames.clear();
         lastResponseTimes.clear();
+        inFlightRequests.clear();
+        playerLastMessageTime.clear();
     }
 
     public int getConversationSize(UUID botUuid, UUID playerUuid) {

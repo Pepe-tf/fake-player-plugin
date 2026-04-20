@@ -233,6 +233,10 @@ public final class FppLogger {
 
         rule();
         success("  Ready: /fpp help");
+        rule();
+        info("  " + GRAY + "Original author: " + WHITE + AttributionManager.getOriginalAuthor() + RESET);
+        info("  " + GRAY + AttributionManager.getAttributionMessage() + RESET);
+        info("  " + GRAY + "Source: " + CYAN + AttributionManager.getModrinthLink() + RESET);
         boldRule();
     }
 

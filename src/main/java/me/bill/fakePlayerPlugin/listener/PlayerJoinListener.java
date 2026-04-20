@@ -240,6 +240,34 @@ public class PlayerJoinListener implements Listener {
 
         if (manager.getCount() == 0 && plugin.getRemoteBotCache().count() == 0) return;
 
+        // If a RESYNC request was queued at startup (no players were online), fire it now.
+        try {
+            var vc = plugin.getVelocityChannel();
+            if (vc != null && vc.hasPendingResync()) {
+                vc.clearPendingResync();
+                org.bukkit.Bukkit.getScheduler()
+                        .runTaskLater(plugin, vc::broadcastResyncRequest, 5L);
+            }
+        } catch (Throwable ignored) {
+        }
+
+        // When the FIRST real player joins, re-broadcast all bot spawns to the proxy.
+        // Bots are restored at startup but cannot send plugin messages without a real carrier.
+        // This ensures the Velocity companion gets an accurate bot count.
+        try {
+            var vc = plugin.getVelocityChannel();
+            if (vc != null && vc.hasPendingProxyBroadcast()) {
+                vc.clearPendingProxyBroadcast();
+                        org.bukkit.Bukkit.getScheduler()
+                        .runTaskLater(plugin, () -> {
+                            for (me.bill.fakePlayerPlugin.fakeplayer.FakePlayer botFp : manager.getActivePlayers()) {
+                                vc.broadcastBotSpawn(botFp);
+                            }
+                        }, 10L);
+            }
+        } catch (Throwable ignored) {
+        }
+
         long delayTicks = manager.isRestorationInProgress() ? 40L : 5L;
 
         org.bukkit.Bukkit.getScheduler()

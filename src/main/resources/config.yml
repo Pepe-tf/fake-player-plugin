@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed automatically. Do NOT edit.
-config-version: 60
+config-version: 63
 language: en
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -73,6 +73,14 @@ skin:
 tab-list:
   enabled: true
 
+# ── Server List (MOTD ping) ────────────────────────────────────────────────────
+# Controls how bots affect the player count shown in the server list / MOTD.
+server-list:
+  count-bots: true          # true  = bots are counted in the MOTD player number
+                            # false = only real players are counted
+  include-remote-bots: false # true  = also add bots from other NETWORK-mode servers
+                            #         to this server's displayed count (useful for hubs)
+
 # ── LuckPerms ─────────────────────────────────────────────────────────────────
 # Bots are real NMS ServerPlayer entities — LuckPerms handles them natively.
 # Prefix, suffix, and tab-list ordering are applied automatically.
@@ -86,7 +94,7 @@ luckperms:
 # Whitelist allows specific bot names even if they contain a badword.
 badword-filter:
   enabled: true                     # true = enable badword filtering; false = allow all names
-  use-global-list: true             # true = fetch the remote global profanity list below
+  use-global-list: false             # true = fetch the remote global profanity list below
   global-list-url: "https://www.cs.cmu.edu/~biglou/resources/bad-words.txt"
   global-list-timeout-ms: 5000      # Fetch timeout for the remote list (startup / reload)
   words: []                         # Inline word list — merged with bad-words.yml
@@ -109,7 +117,7 @@ badword-filter:
   # Increasing strictness may produce false positives on unusual bot names.
   auto-detection:
     enabled: true                   # true  = enable auto-detection enhancements
-    mode: strict                    # off | normal | strict
+    mode: normal                    # off | normal | strict
 
 # ── Bot Interaction ───────────────────────────────────────────────────────────
 # Controls how players can interact with bot entities in-world.
@@ -229,6 +237,7 @@ pathfinding:
   max-range: 64                  # Max straight-line search range in blocks
   max-nodes: 2000                # Node cap for plain searches
   max-nodes-extended: 4000       # Node cap when parkour/break/place are enabled
+  max-fall: 3                    # Max blocks the bot will fall during navigation (1-16)
 
 # ── PVP AI  ·  ⚠ COMING SOON ─────────────────────────────────────────────────
 # Restricted to internal testing — all settings below are locked to their defaults.

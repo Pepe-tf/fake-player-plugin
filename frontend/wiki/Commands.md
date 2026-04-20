@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP command reference - v1.6.5.1**  
+> **Complete FPP command reference - v1.6.6**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`
 
 ---
@@ -31,7 +31,9 @@
 | `/fpp personality ...` | `fpp.personality` | Assign AI personalities to bots |
 | `/fpp badword ...` | `fpp.badword` | Manage runtime badword list |
 | `/fpp ping [<bot>] [--ping <ms>\|--random] [--count <n>]` | `fpp.ping` | Set simulated tab-list ping |
-| `/fpp attack <bot> [--stop]` | `fpp.attack` | PvE attack — walk to sender, attack entities |
+| `/fpp attack <bot> [--stop]` | `fpp.attack` | PvE attack — walk to sender, attack entities; `--mob` for stationary mob-targeting |
+| `/fpp follow <bot\|all> <player>` | `fpp.follow` | Continuously follow an online player (persists across restarts) |
+| `/fpp follow <bot\|all> --stop` | `fpp.follow` | Stop the bot's follow loop |
 | `/fpp chat ...` | `fpp.chat` | Control fake chat globally or per-bot |
 | `/fpp freeze ...` | `fpp.freeze` | Freeze or unfreeze bots |
 | `/fpp swap ...` | `fpp.swap` | Session rotation controls |
@@ -685,14 +687,36 @@ Set the simulated tab-list latency (ping bar) for one or all bots.
 ```text
 /fpp attack <bot>
 /fpp attack <bot> --stop
+/fpp attack <bot> --mob [--range <n>] [--type <mob>] [--priority nearest|lowest-health]
 ```
 
-Bot walks to the command sender's position, mirrors the sender's look direction, and continuously attacks nearby entities (PvE).
+**Classic mode:** bot walks to the command sender's position and continuously attacks nearby entities.
+
+**Mob mode (`--mob`):** stationary PvE auto-targeting — scans for nearby hostile mobs within `--range` blocks, smoothly rotates toward the best target, and attacks with proper weapon cooldowns. Re-targets every `attack-mob.retarget-interval` ticks. Never auto-targets players.
 
 - Respects 1.9+ attack cooldown and item-specific cooldowns dynamically
 - `--stop` cancels the attack loop
 
 Permission: `fpp.attack`
+
+---
+
+### 🎯 `/fpp follow`
+
+```text
+/fpp follow <bot|all> <player>
+/fpp follow <bot|all> --stop
+```
+
+Bot continuously follows an online player using `PathfindingService` (Owner `FOLLOW`).
+
+- Path recalculates whenever the target moves >3.5 blocks (configurable via `pathfinding.follow-recalc-distance`) or every 60 ticks
+- Arrival distance: 2.0 blocks; bot re-navigates 5 ticks after arrival to maintain continuous following
+- `--stop` cancels the follow loop for one or all bots
+- Persists across restarts — FOLLOW task type saved to `fpp_bot_tasks`; bot resumes following if the target is online after restart
+- Respects `pathfinding.max-fall` — will not choose paths with unsafe drops
+
+Permission: `fpp.follow`
 
 ---
 
@@ -723,6 +747,7 @@ fpp.personality
 fpp.badword
 fpp.ping
 fpp.attack
+fpp.follow
 ```
 
 For the full permission list, see [Permissions](Permissions.md).

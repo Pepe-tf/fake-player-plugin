@@ -152,6 +152,10 @@ public final class Perm {
     /** Walk bot to sender then attack in look direction. Respects 1.9+ attack cooldown. */
     public static final String ATTACK = "fpp.attack";
 
+    // ── Follow ──────────────────────────────────────────────────────────────
+    /** Make a bot continuously follow a player. */
+    public static final String FOLLOW = "fpp.follow";
+
     // ── Place ─────────────────────────────────────────────────────────────────    /** Top-level place — grants all place sub-permissions. */
     public static final String PLACE       = "fpp.place";
     /** Start continuous placement. Sub-node of {@link #PLACE}. */

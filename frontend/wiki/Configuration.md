@@ -4,8 +4,8 @@ FPP is configured through `plugins/FakePlayerPlugin/config.yml`.
 
 Most changes apply after running `/fpp reload` — no full restart needed.
 
-> **Bundled config stamp:** `60`  
-> **Current migration target:** `60`  
+> **Bundled config stamp:** `63`  
+> **Current migration target:** `63`  
 > The bundled file in the jar and the runtime migrator target are now in sync.
 
 ---
@@ -33,14 +33,16 @@ Most changes apply after running `/fpp reload` — no full restart needed.
 | `head-ai` | Head tracking |
 | `swim-ai` | Auto swim behavior |
 | `collision` | Push / separation physics |
-| `pathfinding` | Shared nav tuning for move/mine/place/use/patrol |
+| `pathfinding` | Shared nav tuning for move/mine/place/use/patrol; includes `max-fall` |
 | `pvp-ai` | Future / internal PvP AI tuning |
+| `attack-mob` | Per-bot PvE attack settings (range, priority, rotation speed, retarget interval, line-of-sight) |
 | `fake-chat` | Bot chat, event triggers, player reactions |
 | `ai-conversations` | DM AI replies, personalities, typing delay |
 | `swap` | Session rotation |
 | `peak-hours` | Time-window bot pool scheduler |
 | `database` | SQLite / MySQL / NETWORK mode |
 | `config-sync` | Cross-server config sync |
+| `server-list` | Server-list player count settings (`count-bots`, `include-remote-bots`) |
 | `performance` | Position packet culling |
 | `nametag-integration` | NameTag plugin soft-dependency settings |
 | `debug` / `logging.debug.*` | Debug logging |
@@ -424,6 +426,7 @@ pathfinding:
   max-range: 64
   max-nodes: 2000
   max-nodes-extended: 4000
+  max-fall: 3
 ```
 
 Shared navigation tuning for:
@@ -431,6 +434,7 @@ Shared navigation tuning for:
 - `/fpp mine`
 - `/fpp place`
 - `/fpp use`
+- `/fpp follow`
 - waypoint patrols
 
 Feature flags:
@@ -440,11 +444,52 @@ Feature flags:
 - `place-material`
 
 Tuning:
-- arrival distances
-- follow recalculation rules
+- `arrival-distance`, `patrol-arrival-distance`, `waypoint-arrival-distance`
+- `follow-recalc-distance` — how far target must move before path recalculates
 - stuck detection thresholds
 - block interaction timings
 - node/range caps
+- `max-fall` — maximum safe descent height in a single unbroken fall (default `3`)
+
+---
+
+## `attack-mob`
+
+```yaml
+attack-mob:
+  default-range: 8.0
+  default-priority: "nearest"   # nearest | lowest-health
+  smooth-rotation-speed: 12.0   # degrees per tick
+  retarget-interval: 10         # ticks between target re-evaluations
+  line-of-sight: true
+```
+
+Controls the `/fpp attack --mob` stationary PvE mode defaults. All values can be overridden per-bot via `BotSettingGui` or `/fpp attack --mob --range <n> --priority <mode>`.
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `default-range` | `8.0` | Mob scan radius in blocks |
+| `default-priority` | `"nearest"` | Target selection strategy: `nearest` or `lowest-health` |
+| `smooth-rotation-speed` | `12.0` | Bot rotation speed toward target (degrees/tick) |
+| `retarget-interval` | `10` | Ticks between target re-evaluations |
+| `line-of-sight` | `true` | Require unobstructed line of sight before attacking |
+
+---
+
+## `server-list`
+
+```yaml
+server-list:
+  count-bots: true
+  include-remote-bots: false
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `count-bots` | `true` | Whether bots increment the displayed server-list player count |
+| `include-remote-bots` | `false` | Include remote proxy bots in the server-list count (NETWORK mode only) |
+
+> **Note:** Existing installs receive these keys with safe defaults via config v60→v61 migration — no behaviour change unless you actively set `count-bots: false`.
 
 ---
 

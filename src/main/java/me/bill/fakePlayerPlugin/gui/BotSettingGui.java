@@ -608,6 +608,32 @@ public final class BotSettingGui implements Listener {
                 }
                 yield bot.isPveEnabled();
             }
+            case "follow_player" -> {
+                var followCmd = plugin.getFollowCommand();
+                if (followCmd == null) yield false;
+                boolean wasFollowing = followCmd.isFollowing(bot.getUuid());
+                if (wasFollowing) {
+                    followCmd.stopFollowing(bot.getUuid());
+                    yield false;
+                } else {
+                    // Find the player who opened this GUI
+                    UUID guiPlayerUuid = botSessions.entrySet().stream()
+                            .filter(e -> e.getValue().equals(bot.getUuid()))
+                            .map(Map.Entry::getKey)
+                            .findFirst().orElse(null);
+                    if (guiPlayerUuid != null) {
+                        Player target = Bukkit.getPlayer(guiPlayerUuid);
+                        if (target != null && target.isOnline()) {
+                            Player botPlayer = bot.getPlayer();
+                            if (botPlayer != null && botPlayer.getWorld().equals(target.getWorld())) {
+                                followCmd.startFollowingFromSettings(bot, target);
+                                yield true;
+                            }
+                        }
+                    }
+                    yield false;
+                }
+            }
             default -> false;
         };
     }
@@ -671,6 +697,7 @@ public final class BotSettingGui implements Listener {
         bot.setPvePriority("nearest".equals(current) ? "lowest-health" : "nearest");
     }
 
+
     private void applyImmediate(Player player, FakePlayer bot, String id) {
         // No immediate actions remaining after cmd removal
     }
@@ -688,7 +715,7 @@ public final class BotSettingGui implements Listener {
                         Component.empty()
                                 .decoration(TextDecoration.ITALIC, false)
                                 .append(Component.text("⚠ ").color(DANGER_RED))
-                                .append(Component.text("ᴄʟɪᴄᴋ ᴀɢᴀɪɴ ᴡɪᴛʜɪɴ 5ꜱ ᴛᴏ ᴄᴏɴꜰɪʀᴍ ʀᴇꜱᴇᴛ.").color(YELLOW)));
+                                .append(Component.text("ᴄʟɪᴄᴋ ᴀɡᴀɪɴ ᴡɪᴛʜɪɴ 5ꜱ ᴛᴏ ᴄᴏɴꜰɪʀᴍ ʀᴇꜱᴇᴛ.").color(YELLOW)));
                 player.playSound(
                         player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS,
                         SoundCategory.MASTER, 0.8f, 0.5f);
@@ -702,7 +729,7 @@ public final class BotSettingGui implements Listener {
                     Component.empty()
                             .decoration(TextDecoration.ITALIC, false)
                             .append(Component.text("⟲ ").color(YELLOW))
-                            .append(Component.text("ᴀʟʟ ꜱᴇᴛᴛɪɴɢꜱ ʀᴇꜱᴇᴛ ꜰᴏʀ  ").color(WHITE))
+                            .append(Component.text("ᴀʟʟ ꜱᴇᴛᴛɪɴɡꜱ ʀᴇꜱᴇᴛ ꜰᴏʀ  ").color(WHITE))
                             .append(Component.text(bot.getName()).color(ACCENT)));
             return;
         }
@@ -803,7 +830,7 @@ public final class BotSettingGui implements Listener {
         page = Math.min(page, totalPages - 1);
         mobSelectorPage.put(uuid, page);
 
-        String currentType = bot.getPveMobType(); // null = all hostile
+        Set<String> selectedTypes = bot.getPveMobTypes();
 
         MobSelectorHolder holder = new MobSelectorHolder(uuid);
         Component title = Component.empty()
@@ -813,7 +840,7 @@ public final class BotSettingGui implements Listener {
                 .append(Component.text("] ").color(DARK_GRAY))
                 .append(Component.text(bot.getName()).color(ACCENT))
                 .append(Component.text("  ·  ").color(DARK_GRAY))
-                .append(Component.text("ꜱᴇʟᴇᴄᴛ ᴍᴏʙ").color(DARK_GRAY))
+                .append(Component.text("ꜱᴇʟᴇᴄᴛ ᴍᴏʙꜱ").color(DARK_GRAY))
                 .append(Component.text("  (" + (page + 1) + "/" + totalPages + ")").color(DARK_GRAY));
 
         Inventory inv = Bukkit.createInventory(holder, MOB_GUI_SIZE, title);
@@ -822,7 +849,7 @@ public final class BotSettingGui implements Listener {
         int endIdx = Math.min(startIdx + MOB_SLOTS, MOB_LIST.size());
         for (int i = startIdx; i < endIdx; i++) {
             MobDisplay mob = MOB_LIST.get(i);
-            boolean selected = mob.type.name().equals(currentType);
+            boolean selected = selectedTypes.contains(mob.type.name());
             inv.setItem(i - startIdx, buildMobItem(mob, selected));
         }
 
@@ -840,7 +867,7 @@ public final class BotSettingGui implements Listener {
         inv.setItem(48, glassFiller(Material.GRAY_STAINED_GLASS_PANE));
 
         // Clear / "All Hostile" button (slot 49)
-        boolean isAllHostile = currentType == null;
+        boolean isAllHostile = selectedTypes.isEmpty();
         ItemStack clearItem = new ItemStack(isAllHostile ? Material.NETHER_STAR : Material.STRUCTURE_VOID);
         ItemMeta clearMeta = clearItem.getItemMeta();
         if (isAllHostile) {
@@ -855,7 +882,7 @@ public final class BotSettingGui implements Listener {
         List<Component> clearLore = new ArrayList<>();
         clearLore.add(Component.empty());
         clearLore.add(Component.empty().decoration(TextDecoration.ITALIC, false)
-                .append(Component.text(isAllHostile ? "◈  ᴄᴜʀʀᴇɴᴛʟʏ ꜱᴇʟᴇᴄᴛᴇᴅ" : "ᴄʟɪᴄᴋ ᴛᴏ ᴛᴀʀɡᴇᴛ ᴀʟʟ ʜᴏꜱᴛɪʟᴇ ᴍᴏʙꜱ")
+                .append(Component.text(isAllHostile ? "◈  ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ" : "ᴄʟɪᴄᴋ ᴛᴏ ᴄʟᴇᴀʀ ᴀʟʟ ᴛᴀʀɢᴇᴛꜱ")
                         .color(isAllHostile ? SELECTED_GREEN : DARK_GRAY)));
         clearMeta.lore(clearLore);
         clearItem.setItemMeta(clearMeta);
@@ -929,7 +956,7 @@ public final class BotSettingGui implements Listener {
 
         // ── Clear / All Hostile ───────────────────────────────────────────
         if (slot == MOB_SLOT_CLEAR) {
-            bot.setPveMobType(null);
+            bot.setPveMobTypes(new java.util.LinkedHashSet<>());
             manager.persistBotSettings(bot);
             restartPveIfActive(bot);
             playUiClick(player, 1.2f);
@@ -940,17 +967,21 @@ public final class BotSettingGui implements Listener {
             return;
         }
 
-        // ── Mob slot click ────────────────────────────────────────────────
+        // ── Mob slot click (toggle on/off) ─────────────────────────────────
         if (slot >= 0 && slot < MOB_SLOTS) {
             int mobIdx = page * MOB_SLOTS + slot;
             if (mobIdx >= MOB_LIST.size()) return;
 
             MobDisplay mob = MOB_LIST.get(mobIdx);
-            bot.setPveMobType(mob.type.name());
+            boolean nowSelected = bot.togglePveMobType(mob.type.name());
             manager.persistBotSettings(bot);
             restartPveIfActive(bot);
             playUiClick(player, 1.2f);
-            sendActionBarConfirm(player, "ᴍᴏʙ ᴛᴀʀɡᴇᴛ", mob.displayName);
+            int count = bot.getPveMobTypes().size();
+            String label = nowSelected
+                    ? "+" + mob.displayName + " (" + count + " ꜱᴇʟᴇᴄᴛᴇᴅ)"
+                    : "-" + mob.displayName + " (" + (count == 0 ? "ᴀʟʟ ʜᴏꜱᴛɪʟᴇ" : count + " ꜱᴇʟᴇᴄᴛᴇᴅ") + ")";
+            sendActionBarConfirm(player, "ᴍᴏʙ ᴛᴀʀɢᴇᴛ", label);
 
             pendingRebuild.add(uuid);
             buildMobSelector(player, bot, page);
@@ -985,9 +1016,10 @@ public final class BotSettingGui implements Listener {
         lore.add(Component.empty());
         if (selected) {
             lore.add(Component.empty().decoration(TextDecoration.ITALIC, false)
-                    .append(Component.text("◈  ᴄᴜʀʀᴇɴᴛʟʏ ꜱᴇʟᴇᴄᴛᴇᴅ").color(SELECTED_GREEN)));
+                    .append(Component.text("◈  ᴛᴀʀɢᴇᴛᴇᴅ").color(SELECTED_GREEN)));
+            lore.add(hint("◈ ", "ᴄʟɪᴄᴋ ᴛᴏ ʀᴇᴍᴏᴠᴇ"));
         } else {
-            lore.add(hint("◈ ", "ᴄʟɪᴄᴋ ᴛᴏ ꜱᴇʟᴇᴄᴛ"));
+            lore.add(hint("◈ ", "ᴄʟɪᴄᴋ ᴛᴏ ᴀᴅᴅ ᴛᴀʀɢᴇᴛ"));
         }
 
         meta.lore(lore);
@@ -1094,7 +1126,7 @@ public final class BotSettingGui implements Listener {
         if (attackCmd != null) attackCmd.stopAttacking(bot.getUuid());
         bot.setPveRange(Config.attackMobDefaultRange());
         bot.setPvePriority(Config.attackMobDefaultPriority());
-        bot.setPveMobType(null);
+        bot.setPveMobTypes(new java.util.LinkedHashSet<>());
 
         // ── Pathfinding ──
         bot.setNavParkour(Config.pathfindingParkour());
@@ -1203,7 +1235,7 @@ public final class BotSettingGui implements Listener {
                                 Component.text("ᴄᴀɴᴄᴇʟ")
                                         .color(OFF_RED)
                                         .decoration(TextDecoration.BOLD, true))
-                        .append(Component.text(" ᴛᴏ ɢᴏ ʙᴀᴄᴋ.").color(GRAY)));
+                        .append(Component.text(" ᴛᴏ ɡᴏ ʙᴀᴄᴋ.").color(GRAY)));
         player.sendMessage(Component.empty());
 
         int taskId =
@@ -1367,16 +1399,23 @@ public final class BotSettingGui implements Listener {
             case "nav_break_blocks" -> bot.isNavBreakBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
             case "nav_place_blocks" -> bot.isNavPlaceBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
             case "pve_enabled" -> bot.isPveEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+            case "follow_player" -> {
+                var followCmd = plugin.getFollowCommand();
+                yield (followCmd != null && followCmd.isFollowing(bot.getUuid())) ? "✔ ꜰᴏʟʟᴏᴡɪɴɢ" : "✘ ɪᴅʟᴇ";
+            }
             case "pve_range" -> (int) bot.getPveRange() + " ʙʟᴏᴄᴋꜱ";
             case "pve_priority" -> bot.getPvePriority() != null ? bot.getPvePriority() : "nearest";
             case "pve_mob_type" -> {
-                String t = bot.getPveMobType();
-                if (t == null) yield "ᴀʟʟ ʜᴏꜱᴛɪʟᴇ";
-                // Find friendly display name from MOB_LIST
-                for (MobDisplay md : MOB_LIST) {
-                    if (md.type.name().equals(t)) yield md.displayName;
+                Set<String> types = bot.getPveMobTypes();
+                if (types.isEmpty()) yield "ᴀʟʟ ʜᴏꜱᴛɪʟᴇ";
+                if (types.size() == 1) {
+                    String t = types.iterator().next();
+                    for (MobDisplay md : MOB_LIST) {
+                        if (md.type.name().equals(t)) yield md.displayName;
+                    }
+                    yield t.toLowerCase();
                 }
-                yield t.toLowerCase();
+                yield types.size() + " ᴍᴏʙ ᴛʏᴘᴇꜱ";
             }
             case "rename" -> bot.getName();
             case "chunk_load_radius" -> {
@@ -1402,6 +1441,10 @@ public final class BotSettingGui implements Listener {
             case "nav_break_blocks" -> bot.isNavBreakBlocks();
             case "nav_place_blocks" -> bot.isNavPlaceBlocks();
             case "pve_enabled" -> bot.isPveEnabled();
+            case "follow_player" -> {
+                var followCmd = plugin.getFollowCommand();
+                yield followCmd != null && followCmd.isFollowing(bot.getUuid());
+            }
             default -> false;
         };
     }
@@ -1424,11 +1467,18 @@ public final class BotSettingGui implements Listener {
                     bot.isNavPlaceBlocks() ? Material.GRASS_BLOCK : Material.DIRT;
             case "pve_enabled" ->
                     bot.isPveEnabled() ? Material.IRON_SWORD : Material.WOODEN_SWORD;
+            case "follow_player" -> {
+                var followCmd = plugin.getFollowCommand();
+                yield (followCmd != null && followCmd.isFollowing(bot.getUuid())) ? Material.LEAD : Material.STRING;
+            }
             case "pve_mob_type" -> {
-                String t = bot.getPveMobType();
-                if (t == null) yield Material.ZOMBIE_HEAD;
-                for (MobDisplay md : MOB_LIST) {
-                    if (md.type.name().equals(t)) yield md.material;
+                Set<String> types = bot.getPveMobTypes();
+                if (types.isEmpty()) yield Material.ZOMBIE_HEAD;
+                if (types.size() == 1) {
+                    String t = types.iterator().next();
+                    for (MobDisplay md : MOB_LIST) {
+                        if (md.type.name().equals(t)) yield md.material;
+                    }
                 }
                 yield Material.ZOMBIE_HEAD;
             }
@@ -1595,8 +1645,7 @@ public final class BotSettingGui implements Listener {
                         BotEntry.toggle(
                                 "head_ai_enabled",
                                 "ʜᴇᴀᴅ ᴀɪ (ʟᴏᴏᴋ ᴀᴛ ᴘʟᴀʏᴇʀ)",
-                                "ʙᴏᴛ ꜱᴍᴏᴏᴛʜʟʏ ʀᴏᴛᴀᴛᴇꜱ ᴛᴏ ʟᴏᴏᴋ ᴀᴛ\n"
-                                        + "ɴᴇᴀʀʙʏ ᴘʟᴀʏᴇʀꜱ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
+                                "ʙᴏᴛ ꜱᴍᴏᴏᴛʜʟʏ ʀᴏᴛᴀᴛᴇꜱ ᴛʏᴘᴇ ᴘʟᴀʏᴇʀꜱ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
                                         + "ᴅɪꜱᴀʙᴇ ᴛᴏ ᴋᴇᴇᴘ ʜᴇᴀᴅ ꜱᴛᴀᴛɪᴏɴᴀʀʏ.",
                                 Material.PLAYER_HEAD,
                                 false),
@@ -1604,8 +1653,8 @@ public final class BotSettingGui implements Listener {
                                 "swim_ai_enabled",
                                 "ꜱᴡɪᴍ ᴀɪ",
                                 "ʙᴏᴛ ᴀᴜᴛᴏ-ꜱᴡɪᴍꜱ ᴜᴘᴡᴀʀᴅ ɪɴ ᴡᴀᴛᴇʀ/ʟᴀᴠᴀ\n"
-                                        + "ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ (ꜱᴘᴀᴄᴇʙᴀʀ ʜᴏʟᴅ).\n"
-                                        + "ᴅɪꜱᴀʙʟᴇ ᴛᴏ ʟᴇᴛ ᴛʜᴇ ʙᴏᴛ ꜱɪɴᴋ.\n"
+                                        + "ᴡʜᴇɴ ᴇɴᴀʙᴜᴇᴅ (ꜱᴘᴀᴄᴇʙᴀʀ ʜᴏʟᴅ).\n"
+                                        + "ᴅɪꜱᴀʙᴇ ᴛᴏ ʟᴇᴛ ᴛʜᴇ ʙᴏᴛ ꜱɪɴᴋ.\n"
                                         + "ɢʟᴏʙᴀʟ: "
                                         + (Config.swimAiEnabled() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
                                 Material.WATER_BUCKET,
@@ -1614,7 +1663,7 @@ public final class BotSettingGui implements Listener {
                                 "chunk_load_radius",
                                 "ᴄʜᴜɴᴋ ʀᴀᴅɪᴜꜱ",
                                 "ʜᴏᴡ ᴍᴀɴʏ ᴄʜᴜɴᴋꜱ ᴛʜɪꜱ ʙᴏᴛ ʟᴏᴀᴅꜱ.\n"
-                                        + "-1 = ꜰᴏʟʟᴏᴡ ɢʟᴏʙᴀʟ ᴄᴏɴꜰɪɡ\n"
+                                        + "-1 = ꜰᴏʟʟᴡ ɢʟᴏʙᴀʟ ᴄᴏɴꜰɪɡ\n"
                                         + "0  = ᴅɪꜱᴀʙʟᴇᴅ ꜰᴏʀ ᴛʜɪꜱ ʙᴏᴛ\n"
                                         + "1-"
                                         + globalMax
@@ -1653,7 +1702,7 @@ public final class BotSettingGui implements Listener {
                         BotEntry.toggle(
                                 "chat_enabled",
                                 "ᴄʜᴀᴛ ᴇɴᴀʙʟᴇᴅ",
-                                "ʙᴏᴛ ꜱᴇɴᴅꜱ ᴄʜᴀᴛ ᴍᴇꜱꜱᴀɢᴇꜱ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
+                                "ʙᴏᴛ ꜱᴇɴᴅꜱ ᴄʜᴀᴛ ᴍᴇꜱꜱᴀɡᴇꜱ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
                                     + "ꜰᴀʟꜱᴇ = ᴘᴇʀᴍᴀɴᴇɴᴛʟʏ ꜱɪʟɘɴᴄᴇᴅ ʙᴏᴛ.",
                                 Material.WRITABLE_BOOK,
                                 false),
@@ -1662,7 +1711,7 @@ public final class BotSettingGui implements Listener {
                                 "ᴄʜᴀᴛ ᴛɪᴇʀ",
                                 "ᴛʜᴇ ʙᴏᴛ'ꜱ ᴄʜᴀᴛ ᴀᴄᴛɪᴠɪᴛʏ ʟᴇᴠᴇʟ.\n"
                                         + "ʀᴀɴᴅᴏᴍ → Qᴜɪᴇᴛ → ᴘᴀꜱꜱɪᴠᴇ → ɴᴏʀᴍᴀʟ\n"
-                                        + "→ ᴀᴄᴛɪᴠᴇ → ᴄʜᴀᴛᴛʏ → (ʀᴇꜱᴇᴛꜱ ᴛᴏ ʀᴀɴᴅᴏᴍ).",
+                                        + "→ ᴀᴄᴛɪᴠᴇ → ᴄʜᴏᴛᴛʏ → (ʀᴇꜱᴇᴛꜱ ᴛᴏ ʀᴀɴᴅᴏᴍ).",
                                 Material.COMPARATOR,
                                 false),
                         BotEntry.cyclePersonality(
@@ -1692,16 +1741,17 @@ public final class BotSettingGui implements Listener {
                                 false),
                         BotEntry.mobSelector(
                                 "pve_mob_type",
-                                "ꜱᴇʟᴇᴄᴛ ᴛᴀʀɡᴇᴛ ᴍᴏʙ",
+                                "ꜱᴇʟᴇᴄᴛ ᴛᴀʀɡᴇᴛ ᴍᴏʙꜱ",
                                 "ᴏᴘᴇɴ ᴀ ᴠɪꜱᴜᴀʟ ꜱᴇʟᴇᴄᴛᴏʀ ᴛᴏ ᴘɪᴄᴋ\n"
-                                        + "ᴡʜɪᴄʜ ᴍᴏʙ ᴛʏᴘᴇ ᴛʜᴇ ʙᴏᴛ ᴛᴀʀɡᴇᴛꜱ.\n"
-                                        + "ᴏʀ 'ᴀʟʟ ʜᴏꜱᴛɪʟᴇ' ꜰᴏʀ ᴀɴʏ ᴍᴏʙ.",
+                                        + "ᴡʜɪᴄʜ ᴍᴏʙ ᴛʏᴘᴇꜱ ᴛʜᴇ ʙᴏᴛ ᴛᴀʀɢᴇᴛꜱ.\n"
+                                        + "ᴄʟɪᴄᴋ ᴛᴏ ᴛᴏɢɢʟᴇ ᴍᴜʟᴛɪᴘʟᴇ ᴍᴏʙꜱ.\n"
+                                        + "'ᴀʟʟ ʜᴏꜱᴛɪʟᴇ' = ᴄʟᴇᴀʀ ᴀʟʟ.",
                                 Material.ZOMBIE_HEAD,
                                 false),
                         BotEntry.action(
                                 "pve_range",
                                 "ᴅᴇᴛᴇᴄᴛ ʀᴀɴɢᴇ",
-                                "ʜᴏᴡ ꜰᴀʀ (ɪɴ ʙʟᴏᴄᴋꜱ) ᴛʜᴇ ʙᴏᴛ ꜱᴄᴀɴꜱ\n"
+                                "ʜᴏᴡ ꜰᴀʀ (ɪɴ ʙʟᴏᴄᴋꜱ) ᴛʜɘ ʙᴏᴛ ꜱᴄᴀɴꜱ\n"
                                         + "ꜰᴏʀ ᴍᴏʙꜱ ᴛᴏ ᴀᴛᴛᴀᴄᴋ.\n"
                                         + "ʀᴀɴɢᴇ: 1 – 64 ʙʟᴏᴄᴋꜱ.",
                                 Material.SPYGLASS,
@@ -1726,7 +1776,7 @@ public final class BotSettingGui implements Listener {
                                 "pvp_difficulty",
                                 "ᴅɪꜰꜰɪᴄᴜʟᴛʏ",
                                 "ᴏᴠᴇʀʀɪᴅᴇ ᴛʜɪꜱ ʙᴏᴛ'ꜱ ꜱᴋɪʟʟ ʟᴇᴠᴇʟ.\n"
-                                    + "ɴᴘᴄ / ᴇᴀꜱʏ / ᴍᴇᴅɪᴜᴍ / ʜᴀʀᴅ / ᴛɪᴇʀ1 / ʜᴀᴄᴋᴇʀ.",
+                                    + "ɴᴘᴄ / ᴇᴀꜢʏ / ᴍᴇᴅɪᴜᴍ / ʜᴀʀᴅ / ᴛɪᴇʀ1 / ʜᴀᴄᴋᴇʀ.",
                                 Material.DIAMOND_SWORD),
                         BotEntry.comingSoon(
                                 "pvp_combat_mode",
@@ -1741,7 +1791,8 @@ public final class BotSettingGui implements Listener {
                         BotEntry.comingSoon(
                                 "pvp_s_tapping",
                                 "ꜱ-ᴛᴀᴘᴘɪɴɢ",
-                                "ʙᴏᴛ ᴛᴀᴘꜱ ꜱ ᴅᴜʀɪɴɢ ꜱᴡɪɴɢ\nᴛᴏ ʀᴇꜱᴇᴛ ᴀᴛᴛᴀᴄᴋ ᴄᴏᴏʟᴅᴏᴡɴ.",
+                                "ʙᴏᴛ ᴛᴀᴘꜱ ꜱ ᴅᴜʀɪɴɢ ꜱᴡɪɴɢ\n"
+                                    + "ᴛᴏ ʀᴇꜱᴇᴛ ᴀᴛᴛᴀᴄᴋ ᴄᴏᴏʟᴅᴏᴡɴ.",
                                 Material.CLOCK),
                         BotEntry.comingSoon(
                                 "pvp_strafing",
@@ -1756,13 +1807,13 @@ public final class BotSettingGui implements Listener {
                         BotEntry.comingSoon(
                                 "pvp_speed_buffs",
                                 "ꜱᴘᴇᴇᴅ ʙᴜꜰꜰꜱ",
-                                "ʙᴏᴛ ʜᴀꜱ ꜱᴘᴇᴇᴅ & ꜱᴛʀᴇɴɡʜ ᴘᴏᴛɪᴏɴ\nᴇꜰ꜀ᴛꜱ ᴀᴄɪᴠᴇ.",
+                                "ʙᴏᴛ ʜᴀꜱ ꜱᴘᴇᴇᴅ & ꜱᴛʀᴇɴɡʜ ᴘᴏᴛɪᴏɴ\nᴇ꜀꜀ᴛꜱ ᴀᴄɪᴠᴇ.",
                                 Material.SUGAR),
                         BotEntry.comingSoon(
                                 "pvp_jump_reset",
                                 "ᴊᴜᴍᴘ ʀᴇꜱᴇᴛ",
                                 "ʙᴏᴛ ᴊᴜᴍᴘꜱ ᴊᴜꜱᴛ ʙᴇꜰᴏʀᴇ ꜱᴡɪɴɢɪɴɢ\n"
-                                    + "ᴛᴏ ɢᴀɪɴ ᴛʜᴇ ᴡ-ᴛᴀᴘ ᴋɴᴏᴄᴋʙᴀᴄᴋ ʙᴏɴᴜꜱ.",
+                                    + "ᴛᴏ ɡᴀɪɴ ᴛʜᴇ ᴡ-ᴛᴀᴘ ᴋɴᴏᴄᴋʙᴀᴄᴋ ʙᴏɴᴜꜱ.",
                                 Material.SLIME_BALL),
                         BotEntry.comingSoon(
                                 "pvp_random",
@@ -1787,7 +1838,7 @@ public final class BotSettingGui implements Listener {
                         BotEntry.comingSoon(
                                 "pvp_spawn_prot",
                                 "ꜱᴘᴀᴡɴ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ",
-                                "ʙᴏᴛ ꜱᴛᴀʏꜱ ɪɴᴠᴜʟɴᴇʀᴀʙʟᴇ ꜰᴏʀ\nᴀ ꜱʜᴏʀᴛ ɢᴀᴄᴇ ᴘᴇʀɪᴏᴅ ᴀᴛ ꜱᴘᴀᴡɴ.",
+                                "ʙᴏᴛ ꜱᴛᴀʏꜱ ɪɴᴠᴜʟɴᴇʀᴀʙʟᴇ ꜰᴏʀ\nᴀ ꜱʜʏʀᴛ ɡᴀᴄᴇ ᴘᴇʀᴏᴅ ᴀᴛ ꜱᴘᴀᴡɴ.",
                                 Material.GRASS_BLOCK),
                         BotEntry.comingSoon(
                                 "pvp_target",
@@ -1806,7 +1857,7 @@ public final class BotSettingGui implements Listener {
                                 Material.RED_DYE),
                         BotEntry.comingSoon(
                                 "pvp_combo_length",
-                                "ᴄᴏᴍʙᴏ ʟᴇɴɢᴛʜ",
+                                "ᴄᴏᴍʙᴏ ʟᴇɴɡᴛʜ",
                                 "ᴍᴀxɪᴍᴜᴍ ʜɪᴛꜱ ɪɴ ᴀ ꜱɪɴɡʟᴇ ʙᴜʀꜱᴛ\nʙᴇꜰᴏʀᴇ ʙᴀᴄᴋɪɴɢ ᴏ꜡꜡.",
                                 Material.IRON_SWORD)));
     }
@@ -1818,6 +1869,14 @@ public final class BotSettingGui implements Listener {
                 Material.MAP,
                 Material.CYAN_STAINED_GLASS_PANE,
                 List.of(
+                        BotEntry.toggle(
+                                "follow_player",
+                                "ꜰᴏʟʟᴏᴡ ᴘʟᴀʏᴇʀ",
+                                "ʙᴏᴛ ᴄᴏɴᴛɪɴᴜᴏᴜꜱʟʏ ꜰᴏʟʟᴏᴡꜱ ᴛʜᴇ\n"
+                                        + "ᴘʟᴀʏᴇʀ ᴡʜᴏ ᴏᴘᴇɴᴇᴅ ᴛʜɪꜱ ɢᴜɪ.\n"
+                                        + "ᴜꜱᴇꜱ ᴘᴀᴛʜꜰɪɴᴅɪɴɢ ᴛᴏ ɴᴀᴠɪɡᴀᴛᴇ.",
+                                Material.LEAD,
+                                false),
                         BotEntry.toggle(
                                 "nav_parkour",
                                 "ᴘᴀʀᴋᴏᴜʀ",
@@ -1849,23 +1908,23 @@ public final class BotSettingGui implements Listener {
 
     private BotCategory danger() {
         return new BotCategory(
-                "⚠ ᴅᴀɴɢᴇʀ",
+                "⚠ ᴅᴀɴɡᴇʀ",
                 Material.TNT,
                 Material.COAL,
                 Material.RED_STAINED_GLASS_PANE,
                 List.of(
                         BotEntry.danger(
                                 "reset_all",
-                                "ʀᴇꜱᴇᴛ ᴀʟʟ ꜱᴇᴛᴛɪɴɢꜱ",
-                                "⚠ ʀᴇꜱᴇᴛ ᴇᴠᴇʀʏ ꜱᴇᴛᴛɪɴɢ ᴏɴ ᴛʜɪꜱ ʙᴏᴛ\nᴛᴏ ᴅᴇꜰᴀᴜʟᴛ ᴠᴀʟᴜᴇꜱ.\n"
-                                        + "ɢᴇɴᴇʀᴀʟ, ᴄʜᴀᴛ, ᴘᴠᴇ, ᴘᴀᴛʜꜰɪɴᴅɪɴɢ,\n"
+                                "ʀᴇꜱᴇᴛ ᴀʟʟ ꜱᴇᴛᴛɪɴɡꜱ",
+                                "⚠ ʀᴇꜱᴇᴛ ᴇᴠᴇʀʏ ꜱᴇᴛᴛɪɴɡ ᴏɴ ᴛʜɪꜱ ʙᴏᴛ\nᴛᴏ ᴅᴇꜰᴀᴜʟᴛ ᴠᴀʟᴜᴇꜱ.\n"
+                                        + "ɢᴇɴᴇʀᴀʟ, ᴄʜᴀᴛ, ᴘᴠᴇ, ᴘᴀᴛʜꜰɪɴᴅɪɴɡ,\n"
                                         + "ᴄᴏᴍᴍᴀɴᴅꜱ — ᴀʟʟ ʀᴇꜱᴇᴛ.",
                                 Material.REDSTONE_BLOCK,
                                 true),
                         BotEntry.danger(
                                 "delete",
                                 "ᴅᴇʟᴇᴛᴇ ʙᴏᴛ",
-                                "⚠ ᴘᴇʀᴍᴀɴᴇɴᴛʟʏ ʀᴇᴍᴏᴠᴇ ᴛʜɪꜱ ʙᴏᴛ.\nᴛʜɪꜱ ᴀᴄᴛɪᴏɴ ᴄᴀɴɴᴏᴛ ʙᴇ ᴜɴᴅᴏɴᴇ.",
+                                "⚠ ᴘᴇʀᴍᴀɴᴇɴᴛʟʏ ʀᴇᴍᴏᴠᴇ ᴛʜɪꜱ ʙᴏᴛ.\nᴛʜɪꜱ ᴀᴄɪᴠᴇ ᴄᴀɴɴᴏᴛ ʙᴇ ᴜɴᴅᴏɴᴇ.",
                                 Material.TNT,
                                 true)));
     }
@@ -1936,6 +1995,7 @@ public final class BotSettingGui implements Listener {
                 String id, String label, String desc, Material icon, boolean opOnly) {
             return new BotEntry(id, label, desc, icon, BotEntryType.CYCLE_PRIORITY, opOnly);
         }
+
 
         static BotEntry action(
                 String id, String label, String desc, Material icon, boolean opOnly) {

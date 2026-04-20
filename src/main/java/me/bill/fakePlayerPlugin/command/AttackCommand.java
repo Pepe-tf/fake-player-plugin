@@ -124,7 +124,7 @@ public final class AttackCommand implements FppCommand {
         boolean mobMode = false;
         double range = 8.0;
         String priority = "nearest"; // "nearest" | "lowest-health"
-        @Nullable EntityType filterType = null;
+        Set<EntityType> filterTypes = new HashSet<>(); // empty = all hostile
 
         // Current locked-on target (maintained across ticks)
         @Nullable UUID currentTargetUuid = null;
@@ -136,7 +136,7 @@ public final class AttackCommand implements FppCommand {
     }
 
     /** Parsed flags for --mob commands. */
-    private record MobFlags(double range, String priority, @Nullable EntityType filterType) {}
+    private record MobFlags(double range, String priority, Set<EntityType> filterTypes) {}
 
     // ── FppCommand ────────────────────────────────────────────────────────────
 
@@ -250,7 +250,10 @@ public final class AttackCommand implements FppCommand {
             }
         }
 
-        MobFlags mobFlags = mobMode ? new MobFlags(range, priority, filterType) : null;
+        MobFlags mobFlags = mobMode
+                ? new MobFlags(range, priority,
+                        filterType != null ? Set.of(filterType) : Set.of())
+                : null;
 
         // ── "all" target ──────────────────────────────────────────────────
         if (botName.equalsIgnoreCase("all")) {
@@ -304,10 +307,14 @@ public final class AttackCommand implements FppCommand {
                     "name", fp.getDisplayName(),
                     "range", String.valueOf((int) mobFlags.range),
                     "priority", mobFlags.priority));
-            if (mobFlags.filterType != null) {
+            if (!mobFlags.filterTypes.isEmpty()) {
+                String typeNames = mobFlags.filterTypes.stream()
+                        .map(t -> t.name().toLowerCase())
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("all hostile");
                 sender.sendMessage(Lang.get("attack-mob-type",
                         "name", fp.getDisplayName(),
-                        "type", mobFlags.filterType.name().toLowerCase()));
+                        "type", typeNames));
             }
         } else if (sender instanceof Player sp) {
             double xzDist = PathfindingService.xzDist(bot.getLocation(), sp.getLocation());
@@ -527,7 +534,7 @@ public final class AttackCommand implements FppCommand {
         state.mobMode = true;
         state.range = flags.range;
         state.priority = flags.priority;
-        state.filterType = flags.filterType;
+        state.filterTypes = flags.filterTypes != null ? new HashSet<>(flags.filterTypes) : new HashSet<>();
         state.currentYaw = lockLoc.getYaw();
         state.currentPitch = lockLoc.getPitch();
         attackStates.put(uuid, state);
@@ -698,9 +705,9 @@ public final class AttackCommand implements FppCommand {
             if (le instanceof Player) continue; // Never auto-target players in mob mode
             if (le.isDead() || !le.isValid()) continue;
 
-            // Type filter: explicit --type, or default to all hostile mobs (Monster interface)
-            if (state.filterType != null) {
-                if (le.getType() != state.filterType) continue;
+            // Type filter: explicit types set, or default to all hostile mobs (Monster interface)
+            if (!state.filterTypes.isEmpty()) {
+                if (!state.filterTypes.contains(le.getType())) continue;
             } else {
                 // Dynamic: any mob implementing Monster (hostile) is a valid target.
                 // Also include Slime & MagmaCube (not Monster but hostile) and Shulker.
@@ -784,15 +791,14 @@ public final class AttackCommand implements FppCommand {
         // Cancel any existing attack for this bot first
         stopAttacking(fp.getUuid());
 
-        EntityType filterType = null;
-        String mobTypeName = fp.getPveMobType();
-        if (mobTypeName != null) {
+        Set<EntityType> filterTypes = new HashSet<>();
+        for (String mobTypeName : fp.getPveMobTypes()) {
             try {
-                filterType = EntityType.valueOf(mobTypeName);
-            } catch (IllegalArgumentException ignored) { /* null = all hostile */ }
+                filterTypes.add(EntityType.valueOf(mobTypeName));
+            } catch (IllegalArgumentException ignored) { /* skip invalid */ }
         }
 
-        MobFlags flags = new MobFlags(fp.getPveRange(), fp.getPvePriority(), filterType);
+        MobFlags flags = new MobFlags(fp.getPveRange(), fp.getPvePriority(), filterTypes);
         startMobMode(fp, flags, bot.getLocation());
     }
 

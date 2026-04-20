@@ -144,10 +144,14 @@ public final class FakePlayerBody {
             return;
         }
 
-        me.bill.fakePlayerPlugin.fakeplayer.SkinProfile cached =
-                skinManager.getCachedSkinForBot(fp);
-        if (cached != null && cached.isValid()) {
-            fp.setResolvedSkin(cached);
+        // Only look up cached skin if the bot doesn't already have a resolved skin
+        // (e.g. from persistence restore)
+        if (fp.getResolvedSkin() == null || !fp.getResolvedSkin().isValid()) {
+            me.bill.fakePlayerPlugin.fakeplayer.SkinProfile cached =
+                    skinManager.getCachedSkinForBot(fp);
+            if (cached != null && cached.isValid()) {
+                fp.setResolvedSkin(cached);
+            }
         }
 
         onReady.run();

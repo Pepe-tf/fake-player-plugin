@@ -105,6 +105,14 @@ public final class Config {
         return cfg.getBoolean("tab-list.enabled", true);
     }
 
+    public static boolean serverListCountBots() {
+        return cfg.getBoolean("server-list.count-bots", true);
+    }
+
+    public static boolean serverListIncludeRemote() {
+        return cfg.getBoolean("server-list.include-remote-bots", false);
+    }
+
     public static int maxBots() {
         return cfg.getInt("limits.max-bots", 1000);
     }
@@ -427,6 +435,10 @@ public final class Config {
 
     public static int pathfindingPlaceTicks() {
         return Math.max(1, cfg.getInt("pathfinding.place-ticks", 5));
+    }
+
+    public static int pathfindingMaxFall() {
+        return Math.max(1, Math.min(cfg.getInt("pathfinding.max-fall", 3), 16));
     }
 
     public static int pathfindingMaxRange() {

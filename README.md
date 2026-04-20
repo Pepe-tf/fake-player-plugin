@@ -1,6 +1,6 @@
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)
 
-> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot XP & item pickup control, tab-list ping simulation, PvE attack automation, NameTag plugin integration, LuckPerms integration, proxy network support, and full hot-reload.
+> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, follow-target automation, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot PvE attack settings, per-bot XP & item pickup control, tab-list ping simulation, NameTag plugin integration, LuckPerms integration, proxy network support, Velocity companion plugin, and full hot-reload.
 
 [![Version](https://img.shields.io/modrinth/v/fake-player-plugin-%28fpp%29?style=flat-square&label=version&color=0079FF&logo=modrinth)](https://modrinth.com/plugin/fake-player-plugin-(fpp))
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
@@ -47,10 +47,14 @@ FPP adds fake players to your server that look and behave like real ones:
 - **AI conversations** — bots respond to `/msg` with AI-generated replies; 7 providers (OpenAI, Groq, Anthropic, Gemini, Ollama, Copilot, Custom); per-bot personalities via `personalities/` folder
 - **Badword filter** — case-insensitive with leet-speak normalization, auto-rename bad names, remote word list
 - **Set bot ping** — simulate realistic tab-list latency per bot with `/fpp ping`; fixed, random, or bulk modes
-- **PvE attack automation** — bots walk to the sender and attack nearby entities with `/fpp attack`
+- **PvE attack automation** — bots walk to the sender and attack nearby entities or track mob targets with `/fpp attack`
+- **Follow-target automation** — bots continuously follow any online player with `/fpp follow`; path recalculates as target moves, persists across restarts
+- **Per-bot PvE settings** — `pveEnabled`, `pveRange`, `pvePriority`, `pveMobTypes` configurable per-bot via `BotSettingGui`
+- **Skin persistence** — resolved skins saved to DB and re-applied on restart without a new Mojang API round-trip
 - **NameTag integration** — nick-conflict guard, bot isolation from nick cache, skin sync, auto-rename via nick
 - **LuckPerms** — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 - **Proxy/network support** — Velocity & BungeeCord cross-server chat, alerts, and shared database
+- **Velocity companion** (`fpp-velocity.jar`) — drop this into your Velocity proxy's `plugins/` folder to inflate the server-list player count and hover list with FPP bots; includes an anti-scam startup warning
 - **Config sync** — push/pull configuration files across your proxy network
 - **PlaceholderAPI** — 29+ placeholders including per-world bot counts, network state, spawn cooldown, and new proxy-aware counts
 - Fully **hot-reloadable** — no restarts needed
@@ -115,7 +119,9 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp personality <bot> set\|reset\|show` | Assign or clear AI personality per bot |
 | `/fpp personality list\|reload` | List available personality files or reload them |
 | `/fpp ping [<bot>] [--ping <ms>\|--random] [--count <n>]` | Set simulated tab-list ping for one or all bots |
-| `/fpp attack <bot> [--stop]` | Bot walks to sender and attacks nearby entities (PvE) |
+| `/fpp attack <bot> [--stop]` | Bot walks to sender and attacks nearby entities (PvE); `--mob` for stationary mob-targeting mode |
+| `/fpp follow <bot\|all> <player>` | Bot continuously follows an online player; path recalculates as target moves |
+| `/fpp follow <bot\|all> --stop` | Stop the bot's current follow loop |
 | `/fpp badword add\|remove\|list\|reload` | Manage the runtime badword list |
 | `/fpp chat [on\|off\|status]` | Toggle the fake chat system |
 | `/fpp swap [on\|off\|status\|now <bot>\|list\|info <bot>]` | Toggle / manage the bot swap/rotation system |
@@ -175,7 +181,8 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `fpp.personality` | Assign AI personalities to bots |
 | `fpp.badword` | Manage the runtime badword filter list |
 | `fpp.ping` | View/set simulated tab-list ping for bots |
-| `fpp.attack` | PvE attack automation |
+| `fpp.attack` | PvE attack automation (classic & mob-targeting modes) |
+| `fpp.follow` | Follow-target bot automation (persistent across restarts) |
 | `fpp.migrate` | Data migration and backup utilities |
 | `fpp.alert` | Broadcast network-wide admin alerts |
 | `fpp.sync` | Push/pull config across proxy network |
@@ -231,13 +238,14 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` after any ch
 | `head-ai` | Enable/disable, look range, turn speed |
 | `swim-ai` | Automatic swimming in water/lava (`enabled`, default `true`) |
 | `collision` | Push physics — walk strength, hit strength, bot separation |
-| `pathfinding` | A* options — parkour, break-blocks, place-blocks, place-material, arrival distances, node limits |
+| `pathfinding` | A* options — parkour, break-blocks, place-blocks, place-material, arrival distances, node limits, max-fall |
 | `fake-chat` | Enable, chance, interval, typing delays, burst messages, bot-to-bot chat, mention replies, event reactions |
 | `ai-conversations` | AI DM system — provider config, personality, typing delay, conversation history |
 | `swap` | Auto rotation — session length, absence duration, min-online floor, retry-on-fail, farewell/greeting chat |
 | `peak-hours` | Time-based bot pool scheduler — schedule, day-overrides, stagger-seconds, min-online |
 | `performance` | Position sync distance culling (`position-sync-distance`) |
 | `tab-list` | Show/hide bots in the player tab list |
+| `server-list` | Whether bots count in the server-list player total; `count-bots`, `include-remote-bots` |
 | `config-sync` | Cross-server config push/pull mode (`DISABLED` / `MANUAL` / `AUTO_PULL` / `AUTO_PUSH`) |
 | `database` | `mode` (`LOCAL` / `NETWORK`), `server-id`, SQLite (default) or MySQL |
 
@@ -288,7 +296,71 @@ In `random` mode the resolution pipeline is: per-bot override → `skins/<name>.
 
 ---
 
+## Velocity Companion (`fpp-velocity.jar`)
+
+A lightweight standalone Velocity plugin that makes FPP bots count on the **proxy** server list — without any extra config.
+
+**What it does:**
+- Registers the `fpp:proxy` plugin-messaging channel and listens for `BOT_SPAWN` / `BOT_DESPAWN` / `SERVER_OFFLINE` messages from backend servers
+- Maintains a live bot registry; pings all backend servers every 5 seconds and caches their player counts
+- Intercepts `ProxyPingEvent` to inflate the proxy-level player count and hover sample list with bot names (up to 12 shown)
+
+**Installation:**
+1. Drop `fpp-velocity.jar` into your Velocity proxy's `plugins/` folder — no config file needed
+2. Restart Velocity
+
+> ⚠️ **FPP and this companion are 100% FREE & open-source.** If you or your server paid money for either plugin, you were **scammed by a reseller**. Always download from the official sources:
+> - **Modrinth:** https://modrinth.com/plugin/fake-player-plugin-(fpp)
+> - **GitHub:** https://github.com/Pepe-tf/fake-player-plugin
+> - **Discord:** https://discord.gg/QSN7f67nkJ
+
+---
+
 ## Changelog
+
+### v1.6.6 *(2026-04-20)*
+
+**FPP Velocity Companion (`fpp-velocity.jar`)**
+- New standalone Velocity proxy plugin — drop `fpp-velocity.jar` into your Velocity `plugins/` folder; no config needed
+- Registers `fpp:proxy` plugin-messaging channel; listens for `BOT_SPAWN`, `BOT_DESPAWN`, `SERVER_OFFLINE` messages from backend servers
+- Maintains a live bot registry; pings all backend servers every 5 s and caches total player counts
+- Intercepts `ProxyPingEvent` to inflate the proxy-level server-list player count and hover sample list (up to 12 bot names shown)
+- Prints a prominent **anti-scam warning** on every startup — FPP and this companion are 100% free; if you paid for them you were scammed
+- ⚠️ See the [Velocity Companion](#velocity-companion-fpp-velocityjar) section above for install steps and official download links
+
+**Follow-Target Automation (`/fpp follow`)**
+- New `/fpp follow <bot|all> <player> [--stop]` command — bot continuously follows an online player; path recalculates whenever the target moves >3.5 blocks
+- `--stop` cancels following on one or all bots
+- FOLLOW task type persisted in `fpp_bot_tasks` — bot resumes following after server restart if the target is online
+- Permission: `fpp.follow`
+
+**Per-Bot PvE Settings (now fully live)**
+- `BotSettingGui` PvP tab now has live-editable per-bot PvE controls: `pveEnabled` toggle, `pveRange`, `pvePriority` (`nearest`/`lowest-health`), `pveMobTypes` (entity-type whitelist — empty = all hostile)
+- Settings persisted in `fpp_active_bots` (DB schema v15→v16)
+- Config keys: `attack-mob.default-range`, `attack-mob.default-priority`, `attack-mob.smooth-rotation-speed`, `attack-mob.retarget-interval`, `attack-mob.line-of-sight`
+
+**Skin Persistence Across Restarts (DB v16→v17)**
+- Resolved bot skins are now saved to `fpp_active_bots` (`skin_texture` + `skin_signature` columns)
+- Bots reload their cached skin on server restart — no additional Mojang API round-trip needed
+
+**Server-List Config Keys**
+- New `server-list.count-bots` (default `true`) — controls whether bots are included in the displayed server-list player count
+- New `server-list.include-remote-bots` (default `false`) — include remote proxy bots in the server-list count (NETWORK mode)
+- Config v60→v61 migration adds both keys with no behaviour change for existing installs
+
+**`pathfinding.max-fall`**
+- New `pathfinding.max-fall` key (default `3`) — A* pathfinder will not descend more than this many blocks in a single unbroken fall
+
+**DB Schema v15 → v16 → v17**
+- v15→v16: `fpp_active_bots` gains `pve_enabled BOOLEAN DEFAULT 0`, `pve_range DOUBLE DEFAULT 16.0`, `pve_priority VARCHAR(16)`, `pve_mob_type VARCHAR(64)` — per-bot PvE settings
+- v16→v17: `fpp_active_bots` gains `skin_texture TEXT`, `skin_signature TEXT` — persists resolved skin data across restarts
+
+**Config v60 → v61 → v62 → v63**
+- v60→v61: `server-list` section added (`count-bots`, `include-remote-bots`)
+- v61→v62: `pathfinding.max-fall` added
+- v62→v63: `attack-mob.*` default config keys added
+
+---
 
 ### v1.6.5.1 *(2026-04-17)*
 
@@ -750,4 +822,4 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.6.5.1 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.6.6 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fakeplayerplugin.xyz) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*

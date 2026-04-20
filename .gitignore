@@ -5,6 +5,9 @@
 /build/
 dist/
 
+# Velocity
+velocity-companion/
+
 # Maven
 dependency-reduced-pom.xml
 *.class

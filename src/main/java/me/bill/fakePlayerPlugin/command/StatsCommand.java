@@ -151,6 +151,15 @@ public class StatsCommand implements FppCommand {
         sender.sendMessage(
                 TextUtil.colorize(
                         "<dark_gray><st>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</st>"));
+        sender.sendMessage(
+                Component.empty()
+                        .append(Component.text("  ").color(MUTED))
+                        .append(Component.text("Original author: ").color(LABEL))
+                        .append(Component.text(
+                                me.bill.fakePlayerPlugin.util.AttributionManager.getOriginalAuthor())
+                                .color(NamedTextColor.WHITE))
+                        .append(Component.text(" · ").color(MUTED))
+                        .append(Component.text("Free & open-source").color(LABEL)));
         return true;
     }
 

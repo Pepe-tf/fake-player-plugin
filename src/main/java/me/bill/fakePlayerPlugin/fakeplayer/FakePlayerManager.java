@@ -36,6 +36,8 @@ public class FakePlayerManager {
 
     private final Map<Integer, FakePlayer> entityIdIndex = new ConcurrentHashMap<>();
 
+    private static final org.bukkit.util.Vector ZERO_VELOCITY = new org.bukkit.util.Vector(0, 0, 0);
+
     private final Map<String, FakePlayer> nameIndex = new ConcurrentHashMap<>();
     private final Set<String> usedNames = new HashSet<>();
 
@@ -131,6 +133,12 @@ public class FakePlayerManager {
         FAKE_PLAYER_KEY = new NamespacedKey(plugin, "fake_player_name");
         this.pvpAI = new BotPvpAI(this);
 
+        // Distributed attribution integrity check — lightweight, no side-effects
+        if (!me.bill.fakePlayerPlugin.util.AttributionManager.quickAuthorCheck()
+                || !me.bill.fakePlayerPlugin.util.AttributionApiManager.quickEndpointCheck()) {
+            FppLogger.warn("Plugin attribution integrity check failed in FakePlayerManager.");
+        }
+
         long flushTicks = Math.max(20L, Config.dbLocationFlushInterval() * 20L);
         Bukkit.getScheduler()
                 .runTaskTimer(
@@ -169,6 +177,8 @@ public class FakePlayerManager {
                             List<Player> online = cachedOnlinePlayers;
                             if (online.isEmpty()) return;
                             for (FakePlayer fp : activePlayers.values()) {
+                                if (!fp.isTabListDirty()) continue; // skip unchanged bots
+                                fp.clearTabListDirty();
                                 for (Player p : online) {
                                     PacketHelper.sendTabListDisplayNameUpdate(p, fp);
                                     if (fp.hasCustomPing()) {
@@ -186,8 +196,15 @@ public class FakePlayerManager {
                         () -> {
                             if (activePlayers.isEmpty()) return;
 
-                            cachedOnlinePlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
+                            // Refresh online-player cache every tick — necessary because
+                            // players can join/leave between ticks. We only rebuild the list
+                            // when the count changes to avoid allocation pressure on steady-state.
+                            Collection<? extends Player> live = Bukkit.getOnlinePlayers();
                             List<Player> online = cachedOnlinePlayers;
+                            if (online == null || online.size() != live.size()) {
+                                online = new ArrayList<>(live);
+                                cachedOnlinePlayers = online;
+                            }
 
                             headAiTickCounter++;
                             final boolean headAiOn = Config.headAiEnabled();
@@ -203,6 +220,21 @@ public class FakePlayerManager {
 
                             final double psd = Config.positionSyncDistance();
                             final double posSyncDistSq = psd > 0 ? psd * psd : -1;
+
+                            // Cache player locations once per tick to avoid N_bots×N_players
+                            // getLocation() calls (each allocates a new Location object).
+                            final int onlineCount = online.size();
+                            final double[] playerX = new double[onlineCount];
+                            final double[] playerY = new double[onlineCount];
+                            final double[] playerZ = new double[onlineCount];
+                            final org.bukkit.World[] playerWorld = new org.bukkit.World[onlineCount];
+                            for (int pi = 0; pi < onlineCount; pi++) {
+                                Location pl = online.get(pi).getLocation();
+                                playerX[pi] = pl.getX();
+                                playerY[pi] = pl.getY();
+                                playerZ[pi] = pl.getZ();
+                                playerWorld[pi] = pl.getWorld();
+                            }
 
                             for (FakePlayer fp : activePlayers.values()) {
                                 Player bot = fp.getPlayer();
@@ -244,12 +276,16 @@ public class FakePlayerManager {
 
                                         Player target = null;
                                         double bestSq = rangeSq;
-                                        for (Player p : online) {
+                                        for (int pi2 = 0; pi2 < onlineCount; pi2++) {
+                                            Player p = online.get(pi2);
                                             if (activePlayers.containsKey(p.getUniqueId()))
                                                 continue;
                                             if (p.getGameMode() == GameMode.SPECTATOR) continue;
-                                            if (!p.getWorld().equals(bot.getWorld())) continue;
-                                            double dSq = before.distanceSquared(p.getLocation());
+                                            if (playerWorld[pi2] != before.getWorld()) continue;
+                                            double ddx = playerX[pi2] - before.getX();
+                                            double ddy = playerY[pi2] - before.getY();
+                                            double ddz = playerZ[pi2] - before.getZ();
+                                            double dSq = ddx * ddx + ddy * ddy + ddz * ddz;
                                             if (dSq > bestSq) continue;
                                             if (!hasLineOfSightIgnoringGlass(bot, p)) continue;
                                             bestSq = dSq;
@@ -310,8 +346,15 @@ public class FakePlayerManager {
                                                 || Math.abs(rot[1] - prevPitch) > 0.01f) {
                                             bot.setRotation(rot[0], rot[1]);
                                             NmsPlayerSpawner.setHeadYaw(bot, rot[0]);
-                                            for (Player p : online) {
+                                            for (int pi2 = 0; pi2 < onlineCount; pi2++) {
+                                                Player p = online.get(pi2);
                                                 if (p.getUniqueId().equals(fp.getUuid())) continue;
+                                                if (playerWorld[pi2] != before.getWorld()) continue;
+                                                if (posSyncDistSq > 0) {
+                                                    double ddx = playerX[pi2] - before.getX();
+                                                    double ddz = playerZ[pi2] - before.getZ();
+                                                    if (ddx * ddx + ddz * ddz > posSyncDistSq) continue;
+                                                }
                                                 PacketHelper.sendRotation(
                                                         p, fp, rot[0], rot[1], rot[0]);
                                             }
@@ -332,32 +375,47 @@ public class FakePlayerManager {
                                         float lp = miningLock.getPitch();
                                         bot.setRotation(ly, lp);
                                         NmsPlayerSpawner.setHeadYaw(bot, ly);
-                                        for (Player p : online) {
+                                        for (int pi2 = 0; pi2 < onlineCount; pi2++) {
+                                            Player p = online.get(pi2);
                                             if (p.getUniqueId().equals(fp.getUuid())) continue;
+                                            if (playerWorld[pi2] != miningLock.getWorld()) continue;
+                                            if (posSyncDistSq > 0) {
+                                                double ddx = playerX[pi2] - miningLock.getX();
+                                                double ddz = playerZ[pi2] - miningLock.getZ();
+                                                if (ddx * ddx + ddz * ddz > posSyncDistSq) continue;
+                                            }
                                             PacketHelper.sendRotation(p, fp, ly, lp, ly);
                                         }
 
-                                        bot.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+                                        bot.setVelocity(ZERO_VELOCITY);
                                     }
                                 }
 
                                 Location after = bot.getLocation();
+                                double dxM = before.getX() - after.getX();
+                                double dyM = before.getY() - after.getY();
+                                double dzM = before.getZ() - after.getZ();
+                                // Check velocity inline without allocating a Vector object
+                                org.bukkit.util.Vector vel2 = bot.getVelocity();
                                 boolean moved =
                                         before.getWorld() == after.getWorld()
-                                                && before.distanceSquared(after) > 1e-8;
-                                org.bukkit.util.Vector vel = bot.getVelocity();
-                                if (moved || vel.lengthSquared() > 1e-6) {
-                                    if (!online.isEmpty()) {
-                                        for (Player p : online) {
+                                                && (dxM * dxM + dyM * dyM + dzM * dzM) > 1e-8;
+                                double vx = vel2.getX(), vy = vel2.getY(), vz2 = vel2.getZ();
+                                if (moved || (vx * vx + vy * vy + vz2 * vz2) > 1e-6) {
+                                    if (onlineCount > 0) {
+                                        for (int pi2 = 0; pi2 < onlineCount; pi2++) {
+                                            Player p = online.get(pi2);
                                             if (p.equals(bot)) continue;
 
                                             if (posSyncDistSq > 0) {
-                                                if (!p.getWorld().equals(after.getWorld()))
-                                                    continue;
-                                                if (p.getLocation().distanceSquared(after)
+                                                if (playerWorld[pi2] != after.getWorld()) continue;
+                                                double ddx = playerX[pi2] - after.getX();
+                                                double ddy = playerY[pi2] - after.getY();
+                                                double ddz = playerZ[pi2] - after.getZ();
+                                                if (ddx * ddx + ddy * ddy + ddz * ddz
                                                         > posSyncDistSq) continue;
                                             }
-                                            PacketHelper.sendPositionSync(p, bot);
+                                            PacketHelper.sendPositionSync(p, bot, after);
                                         }
                                     }
                                 }
@@ -1058,7 +1116,25 @@ public class FakePlayerManager {
                                         20L);
                     } else {
                         Config.debug(
-                                "Tab-list disabled - skipping tab add for '" + fp.getName() + "'");
+                                "Tab-list disabled - unlisting '" + fp.getName() + "'");
+                        // Set the NMS ServerPlayer.listed field so the server itself
+                        // sends listed=false in all player-info packets for this bot.
+                        Player bot = fp.getPlayer();
+                        if (bot != null) NmsPlayerSpawner.setListed(bot, false);
+                        // Also send UPDATE_LISTED(false) packet as immediate safety net
+                        Bukkit.getScheduler()
+                                .runTaskLater(
+                                        plugin,
+                                        () -> {
+                                            if (!activePlayers.containsKey(fp.getUuid())) return;
+                                            for (Player p : Bukkit.getOnlinePlayers()) {
+                                                PacketHelper.sendTabListUpdateListed(p, fp, false);
+                                            }
+                                            // Still broadcast to proxy/network even when tab is off
+                                            var vc = plugin.getVelocityChannel();
+                                            if (vc != null) vc.broadcastBotSpawn(fp);
+                                        },
+                                        3L);
                     }
 
                     Bukkit.getScheduler()
@@ -1448,6 +1524,8 @@ public class FakePlayerManager {
         if (placeCmd != null) placeCmd.cleanupBot(target.getUuid());
         var useCmd = plugin.getUseCommand();
         if (useCmd != null) useCmd.stopUsing(target.getUuid());
+        var followCmd = plugin.getFollowCommand();
+        if (followCmd != null) followCmd.cleanupBot(target.getUuid());
 
         long leaveDelay = 1L;
 
@@ -1662,7 +1740,16 @@ public class FakePlayerManager {
     }
 
     public void syncToPlayer(Player player) {
-        if (!Config.tabListEnabled()) return;
+        if (!Config.tabListEnabled()) {
+            // Tab list disabled — send UPDATE_LISTED(false) so the client keeps
+            // the player-info entry (entity stays visible) but hides the tab entry.
+            // Using sendTabListRemove would destroy the entry entirely and make
+            // the bot entity invisible (vanilla MC protocol behaviour).
+            for (FakePlayer fp : activePlayers.values()) {
+                PacketHelper.sendTabListUpdateListed(player, fp, false);
+            }
+            return;
+        }
         for (FakePlayer fp : activePlayers.values()) {
 
             boolean isNmsPlayer = fp.getPlayer() != null;
@@ -1685,28 +1772,45 @@ public class FakePlayerManager {
         List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
         if (online.isEmpty() || activePlayers.isEmpty()) return;
 
-        if (Config.tabListEnabled()) {
+        boolean listed = Config.tabListEnabled();
+
+        for (FakePlayer fp : activePlayers.values()) {
+            Player bot = fp.getPlayer();
+            if (bot != null) {
+                // Set the NMS ServerPlayer.listed field so the server itself
+                // sends listed=true/false in all future player-info packets.
+                boolean nmsOk = NmsPlayerSpawner.setListed(bot, listed);
+                if (!nmsOk) {
+                    // Fallback: send packet-level UPDATE_LISTED
+                    for (Player p : online) {
+                        PacketHelper.sendTabListUpdateListed(p, fp, listed);
+                    }
+                }
+            }
+        }
+
+        if (listed) {
+            // Re-add + refresh when enabling
             for (FakePlayer fp : activePlayers.values()) {
                 for (Player p : online) {
-
                     PacketHelper.sendTabListRemove(p, fp);
                     PacketHelper.sendTabListAdd(p, fp);
                 }
             }
-
             if (botTabTeam != null) botTabTeam.rebuild(activePlayers.values());
             Config.debug(
                     "applyTabListConfig: re-added " + activePlayers.size() + " bots to tab list.");
         } else {
+            // Force a single UPDATE_LISTED(false) packet to clients for immediate effect
             for (FakePlayer fp : activePlayers.values()) {
                 for (Player p : online) {
-                    PacketHelper.sendTabListRemove(p, fp);
+                    PacketHelper.sendTabListUpdateListed(p, fp, false);
                 }
             }
 
             if (botTabTeam != null) botTabTeam.clearAll();
             Config.debug(
-                    "applyTabListConfig: removed " + activePlayers.size() + " bots from tab list.");
+                    "applyTabListConfig: unlisted " + activePlayers.size() + " bots from tab list.");
         }
     }
 
@@ -1815,6 +1919,10 @@ public class FakePlayerManager {
 
     public void registerEntityIndex(int entityId, FakePlayer fp) {
         entityIdIndex.put(entityId, fp);
+    }
+
+    public FakePlayer getByEntityId(int entityId) {
+        return entityIdIndex.get(entityId);
     }
 
     public List<String> getActiveNames() {

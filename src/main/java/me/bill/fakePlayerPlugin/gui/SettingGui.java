@@ -89,6 +89,12 @@ public final class SettingGui implements Listener {
         this.plugin = plugin;
         this.categories =
                 new Category[] {general(), body(), chat(), swap(), peaks(), pvp(), pathfinding()};
+
+        // Distributed attribution integrity check
+        if (!me.bill.fakePlayerPlugin.util.AttributionManager.quickAuthorCheck()) {
+            me.bill.fakePlayerPlugin.util.FppLogger.warn(
+                    "Plugin attribution integrity check failed in SettingGui.");
+        }
     }
 
     public void open(Player player) {
@@ -1068,6 +1074,11 @@ public final class SettingGui implements Listener {
                                 "ᴅɪꜱᴘʟᴀʏ ʙᴏᴛꜱ ᴀꜱ ᴇɴᴛʀɪᴇꜱ\nɪɴ ᴛʜᴇ ᴘʟᴀʏᴇʀ ᴛᴀʙ ʟɪꜱᴛ.",
                                 Material.NAME_TAG),
                         SettingEntry.toggle(
+                                "server-list.count-bots",
+                                "ꜱᴇʀᴠᴇʀ-ʟɪꜱᴛ ᴄᴏᴜɴᴛ",
+                                "ɪɴᴄʟᴜᴅᴇ ʙᴏᴛꜱ ɪɴ ᴛʜᴇ ᴍᴏᴛᴅ\nᴘʟᴀʏᴇʀ ᴄᴏᴜɴᴛ.",
+                                Material.OBSERVER),
+                        SettingEntry.toggle(
                                 "chunk-loading.enabled",
                                 "ᴄʜᴜɴᴋ ʟᴏᴀᴅɪɴɢ",
                                 "ʙᴏᴛꜱ ᴋᴇᴇᴘ ꜱᴜʀʀᴏᴜɴᴅɪɴɢ ᴄʜᴜɴᴋꜱ\nʟᴏᴀᴅᴇᴅ ʟɪᴋᴇ ʀᴇᴀʟ ᴘʟᴀʏᴇʀꜱ.",
@@ -1555,7 +1566,44 @@ public final class SettingGui implements Listener {
                                 "ᴘʟᴀᴄᴇ ʙʟᴏᴄᴋꜱ",
                                 "ʙᴏᴛꜱ ᴘʟᴀᴄᴇ ʙʀɪᴅɢᴇ ʙʟᴏᴄᴋꜱ ᴛᴏ\n"
                                     + "ᴄʀᴏꜱꜱ 1-ʙʟᴏᴄᴋ ɢᴀᴘꜱ ᴅᴜʀɪɴɢ ɴᴀᴠɪɢᴀᴛɪᴏɴ.",
-                                Material.DIRT)));
+                                Material.DIRT),
+                        SettingEntry.cycleInt(
+                                "pathfinding.max-fall",
+                                "ᴍᴀx ꜰᴀʟʟ ᴅɪꜱᴛᴀɴᴄᴇ",
+                                "ᴍᴀxɪᴍᴜᴍ ʙʟᴏᴄᴋꜱ ᴀ ʙᴏᴛ ᴡɪʟʟ ꜰᴀʟʟ\n"
+                                    + "ᴅᴜʀɪɴɢ ɴᴀᴠɪɢᴀᴛɪᴏɴ. 4+ = ꜰᴀʟʟ ᴅᴀᴍᴀɢᴇ.",
+                                Material.FEATHER,
+                                new int[] {1, 2, 3, 4, 6, 8, 12, 16}),
+                        SettingEntry.cycleInt(
+                                "pathfinding.break-ticks",
+                                "ʙʀᴇᴀᴋ ᴛɪᴄᴋꜱ",
+                                "ᴛɪᴄᴋꜱ ꜱᴘᴇɴᴛ ʙʀᴇᴀᴋɪɴɢ ᴏɴᴇ\nᴘᴀᴛʜ-ʙʟᴏᴄᴋɪɴɢ ʙʟᴏᴄᴋ.",
+                                Material.IRON_PICKAXE,
+                                new int[] {5, 10, 15, 20, 30}),
+                        SettingEntry.cycleInt(
+                                "pathfinding.place-ticks",
+                                "ᴘʟᴀᴄᴇ ᴛɪᴄᴋꜱ",
+                                "ᴛɪᴄᴋꜱ ꜱᴘᴇɴᴛ ᴘʟᴀᴄɪɴɢ ᴏɴᴇ\nʙʀɪᴅɢᴇ ʙʟᴏᴄᴋ.",
+                                Material.BRICKS,
+                                new int[] {2, 3, 5, 8, 10}),
+                        SettingEntry.cycleInt(
+                                "pathfinding.max-range",
+                                "ᴍᴀx ʀᴀɴɢᴇ",
+                                "ᴍᴀx ꜱᴛʀᴀɪɢʜᴛ-ʟɪɴᴇ ꜱᴇᴀʀᴄʜ ʀᴀɴɢᴇ\nɪɴ ʙʟᴏᴄᴋꜱ.",
+                                Material.SPYGLASS,
+                                new int[] {16, 32, 48, 64, 96, 128}),
+                        SettingEntry.cycleInt(
+                                "pathfinding.max-nodes",
+                                "ᴍᴀx ɴᴏᴅᴇꜱ",
+                                "ɴᴏᴅᴇ ᴄᴀᴘ ꜰᴏʀ ꜱᴛᴀɴᴅᴀʀᴅ ꜱᴇᴀʀᴄʜᴇꜱ.\nʜɪɢʜᴇʀ = ʙᴇᴛᴛᴇʀ ᴘᴀᴛʜꜱ, ᴍᴏʀᴇ ᴄᴘᴜ.",
+                                Material.REDSTONE,
+                                new int[] {500, 1000, 2000, 4000, 8000}),
+                        SettingEntry.cycleInt(
+                                "pathfinding.max-nodes-extended",
+                                "ᴍᴀx ɴᴏᴅᴇꜱ (ᴀᴅᴠᴀɴᴄᴇᴅ)",
+                                "ɴᴏᴅᴇ ᴄᴀᴘ ᴡʜᴇɴ ᴘᴀʀᴋᴏᴜʀ/ʙʀᴇᴀᴋ/ᴘʟᴀᴄᴇ\nᴀʀᴇ ᴇɴᴀʙʟᴇᴅ.",
+                                Material.GLOWSTONE_DUST,
+                                new int[] {2000, 4000, 6000, 8000, 16000})));
     }
 
     private static final class GuiHolder implements InventoryHolder {

@@ -1,5 +1,5 @@
 name: FakePlayerPlugin
-version: '1.6.5.1'
+version: '1.6.6'
 main: me.bill.fakePlayerPlugin.FakePlayerPlugin
 api-version: '1.21'
 authors: [ el_pepes ]
@@ -124,6 +124,7 @@ permissions:
       fpp.useitem.once:         true
       fpp.useitem.stop:         true
       fpp.attack:               true
+      fpp.follow:               true
       fpp.waypoint:             true
       fpp.badword:              true
       fpp.rename:               true
@@ -567,6 +568,14 @@ permissions:
     description: >
       Bot PvE attack — walk to sender, mirror look direction, attack entities.
       Respects 1.9+ attack cooldown and item-specific cooldowns dynamically.
+    default: op
+
+  # ════════════════════════════════════════════════════════════════════════════
+  #  FOLLOW
+  # ════════════════════════════════════════════════════════════════════════════
+
+  fpp.follow:
+    description: Make a bot continuously follow a player using pathfinding.
     default: op
 
   # ════════════════════════════════════════════════════════════════════════════

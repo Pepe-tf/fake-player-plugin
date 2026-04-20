@@ -196,6 +196,21 @@ Cache entries are auto-cleaned on startup. This avoids repeated Mojang API calls
 
 ---
 
+## Skin Persistence Across Restarts (v1.6.6+)
+
+In v1.6.6, resolved skin data is also persisted directly on each bot's `fpp_active_bots` row:
+
+| Column | Description |
+|--------|-------------|
+| `skin_texture` | Base64-encoded skin texture value |
+| `skin_signature` | Mojang signature for the skin |
+
+On server restart, bots re-apply their cached skin from `fpp_active_bots` without making a new Mojang API call. This makes startup faster and more reliable when API rate limits are a concern.
+
+Falls back to `fpp_skin_cache` lookup and then a fresh Mojang API call if the persisted data is absent or invalid.
+
+---
+
 ## Notes
 
 - skins are applied to both the in-world bot body and the packet/tab-facing profile path

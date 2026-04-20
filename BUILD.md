@@ -110,7 +110,7 @@ Or use the **"Build Plugin"** run configuration.
 
 ## Version Information
 
-- **Plugin Version:** 1.6.5 (see `pom.xml`)
+- **Plugin Version:** 1.6.6 (see `pom.xml`)
 - **MC Version:** 1.21.11
 - **API:** Paper 1.21.11-R0.1-SNAPSHOT
 

@@ -1,53 +1,328 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.5.1** · Released: 2026-04-17  
+> Latest version: **v1.6.6** · Released: 2026-04-20 · Config version: **63**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+
+---
+
+## v1.6.6 *(2026-04-20)*
+
+### 🚀 FPP Velocity Companion (`fpp-velocity.jar`)
+- New standalone **Velocity proxy plugin** shipped alongside the main Paper plugin as `fpp-velocity.jar`
+- Registers the `fpp:proxy` plugin-messaging channel and listens for `BOT_SPAWN`, `BOT_DESPAWN`, and `SERVER_OFFLINE` sub-messages from backend servers
+- Maintains a live **bot registry** (`UUID → BotEntry`) populated via plugin messages; each entry stores `uuid`, `name`, `displayName`, and `serverId`
+- Pings all registered backend servers every **5 seconds** and caches the total real+bot player count in `cachedBackendTotal`
+- Intercepts `ProxyPingEvent` and inflates the displayed **server-list player count** to include FPP bots that already appear in backend counts; merges bot display names into the hover sample list (up to 12 entries)
+- Startup and shutdown banners with timing, registry status, and session uptime printed to the Velocity console
+- Prints a prominent **anti-scam warning** on every startup reminding server owners that FPP and this companion are 100% free and open-source — if you paid for them, you were scammed
+- Requires **Velocity 3.3.0+**; drop `fpp-velocity.jar` into your Velocity `plugins/` folder — no configuration needed
+- Source: `velocity-companion/` module in the FPP repository
+
+### 🎯 Follow-Target Automation (`/fpp follow`)
+- New `/fpp follow <bot|all> <player> [--stop]` command — bot continuously follows an online player; path recalculates whenever the target moves >3.5 blocks or every 60 ticks
+- `--stop` cancels following on one bot or all bots at once
+- FOLLOW task type persisted in `fpp_bot_tasks` (DB and `data/bot-tasks.yml` fallback) — bot resumes following after server restart if the target is online
+- Arrival distance 2.0 blocks; stutter-free re-navigation fires 5 ticks after arrival to keep continuous following smooth
+- Permission: `fpp.follow` (default: true, child of `fpp.op`)
+
+### ⚔️ Per-Bot PvE Settings (now fully live)
+- `BotSettingGui` PvP tab now has live-editable per-bot PvE controls:
+  - **pveEnabled** toggle — enables/disables the bot's PvE auto-attack loop
+  - **pveRange** — mob scan range in blocks
+  - **pvePriority** — `nearest` or `lowest-health` targeting strategy
+  - **pveMobTypes** — entity-type whitelist (`ZOMBIE`, `SKELETON`, etc.); empty = all hostile mobs
+- Settings persisted to `fpp_active_bots` via DB schema v15→v16 and YAML fallback
+- New config keys under `attack-mob.*`: `default-range` (8.0), `default-priority` ("nearest"), `smooth-rotation-speed` (12.0 °/tick), `retarget-interval` (10 ticks), `line-of-sight` (true)
+
+### 🎨 Skin Persistence Across Restarts (DB v16→v17)
+- Resolved bot skins are now saved to `fpp_active_bots` (`skin_texture TEXT`, `skin_signature TEXT` columns)
+- On server restart, bots reload their cached skin directly — no additional Mojang API round-trip needed
+- Skin data also stored in `BotPersistence` YAML for no-DB deployments
+
+### 🌐 Server-List Config Keys
+- New `server-list.count-bots` (default `true`) — controls whether bots increment the displayed server-list player count
+- New `server-list.include-remote-bots` (default `false`) — include remote proxy bots in the server-list count (NETWORK mode only)
+- Config v60→v61 migration adds both keys with safe defaults — no behaviour change for existing installs
+
+### 🧭 `pathfinding.max-fall`
+- New `pathfinding.max-fall` key (default `3`) — the A* pathfinder will not plan a descent of more than this many blocks in a single unbroken fall
+- Prevents bots from choosing high-fall paths that would cause fall damage
+
+### 💾 DB Schema v15 → v16 → v17
+- **v15→v16:** `fpp_active_bots` gains four new columns:
+  - `pve_enabled BOOLEAN DEFAULT 0`
+  - `pve_range DOUBLE DEFAULT 16.0`
+  - `pve_priority VARCHAR(16)`
+  - `pve_mob_type VARCHAR(64)`
+- **v16→v17:** `fpp_active_bots` gains two new columns:
+  - `skin_texture TEXT`
+  - `skin_signature TEXT`
+- Fully backward-compatible — existing rows receive safe defaults on schema upgrade
+
+### 📋 Config v60 → v61 → v62 → v63
+- **v60→v61:** `server-list` section added (`count-bots: true`, `include-remote-bots: false`)
+- **v61→v62:** `pathfinding.max-fall: 3` added
+- **v62→v63:** `attack-mob.*` default config keys added (`default-range`, `default-priority`, `smooth-rotation-speed`, `retarget-interval`, `line-of-sight`)
+
+---
+
+## v1.6.5.1 *(2026-04-17)*
+
+### ⚙️ BotSettingGui Now Publicly Available
+- Per-bot settings GUI (shift+right-click any bot entity) is no longer restricted to the developer — it is now available to **all users with `fpp.settings` permission**
+- Removed the developer UUID gate that previously blocked all other players with a "coming soon" message
+- Any player granted `fpp.settings` (default: `op`) can now open the 6-row per-bot settings chest: **General · Chat · PvP · Cmds · Danger**
+- Grant `fpp.settings` via LuckPerms to non-op players to let them manage their own bots' settings without full admin access
+- The `bot-interaction.shift-right-click-settings` config key still controls whether the shift+right-click shortcut is active at all
+
+---
+
+## v1.6.5 *(2026-04-17)*
+
+### 📡 Tab-List Ping Simulation
+- New `/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>]` command — set the visible tab-list latency for one or all bots
+- `--ping <ms>` sets a specific latency (0–9999); `--random` assigns random realistic values; no flag shows current ping
+- `--count <n>` targets N random bots for bulk operations
+- 4 granular permissions: `fpp.ping` (view), `fpp.ping.set` (set specific value), `fpp.ping.random` (random distribution), `fpp.ping.bulk` (bulk `--count`)
+
+### ⚔ PvE Attack Automation
+- New `/fpp attack <bot> [--stop]` command — bot walks to the command sender and continuously attacks nearby entities
+- Respects 1.9+ attack cooldown and item-specific cooldown timers dynamically
+- Permission: `fpp.attack`
+
+### 🔐 Permission System Restructure
+- New `fpp.admin` node as the preferred alias for `fpp.op` — both grant full access identically
+- New `fpp.despawn` node as preferred alias for `fpp.delete`; new `fpp.despawn.bulk` and `fpp.despawn.own` sub-nodes
+- Granular sub-nodes for: chat (`fpp.chat.global`, `.tier`, `.mute`, `.say`), move (`fpp.move.to`, `.waypoint`, `.stop`), mine (`fpp.mine.start`, `.once`, `.stop`, `.area`), place (`fpp.place.start`, `.once`, `.stop`), use (`fpp.useitem.start`, `.once`, `.stop`), rank (`fpp.rank.set`, `.clear`, `.bulk`), inventory (`fpp.inventory.cmd`, `.rightclick`), ping (`fpp.ping.set`, `.random`, `.bulk`)
+- New `fpp.command` (controls `/fpp` visibility — default `true`; negate to hide FPP from a group), `fpp.plugininfo` (full info panel on bare `/fpp`), `fpp.spawn.multiple`/`.mass`/`.coords`, `fpp.notify` (update notifications on join)
+- All nodes declared in both `Perm.java` and `plugin.yml` for LuckPerms tab-completion
+
+### 🎨 Skin Mode Rename
+- `skin.mode` values renamed: `auto` → `player`, `custom` → `random`, `off` → `none`
+- Legacy values still accepted as aliases — no migration needed for existing configs
+
+### 🔧 FlagParser Utility
+- New reusable command argument/flag parser with deprecation aliases, duplicate detection, and conflict detection
+- Pattern: `new FlagParser(args).deprecate(...).conflicts(...).parse()` — use in new commands instead of ad-hoc arg scanning
+- Used by `/fpp ping`; available for all future commands
+
+### 🔄 UpdateChecker Beta Detection
+- `latestKnownVersion` and `isRunningBeta` fields on `FakePlayerPlugin` — detects when running a build newer than the latest published release
+
+---
+
+## v1.6.4 *(2026-04-16)*
+
+### 🏷️ NameTag Plugin Integration
+- New **soft-dependency** on the [NameTag](https://lode.gg) plugin — fully optional, auto-detected at startup
+- **Nick-conflict guard** — prevents spawning a bot whose `--name` matches a real player's current NameTag nickname (`nametag-integration.block-nick-conflicts: true`)
+- **Bot isolation** — after each bot spawns, FPP removes it from NameTag's internal player cache to prevent NameTag from treating bots as real players (`nametag-integration.bot-isolation: true`)
+- **Sync-nick-as-rename** — when a bot has a NameTag nick set (e.g. via `/nick BotA Steve`), FPP auto-triggers a full rename so the bot's actual MC name becomes the nick (`nametag-integration.sync-nick-as-rename: false` — opt-in)
+- **NameTag skin sync** — bots inherit skins assigned via NameTag; `SkinManager.getPreferredSkin()` checks NameTag-assigned skins first
+- New `NameTagHelper` utility class: nick reading, skin reading, cache isolation, formatting strip, nick-conflict checks
+- New `FakePlayer.nameTagNick` field tracks the cached nick from NameTag
+- New lang key `spawn-name-taken-nick` shown when a bot name conflicts with a real player's nick
+
+### 🎨 Skin System Overhaul
+- New `SkinManager` class — centralised skin lifecycle: resolve, apply, cache, fallback, NameTag priority
+- **Hardcoded 1000-player fallback skin pool** — replaces the old `skin.fallback-pool` and `skin.fallback-name` config keys; bots with non-Mojang names always get a real-looking skin from the built-in pool
+- **DB skin cache** — new `fpp_skin_cache` table with 7-day TTL and auto-cleanup; resolved skins cached to database to avoid repeated Mojang API lookups
+- `skin.mode` default enforced as `player` for existing installs that had it disabled (v58→v59 migration)
+- `guaranteed-skin` default enforced as `true` for existing installs (v58→v59 migration)
+- `skin.fallback-pool` and `skin.fallback-name` config keys removed — now hardcoded in SkinManager (v59→v60 migration)
+- Exposed via `plugin.getSkinManager()` — public API: `resolveEffectiveSkin`, `applySkinByPlayerName`, `applySkinFromProfile`, `applyNameTagSkin`, `resetToDefaultSkin`, `preloadSkin`, `clearCache`
+
+### 🏊 Per-Bot Swim AI & Chunk Load Radius
+- Each bot now has an individual **swim AI toggle** — override the global `swim-ai.enabled` per-bot without restarting
+- Each bot now has an individual **chunk load radius** — `-1` = follow global `chunk-loading.radius`, `0` = disable chunk loading for this bot, `1-N` = fixed radius (capped at global max)
+- Both fields are initialised from the global config at spawn, fully persisted across restarts (DB column + YAML key), and editable at runtime via `BotSettingGui` or programmatically
+
+### ⚙️ BotSettingGui General Tab Expanded
+- General tab now has **7 action slots**: Frozen · Head-AI · Swim-AI *(new)* · Chunk-Load-Radius *(new, numeric prompt)* · Pick-Up-Items · Pick-Up-XP · Rename
+- Chunk-load-radius uses a chat-input numeric prompt (same interaction model as `/fpp settings` numeric fields); type a number or `-1` to reset to global
+
+### ⚔ BotSettingGui PvP Tab
+- PvP category now shows full coming-soon override previews: difficulty, combat-mode, critting, s-tapping, strafing, shielding, speed-buffs, jump-reset, random, gear, defensive-mode
+
+### 💾 DB Schema v14 → v15
+- v14: `fpp_active_bots` gains two new columns: `swim_ai_enabled BOOLEAN DEFAULT 1`, `chunk_load_radius INT DEFAULT -1`
+- v15: new `fpp_skin_cache` table (`skin_name`, `texture_value`, `texture_signature`, `source`, `cached_at`) with expiry index
+- `updateBotAllSettings` and `ActiveBotRow` extended with `swimAiEnabled` and `chunkLoadRadius`
+- Fully backward-compatible — existing rows receive safe defaults on schema upgrade
+
+### 📋 Config v53 → v60
+- v53→v54: `body.drop-items-on-despawn: false` injected into existing installs (preserves pre-1.6.2 behaviour; new installs default `true`)
+- v54→v55: shared global pathfinding tuning keys added (`pathfinding.arrival-distance`, `patrol-arrival-distance`, `waypoint-arrival-distance`, `sprint-distance`, `follow-recalc-distance`, `recalc-interval`, `stuck-ticks`, `stuck-threshold`, `break-ticks`, `place-ticks`, `max-range`, `max-nodes`, `max-nodes-extended`)
+- v55→v56: `nametag-integration` section added (`block-nick-conflicts`, `bot-isolation`)
+- v56→v57: `nametag-integration.sync-nick-as-rename` added
+- v57→v58: (no-op placeholder)
+- v58→v59: `skin.mode=player`, `guaranteed-skin=true`, `logging.debug.skin=true` enforced for existing installs
+- v59→v60: removed `skin.fallback-pool` and `skin.fallback-name` (hardcoded in SkinManager's 1000-player pool)
+
+---
+
+## v1.6.3 *(2026-04-14)*
+
+### 🛡️ Despawn Safety Guard
+- `despawn all`, `despawn --random <n>`, and `despawn --num <n>` are now blocked while `FakePlayerManager.isRestorationInProgress()` is true at startup
+- Prevents startup-queued console commands from killing bots mid-restore during the ~2–3 second persistence restoration window
+- New lang key `delete-restore-in-progress` shown to sender when a bulk despawn is attempted during the restore window
+- Single-bot despawn (`/fpp despawn <name>`) is **not** affected — only bulk operations
+
+### 🗺️ Waypoint Auto-Create
+- `/fpp wp add <route>` now **auto-creates** the route if it doesn't exist — no separate `/fpp wp create <route>` step required
+- When a new route is implicitly created, an in-chat tip is shown via the new `wp-route-auto-created` lang key
+- `/fpp wp create` still exists and is valid, but is now optional
+- `wp-usage` updated so `add` leads the usage string and `create` is shown as optional
+- `wp-list-empty` hint updated to point directly to `/fpp wp add <route>` instead of the two-step create+add flow
+
+---
+
+## v1.6.2 *(2026-04-12)*
+
+### 🤖 AI Conversations
+- New AI DM system — bots respond to `/msg`, `/tell`, `/whisper` with AI-generated replies that match their personality
+- 7 provider support: **OpenAI · Anthropic · Groq · Google Gemini · Ollama · Copilot/Azure · Custom OpenAI-compatible**
+- API keys stored in `plugins/FakePlayerPlugin/secrets.yml` (never in `config.yml`) — template extracted from JAR on first run
+- Per-bot personality assignment via `/fpp personality <bot> set <name>`; personalities stored as `.txt` files in `personalities/` folder
+- Bundled sample personalities: `friendly`, `grumpy`, `noob`
+- `BotConversationManager` — per-player conversation history, rate limiting, typing delay simulation
+- `BotMessageListener` auto-registered when `ai-conversations.enabled` and a provider API key is present
+- `AIProviderRegistry` picks the first provider with a non-blank key; `isAvailable()` for runtime checks
+
+### 🆕 New Commands
+- `/fpp place <bot> [once|stop]` — continuous or one-shot block placing at the bot's look target; bot stays locked at position. Permission: `fpp.place`
+- `/fpp storage <bot> [name|--list|--remove <name>|--clear]` — register named supply containers; used by `/fpp mine` and `/fpp place` for automatic restocking. Permission: `fpp.storage`
+- `/fpp use <bot>` — bot right-clicks / activates the block it's looking at (chests, buttons, levers, crafting tables, etc.). Permission: `fpp.useitem`
+- `/fpp waypoint <name> [add|remove|list|clear]` — manage named patrol waypoint routes; bots walk them on a loop via `/fpp move <bot> --wp <route>`. Permission: `fpp.waypoint`
+- `/fpp personality [list|reload|<bot> set <name>|reset|show]` (alias `persona`) — assign AI personalities to bots; persisted to DB. Permission: `fpp.personality`
+- `/fpp badword add|remove|list|reload` — manage the runtime badword filter word list. Permission: `fpp.badword`
+- `/fpp rename <old> <new>` — rename any active bot with **full state preservation**: inventory (deep-cloned), XP, LP group, AI personality, right-click command, frozen state, tasks. Permission: `fpp.rename` (any) / `fpp.rename.own` (own only). `fpp.rename` is parent of `fpp.rename.own` in `plugin.yml`
+
+### ⛏️ Area Mining Mode
+- `/fpp mine <bot> --pos1` / `--pos2` — select a cuboid mining region using the bot's current position
+- `/fpp mine <bot> --start` — begin continuously mining the selected cuboid; navigates to each block using `PathfindingService`
+- `/fpp mine <bot> --status` — show current area-mine job progress
+- `/fpp mine <bot> --stop` — cancel the area-mine job
+- Auto-restocks from the nearest registered `StorageStore` container when inventory fills
+- Selections persisted to `data/mine-selections.yml` — survive restarts and auto-resume after reboot
+
+### ⚙️ Per-Bot Settings GUI (`BotSettingGui`)
+- Shift+right-click any bot entity to open a **6-row chest GUI** with 5 categories:
+  - ⚙ **General** — frozen toggle, look-at-player toggle, rename action
+  - 💬 **Chat** — chat enabled/disabled, activity tier, AI personality selector
+  - ⚔ **PvP** — PvP AI settings (coming soon)
+  - 📋 **Cmds** — set/clear stored right-click command
+  - ⚠ **Danger** — delete bot with confirmation
+- Controlled by `bot-interaction.shift-right-click-settings` config key
+
+### 💾 Task Persistence (DB Schema v13)
+- Active tasks (mine/use/place/patrol) now saved to `fpp_bot_tasks` DB table on shutdown
+- YAML fallback: `data/bot-tasks.yml` when database is disabled
+- `clearBotTasks()` called immediately after load to prevent double-restore on next restart
+- `BotPersistence` injection points: `setMineCommand`, `setPlaceCommand`, `setUseCommand`, `setWaypointStore`
+- Task columns: `bot_uuid`, `server_id`, `task_type` (MINE/USE/PLACE/PATROL), world, pos, once_flag, extra_str (patrol route), extra_bool (patrol random)
+
+### 🧭 Navigation & Interaction Engine
+- `PathfindingService` — centralised shared navigation service; all nav loops previously duplicated across `MoveCommand`, `MineCommand`, `PlaceCommand`, `UseCommand` now delegated here
+- `NavigationRequest` — `lockOnArrival` field for atomic nav→action lock handoff (eliminates one-tick gap between navigation arrival and action-lock acquisition)
+- `BotNavUtil` — static utilities: `findStandLocation` (16-candidate walkable-adjacent search), `faceToward`, `isAtActionLocation` (XZ ≤ 0.35 proximity), `useStorageBlock`
+- `StorageInteractionHelper` — shared lock→open-container→transfer→unlock lifecycle for deposit (mine→storage) and fetch (storage→place) operations; all error paths call `onFinally` so callers can clean up gating flags
+
+### 🎒 Per-Bot Item & XP Pickup Toggles
+- `body.pick-up-items` global default (`true`) and `body.pick-up-xp` global default (`true`)
+- Per-bot overrides exposed in `BotSettingGui` — toggling off **immediately drops current inventory / XP to ground** (no need to despawn)
+- `BotXpPickupListener` gates both `PlayerPickupExperienceEvent` and `PlayerExpChangeEvent` per-bot
+
+### 📋 Config v47 → v53
+- v47→v48: Added `pathfinding` section
+- v48→v49: Added `body.pick-up-xp`
+- v49→v50: Added `pvp-ai` section tweaks
+- v50→v51: Finalized XP cooldown and cmd storage keys
+- v51→v52: Added `bot-interaction`, `badword-filter` sections
+- v52→v53: Added `ai-conversations` section; config reorganized into **10 clearly numbered sections**: Spawning · Appearance · Body & Combat · AI & Navigation · Bot Chat · AI Conversations · Scheduling · Database & Network · Performance · Debug & Logging
+
+---
+
+## v1.6.0 *(2026-04-09)*
+
+### 🖥️ Interactive Help GUI
+- `/fpp help` now opens a **54-slot double-chest GUI** - paginated, permission-filtered, click-navigable; replaces text output
+- Each command gets a semantically meaningful Material icon (compass → move, chest → inventory, diamond pickaxe → mine, etc.)
+- Displays command name, description, usage modes, and permission node per item; up to 45 commands per page
+
+### 📦 `/fpp inventory` *(new)*
+- 54-slot double-chest GUI showing the bot's full inventory - main storage (rows 1-3), hotbar (row 4), label bar (row 5), and equipment + offhand (row 6)
+- Equipment slots enforce type restrictions (boots/leggings/chestplate or elytra/helmet/offhand)
+- Right-click any bot entity to open without a command
+- Permission: `fpp.inventory`
+
+### 🧭 `/fpp move` *(new)*
+- Navigate a bot to an online player using server-side **A* pathfinding**
+- Supports WALK, ASCEND, DESCEND, PARKOUR, BREAK, PLACE move types; max 64-block range, 2000-node search
+- Stuck detection (8 ticks without movement) triggers jump + path recalculation; recalculates when target moves >3.5 blocks or every 60 ticks
+- New `pathfinding.*` config section: `parkour` (default `false`), `break-blocks` (default `false`), `place-blocks` (default `false`), `place-material` (default `"DIRT"`)
+- Permission: `fpp.move`
+
+### ⭐ `/fpp xp` *(new)*
+- Transfer the bot's entire XP pool to yourself; clears bot levels and progress
+- 30-second post-collection cooldown on bot XP pickup; `body.pick-up-xp` config flag gates orb pickup globally
+- Permission: `fpp.xp` (user-tier, included in `fpp.use`)
+
+### 💻 `/fpp cmd` *(new)*
+- `/fpp cmd <bot> <command>` - dispatch a command as the bot
+- `--add <command>` stores a right-click command on the bot; `--clear` removes it; `--show` displays it
+- Right-clicking a bot with a stored command runs it instead of opening the inventory GUI
+- Permission: `fpp.cmd`
+
+### ⛏️ `/fpp mine` *(new)*
+- `/fpp mine <bot>` - continuous block mining at the bot's look target
+- `once` breaks a single block; `stop` cancels mining; `/fpp mine stop` stops all mining bots
+- Creative mode = instant break with 5-tick cooldown; survival = progressive mining with `destroyBlockProgress` packets
+- Permission: `fpp.mine`
+
+### ⚙️ Settings GUI Expanded
+- Settings GUI now has **7 categories**: General, Body, Chat, Swap, Peak Hours, PvP, Pathfinding (up from 5)
+- New pathfinding toggles: parkour, break-blocks, place-blocks, place-material
+- New PvP AI settings: difficulty, defensive-mode, detect-range
+
+### 🛡️ WorldGuard Integration
+- Bots protected from player-sourced PvP damage inside WorldGuard no-PvP regions
+- Soft-depend: auto-detected, fully optional; uses ClassLoader guard identical to LuckPerms
+- `WorldGuardHelper.isPvpAllowed(location)` - fail-open: only explicit DENY regions block bot damage
+
+### 🔧 Config Migration v47 → v51
+- v47→v48: Added `pathfinding` section
+- v48→v49: Added `body.pick-up-xp`
+- v49→v50: Added `pvp-ai` section tweaks
+- v50→v51: Finalized XP cooldown and cmd storage keys
 
 ---
 
 ## v1.5.17 *(2026-04-07)*
 
 ### 🔄 Swap System - Critical Fix & Major Enhancements
-
-**Critical Bug Fix - Bots Now Rejoin**
-
-The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid)` on the way out. Bots left but the rejoin task was destroyed before it could fire - they never came back. Fixed by registering the rejoin task **after** `delete()` runs so `cancel()` finds nothing to cancel.
-
-**New Config Keys**
-| Key | Default | Description |
-|-----|---------|-------------|
-| `swap.min-online` | `0` | Minimum bots that must stay online (0 = no floor). Swap skips if removing one would drop below this. |
-| `swap.retry-rejoin` | `true` | Auto-retry failed rejoin spawns (e.g. max-bots cap temporarily full). |
-| `swap.retry-delay` | `60` | Seconds to wait before retrying a failed rejoin. |
-| `logging.debug.swap` | `false` | Dedicated swap lifecycle debug channel (leave + rejoin events). |
-
-**Other Improvements**
-- Better bot identification on rejoin: same-name rejoins use `getByName()` (stable even with identity cache); random-name rejoins use UUID diff
-- New `Personality.SPORADIC` type - wide random variance for truly unpredictable session patterns
+- **Critical bug fix:** bots now actually rejoin after swapping out. The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid)` - bots left but never came back. Fixed by registering the rejoin task *after* `delete()` runs so `cancel()` finds nothing to cancel.
+- New `swap.min-online: 0` - minimum bots that must stay online; swap skips if removing one would go below this floor
+- New `swap.retry-rejoin: true` / `swap.retry-delay: 60` - auto-retry failed rejoins (e.g. when max-bots cap is temporarily full)
+- Better bot identification on rejoin: same-name rejoins use `getByName()` (reliable even with stable UUIDs); random-name rejoins use UUID diff
+- New `Personality.SPORADIC` type - unpredictable session variance for more natural patterns
 - Expanded farewell/greeting message pools (~50 entries each)
 - New `/fpp swap info <bot>` - shows personality, cycle count, time until next leave, and offline-waiting count
-- `/fpp swap list` now shows **time remaining** in each bot's session
+- `/fpp swap list` now shows **time remaining** in each session
 - `/fpp swap status` now shows the `min-online` floor setting
+- New `logging.debug.swap: false` - dedicated swap lifecycle debug channel
 
 ### ⚡ Performance Optimizations
-- **O(1) bot name lookup** - secondary `nameIndex` map added to `FakePlayerManager`; `getByName()` was O(n) linear scan, now O(1) `ConcurrentHashMap` lookup maintained at all add/remove sites (spawn, restore, delete, removeByName, removeAllSync)
-- **Position sync distance culling** - position packets are only broadcast to players within `performance.position-sync-distance` blocks (new config key, default `128.0`; `0` = unlimited); saves significant packet overhead on large servers with many players
+- O(1) bot name lookup via secondary `nameIndex` map - `getByName()` was O(n) linear scan, now O(1) `ConcurrentHashMap` lookup
+- Position sync distance culling - position packets only broadcast to players within `performance.position-sync-distance: 128.0` blocks (0 = unlimited)
 
 ### 🔕 Log Cleanup
-- NmsPlayerSpawner per-spawn/despawn log lines demoted from INFO → DEBUG:
-  - `"saved playerdata for 'X' uuid=…"` (fires on every despawn)
-  - `"removed 'X' via PlayerList.remove() uuid=…"` (fires on every despawn)
-  - `"playerdata found for 'X' uuid=…"` (fires on every spawn)
-  - `"created initial playerdata for 'X' uuid=…"` (first spawn only)
-- One-time startup banner (`NmsPlayerSpawner initialised…`) kept as INFO
+- NmsPlayerSpawner per-spawn/despawn log messages demoted from INFO → DEBUG; no more log spam on every bot cycle
 
 ### 📋 Config Reorganization
-- `config.yml` fully restructured into 9 clearly labelled numbered sections for easier navigation:
-  1. Spawning · 2. Appearance · 3. Body & Combat · 4. AI Systems · 5. Bot Chat · 6. Scheduling · 7. Database & Network · 8. Performance · 9. Debug & Logging
-- Debug/metrics/update-checker moved to bottom (section 9)
-- `config-sync` co-located with `database` (section 7)
-- Peak-hours schedule condensed to single-line `{start, end, fraction}` format
+- `config.yml` restructured into 9 clearly labelled sections: Spawning · Appearance · Body & Combat · AI Systems · Bot Chat · Scheduling · Database & Network · Performance · Debug & Logging
 - Config version → **v47**
 
 ---
@@ -109,10 +384,23 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - Bot chat loops are now restarted on `/fpp reload` so changes to `fake-chat.interval.min/max`, `fake-chat.chance`, and `fake-chat.stagger-interval` take effect **immediately** instead of waiting for each bot's old queued task to naturally expire
 - `/fpp reload` output now shows the new interval range as confirmation
 
+### 🤖 Fake Chat Realism Enhancements
+- **`typing-delay`** - simulates a 0-2.5 s typing pause before each message is sent
+- **`burst-chance` / `burst-delay`** - bots occasionally send a quick follow-up message a few seconds later
+- **`reply-to-mentions` / `mention-reply-chance` / `reply-delay`** - bots can reply when a real player says their name in chat
+- **`activity-variation`** - each bot gets a random chat-frequency tier (quiet / normal / active / very-active)
+- **`history-size`** - bots remember their own recent messages and avoid repeating them
+- **`remote-format`** - MiniMessage format for bodyless / proxy-remote bot broadcasts (`{name}` and `{message}` placeholders)
+
+### 🏊 Swim AI
+- New `swim-ai.enabled` config key (default `true`) - bots automatically swim upward when submerged in water or lava, mimicking a real player holding the spacebar
+- Set to `false` to let bots sink or drown instead
+
 ### 🛠️ Language & Compatibility
 - `Biome.name()` deprecated call replaced with `Biome.getKey().getKey()` - compatible with Paper 1.22+
 - `sync-usage` and `swap-now-usage` messages now end with a period, matching the rest of the file
-- Startup banner now shows **Bot swap** status in the Features section
+- Startup banner now shows **Bot swap** state in the Features section alongside Fake chat
+- Startup banner now shows actual **Skin mode** (`auto`/`custom`/`off`) instead of the hardcoded `disabled`
 
 ---
 
@@ -203,6 +491,7 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 - Full **Velocity & BungeeCord** support with `NETWORK` database mode
 - Cross-server chat, alerts, bot join/leave broadcasts, and remote bot tab-list sync via `fpp:main` plugin-messaging channel
 - Remote bot cache - thread-safe registry of bots on other proxy servers, populated from DB at startup
+- *(The dedicated `fpp-velocity.jar` companion plugin was formalised and shipped in v1.6.6 — see above)*
 
 ### 🔄 Config Sync
 - `/fpp sync push/pull/status/check` commands
@@ -333,6 +622,5 @@ The rejoin timer was being silently cancelled by `delete()` calling `cancel(uuid
 ---
 
 > 📥 **Download the latest version:** [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [Hangar](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/)  
-> 💬 **Support:** [Discord](https://discord.gg/QSN7f67nkJ)  
-> 🔖 **Latest:** v1.5.17 - Swap system critical fix & enhancements
+> 💬 **Support:** [Discord](https://discord.gg/QSN7f67nkJ)
 

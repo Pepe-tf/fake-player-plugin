@@ -6,6 +6,7 @@ import me.bill.fakePlayerPlugin.command.MoveCommand;
 import me.bill.fakePlayerPlugin.command.PlaceCommand;
 import me.bill.fakePlayerPlugin.command.UseCommand;
 import me.bill.fakePlayerPlugin.command.AttackCommand;
+import me.bill.fakePlayerPlugin.command.FollowCommand;
 import me.bill.fakePlayerPlugin.command.WaypointStore;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.util.FppLogger;
@@ -50,6 +51,7 @@ public final class BotPersistence {
     private PlaceCommand placeCommand;
     private UseCommand useCommand;
     private AttackCommand attackCommand;
+    private FollowCommand followCommand;
     private WaypointStore waypointStore;
 
     public void setMoveCommand(MoveCommand cmd) {
@@ -70,6 +72,10 @@ public final class BotPersistence {
 
     public void setAttackCommand(AttackCommand cmd) {
         this.attackCommand = cmd;
+    }
+
+    public void setFollowCommand(FollowCommand cmd) {
+        this.followCommand = cmd;
     }
 
     public void setWaypointStore(WaypointStore s) {
@@ -255,13 +261,36 @@ public final class BotPersistence {
                 }
             }
 
+            String followTargetUuid = null;
+            if (followCommand != null && followCommand.isFollowing(fp.getUuid())) {
+                java.util.UUID targetUuid = followCommand.getFollowTarget(fp.getUuid());
+                if (targetUuid != null) followTargetUuid = targetUuid.toString();
+            }
+
+            String roamWorld = null;
+            double roamX = 0, roamY = 0, roamZ = 0;
+            double roamRadius = 0;
+            if (moveCommand != null && moveCommand.isRoaming(fp.getUuid())) {
+                Location roamCenter = moveCommand.getRoamCenter(fp.getUuid());
+                Double roamR = moveCommand.getRoamRadius(fp.getUuid());
+                if (roamCenter != null && roamCenter.getWorld() != null && roamR != null) {
+                    roamWorld = roamCenter.getWorld().getName();
+                    roamX = roamCenter.getX();
+                    roamY = roamCenter.getY();
+                    roamZ = roamCenter.getZ();
+                    roamRadius = roamR;
+                }
+            }
+
             if (rcc != null
                     || patrolRoute != null
                     || mineWorld != null
                     || useWorld != null
                     || areaPos1World != null
                     || placeWorld != null
-                    || attackWorld != null) {
+                    || attackWorld != null
+                    || followTargetUuid != null
+                    || roamWorld != null) {
                 snap.put(
                         uuidStr,
                         new TaskEntry(
@@ -304,7 +333,13 @@ public final class BotPersistence {
                                 attackZ,
                                 attackYaw,
                                 attackPitch,
-                                attackOnce));
+                                attackOnce,
+                                followTargetUuid,
+                                roamWorld,
+                                roamX,
+                                roamY,
+                                roamZ,
+                                roamRadius));
             }
         }
         return snap;
@@ -357,6 +392,16 @@ public final class BotPersistence {
                 yaml.set(sec + "attack-yaw", (double) t.attackYaw());
                 yaml.set(sec + "attack-pitch", (double) t.attackPitch());
                 yaml.set(sec + "attack-once", t.attackOnce());
+            }
+            if (t.followTargetUuid() != null) {
+                yaml.set(sec + "follow-target", t.followTargetUuid());
+            }
+            if (t.roamWorld() != null) {
+                yaml.set(sec + "roam-world", t.roamWorld());
+                yaml.set(sec + "roam-x", t.roamX());
+                yaml.set(sec + "roam-y", t.roamY());
+                yaml.set(sec + "roam-z", t.roamZ());
+                yaml.set(sec + "roam-radius", t.roamRadius());
             }
             if (t.areaPos1World() != null && t.areaPos2World() != null) {
                 yaml.set(sec + "area-pos1-world", t.areaPos1World());
@@ -467,6 +512,38 @@ public final class BotPersistence {
                                 t.attackYaw(),
                                 t.attackPitch(),
                                 t.attackOnce(),
+                                null,
+                                false));
+            }
+            if (t.followTargetUuid() != null) {
+                rows.add(
+                        new me.bill.fakePlayerPlugin.database.DatabaseManager.BotTaskRow(
+                                uuid,
+                                serverId,
+                                "FOLLOW",
+                                null,
+                                0,
+                                0,
+                                0,
+                                0f,
+                                0f,
+                                false,
+                                t.followTargetUuid(),
+                                false));
+            }
+            if (t.roamWorld() != null) {
+                rows.add(
+                        new me.bill.fakePlayerPlugin.database.DatabaseManager.BotTaskRow(
+                                uuid,
+                                serverId,
+                                "ROAM",
+                                t.roamWorld(),
+                                t.roamX(),
+                                t.roamY(),
+                                t.roamZ(),
+                                (float) t.roamRadius(),
+                                0f,
+                                false,
                                 null,
                                 false));
             }
@@ -619,6 +696,13 @@ public final class BotPersistence {
             if (fp.getRightClickCommand() != null) {
                 section.put("right-click-command", fp.getRightClickCommand());
             }
+            SkinProfile skin = fp.getResolvedSkin();
+            if (skin != null && skin.isValid()) {
+                section.put("skin-texture", skin.getValue());
+                if (skin.getSignature() != null) {
+                    section.put("skin-signature", skin.getSignature());
+                }
+            }
             list.add(section);
         }
         return list;
@@ -692,7 +776,9 @@ public final class BotPersistence {
                                         row.pveEnabled(),
                                         row.pveRange(),
                                         row.pvePriority(),
-                                        row.pveMobType()));
+                                        row.pveMobType(),
+                                        row.skinTexture(),
+                                        row.skinSignature()));
                     } catch (Exception e) {
                         FppLogger.warn("Skipping malformed DB active-bot row: " + e.getMessage());
                     }
@@ -785,6 +871,10 @@ public final class BotPersistence {
                 String pvePriority = pvePrRaw instanceof String pps ? pps : null;
                 Object pveMtRaw = map.get("pve-mob-type");
                 String pveMobType = pveMtRaw instanceof String pmt ? pmt : null;
+                Object skinTexRaw = map.get("skin-texture");
+                String skinTexture = skinTexRaw instanceof String st ? st : null;
+                Object skinSigRaw = map.get("skin-signature");
+                String skinSignature = skinSigRaw instanceof String ss ? ss : null;
                 if (name == null || worldName == null) continue;
                 saved.add(
                         new SavedBot(
@@ -818,7 +908,9 @@ public final class BotPersistence {
                                 pveEnabled,
                                 pveRange,
                                 pvePriority,
-                                pveMobType));
+                                pveMobType,
+                                skinTexture,
+                                skinSignature));
             } catch (Exception e) {
                 FppLogger.warn(
                         "Skipping malformed bot entry in " + FILE_NAME + ": " + e.getMessage());
@@ -867,6 +959,12 @@ public final class BotPersistence {
 
         FakePlayer fp = manager.getByName(sb.name);
         if (fp != null) {
+            // Restore persisted skin FIRST so it is available during body spawn
+            if (sb.skinTexture != null && !sb.skinTexture.isBlank()) {
+                fp.setResolvedSkin(new SkinProfile(sb.skinTexture, sb.skinSignature, "persisted:" + sb.name));
+                Config.debugSkin("Restored persisted skin for bot '" + sb.name + "'");
+            }
+
             fp.setChatEnabled(sb.chatEnabled);
             fp.setHeadAiEnabled(sb.headAiEnabled);
             fp.setPickUpItemsEnabled(sb.pickUpItemsEnabled);
@@ -963,7 +1061,8 @@ public final class BotPersistence {
                             || te.mineWorld() != null
                             || te.useWorld() != null
                             || te.areaPos1World() != null
-                            || te.placeWorld() != null)) {
+                            || te.placeWorld() != null
+                            || te.roamWorld() != null)) {
                 final TaskEntry task = te;
                 final UUID restoredUuid = sb.uuid;
                 Bukkit.getScheduler()
@@ -1113,6 +1212,39 @@ public final class BotPersistence {
                                                             + "'.");
                                         }
                                     }
+
+                                    if (task.followTargetUuid() != null && followCommand != null) {
+                                        try {
+                                            java.util.UUID targetUuid = java.util.UUID.fromString(task.followTargetUuid());
+                                            followCommand.resumeFollowing(restored, targetUuid);
+                                            Config.debug(
+                                                    "Resumed follow task for bot '"
+                                                            + restored.getName()
+                                                            + "'.");
+                                        } catch (IllegalArgumentException ignored) {}
+                                    }
+
+                                    if (task.roamWorld() != null && moveCommand != null) {
+                                        World w = Bukkit.getWorld(task.roamWorld());
+                                        if (w != null && w.equals(bot.getWorld())) {
+                                            Location roamCenter =
+                                                    new Location(
+                                                            w,
+                                                            task.roamX(),
+                                                            task.roamY(),
+                                                            task.roamZ());
+                                            double roamR = task.roamRadius();
+                                            if (roamR < 3) roamR = 20;
+                                            moveCommand.resumeRoaming(
+                                                    restored, roamCenter, roamR);
+                                            Config.debug(
+                                                    "Resumed roaming for bot '"
+                                                            + restored.getName()
+                                                            + "' (radius "
+                                                            + (int) roamR
+                                                            + ").");
+                                        }
+                                    }
                                 },
                                 25L);
             }
@@ -1246,6 +1378,14 @@ public final class BotPersistence {
             float attackPitch = (float) sec.getDouble("attack-pitch");
             boolean attackOnce = sec.getBoolean("attack-once", false);
 
+            String followTarget = sec.getString("follow-target");
+
+            String roamWorld = sec.getString("roam-world");
+            double roamX = sec.getDouble("roam-x");
+            double roamY = sec.getDouble("roam-y");
+            double roamZ = sec.getDouble("roam-z");
+            double roamRadius = sec.getDouble("roam-radius");
+
             loadedTasks.put(
                     uuidStr,
                     new TaskEntry(
@@ -1288,7 +1428,13 @@ public final class BotPersistence {
                             attackZ,
                             attackYaw,
                             attackPitch,
-                            attackOnce));
+                            attackOnce,
+                            followTarget,
+                            roamWorld,
+                            roamX,
+                            roamY,
+                            roamZ,
+                            roamRadius));
         }
         Config.debug(
                 "Loaded task state for "
@@ -1316,6 +1462,8 @@ public final class BotPersistence {
             var use = tasks.get("USE");
             var place = tasks.get("PLACE");
             var attack = tasks.get("ATTACK");
+            var follow = tasks.get("FOLLOW");
+            var roam = tasks.get("ROAM");
             result.put(
                     uuid,
                     new TaskEntry(
@@ -1358,7 +1506,13 @@ public final class BotPersistence {
                             attack != null ? attack.posZ() : 0,
                             attack != null ? attack.posYaw() : 0f,
                             attack != null ? attack.posPitch() : 0f,
-                            attack != null && attack.onceFlag()));
+                            attack != null && attack.onceFlag(),
+                            follow != null ? follow.extraStr() : null,
+                            roam != null ? roam.worldName() : null,
+                            roam != null ? roam.posX() : 0,
+                            roam != null ? roam.posY() : 0,
+                            roam != null ? roam.posZ() : 0,
+                            roam != null ? roam.posYaw() : 0));
         }
         return result;
     }
@@ -1462,7 +1616,9 @@ public final class BotPersistence {
             boolean pveEnabled,
             double pveRange,
             String pvePriority,
-            String pveMobType) {}
+            String pveMobType,
+            String skinTexture,
+            String skinSignature) {}
 
     private record TaskEntry(
             String rightClickCommand,
@@ -1504,7 +1660,13 @@ public final class BotPersistence {
             double attackZ,
             float attackYaw,
             float attackPitch,
-            boolean attackOnce) {}
+            boolean attackOnce,
+            String followTargetUuid,
+            String roamWorld,
+            double roamX,
+            double roamY,
+            double roamZ,
+            double roamRadius) {}
 
     private record XpEntry(int totalExperience, int level, float progress) {}
 }

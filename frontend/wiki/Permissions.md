@@ -1,6 +1,6 @@
 ﻿# 🔐 Permissions
 
-> **Complete permission reference - v1.6.5.1**  
+> **Complete permission reference - v1.6.6**  
 > FPP uses **`fpp.op`** (alias **`fpp.admin`**) for admins and **`fpp.use`** for user-tier access.  
 > All nodes are declared in `plugin.yml` so they appear in LuckPerms tab-completion.
 
@@ -81,7 +81,8 @@ Current nodes are:
 | `fpp.ping.set` | `/fpp ping --ping <ms>` | Set a specific ping value |
 | `fpp.ping.random` | `/fpp ping --random` | Assign random ping distribution |
 | `fpp.ping.bulk` | `/fpp ping --count <n>` | Target multiple bots at once |
-| `fpp.attack` | `/fpp attack` | PvE attack — walk to sender, attack entities |
+| `fpp.attack` | `/fpp attack` | PvE attack — walk to sender, attack entities (classic & mob-targeting modes) |
+| `fpp.follow` | `/fpp follow` | Follow-target bot automation (continuous following, persistent across restarts) |
 
 ### Network / proxy
 

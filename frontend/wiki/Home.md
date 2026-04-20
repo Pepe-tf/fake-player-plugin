@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin - Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.6.5 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
+> **Version:** 1.6.6 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
 
 ---
 
@@ -34,6 +34,8 @@
 - 🔐 **Two-tier permission system** - `fpp.op` for admins, `fpp.use` for users
 - 📊 **PlaceholderAPI** - 29+ placeholders for scoreboards, tab headers, and more
 - 🎯 **LuckPerms integration** - Prefix/suffix, group assignment, weighted ordering
+- 🏃 **Follow-target automation** - Bots continuously follow any online player with `/fpp follow`; persists across restarts
+- ⚔️ **Per-bot PvE settings** - `pveEnabled`, `pveRange`, `pvePriority`, `pveMobTypes` per-bot via `BotSettingGui`
 
 ---
 
@@ -125,14 +127,39 @@
 - **Whitelist Support** - Protect VIP players
 
 ### ⚙️ **Configuration**
-- **60 Config Versions** — Automatic migration system with backup before every change
-- **Hot Reload** - Change settings without restart via `/fpp reload`
+- **63 Config Versions** — Automatic migration system with backup before every change- **Hot Reload** - Change settings without restart via `/fpp reload`
 - **Backup System** - Automatic timestamped backups before any migration
 - **In-Game Settings GUI** - Toggle booleans and tune numbers without touching files
 
 ---
 
-## 🆕 What's New in v1.6.5.1
+## 🆕 What's New in v1.6.6
+
+### 🎯 **Follow-Target Automation (`/fpp follow`)**
+- New `/fpp follow <bot|all> <player> [--stop]` — bot continuously follows an online player with path recalculation
+- FOLLOW task persisted in `fpp_bot_tasks` — bot resumes following after restart
+- Permission: `fpp.follow`
+
+### ⚔️ **Per-Bot PvE Settings (now fully live)**
+- `BotSettingGui` PvP tab has live-editable per-bot PvE controls: `pveEnabled`, `pveRange`, `pvePriority`, `pveMobTypes`
+- Settings persisted via DB schema v15→v16
+
+### 🎨 **Skin Persistence Across Restarts**
+- Resolved skins saved to `fpp_active_bots` (DB v16→v17); bots reload their skin on restart without a Mojang API call
+
+### 🌐 **Server-List Config Keys**
+- `server-list.count-bots` (default `true`) and `server-list.include-remote-bots` (default `false`)
+
+### 🧭 **`pathfinding.max-fall`**
+- A* pathfinder now has a configurable max safe fall distance (default `3` blocks)
+
+### 💾 **DB Schema v15 → v16 → v17 · Config v60 → v63**
+
+See [📋 Changelog](Changelog.md) for full v1.6.6 release notes and the complete version history.
+
+---
+
+## 🆕 What was New in v1.6.5.1
 
 ### ⚙️ **BotSettingGui Now Publicly Available**
 - Per-bot settings GUI (shift+right-click any bot) is now available to **all users with `fpp.settings` permission** — no longer dev-only
@@ -182,7 +209,7 @@ fpp.op            # Admin wildcard — all commands (default: op)
 ├── fpp.place         fpp.storage      fpp.useitem
 ├── fpp.waypoint      fpp.rename       fpp.personality
 ├── fpp.badword       fpp.settings     fpp.peaks
-├── fpp.ping          fpp.attack       fpp.notify
+- `fpp.ping`          fpp.attack       fpp.follow       fpp.notify
 └── ... (all admin commands)
 
 fpp.use           # User wildcard — basic commands (default: true / all players)

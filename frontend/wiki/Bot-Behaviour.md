@@ -36,6 +36,8 @@ FakePlayer
     ├── collision physics
     ├── fake chat
     ├── AI conversations
+    ├── follow-target AI
+    ├── PvE auto-attack AI
     ├── swap / peak-hours scheduling
     └── shared pathfinding + actions
 ```
@@ -100,7 +102,7 @@ This is different from the global `/fpp settings` GUI.
 
 - ⚙ **General** — freeze toggle, head-AI toggle, swim-AI toggle, chunk-load-radius, pick-up-items toggle, pick-up-xp toggle, rename action
 - 💬 **Chat** — chat enabled/disabled, tier, AI personality
-- ⚔ **PvP** — PvP AI settings (coming soon — difficulty, combat-mode, critting, strafing, shielding, etc.)
+- ⚔ **PvP** — Live per-bot PvE settings: `pveEnabled` toggle, `pveRange` (scan radius), `pvePriority` (`nearest` / `lowest-health`), `pveMobTypes` (comma-separated entity-type whitelist — empty = all hostile mobs); coming-soon overrides for PvP combat modes
 - 📋 **Cmds** — set / clear stored RC command
 - ⚠ **Danger** — delete bot
 
@@ -279,13 +281,30 @@ Some navigation flows use an atomic "arrive and lock" handoff so the bot does no
 
 ## Movement Modes
 
-### Follow a player
+### Continuously follow a player
+
+```text
+/fpp follow <bot|all> <player>
+/fpp follow <bot|all> --stop
+```
+
+The bot continuously follows an online player using `PathfindingService` (Owner `FOLLOW`).
+
+- Path recalculates whenever the target moves >3.5 blocks (configurable via `pathfinding.follow-recalc-distance`) or every 60 ticks
+- Arrival distance: 2.0 blocks; re-navigates 5 ticks after arrival for smooth continuous following
+- Respects `pathfinding.max-fall` — will not choose paths with unsafe drops
+- FOLLOW task persisted in `fpp_bot_tasks` — bot resumes following after restart if the target is online
+- Permission: `fpp.follow`
+
+### Follow a player (one-shot / navigate-to)
 
 ```text
 /fpp move <bot> <player>
 ```
 
 The bot continuously recalculates as the target moves.
+
+> **Tip:** Use `/fpp follow` when you want the bot to keep following indefinitely and survive restarts. Use `/fpp move` for one-shot navigation to a player position where the bot should stop on arrival.
 
 ### Patrol a waypoint route
 
@@ -343,6 +362,7 @@ This includes:
 - `USE`
 - `PLACE`
 - `PATROL`
+- `FOLLOW` — bot resumes following the last target player if they are online after restart
 
 Persistence source:
 - DB: `fpp_bot_tasks`
@@ -353,6 +373,7 @@ That means a bot can restart and continue:
 - a place job
 - a use job
 - a waypoint patrol
+- following a specific player
 
 ---
 

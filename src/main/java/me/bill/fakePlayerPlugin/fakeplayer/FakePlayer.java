@@ -11,6 +11,8 @@ import org.bukkit.entity.Player;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @SuppressWarnings("unused")
@@ -90,6 +92,7 @@ public final class FakePlayer {
 
     private boolean navPlaceBlocks = Config.pathfindingPlaceBlocks();
 
+
     private boolean swimAiEnabled = Config.swimAiEnabled();
 
     private int chunkLoadRadius = -1;
@@ -98,11 +101,14 @@ public final class FakePlayer {
     private boolean pveEnabled = false;
     private double pveRange = Config.attackMobDefaultRange();
     private String pvePriority = Config.attackMobDefaultPriority(); // "nearest" | "lowest-health"
-    private String pveMobType = null; // null = all hostile, otherwise EntityType name
+    private Set<String> pveMobTypes = new LinkedHashSet<>(); // empty = all hostile, otherwise EntityType names
 
     private volatile String nameTagNick = null;
 
     private int ping = -1;
+
+    /** Set to true when displayName or ping changes — triggers tab-list update packet. */
+    private volatile boolean tabListDirty = true;
 
     public FakePlayer(UUID uuid, String name, PlayerProfile profile) {
         this.uuid = uuid;
@@ -261,7 +267,7 @@ public final class FakePlayer {
 
     public void setDisplayName(String name) {
         this.displayName = name;
-
+        this.tabListDirty = true;
         this.cachedNmsDisplayComponent = null;
         this.cachedNmsDisplaySource = null;
     }
@@ -425,12 +431,25 @@ public final class FakePlayer {
     }
 
     public void setPing(int ping) {
-        this.ping = (ping < 0) ? -1 : Math.min(ping, 9999);
+        int newPing = (ping < 0) ? -1 : Math.min(ping, 9999);
+        if (this.ping != newPing) {
+            this.ping = newPing;
+            this.tabListDirty = true;
+        }
     }
 
     public boolean hasCustomPing() {
         return ping >= 0;
     }
+
+    /** Returns true if the tab-list entry needs a display-name/latency update packet. */
+    public boolean isTabListDirty() { return tabListDirty; }
+
+    /** Clear the dirty flag after sending the update packet. */
+    public void clearTabListDirty() { tabListDirty = false; }
+
+    /** Force-mark dirty (e.g. on new player join — they need the initial state). */
+    public void markTabListDirty() { tabListDirty = true; }
 
     public SkinProfile getResolvedSkin() {
         return resolvedSkin;
@@ -501,6 +520,38 @@ public final class FakePlayer {
     public String getPvePriority() { return pvePriority; }
     public void setPvePriority(String v) { this.pvePriority = v; }
 
-    public String getPveMobType() { return pveMobType; }
-    public void setPveMobType(String v) { this.pveMobType = v; }
+    /** @deprecated Use {@link #getPveMobTypes()} for multi-target support. Returns comma-separated or null for backward compat. */
+    public String getPveMobType() {
+        return pveMobTypes.isEmpty() ? null : String.join(",", pveMobTypes);
+    }
+
+    /** @deprecated Use {@link #setPveMobTypes(Set)} or {@link #togglePveMobType(String)}. Accepts comma-separated or null. */
+    public void setPveMobType(String v) {
+        pveMobTypes.clear();
+        if (v != null && !v.isBlank()) {
+            for (String part : v.split(",")) {
+                String trimmed = part.trim();
+                if (!trimmed.isEmpty()) pveMobTypes.add(trimmed);
+            }
+        }
+    }
+
+    public Set<String> getPveMobTypes() { return pveMobTypes; }
+
+    public void setPveMobTypes(Set<String> types) {
+        this.pveMobTypes = types != null ? new LinkedHashSet<>(types) : new LinkedHashSet<>();
+    }
+
+    /** Toggle a mob type in the target set. Returns true if the type is now selected. */
+    public boolean togglePveMobType(String type) {
+        if (pveMobTypes.contains(type)) {
+            pveMobTypes.remove(type);
+            return false;
+        } else {
+            pveMobTypes.add(type);
+            return true;
+        }
+    }
+
+    public boolean hasPveMobType(String type) { return pveMobTypes.contains(type); }
 }

@@ -60,6 +60,8 @@ public final class PacketHelper {
 
     private static volatile Object cachedUpdateLatencyActions = null;
 
+    private static volatile Object cachedUpdateListedActions = null;
+
     private static volatile Constructor<?> cachedEntryCtorWinner = null;
 
     private static volatile Class<?>[] cachedEntryCtorParamTypes = null;
@@ -639,6 +641,52 @@ public final class PacketHelper {
         }
     }
 
+    /**
+     * Sends an UPDATE_LISTED packet that sets the {@code listed} flag for a bot.
+     * <p>
+     * When {@code listed = false}, the bot's player-info entry stays on the client
+     * (so the entity remains visible in-world) but is hidden from the tab list.
+     * When {@code listed = true}, the bot reappears in the tab list.
+     * <p>
+     * This avoids the vanilla behaviour of {@code ClientboundPlayerInfoRemovePacket}
+     * which removes the entry entirely and causes the entity to disappear.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void sendTabListUpdateListed(Player receiver, FakePlayer fp, boolean listed) {
+        if (!ensureReady()) return;
+        try {
+            Object nms = getHandle(receiver);
+
+            Object profile = fp.getCachedTabListGameProfile();
+            if (profile == null) {
+                profile = buildProfileWithSkin(fp);
+                fp.setCachedTabListGameProfile(profile);
+            }
+
+            Object displayName = fp.getCachedNmsDisplayComponent();
+            if (displayName == null) {
+                Component adv = MiniMessage.miniMessage().deserialize(fp.getDisplayName());
+                displayName = adventureToNms(adv);
+                fp.setCachedNmsDisplay(displayName, fp.getDisplayName());
+            }
+
+            int latency = fp.hasCustomPing() ? fp.getPing() : 0;
+            Object entry = buildEntryWithListedFlag(fp.getUuid(), profile, displayName, latency, listed);
+
+            if (cachedUpdateListedActions == null) {
+                Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
+                cachedUpdateListedActions = EnumSet.of(Enum.valueOf(e, "UPDATE_LISTED"));
+            }
+
+            sendPacket(nms, playerInfoUpdateCtor.newInstance(
+                    cachedUpdateListedActions, buildSecondArg(entry)));
+            Config.debugPackets("Tab LISTED(" + listed + ") → " + receiver.getName()
+                    + " for " + fp.getName());
+        } catch (Exception e) {
+            Config.debugPackets("sendTabListUpdateListed failed: " + e.getMessage());
+        }
+    }
+
     public static void spawnFakePlayer(Player receiver, FakePlayer fp, Location loc) {
         if (!ensureReady()) return;
         try {
@@ -928,6 +976,42 @@ public final class PacketHelper {
         }
     }
 
+    /**
+     * Overload that accepts a pre-fetched location to avoid a redundant bot.getLocation() call.
+     * Use this when you already have the bot's current location in the calling context.
+     */
+    public static void sendPositionSync(Player receiver, Player bot, Location loc) {
+        if (!ensureReady()) return;
+        if (!posSyncCtorLookupDone) {
+            // Delegate to the standard overload to trigger lazy init; it will call getLocation()
+            // internally but that's a one-time cost.
+            sendPositionSync(receiver, bot);
+            return;
+        }
+        if (cachedPosSyncCtor == null) return;
+        try {
+            Object receiverNms = craftPlayerGetHandle.invoke(receiver);
+            Object packet;
+            if (posSyncUsesEntityArg) {
+                Object nmsBot = craftPlayerGetHandle.invoke(bot);
+                packet = cachedPosSyncCtor.newInstance(nmsBot);
+            } else {
+                packet =
+                        cachedPosSyncCtor.newInstance(
+                                bot.getEntityId(),
+                                loc.getX(),
+                                loc.getY(),
+                                loc.getZ(),
+                                loc.getYaw(),
+                                loc.getPitch(),
+                                true);
+            }
+            sendPacket(receiverNms, packet);
+        } catch (Exception e) {
+            Config.debugPackets("sendPositionSync (pre-loc) failed: " + e.getMessage());
+        }
+    }
+
     private static Object getHandle(Player player) throws Exception {
         if (craftPlayerGetHandle != null)
             return craftPlayerGetHandle.invoke(craftPlayerClass.cast(player));
@@ -1047,15 +1131,25 @@ public final class PacketHelper {
         return null;
     }
 
+    private static volatile Object cachedFullActionSet;
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object buildActionSet() {
-        Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
-        return EnumSet.of(
-                Enum.valueOf(e, "ADD_PLAYER"),
-                Enum.valueOf(e, "UPDATE_LISTED"),
-                Enum.valueOf(e, "UPDATE_LATENCY"),
-                Enum.valueOf(e, "UPDATE_GAME_MODE"),
-                Enum.valueOf(e, "UPDATE_DISPLAY_NAME"));
+        Object cached = cachedFullActionSet;
+        if (cached != null) return cached;
+    
+        Class<? extends Enum> enumClass = rawEnum(playerInfoUpdateActionClass);
+    
+        EnumSet actions = EnumSet.noneOf(enumClass);
+    
+        actions.add(Enum.valueOf(enumClass, "ADD_PLAYER"));
+        actions.add(Enum.valueOf(enumClass, "UPDATE_LISTED"));
+        actions.add(Enum.valueOf(enumClass, "UPDATE_LATENCY"));
+        actions.add(Enum.valueOf(enumClass, "UPDATE_GAME_MODE"));
+        actions.add(Enum.valueOf(enumClass, "UPDATE_DISPLAY_NAME"));
+    
+        cachedFullActionSet = actions;
+        return actions;
     }
 
     private static Object buildEntry(UUID uuid, Object profile, Object displayName)
@@ -1083,6 +1177,38 @@ public final class PacketHelper {
                                         profile,
                                         displayName,
                                         latency));
+                cachedEntryCtorParamTypes = ctor.getParameterTypes();
+                cachedEntryCtorWinner = ctor;
+                return result;
+            } catch (Exception ex) {
+                last = ex;
+            }
+        }
+        throw new IllegalStateException(
+                "No Entry ctor matched. Last: " + (last != null ? last.getMessage() : "?"));
+    }
+
+    private static Object buildEntryWithListedFlag(
+            UUID uuid, Object profile, Object displayName, int latency, boolean listed) throws Exception {
+        if (cachedEntryCtorWinner != null) {
+            return cachedEntryCtorWinner.newInstance(
+                    mapEntryArgsWithListed(cachedEntryCtorParamTypes, uuid, profile, displayName, latency, listed));
+        }
+        Constructor<?>[] ctors = playerInfoUpdateEntryClass.getDeclaredConstructors();
+        Arrays.sort(ctors, (a, b) -> b.getParameterCount() - a.getParameterCount());
+        Exception last = null;
+        for (Constructor<?> ctor : ctors) {
+            ctor.setAccessible(true);
+            try {
+                Object result =
+                        ctor.newInstance(
+                                mapEntryArgsWithListed(
+                                        ctor.getParameterTypes(),
+                                        uuid,
+                                        profile,
+                                        displayName,
+                                        latency,
+                                        listed));
                 cachedEntryCtorParamTypes = ctor.getParameterTypes();
                 cachedEntryCtorWinner = ctor;
                 return result;
@@ -1132,6 +1258,25 @@ public final class PacketHelper {
                         case "GameProfile" -> profile;
 
                         case "boolean" -> true;
+                        case "int" -> latency;
+                        case "GameType" -> gameTypeSurvival;
+                        case "Component" -> displayName;
+                        default -> null;
+                    };
+        }
+        return args;
+    }
+
+    private static Object[] mapEntryArgsWithListed(
+            Class<?>[] types, UUID uuid, Object profile, Object displayName, int latency, boolean listed) {
+        Object[] args = new Object[types.length];
+        for (int i = 0; i < types.length; i++) {
+            args[i] =
+                    switch (types[i].getSimpleName()) {
+                        case "UUID" -> uuid;
+                        case "GameProfile" -> profile;
+
+                        case "boolean" -> listed;
                         case "int" -> latency;
                         case "GameType" -> gameTypeSurvival;
                         case "Component" -> displayName;

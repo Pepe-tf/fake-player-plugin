@@ -61,6 +61,10 @@ public final class BotChatAI implements Listener {
     public BotChatAI(FakePlayerPlugin plugin, FakePlayerManager manager) {
         this.plugin = plugin;
         this.manager = manager;
+
+        // Distributed attribution integrity check
+        me.bill.fakePlayerPlugin.util.AttributionManager.quickAuthorCheck();
+
         Bukkit.getScheduler().runTaskTimer(plugin, this::syncBotLoops, 20L, 20L);
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
@@ -227,11 +231,14 @@ public final class BotChatAI implements Listener {
                         : Config.fakeChatBotToBotChainChance();
         if (ThreadLocalRandom.current().nextDouble() > chance) return;
 
-        List<FakePlayer> eligible =
-                manager.getActivePlayers().stream()
-                        .filter(fp -> !fp.getUuid().equals(speaker.getUuid()))
-                        .filter(FakePlayer::isChatEnabled)
-                        .toList();
+        // Use a plain for-loop to avoid stream allocation on every bot-chat event
+        List<FakePlayer> eligible = new ArrayList<>();
+        UUID speakerUuidEarly = speaker.getUuid();
+        for (FakePlayer fp : manager.getActivePlayers()) {
+            if (!fp.getUuid().equals(speakerUuidEarly) && fp.isChatEnabled()) {
+                eligible.add(fp);
+            }
+        }
         if (eligible.isEmpty()) return;
         if (Config.fakeChatRequirePlayer() && !hasRealPlayerOnline()) return;
 
@@ -584,8 +591,10 @@ public final class BotChatAI implements Listener {
         List<String> pool = Config.chatKeywordReactionMessages(poolKey);
         if (pool.isEmpty()) return;
 
-        List<FakePlayer> eligible =
-                manager.getActivePlayers().stream().filter(FakePlayer::isChatEnabled).toList();
+        List<FakePlayer> eligible = new ArrayList<>();
+        for (FakePlayer fp : manager.getActivePlayers()) {
+            if (fp.isChatEnabled()) eligible.add(fp);
+        }
         if (eligible.isEmpty()) return;
         if (Config.fakeChatRequirePlayer() && !hasRealPlayerOnline()) return;
 
@@ -607,11 +616,12 @@ public final class BotChatAI implements Listener {
     private void schedulePlayerChatReaction(String senderName, String originalMessage) {
         if (!Config.fakeChatEnabled()) return;
 
-        List<FakePlayer> eligible =
-                manager.getActivePlayers().stream()
-                        .filter(FakePlayer::isChatEnabled)
-                        .filter(fp -> !pendingReplyTasks.containsKey(fp.getUuid()))
-                        .toList();
+        List<FakePlayer> eligible = new ArrayList<>();
+        for (FakePlayer fp : manager.getActivePlayers()) {
+            if (fp.isChatEnabled() && !pendingReplyTasks.containsKey(fp.getUuid())) {
+                eligible.add(fp);
+            }
+        }
         if (eligible.isEmpty()) return;
 
         int maxBots = Math.max(1, Config.fakeChatOnPlayerChatMaxBots());

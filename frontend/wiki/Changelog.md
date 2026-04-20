@@ -1,8 +1,69 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.5.1** · Released: 2026-04-17 · Config version: **60**  
+> Latest version: **v1.6.6** · Released: 2026-04-20 · Config version: **63**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+
+---
+
+## v1.6.6 *(2026-04-20)*
+
+### 🚀 FPP Velocity Companion (`fpp-velocity.jar`)
+- New standalone **Velocity proxy plugin** shipped alongside the main Paper plugin as `fpp-velocity.jar`
+- Registers the `fpp:proxy` plugin-messaging channel and listens for `BOT_SPAWN`, `BOT_DESPAWN`, and `SERVER_OFFLINE` sub-messages from backend servers
+- Maintains a live **bot registry** (`UUID → BotEntry`) populated via plugin messages; each entry stores `uuid`, `name`, `displayName`, and `serverId`
+- Pings all registered backend servers every **5 seconds** and caches the total real+bot player count in `cachedBackendTotal`
+- Intercepts `ProxyPingEvent` and inflates the displayed **server-list player count** to include FPP bots that already appear in backend counts; merges bot display names into the hover sample list (up to 12 entries)
+- Startup and shutdown banners with timing, registry status, and session uptime printed to the Velocity console
+- Prints a prominent **anti-scam warning** on every startup reminding server owners that FPP and this companion are 100% free and open-source — if you paid for them, you were scammed
+- Requires **Velocity 3.3.0+**; drop `fpp-velocity.jar` into your Velocity `plugins/` folder — no configuration needed
+- Source: `velocity-companion/` module in the FPP repository
+
+### 🎯 Follow-Target Automation (`/fpp follow`)
+- New `/fpp follow <bot|all> <player> [--stop]` command — bot continuously follows an online player; path recalculates whenever the target moves >3.5 blocks or every 60 ticks
+- `--stop` cancels following on one bot or all bots at once
+- FOLLOW task type persisted in `fpp_bot_tasks` (DB and `data/bot-tasks.yml` fallback) — bot resumes following after server restart if the target is online
+- Arrival distance 2.0 blocks; stutter-free re-navigation fires 5 ticks after arrival to keep continuous following smooth
+- Permission: `fpp.follow` (default: true, child of `fpp.op`)
+
+### ⚔️ Per-Bot PvE Settings (now fully live)
+- `BotSettingGui` PvP tab now has live-editable per-bot PvE controls:
+  - **pveEnabled** toggle — enables/disables the bot's PvE auto-attack loop
+  - **pveRange** — mob scan range in blocks
+  - **pvePriority** — `nearest` or `lowest-health` targeting strategy
+  - **pveMobTypes** — entity-type whitelist (`ZOMBIE`, `SKELETON`, etc.); empty = all hostile mobs
+- Settings persisted to `fpp_active_bots` via DB schema v15→v16 and YAML fallback
+- New config keys under `attack-mob.*`: `default-range` (8.0), `default-priority` ("nearest"), `smooth-rotation-speed` (12.0 °/tick), `retarget-interval` (10 ticks), `line-of-sight` (true)
+
+### 🎨 Skin Persistence Across Restarts (DB v16→v17)
+- Resolved bot skins are now saved to `fpp_active_bots` (`skin_texture TEXT`, `skin_signature TEXT` columns)
+- On server restart, bots reload their cached skin directly — no additional Mojang API round-trip needed
+- Skin data also stored in `BotPersistence` YAML for no-DB deployments
+
+### 🌐 Server-List Config Keys
+- New `server-list.count-bots` (default `true`) — controls whether bots increment the displayed server-list player count
+- New `server-list.include-remote-bots` (default `false`) — include remote proxy bots in the server-list count (NETWORK mode only)
+- Config v60→v61 migration adds both keys with safe defaults — no behaviour change for existing installs
+
+### 🧭 `pathfinding.max-fall`
+- New `pathfinding.max-fall` key (default `3`) — the A* pathfinder will not plan a descent of more than this many blocks in a single unbroken fall
+- Prevents bots from choosing high-fall paths that would cause fall damage
+
+### 💾 DB Schema v15 → v16 → v17
+- **v15→v16:** `fpp_active_bots` gains four new columns:
+  - `pve_enabled BOOLEAN DEFAULT 0`
+  - `pve_range DOUBLE DEFAULT 16.0`
+  - `pve_priority VARCHAR(16)`
+  - `pve_mob_type VARCHAR(64)`
+- **v16→v17:** `fpp_active_bots` gains two new columns:
+  - `skin_texture TEXT`
+  - `skin_signature TEXT`
+- Fully backward-compatible — existing rows receive safe defaults on schema upgrade
+
+### 📋 Config v60 → v61 → v62 → v63
+- **v60→v61:** `server-list` section added (`count-bots: true`, `include-remote-bots: false`)
+- **v61→v62:** `pathfinding.max-fall: 3` added
+- **v62→v63:** `attack-mob.*` default config keys added (`default-range`, `default-priority`, `smooth-rotation-speed`, `retarget-interval`, `line-of-sight`)
 
 ---
 
@@ -430,6 +491,7 @@
 - Full **Velocity & BungeeCord** support with `NETWORK` database mode
 - Cross-server chat, alerts, bot join/leave broadcasts, and remote bot tab-list sync via `fpp:main` plugin-messaging channel
 - Remote bot cache - thread-safe registry of bots on other proxy servers, populated from DB at startup
+- *(The dedicated `fpp-velocity.jar` companion plugin was formalised and shipped in v1.6.6 — see above)*
 
 ### 🔄 Config Sync
 - `/fpp sync push/pull/status/check` commands

@@ -9,7 +9,7 @@ import java.util.Arrays;
 
 public final class ConfigMigrator {
 
-    public static final int CURRENT_VERSION = 60;
+    public static final int CURRENT_VERSION = 63;
 
     private static boolean rawDebug = false;
 
@@ -120,6 +120,9 @@ public final class ConfigMigrator {
         if (stored < 58) anyChange |= v57to58(cfg);
         if (stored < 59) anyChange |= v58to59(cfg);
         if (stored < 60) anyChange |= v59to60(cfg);
+        if (stored < 61) anyChange |= v60to61(cfg);
+        if (stored < 62) anyChange |= v61to62(cfg);
+        if (stored < 63) anyChange |= v62to63(cfg);
 
         fillDefaults(plugin, cfg);
 
@@ -1217,6 +1220,36 @@ public final class ConfigMigrator {
                     "v59→v60",
                     "removed skin.fallback-pool and skin.fallback-name — now hardcoded in"
                         + " SkinManager (1000-player pool)");
+        }
+        return changed;
+    }
+
+    private static boolean v60to61(YamlConfiguration cfg) {
+        boolean changed = false;
+        changed |= setIfMissing(cfg, "server-list.count-bots", true);
+        changed |= setIfMissing(cfg, "server-list.include-remote-bots", false);
+        if (changed) {
+            log("v60→v61", "added server-list.count-bots and server-list.include-remote-bots");
+        }
+        return changed;
+    }
+
+    private static boolean v61to62(YamlConfiguration cfg) {
+        boolean changed = false;
+        changed |= setIfMissing(cfg, "pathfinding.max-fall", 3);
+        if (changed) {
+            log("v61→v62", "added pathfinding.max-fall");
+        }
+        return changed;
+    }
+
+    private static boolean v62to63(YamlConfiguration cfg) {
+        boolean changed = false;
+        // sprint-jump-follow was added then removed — clean it up if present
+        if (cfg.isSet("pathfinding.sprint-jump-follow")) {
+            cfg.set("pathfinding.sprint-jump-follow", null);
+            changed = true;
+            log("v62→v63", "removed obsolete pathfinding.sprint-jump-follow");
         }
         return changed;
     }

@@ -68,6 +68,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
     private me.bill.fakePlayerPlugin.command.PlaceCommand placeCommand;
     private me.bill.fakePlayerPlugin.command.UseCommand useCommand;
     private me.bill.fakePlayerPlugin.command.AttackCommand attackCommand;
+    private me.bill.fakePlayerPlugin.command.FollowCommand followCommand;
     private PathfindingService pathfindingService;
     private me.bill.fakePlayerPlugin.command.WaypointStore waypointStore;
     private me.bill.fakePlayerPlugin.command.StorageStore storageStore;
@@ -123,6 +124,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         Config.init(this);
         Config.debugStartup("config.yml loaded.");
+
+        me.bill.fakePlayerPlugin.util.AttributionManager.validate(this);
+        me.bill.fakePlayerPlugin.util.AttributionApiManager.init(this);
 
         BadwordFilter.reload(this);
         if (Config.isBadwordFilterEnabled() && BadwordFilter.getBadwordCount() == 0) {
@@ -320,6 +324,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
                 new me.bill.fakePlayerPlugin.command.AttackCommand(
                         this, fakePlayerManager, pathfindingService);
         commandManager.register(attackCommand);
+        followCommand =
+                new me.bill.fakePlayerPlugin.command.FollowCommand(
+                        this, fakePlayerManager, pathfindingService);
+        commandManager.register(followCommand);
 
         BotSettingGui botSettingGui = new BotSettingGui(this, fakePlayerManager);
         inventoryCommand = new InventoryCommand(fakePlayerManager, this, botSettingGui);
@@ -335,6 +343,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
         botPersistence.setPlaceCommand(placeCommand);
         botPersistence.setUseCommand(useCommand);
         botPersistence.setAttackCommand(attackCommand);
+        botPersistence.setFollowCommand(followCommand);
         botPersistence.setWaypointStore(waypointStore);
 
         var fppCmd = getCommand("fpp");
@@ -359,7 +368,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         getServer()
                 .getPluginManager()
-                .registerEvents(new ServerListListener(fakePlayerManager), this);
+                .registerEvents(new ServerListListener(this, fakePlayerManager), this);
         getServer()
                 .getPluginManager()
                 .registerEvents(new FakePlayerKickListener(fakePlayerManager), this);
@@ -428,6 +437,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         velocityChannel = new VelocityChannel(this, fakePlayerManager);
         getServer().getMessenger().registerOutgoingPluginChannel(this, VelocityChannel.CHANNEL);
+        getServer().getMessenger().registerOutgoingPluginChannel(this, VelocityChannel.PROXY_CHANNEL);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
         getServer()
                 .getMessenger()
@@ -589,6 +599,16 @@ public final class FakePlayerPlugin extends JavaPlugin {
             peakHoursManager.restoreSleepingBotsFromDatabase(databaseManager);
         }
 
+        // Ask peer servers to re-send their active bot lists so our RemoteBotCache is
+        // immediately up-to-date after a restart (NETWORK mode only).
+        if (velocityChannel != null) {
+            Bukkit.getScheduler()
+                    .runTaskLater(
+                            this,
+                            () -> velocityChannel.broadcastResyncRequest(),
+                            10L); // slight delay so persistence restore completes first
+        }
+
         Config.debugStartup("onEnable complete.");
     }
 
@@ -620,6 +640,12 @@ public final class FakePlayerPlugin extends JavaPlugin {
             me.bill.fakePlayerPlugin.util.LuckPermsHelper.unsubscribeLpEvents();
         }
 
+        // Notify peer servers that this server is going offline so they immediately evict
+        // our bots from their RemoteBotCache and tab lists (NETWORK mode).
+        if (velocityChannel != null) {
+            velocityChannel.broadcastServerOffline();
+        }
+
         if (fakePlayerManager != null) fakePlayerManager.removeAllSync();
 
         if (tabListManager != null) tabListManager.shutdown();
@@ -637,6 +663,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
         getServer().getMessenger().unregisterIncomingPluginChannel(this, VelocityChannel.CHANNEL);
         getServer().getMessenger().unregisterOutgoingPluginChannel(this, VelocityChannel.CHANNEL);
+        getServer().getMessenger().unregisterOutgoingPluginChannel(this, VelocityChannel.PROXY_CHANNEL);
         getServer().getMessenger().unregisterOutgoingPluginChannel(this, "BungeeCord");
 
         long uptimeMs = System.currentTimeMillis() - enabledAt;
@@ -717,6 +744,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
     public me.bill.fakePlayerPlugin.command.AttackCommand getAttackCommand() {
         return attackCommand;
+    }
+
+    public me.bill.fakePlayerPlugin.command.FollowCommand getFollowCommand() {
+        return followCommand;
     }
 
     public PathfindingService getPathfindingService() {

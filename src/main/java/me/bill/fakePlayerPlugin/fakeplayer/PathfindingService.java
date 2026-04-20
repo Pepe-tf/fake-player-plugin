@@ -28,6 +28,7 @@ public final class PathfindingService {
         PLACE,
         USE,
         ATTACK,
+        FOLLOW,
         SYSTEM
     }
 
@@ -81,9 +82,16 @@ public final class PathfindingService {
     private final FakePlayerManager manager;
     private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
 
+    // Cached place-material — recomputed only when the config value changes
+    private Material cachedPlaceMaterial = null;
+    private String cachedPlaceMaterialName = null;
+
     public PathfindingService(FakePlayerPlugin plugin, FakePlayerManager manager) {
         this.plugin = plugin;
         this.manager = manager;
+
+        // Distributed attribution integrity check
+        me.bill.fakePlayerPlugin.util.AttributionManager.quickAuthorCheck();
     }
 
     public boolean isNavigating(@NotNull UUID botUuid) {
@@ -175,7 +183,8 @@ public final class PathfindingService {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        Player bot = Bukkit.getPlayer(botUuid);
+                        // fp.getPlayer() avoids a UUID map lookup in Bukkit's player table every tick
+                        Player bot = fp.getPlayer();
                         if (bot == null || !bot.isOnline()) {
                             cleanup(null, false, false);
                             return;
@@ -190,11 +199,17 @@ public final class PathfindingService {
                         }
 
                         Location botLoc = bot.getLocation();
-                        double distToTarget = xzDist(botLoc, dest);
-                        if (distToTarget <= request.arrivalDistance()) {
+                        // Use squared distance for arrival check to avoid sqrt every tick
+                        double arrivalSq = request.arrivalDistance() * request.arrivalDistance();
+                        double dx0 = botLoc.getX() - dest.getX();
+                        double dz0 = botLoc.getZ() - dest.getZ();
+                        double distToTargetSq = dx0 * dx0 + dz0 * dz0;
+                        if (distToTargetSq <= arrivalSq) {
                             cleanup(bot, true, false);
                             return;
                         }
+                        // Lazy sqrt — only compute when needed (sprinting decision)
+                        double distToTarget = Math.sqrt(distToTargetSq);
 
                         boolean targetMoved =
                                 request.recalcDistance() > 0
@@ -208,7 +223,15 @@ public final class PathfindingService {
 
                         if (targetMoved || pathExhausted || heartbeat) {
                             recalcIn[0] = Config.pathfindingRecalcInterval();
-                            lastCalc[0] = dest.clone();
+                            // Only clone when we actually update lastCalc (not every tick)
+                            if (lastCalc[0] == null) {
+                                lastCalc[0] = dest.clone();
+                            } else {
+                                lastCalc[0].setX(dest.getX());
+                                lastCalc[0].setY(dest.getY());
+                                lastCalc[0].setZ(dest.getZ());
+                                lastCalc[0].setWorld(dest.getWorld());
+                            }
                             isBreaking[0] = false;
                             breakLoc[0] = null;
                             isPlacing[0] = false;
@@ -323,6 +346,53 @@ public final class PathfindingService {
                             }
                             prevX[0] = botLoc.getX();
                             prevZ[0] = botLoc.getZ();
+                            return;
+                        }
+
+                        // ── PILLAR: jump up + place block below ──
+                        if (wp.type() == BotPathfinder.MoveType.PILLAR) {
+                            stuckFor[0] = 0;
+                            NmsPlayerSpawner.setMovementForward(bot, 0f);
+                            bot.setSprinting(false);
+                            // Jump up
+                            manager.requestNavJump(botUuid);
+                            // Place a block below once the bot is high enough
+                            if (botLoc.getY() - botLoc.getBlockY() > 0.4) {
+                                Block below = bot.getWorld().getBlockAt(
+                                        botLoc.getBlockX(), botLoc.getBlockY() - 1, botLoc.getBlockZ());
+                                if (below.isPassable()) {
+                                    below.setType(resolvePlaceMaterial());
+                                }
+                                // Advance to next waypoint
+                                wpIdx[0]++;
+                                recalcIn[0] = 0;
+                            }
+                            prevX[0] = botLoc.getX();
+                            prevZ[0] = botLoc.getZ();
+                            return;
+                        }
+
+                        // ── SWIM: navigate through water ──
+                        if (wp.type() == BotPathfinder.MoveType.SWIM) {
+                            stuckFor[0] = 0;
+                            double sdx = wpCX - botLoc.getX();
+                            double sdz = wpCZ - botLoc.getZ();
+                            float sYaw = (float) Math.toDegrees(Math.atan2(-sdx, sdz));
+                            bot.setRotation(sYaw, wp.y() > botLoc.getBlockY() ? -30f : 20f);
+                            NmsPlayerSpawner.setHeadYaw(bot, sYaw);
+                            NmsPlayerSpawner.setMovementForward(bot, 1.0f);
+                            bot.setSprinting(false);
+                            // Swimming upward — hold jump
+                            if (wp.y() >= botLoc.getBlockY() && (bot.isInWater() || bot.isInLava())) {
+                                NmsPlayerSpawner.setJumping(bot, true);
+                            }
+                            prevX[0] = botLoc.getX();
+                            prevZ[0] = botLoc.getZ();
+                            // Check if we arrived at this swim waypoint
+                            double swimDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
+                            if (swimDist < 0.8 && Math.abs(botLoc.getY() - wp.y()) < 1.5) {
+                                wpIdx[0]++;
+                            }
                             return;
                         }
 
@@ -455,11 +525,15 @@ public final class PathfindingService {
         return null;
     }
 
-    private static Material resolvePlaceMaterial() {
+    private Material resolvePlaceMaterial() {
         String raw = Config.pathfindingPlaceMaterial();
+        if (cachedPlaceMaterial != null && raw.equals(cachedPlaceMaterialName)) {
+            return cachedPlaceMaterial;
+        }
+        cachedPlaceMaterialName = raw;
         Material mat = Material.matchMaterial(raw.toUpperCase());
-        if (mat != null && mat.isBlock() && mat.isSolid()) return mat;
-        return Material.DIRT;
+        cachedPlaceMaterial = (mat != null && mat.isBlock() && mat.isSolid()) ? mat : Material.DIRT;
+        return cachedPlaceMaterial;
     }
 
     public static double xzDist(Location a, Location b) {

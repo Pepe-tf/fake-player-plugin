@@ -2,10 +2,10 @@
 
 FPP stores bot sessions, restart state, analytics, and task persistence in a database.
 
-> **Current plugin line:** v1.6.5.1  
+> **Current plugin line:** v1.6.6  
 > **Default backend:** SQLite  
 > **Optional backend:** MySQL  
-> **Important persistence feature:** active mine/use/place/patrol tasks survive restart
+> **Important persistence feature:** active mine/use/place/patrol/follow tasks survive restart
 
 ---
 
@@ -132,6 +132,8 @@ Stores the bot's last known:
 - LP group
 - frozen/chat/item/XP settings and other persistent bot state (depending on schema level)
 - per-bot overrides: head-AI, nav-parkour, nav-break-blocks, nav-place-blocks, swim-AI, chunk-load-radius (schema v14)
+- per-bot PvE settings: `pve_enabled`, `pve_range`, `pve_priority`, `pve_mob_type` (schema v16)
+- resolved skin data: `skin_texture`, `skin_signature` — allows bots to reload their skin on restart without a Mojang API call (schema v17)
 
 ### `fpp_skin_cache`
 
@@ -167,6 +169,7 @@ Task types:
 - `USE`
 - `PLACE`
 - `PATROL`
+- `FOLLOW` — followed player's UUID stored in `extra_str`
 
 High-level fields:
 - `bot_uuid`
@@ -193,6 +196,7 @@ This includes:
 - use-item jobs
 - place jobs
 - patrol / waypoint jobs
+- follow jobs (`FOLLOW` task type — bot resumes following the last target player if they are online after restart)
 
 ### Save flow
 
@@ -296,6 +300,24 @@ Use standard database backups, for example:
 ```sql
 mysqldump -u fpp_user -p fpp > fpp_backup.sql
 ```
+
+---
+
+## Schema Version History
+
+| Version | Changes |
+|---------|---------|
+| v9 | `fpp_active_bots` gains `frozen`, `chat_enabled`, `chat_tier`, `right_click_cmd` |
+| v10 | `fpp_active_bots` gains `ai_personality` |
+| v11 | `fpp_active_bots` gains `pickup_items`, `pickup_xp` |
+| v12 | `fpp_active_bots` gains `head_ai_enabled`, `nav_parkour`, `nav_break_blocks`, `nav_place_blocks` |
+| v13 | `fpp_bot_tasks` table created (mine/use/place/patrol task persistence) |
+| v14 | `fpp_active_bots` gains `swim_ai_enabled`, `chunk_load_radius` |
+| v15 | `fpp_skin_cache` table created (Mojang skin resolution cache) |
+| v16 | `fpp_active_bots` gains `pve_enabled`, `pve_range`, `pve_priority`, `pve_mob_type` (per-bot PvE settings) |
+| v17 | `fpp_active_bots` gains `skin_texture`, `skin_signature` (skin persistence across restarts) |
+
+> Current schema version: **17** · Check with `/fpp migrate status`
 
 ---
 

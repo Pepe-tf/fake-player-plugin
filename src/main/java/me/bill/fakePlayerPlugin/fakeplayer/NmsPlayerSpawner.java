@@ -43,6 +43,8 @@ public final class NmsPlayerSpawner {
 
     private static Field jumpingField;
 
+        private static Field listedField;
+
     private static Field yHeadRotField;
 
     private static Field zzaField;
@@ -195,6 +197,13 @@ public final class NmsPlayerSpawner {
             FppLogger.debug(
                     "NmsPlayerSpawner: jumping field "
                             + (jumpingField != null ? "cached" : "not found - swim AI inactive"));
+
+            // ServerPlayer.listed — controls whether the server sends listed=true/false
+            // in ClientboundPlayerInfoUpdatePacket for this player.
+            listedField = findFieldByName(serverPlayerClass, "listed");
+            FppLogger.debug(
+                    "NmsPlayerSpawner: listed field "
+                            + (listedField != null ? "cached" : "not found - tab unlist will use packet fallback"));
 
             yHeadRotField = findFieldByName(serverPlayerClass, "yHeadRot");
             FppLogger.debug(
@@ -496,6 +505,30 @@ public final class NmsPlayerSpawner {
         }
     }
 
+    /**
+     * Sets the NMS {@code ServerPlayer.listed} field which controls whether
+     * the vanilla server includes {@code listed=true/false} in every
+     * {@code ClientboundPlayerInfoUpdatePacket} it sends for this player.
+     * <p>
+     * When {@code listed=false}, the client keeps the player-info entry
+     * (entity stays visible in-world) but hides the tab-list row.
+     *
+     * @return {@code true} if the field was set successfully via NMS reflection,
+     *         {@code false} if the field was not available (caller should fall back
+     *         to packet-level {@code UPDATE_LISTED}).
+     */
+    public static boolean setListed(Player bot, boolean listed) {
+        if (!initialized || listedField == null || craftPlayerGetHandleMethod == null) return false;
+        try {
+            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+            listedField.setBoolean(nmsPlayer, listed);
+            return true;
+        } catch (Exception e) {
+            FppLogger.debug("NmsPlayerSpawner.setListed failed: " + e.getMessage());
+            return false;
+        }
+    }
+
     public static void setHeadYaw(Player bot, float yaw) {
         if (!initialized || craftPlayerGetHandleMethod == null) return;
         try {
@@ -685,6 +718,154 @@ public final class NmsPlayerSpawner {
                             + ": "
                             + e.getMessage());
         }
+    }
+
+    /**
+     * Re-injects FakeServerGamePacketListenerImpl on an existing bot Player (e.g. after portal /
+     * dimension change where NMS creates a new ServerPlayer and resets the connection handler).
+     * Also clears {@code awaitingPositionFromClient} so the entity isn't stuck waiting for a
+     * teleport confirmation that never arrives.
+     */
+    public static void reInjectFakeListener(Player bot) {
+        if (!initialized || craftPlayerGetHandleMethod == null || connectionFieldInPlayer == null) {
+            FppLogger.debug("NmsPlayerSpawner.reInjectFakeListener: not available");
+            return;
+        }
+        try {
+            Object nmsPlayer = craftPlayerGetHandleMethod.invoke(bot);
+            if (nmsPlayer == null) return;
+
+            // Get existing connection from the ServerPlayer
+            Object currentConn = connectionFieldInPlayer.get(nmsPlayer);
+            if (currentConn instanceof FakeServerGamePacketListenerImpl) {
+                // Already has our fake listener — nothing to do
+                FppLogger.debug(
+                        "NmsPlayerSpawner.reInjectFakeListener: "
+                                + bot.getName()
+                                + " already has FakeServerGamePacketListenerImpl");
+                return;
+            }
+
+            // Find the Connection object (FakeConnection) inside the SGPL
+            Object networkConn = null;
+            if (currentConn != null && connectionClass != null) {
+                for (Field f : getAllDeclaredFields(currentConn.getClass())) {
+                    if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+                    if (connectionClass.isAssignableFrom(f.getType())) {
+                        f.setAccessible(true);
+                        networkConn = f.get(currentConn);
+                        break;
+                    }
+                }
+            }
+            if (networkConn == null) {
+                // Fallback: create a fresh FakeConnection
+                networkConn = createFakeConnection();
+            }
+            if (networkConn == null) {
+                FppLogger.warn(
+                        "NmsPlayerSpawner.reInjectFakeListener: cannot get connection for "
+                                + bot.getName());
+                return;
+            }
+
+            // Get the game profile from the NMS player
+            Object gameProfile = null;
+            try {
+                Method gpMethod = findMethodByName(nmsPlayer.getClass(), "getGameProfile", 0);
+                if (gpMethod != null) {
+                    gpMethod.setAccessible(true);
+                    gameProfile = gpMethod.invoke(nmsPlayer);
+                }
+            } catch (Exception ignored) {
+            }
+            if (gameProfile == null) {
+                // Try via field
+                for (Field f : getAllDeclaredFields(nmsPlayer.getClass())) {
+                    if (f.getType().getSimpleName().equals("GameProfile")) {
+                        f.setAccessible(true);
+                        gameProfile = f.get(nmsPlayer);
+                        break;
+                    }
+                }
+            }
+
+            Object clientInfo = getClientInformation();
+            injectFakeListener(
+                    craftServerGetServerMethod.invoke(org.bukkit.Bukkit.getServer()),
+                    networkConn,
+                    nmsPlayer,
+                    gameProfile,
+                    clientInfo);
+
+            // Clear awaitingPositionFromClient so the entity isn't stuck
+            clearAwaitingPosition(nmsPlayer);
+
+            // Re-add to firstTickSet so position is re-initialized
+            firstTickSet.add(bot.getUniqueId());
+
+            FppLogger.debug("NmsPlayerSpawner.reInjectFakeListener: success for " + bot.getName());
+        } catch (Exception e) {
+            FppLogger.warn(
+                    "NmsPlayerSpawner.reInjectFakeListener failed for "
+                            + bot.getName()
+                            + ": "
+                            + e.getMessage());
+        }
+    }
+
+    private static void clearAwaitingPosition(Object nmsPlayer) {
+        try {
+            // awaitingPositionFromClient is on ServerGamePacketListenerImpl, which is the
+            // 'connection' field on ServerPlayer
+            Object sgpl = connectionFieldInPlayer.get(nmsPlayer);
+            if (sgpl == null) return;
+            for (Field f : getAllDeclaredFields(sgpl.getClass())) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+                // awaitingPositionFromClient is typically a Vec3 (nullable)
+                if (f.getName().equals("awaitingPositionFromClient")
+                        || f.getName().contains("awaiting")) {
+                    f.setAccessible(true);
+                    if (!f.getType().isPrimitive()) {
+                        f.set(sgpl, null);
+                        FppLogger.debug(
+                                "NmsPlayerSpawner: cleared " + f.getName() + " on SGPL");
+                        return;
+                    }
+                }
+            }
+            // Fallback: scan for Vec3 fields that could be the awaiting position
+            for (Field f : getAllDeclaredFields(sgpl.getClass())) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+                if (f.getType().getSimpleName().equals("Vec3")) {
+                    f.setAccessible(true);
+                    Object val = f.get(sgpl);
+                    if (val != null) {
+                        f.set(sgpl, null);
+                        FppLogger.debug(
+                                "NmsPlayerSpawner: cleared Vec3 field '"
+                                        + f.getName()
+                                        + "' on SGPL (likely awaitingPositionFromClient)");
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            FppLogger.debug("NmsPlayerSpawner.clearAwaitingPosition failed: " + e.getMessage());
+        }
+    }
+
+    private static Method findMethodByName(Class<?> clazz, String name, int paramCount) {
+        Class<?> cur = clazz;
+        while (cur != null && cur != Object.class) {
+            for (Method m : cur.getDeclaredMethods()) {
+                if (m.getName().equals(name) && m.getParameterCount() == paramCount) {
+                    return m;
+                }
+            }
+            cur = cur.getSuperclass();
+        }
+        return null;
     }
 
     public static void setPing(Player bot, int pingMs) {

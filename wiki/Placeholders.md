@@ -1,203 +1,164 @@
-> [🏠 Home](Home.md) · [Getting Started](Getting-Started.md) · [Commands](Commands.md) · [Permissions](Permissions.md) · [Configuration](Configuration.md) · [Language](Language.md) · [Bot Names](Bot-Names.md) · [Bot Messages](Bot-Messages.md) · [Database](Database.md) · [Proxy Support](Proxy-Support.md) · [Config Sync](Config-Sync.md) · [Skin System](Skin-System.md) · [Bot Behaviour](Bot-Behaviour.md) · [Swap System](Swap-System.md) · [Fake Chat](Fake-Chat.md) · **Placeholders** · [FAQ](FAQ.md)
+# 📊 PlaceholderAPI Integration
 
----
+FPP registers a full `%fpp_*%` PlaceholderAPI expansion for scoreboard plugins, TAB headers, holograms, chat formats, and other PAPI-aware plugins.
 
-> 🎉 **FakePlayerPlugin is now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+Requirement: [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)
 
-# Placeholders (PlaceholderAPI)
-
-FPP provides **24+ PlaceholderAPI placeholders** organized into five categories.  
-Requires [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) - FPP auto-registers on startup, no `/papi ecloud` needed.
-
-> For the full technical reference including integration examples and troubleshooting, see [PLACEHOLDERAPI.md](../PLACEHOLDERAPI.md).
-> **Version:** 1.5.8+ · **Total placeholders:** 29+ (10 server-wide · 9 config state · 3 network · 3 per-world dynamic · 3 player-relative)
+> **Current line:** v1.6.6  
+> **Placeholder count:** 29+  
+> Registered automatically when PlaceholderAPI is present.
 
 ---
 
 ## Server-Wide Placeholders
 
-Same value for all players - no player context required.  
-In **NETWORK mode**, count/name placeholders include bots from **all servers** in the proxy.
-
-| Placeholder | Return Type | Description | Example |
-|-------------|-------------|-------------|---------|
-| `%fpp_count%` | `integer` | Active bots - **all servers** in NETWORK mode, local only otherwise | `5` |
-| `%fpp_local_count%` | `integer` | Bots on **this server only** (always local, regardless of mode) | `3` |
-| `%fpp_network_count%` | `integer` | Bots on **other servers only** (0 in LOCAL mode) | `2` |
-| `%fpp_max%` | `integer` / `∞` | Global bot cap (`limits.max-bots`). `∞` when cap is `0` | `50` or `∞` |
-| `%fpp_real%` | `integer` | Real (non-bot) players online | `12` |
-| `%fpp_total%` | `integer` | Real players + bots combined (network-wide) | `17` |
-| `%fpp_online%` | `integer` | Alias for `%fpp_total%` | `17` |
-| `%fpp_frozen%` | `integer` | Bots frozen via `/fpp freeze` (local only) | `2` |
-| `%fpp_names%` | `string` | Comma-separated bot display names - **all servers** in NETWORK mode | `Steve, Alex, Notch` |
-| `%fpp_network_names%` | `string` | Display names of bots on **other servers only** | `RemoteBot1, RemoteBot2` |
-| `%fpp_version%` | `string` | Plugin version | `1.5.8` |
-
----
-
-## Config State Placeholders
-
-Reflect live `config.yml` values - update instantly after `/fpp reload`.
-
-| Placeholder | Values | Config Key |
-|-------------|--------|------------|
-| `%fpp_chat%` | `on` / `off` | `fake-chat.enabled` |
-| `%fpp_swap%` | `on` / `off` | `swap.enabled` |
-| `%fpp_body%` | `on` / `off` | `body.enabled` |
-| `%fpp_pushable%` | `on` / `off` | `body.pushable` |
-| `%fpp_damageable%` | `on` / `off` | `body.damageable` |
-| `%fpp_tab%` | `on` / `off` | `tab-list.enabled` |
-| `%fpp_skin%` | `auto` / `custom` / `off` | `skin.mode` |
-| `%fpp_max_health%` | number | `combat.max-health` |
-| `%fpp_persistence%` | `on` / `off` | `persistence.enabled` |
+| Placeholder | Returns | Description |
+|-------------|---------|-------------|
+| `%fpp_count%` | Number | Total bot count. Includes remote bots in `NETWORK` mode |
+| `%fpp_local_count%` | Number | Bots running on this server only |
+| `%fpp_network_count%` | Number | Bots running on other backend servers |
+| `%fpp_max%` | Number / `∞` | Global bot cap from `limits.max-bots` |
+| `%fpp_real%` | Number | Real online players only |
+| `%fpp_total%` | Number | Real players + bots combined |
+| `%fpp_online%` | Number | Alias for `%fpp_total%` |
+| `%fpp_frozen%` | Number | Frozen bot count |
+| `%fpp_names%` | String | Comma-separated bot display names (local + remote in `NETWORK` mode) |
+| `%fpp_network_names%` | String | Comma-separated remote bot display names only |
+| `%fpp_chat%` | `on` / `off` | Fake-chat state |
+| `%fpp_swap%` | `on` / `off` | Swap state |
+| `%fpp_skin%` | `player` / `random` / `none` | Current skin mode (`auto`, `custom`, `off` are legacy aliases still accepted) |
+| `%fpp_body%` | `on` / `off` | Physical body state |
+| `%fpp_pushable%` | `on` / `off` | Whether bodies are pushable |
+| `%fpp_damageable%` | `on` / `off` | Whether bodies can be damaged |
+| `%fpp_tab%` | `on` / `off` | Tab-list visibility state |
+| `%fpp_max_health%` | Number | `combat.max-health` |
+| `%fpp_persistence%` | `on` / `off` | Persistence state |
+| `%fpp_version%` | String | Plugin version |
 
 ---
 
 ## Network / Proxy Placeholders
 
-Useful when running FPP in NETWORK mode across multiple backend servers.
+| Placeholder | Returns | Description |
+|-------------|---------|-------------|
+| `%fpp_network%` | `on` / `off` | `on` when `database.mode: NETWORK` |
+| `%fpp_server_id%` | String | Current `database.server-id` |
+| `%fpp_spawn_cooldown%` | Number | Configured `spawn-cooldown` in seconds |
 
-| Placeholder | Values / Type | Description |
-|-------------|---------------|-------------|
-| `%fpp_network%` | `on` / `off` | `on` when `database.mode: NETWORK`; `off` otherwise |
-| `%fpp_server_id%` | `string` | Value of `database.server-id` for this server |
-| `%fpp_spawn_cooldown%` | `integer` | Configured spawn cooldown in seconds (`0` = off) |
+### Notes
 
-> **Proxy-aware placeholders:** When `database.mode: NETWORK`, `%fpp_count%`, `%fpp_total%`, `%fpp_online%`, and `%fpp_names%` automatically include bots from **all servers** in the network. Use `%fpp_local_count%` to always get only this server's bots, and `%fpp_network_count%` / `%fpp_network_names%` for remote-server bots only.
+- `%fpp_count%` includes remote bots in `NETWORK` mode
+- `%fpp_local_count%` lets you show only this backend's bots
+- `%fpp_network_count%` lets you show only other backends' bots
 
 ---
 
 ## Per-World Placeholders
 
-Dynamic - append any world name after `count_`, `real_`, or `total_`.  
-World names are **case-insensitive**; use underscores for spaces.
+| Placeholder | Returns | Description |
+|-------------|---------|-------------|
+| `%fpp_count_<world>%` | Number | Bots in the specified world |
+| `%fpp_real_<world>%` | Number | Real players in the specified world |
+| `%fpp_total_<world>%` | Number | Total players + bots in the specified world |
 
-| Placeholder | Description | Example |
-|-------------|-------------|---------|
-| `%fpp_count_<world>%` | Bots in specific world | `%fpp_count_world%` → `3` |
-| `%fpp_real_<world>%` | Real players in world | `%fpp_real_world_nether%` → `1` |
-| `%fpp_total_<world>%` | Bots + real players in world | `%fpp_total_world_the_end%` → `4` |
+Examples:
 
-**Common examples:**
+```text
+%fpp_count_world%
+%fpp_real_world_nether%
+%fpp_total_world_the_end%
+```
 
-| Placeholder | World |
-|-------------|-------|
-| `%fpp_count_world%` | Default overworld |
-| `%fpp_total_world_nether%` | The Nether |
-| `%fpp_real_world_the_end%` | The End |
-| `%fpp_count_skyblock%` | Custom world `skyblock` |
-
-> **Bot world resolution:** FPP uses the live NMS ServerPlayer body position.  
-> Bodyless bots fall back to their last recorded spawn location.
+World names are case-insensitive.
 
 ---
 
 ## Player-Relative Placeholders
 
-Require an online player context. Fall back to `0` / `""` when the context player is offline.
+| Placeholder | Returns | Description |
+|-------------|---------|-------------|
+| `%fpp_user_count%` | Number | Bots owned by the player |
+| `%fpp_user_max%` | Number | Player's personal bot cap |
+| `%fpp_user_names%` | String | Comma-separated owned bot names |
 
-| Placeholder | Return Type | Description | Example |
-|-------------|-------------|-------------|---------|
-| `%fpp_user_count%` | `integer` | Bots spawned by this player | `2` |
-| `%fpp_user_max%` | `integer` | This player's personal bot limit | `10` |
-| `%fpp_user_names%` | `string` | Comma-separated names of player's bots | `bot-Bill_Hub, bot-Bill_Hub-2` |
+### Important note for `%fpp_user_max%`
 
-`%fpp_user_max%` resolution: highest `fpp.bot.<num>` node → fallback to `limits.user-bot-limit`
+This value is resolved from:
+- the highest `fpp.spawn.limit.<N>` node the player has
+- otherwise `limits.user-bot-limit`
 
----
-
-## `%fpp_real%` vs `%fpp_total%` vs `%fpp_online%`
-
-```
-%fpp_real%   = Bukkit.getOnlinePlayers().size()   (real players only, never includes bots)
-%fpp_total%  = %fpp_real% + %fpp_count%
-%fpp_online% = %fpp_real% + %fpp_count%            (identical - use whichever reads better)
-```
-
-Fake bots are NMS ServerPlayer entities not accessible via the Bukkit `Player` API.
+Older docs that referenced `fpp.bot.<num>` are outdated.
 
 ---
 
-## Usage Examples
+## How `%fpp_real%` and `%fpp_total%` Work
 
-### Scoreboard Sidebar
+FPP bots go through the normal server player pipeline, so they appear in Bukkit's online-player list.
 
-```
-&7Players: &f%fpp_real%
-&7Bots:    &f%fpp_count%&7/&f%fpp_max%
-&8────────────────
-&7Total:   &a%fpp_total%
-```
+That means:
+- `%fpp_real%` = online player count minus local bots
+- `%fpp_total%` = real players + bots
 
-### TAB Plugin Header
-
-```yaml
-header:
-  - "<gray>Players: <white>%fpp_real% <dark_gray>│ <gray>Bots: <white>%fpp_count% <dark_gray>│ <gray>Total: <white>%fpp_total%"
-```
-
-### Player's Own Bot Stats
-
-```
-&7Your bots: &f%fpp_user_count%&7/&f%fpp_user_max%
-&7Names: &f%fpp_user_names%
-```
-
-### Per-World Display
-
-```
-&8── Overworld ──────────────
-  &7Players: &f%fpp_real_world%
-  &7Bots:    &f%fpp_count_world%
-
-&8── Nether ─────────────────
-  &7Players: &f%fpp_real_world_nether%
-  &7Bots:    &f%fpp_count_world_nether%
-```
-
-### Status Board
-
-```
-&7Chat: %fpp_chat%  &8│  &7Swap: %fpp_swap%  &8│  &7Body: %fpp_body%
-&7Skin: %fpp_skin%  &8│  &7Tab: %fpp_tab%
-```
-
-### Network / Proxy Status Board
-
-```
-&7Network: %fpp_network%  &8│  &7Server: %fpp_server_id%
-&7Cooldown: %fpp_spawn_cooldown%s  &8│  &7Persist: %fpp_persistence%
-&7This server: %fpp_local_count%  &8│  &7Network total: %fpp_count%
-```
-
-### Using PAPI Placeholders in Tab-List Format
-
-```yaml
-# config.yml - works because finalizeDisplayName uses server-wide PAPI context
-bot-name:
-  tab-list-format: '{prefix}{bot_name}{suffix} <gray>(%fpp_count% bots)'
-```
-
-> **Note:** Player-relative placeholders (`%fpp_user_count%`, etc.) return `0` / `""` in the tab-list-format context because FPP uses a null player context for server-wide PAPI expansion.
+This is why these placeholders are useful for tab headers and scoreboards without double-counting.
 
 ---
 
-## Troubleshooting
+## Example Uses
 
-| Symptom | Fix |
-|---------|-----|
-| `%fpp_count%` returns unparsed literal | PlaceholderAPI not installed or FPP failed to register - check console for `[FPP] PlaceholderAPI expansion registered` |
-| `%fpp_count%` only shows local bots | Ensure `database.mode: NETWORK` and `database.enabled: true` - remote bots require NETWORK mode |
-| `%fpp_network_count%` always `0` | Only non-zero in NETWORK mode with other servers sending `BOT_SPAWN` plugin messages |
-| `%fpp_user_count%` always `0` | Requires online player context - not usable in server-wide contexts |
-| `%fpp_max%` shows `∞` unexpectedly | `limits.max-bots: 0` means unlimited - set a number to get a numeric value |
-| Per-world placeholder always `0` | Check world name - case-insensitive but spelling must match; use underscores for spaces |
-| Config state shows stale value | Run `/fpp reload` - config state placeholders update immediately |
-| `%fpp_pushable%` or `%fpp_damageable%` wrong | Edit `body.pushable` / `body.damageable` in config.yml then run `/fpp reload` |
-| `%fpp_network%` always `off` | Only `on` when `database.enabled: true` and `database.mode: NETWORK` |
-| `%fpp_server_id%` shows `default` | Set `database.server-id` in config.yml to a unique value per server |
-| `%fpp_spawn_cooldown%` shows `0` | `spawn-cooldown` is `0` (disabled) by default - set a positive integer to enable |
+### TAB header
+
+```text
+&7Real: &a%fpp_real% &8| &7Bots: &b%fpp_count% &8| &7Total: &e%fpp_total%
+```
+
+### Scoreboard
+
+```text
+Bots: %fpp_count%
+Players: %fpp_total%
+```
+
+### Proxy-aware split
+
+```text
+Local bots: %fpp_local_count%
+Remote bots: %fpp_network_count%
+```
 
 ---
 
-| [◀ Fake Chat](Fake-Chat.md) | [🏠 Home](Home.md) | [FAQ ▶](FAQ.md) |
+## Notes About Using PAPI with FPP
+
+FPP itself registers the placeholders automatically.
+
+You usually use them in:
+- TAB headers/footers
+- scoreboard plugins
+- hologram plugins
+- chat / formatting plugins that support PAPI
+
+The old `bot-name.tab-list-format` and `fake-chat.chat-format` style of internal formatting is no longer the primary way to use these values.
+
+---
+
+## Quick Examples
+
+```text
+%fpp_total%          → 27
+%fpp_count%          → 22
+%fpp_local_count%    → 15
+%fpp_network_count%  → 7
+%fpp_real%           → 5
+%fpp_skin%           → player
+%fpp_network%        → on
+%fpp_server_id%      → survival
+%fpp_user_count%     → 3
+%fpp_user_max%       → 5
+```
+
+---
+
+See also:
+- [Proxy-Support](Proxy-Support.md)
+- [Configuration](Configuration.md)
+- [README](../../README.md)

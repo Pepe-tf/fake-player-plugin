@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DatabaseManager {
 
-    private static final int SCHEMA_VERSION = 16;
+    private static final int SCHEMA_VERSION = 17;
 
     public static int getCurrentSchemaVersion() {
         return SCHEMA_VERSION;
@@ -104,7 +104,9 @@ public class DatabaseManager {
                     + "  pve_enabled      BOOLEAN DEFAULT 0,"
                     + "  pve_range        DOUBLE  DEFAULT 16.0,"
                     + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
-                    + "  pve_mob_type     VARCHAR(64) DEFAULT NULL"
+                    + "  pve_mob_type     VARCHAR(64) DEFAULT NULL,"
+                    + "  skin_texture     TEXT    DEFAULT NULL,"
+                    + "  skin_signature   TEXT    DEFAULT NULL"
                     + ")";
 
     private static final String CREATE_ACTIVE_MYSQL =
@@ -139,7 +141,9 @@ public class DatabaseManager {
                     + "  pve_enabled      BOOLEAN DEFAULT 0,"
                     + "  pve_range        DOUBLE  DEFAULT 16.0,"
                     + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
-                    + "  pve_mob_type     VARCHAR(64) DEFAULT NULL"
+                    + "  pve_mob_type     VARCHAR(64) DEFAULT NULL,"
+                    + "  skin_texture     TEXT    DEFAULT NULL,"
+                    + "  skin_signature   TEXT    DEFAULT NULL"
                     + ")";
 
     private static final String CREATE_SLEEPING_SQLITE =
@@ -350,6 +354,11 @@ public class DatabaseManager {
             "ALTER TABLE fpp_active_bots ADD COLUMN pve_range        DOUBLE  DEFAULT 16.0",
             "ALTER TABLE fpp_active_bots ADD COLUMN pve_priority     VARCHAR(16) DEFAULT NULL",
             "ALTER TABLE fpp_active_bots ADD COLUMN pve_mob_type     VARCHAR(64) DEFAULT NULL"
+        },
+        // v16 → v17: Persist skin texture data for stable skins across restarts
+        {
+            "ALTER TABLE fpp_active_bots ADD COLUMN skin_texture   TEXT DEFAULT NULL",
+            "ALTER TABLE fpp_active_bots ADD COLUMN skin_signature TEXT DEFAULT NULL"
         }
     };
 
@@ -383,6 +392,7 @@ public class DatabaseManager {
         } else {
             migrate();
         }
+        repairSchema();
         backfillIdentities();
         startWriteLoop();
         startHealthCheck();
@@ -524,6 +534,15 @@ public class DatabaseManager {
         FppLogger.info("DB schema migration complete (now at v" + SCHEMA_VERSION + ").");
     }
 
+    /**
+     * Self-healing: ensures columns that may have been missed by a broken migration
+     * are present. Uses execSilent so duplicate-column errors are silently ignored.
+     */
+    private void repairSchema() {
+        execSilent("ALTER TABLE fpp_active_bots ADD COLUMN skin_texture   TEXT DEFAULT NULL");
+        execSilent("ALTER TABLE fpp_active_bots ADD COLUMN skin_signature TEXT DEFAULT NULL");
+    }
+
     private int getSchemaVersion() {
         try (PreparedStatement ps =
                         connection.prepareStatement(
@@ -554,10 +573,19 @@ public class DatabaseManager {
     private void startWriteLoop() {
         writer.submit(
                 () -> {
+                    List<Runnable> drainBuffer = new ArrayList<>(32);
                     while (running.get() || !writeQueue.isEmpty()) {
                         try {
                             Runnable task = writeQueue.poll(100, TimeUnit.MILLISECONDS);
-                            if (task != null) task.run();
+                            if (task != null) {
+                                task.run();
+                                // Drain any additional queued tasks without waiting
+                                drainBuffer.clear();
+                                writeQueue.drainTo(drainBuffer, 31);
+                                for (Runnable t : drainBuffer) {
+                                    t.run();
+                                }
+                            }
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             break;
@@ -1061,6 +1089,16 @@ public class DatabaseManager {
             pveMobType = rs.getString("pve_mob_type");
         } catch (SQLException ignored) {
         }
+        String skinTexture = null;
+        try {
+            skinTexture = rs.getString("skin_texture");
+        } catch (SQLException ignored) {
+        }
+        String skinSignature = null;
+        try {
+            skinSignature = rs.getString("skin_signature");
+        } catch (SQLException ignored) {
+        }
         return new ActiveBotRow(
                 rs.getString("bot_uuid"),
                 rs.getString("bot_name"),
@@ -1091,7 +1129,9 @@ public class DatabaseManager {
                 pveEnabled,
                 pveRange,
                 pvePriority,
-                pveMobType);
+                pveMobType,
+                skinTexture,
+                skinSignature);
     }
 
     public List<BotRecord> getActiveSessions() {
@@ -2044,6 +2084,28 @@ public class DatabaseManager {
                 });
     }
 
+    public void updateBotSkin(String uuid, String skinTexture, String skinSignature) {
+        if (!isAlive()) return;
+        final String tex = skinTexture, sig = skinSignature;
+        enqueue(
+                () -> {
+                    if (!isAlive()) return;
+                    String sql =
+                            "UPDATE fpp_active_bots SET skin_texture=?, skin_signature=? WHERE"
+                                + " bot_uuid=?";
+                    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                        if (tex != null) ps.setString(1, tex);
+                        else ps.setNull(1, java.sql.Types.CLOB);
+                        if (sig != null) ps.setString(2, sig);
+                        else ps.setNull(2, java.sql.Types.CLOB);
+                        ps.setString(3, uuid);
+                        ps.executeUpdate();
+                    } catch (SQLException e) {
+                        FppLogger.error("DB updateBotSkin: " + e.getMessage());
+                    }
+                });
+    }
+
     public boolean isMysql() {
         return isMysql;
     }
@@ -2216,7 +2278,9 @@ public class DatabaseManager {
             boolean pveEnabled,
             double pveRange,
             String pvePriority,
-            String pveMobType) {}
+            String pveMobType,
+            String skinTexture,
+            String skinSignature) {}
 
     public record SleepingBotRow(
             int sleepOrder,
