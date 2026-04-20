@@ -548,6 +548,12 @@ Always download from the official sources:
 [*]v62→v63: [FONT=monospace]attack-mob.*[/FONT] default config keys added
 [/LIST]
 
+[B]🐛 Bug Fixes[/B]
+[LIST]
+[*][B]Attribute.MAX_HEALTH compatibility[/B] — fixed [FONT=monospace]NoSuchFieldError[/FONT] crash on Paper/Purpur 1.21.1 and older. New [FONT=monospace]AttributeCompat[/FONT] utility resolves [FONT=monospace]MAX_HEALTH[/FONT] (Paper 1.21.3+) or [FONT=monospace]GENERIC_MAX_HEALTH[/FONT] (1.21.1 and below) via reflection at class-load time — all Paper 1.21.x versions (1.21.0–1.21.11) are now fully supported
+[*][B]FPP Velocity banner[/B] — replaced [FONT=monospace]█[/FONT] block characters in the anti-scam warning section with [FONT=monospace]═[/FONT] double-line rules to match the rest of the console banner style
+[/LIST]
+
 [SIZE=5][B]v1.6.5.1[/B][/SIZE] [I](2026-04-17)[/I]
 
 [B]⚙️ BotSettingGui Now Publicly Available[/B]

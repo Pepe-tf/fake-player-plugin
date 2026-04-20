@@ -49,6 +49,12 @@
 - New `pathfinding.max-fall` key (default `3`) — the A* pathfinder will not plan a descent of more than this many blocks in a single unbroken fall
 - Prevents bots from choosing high-fall paths that would cause fall damage
 
+### 🐛 Bug Fixes & Build
+
+- **`Attribute.MAX_HEALTH` compatibility fix** — `NoSuchFieldError` on Paper/Purpur 1.21.1 and older is resolved. The new `Attribute.MAX_HEALTH` constant (added in Paper 1.21.3+) is no longer referenced directly in bytecode; a new `AttributeCompat` utility resolves `MAX_HEALTH` → `GENERIC_MAX_HEALTH` via reflection at class-load time, making the plugin fully compatible with all Paper 1.21.x versions (1.21.0 – 1.21.11)
+- **FPP Velocity banner polish** — replaced `█` block characters in the anti-scam warning section with `═` double-line rules to match the rest of the console banner style
+- **IntelliJ build fix** — `velocity-companion/fpp-velocity.iml` module file was missing, causing the IntelliJ artifact builder to produce an empty `fpp-velocity.jar`; the module path and full Velocity API transitive classpath are now correctly declared
+
 ### 💾 DB Schema v15 → v16 → v17
 - **v15→v16:** `fpp_active_bots` gains four new columns:
   - `pve_enabled BOOLEAN DEFAULT 0`

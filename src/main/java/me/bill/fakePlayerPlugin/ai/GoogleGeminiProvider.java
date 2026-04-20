@@ -3,7 +3,6 @@ package me.bill.fakePlayerPlugin.ai;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -17,126 +16,118 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class GoogleGeminiProvider implements AIProvider {
 
-    private static final String DEFAULT_ENDPOINT_BASE =
-            "https://generativelanguage.googleapis.com/v1beta/models";
-    private static final String DEFAULT_MODEL = "gemini-pro";
+  private static final String DEFAULT_ENDPOINT_BASE =
+      "https://generativelanguage.googleapis.com/v1beta/models";
+  private static final String DEFAULT_MODEL = "gemini-pro";
 
-    private static final String[] AVAILABLE_MODELS = {"gemini-pro", "gemini-pro-vision"};
+  private static final String[] AVAILABLE_MODELS = {"gemini-pro", "gemini-pro-vision"};
 
-    private final String apiKey;
-    private final String endpointBase;
-    private final String configuredModel;
+  private final String apiKey;
+  private final String endpointBase;
+  private final String configuredModel;
 
-    public GoogleGeminiProvider(String apiKey, String endpoint, String model) {
-        this.apiKey = apiKey;
-        this.endpointBase = endpoint.isBlank() ? DEFAULT_ENDPOINT_BASE : endpoint;
-        this.configuredModel = model;
+  public GoogleGeminiProvider(String apiKey, String endpoint, String model) {
+    this.apiKey = apiKey;
+    this.endpointBase = endpoint.isBlank() ? DEFAULT_ENDPOINT_BASE : endpoint;
+    this.configuredModel = model;
+  }
+
+  @Override
+  public String getName() {
+    return "Google (Gemini)";
+  }
+
+  @Override
+  public boolean isAvailable() {
+    return apiKey != null && !apiKey.isBlank();
+  }
+
+  private String selectModel() {
+    if (configuredModel != null && !configuredModel.isBlank()) {
+      return configuredModel;
     }
 
-    @Override
-    public String getName() {
-        return "Google (Gemini)";
-    }
+    int index = ThreadLocalRandom.current().nextInt(AVAILABLE_MODELS.length);
+    return AVAILABLE_MODELS[index];
+  }
 
-    @Override
-    public boolean isAvailable() {
-        return apiKey != null && !apiKey.isBlank();
-    }
+  @Override
+  public CompletableFuture<String> generateResponse(
+      List<ChatMessage> messages, String botName, String personality) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            String model = selectModel();
+            String endpoint = endpointBase + "/" + model + ":generateContent";
 
-    private String selectModel() {
-        if (configuredModel != null && !configuredModel.isBlank()) {
-            return configuredModel;
-        }
+            JsonObject requestBody = new JsonObject();
+            JsonArray contentsArray = new JsonArray();
 
-        int index = ThreadLocalRandom.current().nextInt(AVAILABLE_MODELS.length);
-        return AVAILABLE_MODELS[index];
-    }
+            StringBuilder combinedPrompt = new StringBuilder();
+            if (personality != null && !personality.isBlank()) {
+              combinedPrompt.append("System: ").append(personality).append("\n\n");
+            }
+            for (ChatMessage msg : messages) {
+              String role = msg.role().equals("assistant") ? "Model" : "User";
+              combinedPrompt.append(role).append(": ").append(msg.content()).append("\n");
+            }
 
-    @Override
-    public CompletableFuture<String> generateResponse(
-            List<ChatMessage> messages, String botName, String personality) {
-        return CompletableFuture.supplyAsync(
-                () -> {
-                    try {
-                        String model = selectModel();
-                        String endpoint = endpointBase + "/" + model + ":generateContent";
+            JsonObject content = new JsonObject();
+            JsonArray parts = new JsonArray();
+            JsonObject textPart = new JsonObject();
+            textPart.addProperty("text", combinedPrompt.toString());
+            parts.add(textPart);
+            content.add("parts", parts);
+            contentsArray.add(content);
 
-                        JsonObject requestBody = new JsonObject();
-                        JsonArray contentsArray = new JsonArray();
+            requestBody.add("contents", contentsArray);
 
-                        StringBuilder combinedPrompt = new StringBuilder();
-                        if (personality != null && !personality.isBlank()) {
-                            combinedPrompt.append("System: ").append(personality).append("\n\n");
-                        }
-                        for (ChatMessage msg : messages) {
-                            String role = msg.role().equals("assistant") ? "Model" : "User";
-                            combinedPrompt
-                                    .append(role)
-                                    .append(": ")
-                                    .append(msg.content())
-                                    .append("\n");
-                        }
+            JsonObject genConfig = new JsonObject();
+            genConfig.addProperty("temperature", 0.9);
+            genConfig.addProperty("maxOutputTokens", 150);
+            requestBody.add("generationConfig", genConfig);
 
-                        JsonObject content = new JsonObject();
-                        JsonArray parts = new JsonArray();
-                        JsonObject textPart = new JsonObject();
-                        textPart.addProperty("text", combinedPrompt.toString());
-                        parts.add(textPart);
-                        content.add("parts", parts);
-                        contentsArray.add(content);
+            String urlWithKey = endpoint + "?key=" + apiKey;
+            URL url = URI.create(urlWithKey).toURL();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
 
-                        requestBody.add("contents", contentsArray);
+            try (OutputStream os = conn.getOutputStream()) {
+              os.write(requestBody.toString().getBytes(StandardCharsets.UTF_8));
+            }
 
-                        JsonObject genConfig = new JsonObject();
-                        genConfig.addProperty("temperature", 0.9);
-                        genConfig.addProperty("maxOutputTokens", 150);
-                        requestBody.add("generationConfig", genConfig);
+            int responseCode = conn.getResponseCode();
+            if (responseCode != 200) {
+              throw new RuntimeException("Google Gemini API error: HTTP " + responseCode);
+            }
 
-                        String urlWithKey = endpoint + "?key=" + apiKey;
-                        URL url = URI.create(urlWithKey).toURL();
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("POST");
-                        conn.setRequestProperty("Content-Type", "application/json");
-                        conn.setDoOutput(true);
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader br =
+                new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+              String line;
+              while ((line = br.readLine()) != null) {
+                response.append(line);
+              }
+            }
 
-                        try (OutputStream os = conn.getOutputStream()) {
-                            os.write(requestBody.toString().getBytes(StandardCharsets.UTF_8));
-                        }
+            JsonObject json = JsonParser.parseString(response.toString()).getAsJsonObject();
+            return json.getAsJsonArray("candidates")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("content")
+                .getAsJsonArray("parts")
+                .get(0)
+                .getAsJsonObject()
+                .get("text")
+                .getAsString()
+                .trim();
 
-                        int responseCode = conn.getResponseCode();
-                        if (responseCode != 200) {
-                            throw new RuntimeException(
-                                    "Google Gemini API error: HTTP " + responseCode);
-                        }
-
-                        StringBuilder response = new StringBuilder();
-                        try (BufferedReader br =
-                                new BufferedReader(
-                                        new InputStreamReader(
-                                                conn.getInputStream(), StandardCharsets.UTF_8))) {
-                            String line;
-                            while ((line = br.readLine()) != null) {
-                                response.append(line);
-                            }
-                        }
-
-                        JsonObject json =
-                                JsonParser.parseString(response.toString()).getAsJsonObject();
-                        return json.getAsJsonArray("candidates")
-                                .get(0)
-                                .getAsJsonObject()
-                                .getAsJsonObject("content")
-                                .getAsJsonArray("parts")
-                                .get(0)
-                                .getAsJsonObject()
-                                .get("text")
-                                .getAsString()
-                                .trim();
-
-                    } catch (Exception e) {
-                        throw new RuntimeException(
-                                "Google Gemini generation failed: " + e.getMessage(), e);
-                    }
-                });
-    }
+          } catch (Exception e) {
+            throw new RuntimeException("Google Gemini generation failed: " + e.getMessage(), e);
+          }
+        });
+  }
 }

@@ -2,265 +2,224 @@ package me.bill.fakePlayerPlugin.util;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.Plugin;
-
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
 
-/**
- * Centralized API-based attribution verification for FakePlayerPlugin.
- *
- * <p>On startup, fetches official attribution data from the remote API and
- * compares it against local encoded values. If the API is unreachable,
- * falls back to a locally cached response. If no cache exists, falls back
- * to the built-in encoded data in {@link AttributionManager}.</p>
- *
- * <p>This class is the <b>single</b> owner of the API key and endpoint.
- * All attribution API access goes through this manager.</p>
- */
 public final class AttributionApiManager {
 
-    // ── API configuration (encoded to prevent trivial text-search edits) ──
+  private static final int[] _EP = {
+    104, 116, 116, 112, 115, 58, 47, 47, 102, 97, 107, 101, 112, 108, 97, 121, 101, 114,
+    112, 108, 117, 103, 105, 110, 46, 120, 121, 122, 47, 97, 112, 105, 47, 97, 116, 116,
+    114, 105, 98, 117, 116, 105, 111, 110
+  };
 
-    // endpoint: https://fakeplayerplugin.xyz/api/attribution
-    private static final int[] _EP = {
-            104,116,116,112,115,58,47,47,102,97,107,101,112,108,97,121,101,114,
-            112,108,117,103,105,110,46,120,121,122,47,97,112,105,47,97,116,116,
-            114,105,98,117,116,105,111,110};
+  private static final int[] _AK = {
+    102, 112, 112, 95, 108, 105, 118, 101, 95, 65, 116, 116, 114, 75, 101, 121, 95, 50, 48, 50, 54
+  };
 
-    // API key: fpp_live_AttrKey_2026
-    private static final int[] _AK = {
-            102,112,112,95,108,105,118,101,95,65,116,116,114,75,101,121,95,50,
-            48,50,54};
+  private static String _d(int[] c) {
+    char[] r = new char[c.length];
+    for (int i = 0; i < c.length; i++) r[i] = (char) c[i];
+    return new String(r);
+  }
 
-    private static String _d(int[] c) {
-        char[] r = new char[c.length];
-        for (int i = 0; i < c.length; i++) r[i] = (char) c[i];
-        return new String(r);
-    }
+  public static String getEndpoint() {
+    return _d(_EP);
+  }
 
-    /** Returns the API endpoint URL. Single source of truth. */
-    public static String getEndpoint() { return _d(_EP); }
+  static String getApiKey() {
+    return _d(_AK);
+  }
 
-    /** Returns the API key. Only this class should expose it. */
-    static String getApiKey() { return _d(_AK); }
+  private static volatile AttributionData apiData;
+  private static volatile boolean apiFetched = false;
+  private static volatile boolean apiReachable = false;
 
-    // ── Cached API response ──
+  private static final String CACHE_FILE = "data/attribution-cache.json";
+  private static final long CONNECT_TIMEOUT_MS = 5_000;
+  private static final long READ_TIMEOUT_MS = 5_000;
 
-    private static volatile AttributionData apiData;
-    private static volatile boolean apiFetched = false;
-    private static volatile boolean apiReachable = false;
+  private AttributionApiManager() {}
 
-    private static final String CACHE_FILE = "data/attribution-cache.json";
-    private static final long CONNECT_TIMEOUT_MS = 5_000;
-    private static final long READ_TIMEOUT_MS = 5_000;
-
-    private AttributionApiManager() {}
-
-    // ── Public API ──────────────────────────────────────────────
-
-    /**
-     * Kicks off an async API fetch. Called once during onEnable, after
-     * Config and AttributionManager are initialised.
-     */
-    public static void init(Plugin plugin) {
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            AttributionData data = fetchFromApi();
-            if (data != null) {
+  public static void init(Plugin plugin) {
+    Bukkit.getScheduler()
+        .runTaskAsynchronously(
+            plugin,
+            () -> {
+              AttributionData data = fetchFromApi();
+              if (data != null) {
                 apiData = data;
                 apiFetched = true;
                 apiReachable = true;
                 saveCache(plugin, data);
                 Bukkit.getScheduler().runTask(plugin, () -> compareAndRestore(data));
-            } else {
-                // try local cache
+              } else {
+
                 AttributionData cached = loadCache(plugin);
                 if (cached != null) {
-                    apiData = cached;
-                    apiFetched = true;
-                    apiReachable = false;
-                    Bukkit.getScheduler().runTask(plugin, () -> compareAndRestore(cached));
+                  apiData = cached;
+                  apiFetched = true;
+                  apiReachable = false;
+                  Bukkit.getScheduler().runTask(plugin, () -> compareAndRestore(cached));
                 } else {
-                    apiFetched = false;
-                    apiReachable = false;
-                    // fallback to built-in encoded data (AttributionManager) — silent
+                  apiFetched = false;
+                  apiReachable = false;
                 }
-            }
-        });
+              }
+            });
+  }
+
+  public static boolean isApiReachable() {
+    return apiReachable;
+  }
+
+  public static boolean hasData() {
+    return apiFetched && apiData != null;
+  }
+
+  public static String getAuthor() {
+    if (apiData != null && apiData.author != null && !apiData.author.isBlank()) {
+      return apiData.author;
     }
+    return AttributionManager.getOriginalAuthor();
+  }
 
-    /** Whether the last API call succeeded. */
-    public static boolean isApiReachable() { return apiReachable; }
-
-    /** Whether any API data (live or cached) was loaded. */
-    public static boolean hasData() { return apiFetched && apiData != null; }
-
-    /** Returns the API-sourced author, or falls back to local encoded. */
-    public static String getAuthor() {
-        if (apiData != null && apiData.author != null && !apiData.author.isBlank()) {
-            return apiData.author;
-        }
-        return AttributionManager.getOriginalAuthor();
+  public static String getMessage() {
+    if (apiData != null && apiData.message != null && !apiData.message.isBlank()) {
+      return apiData.message;
     }
+    return AttributionManager.getAttributionMessage();
+  }
 
-    /** Returns the API-sourced message, or falls back to local encoded. */
-    public static String getMessage() {
-        if (apiData != null && apiData.message != null && !apiData.message.isBlank()) {
-            return apiData.message;
-        }
-        return AttributionManager.getAttributionMessage();
+  public static String getModrinthLink() {
+    if (apiData != null && apiData.modrinthLink != null && !apiData.modrinthLink.isBlank()) {
+      return apiData.modrinthLink;
     }
+    return AttributionManager.getModrinthLink();
+  }
 
-    /** Returns the API-sourced Modrinth link, or falls back to local. */
-    public static String getModrinthLink() {
-        if (apiData != null && apiData.modrinthLink != null && !apiData.modrinthLink.isBlank()) {
-            return apiData.modrinthLink;
-        }
-        return AttributionManager.getModrinthLink();
+  public static String getGithubLink() {
+    if (apiData != null && apiData.githubLink != null && !apiData.githubLink.isBlank()) {
+      return apiData.githubLink;
     }
+    return AttributionManager.getGithubLink();
+  }
 
-    /** Returns the API-sourced GitHub link, or falls back to local. */
-    public static String getGithubLink() {
-        if (apiData != null && apiData.githubLink != null && !apiData.githubLink.isBlank()) {
-            return apiData.githubLink;
-        }
-        return AttributionManager.getGithubLink();
+  public static boolean quickEndpointCheck() {
+    if (_EP.length < 10) return false;
+    int sum = 0;
+    for (int c : _EP) sum += c;
+    return sum == 4452;
+  }
+
+  private static AttributionData fetchFromApi() {
+    HttpURLConnection conn = null;
+    try {
+      String endpoint = getEndpoint();
+      conn = (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
+      conn.setRequestMethod("GET");
+      conn.setRequestProperty("Authorization", "Bearer " + getApiKey());
+      conn.setRequestProperty("User-Agent", "FakePlayerPlugin");
+      conn.setConnectTimeout((int) CONNECT_TIMEOUT_MS);
+      conn.setReadTimeout((int) READ_TIMEOUT_MS);
+      conn.setInstanceFollowRedirects(true);
+
+      int code = conn.getResponseCode();
+      if (code != 200) return null;
+
+      String body;
+      try (BufferedReader br =
+          new BufferedReader(
+              new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = br.readLine()) != null) sb.append(line);
+        body = sb.toString();
+      }
+
+      return parseResponse(body);
+    } catch (Exception e) {
+
+      return null;
+    } finally {
+      if (conn != null) conn.disconnect();
     }
+  }
 
-    /**
-     * Quick integrity probe — verifies the API manager's core arrays
-     * have not been zeroed or truncated. Called from distributed sites.
-     */
-    public static boolean quickEndpointCheck() {
-        if (_EP.length < 10) return false;
-        int sum = 0;
-        for (int c : _EP) sum += c;
-        return sum == 4452;
-    }
+  private static AttributionData parseResponse(String json) {
+    try {
+      JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
 
-    // ── HTTP fetch ──────────────────────────────────────────────
+      String author = getStr(obj, "author");
+      String message = getStr(obj, "message");
+      String modrinth = getStr(obj, "modrinth_link");
+      String github = getStr(obj, "github_link");
+      String signature = getStr(obj, "signature");
 
-    private static AttributionData fetchFromApi() {
-        HttpURLConnection conn = null;
-        try {
-            String endpoint = getEndpoint();
-            conn = (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Authorization", "Bearer " + getApiKey());
-            conn.setRequestProperty("User-Agent", "FakePlayerPlugin");
-            conn.setConnectTimeout((int) CONNECT_TIMEOUT_MS);
-            conn.setReadTimeout((int) READ_TIMEOUT_MS);
-            conn.setInstanceFollowRedirects(true);
+      if (author == null || message == null) return null;
 
-            int code = conn.getResponseCode();
-            if (code != 200) return null;
-
-            String body;
-            try (BufferedReader br = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-                body = sb.toString();
-            }
-
-            return parseResponse(body);
-        } catch (Exception e) {
-            // Network error, DNS failure, timeout — all expected offline
-            return null;
-        } finally {
-            if (conn != null) conn.disconnect();
-        }
-    }
-
-    private static AttributionData parseResponse(String json) {
-        try {
-            JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-
-            String author = getStr(obj, "author");
-            String message = getStr(obj, "message");
-            String modrinth = getStr(obj, "modrinth_link");
-            String github = getStr(obj, "github_link");
-            String signature = getStr(obj, "signature");
-
-            if (author == null || message == null) return null;
-
-            // Accept "unsigned" as a valid signature — the API may not have a
-            // signing secret configured and still returns correct data.
-            if (signature == null || signature.isBlank()) {
-                return null;
-            }
-
-            return new AttributionData(author, message, modrinth, github, signature);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String getStr(JsonObject obj, String key) {
-        if (obj.has(key) && !obj.get(key).isJsonNull()) {
-            return obj.get(key).getAsString();
-        }
+      if (signature == null || signature.isBlank()) {
         return null;
+      }
+
+      return new AttributionData(author, message, modrinth, github, signature);
+    } catch (Exception e) {
+      return null;
     }
+  }
 
-
-    // ── Compare + restore ───────────────────────────────────────
-
-    private static void compareAndRestore(AttributionData data) {
-        String localAuthor = AttributionManager.getOriginalAuthor();
-        String localMessage = AttributionManager.getAttributionMessage();
-
-        boolean authorMatch = data.author != null && data.author.equalsIgnoreCase(localAuthor);
-        boolean messageMatch = data.message != null && data.message.equals(localMessage);
-
-        if (!authorMatch || !messageMatch) {
-            FppLogger.warn("Attribution data mismatch detected — restored from API.");
-        }
+  private static String getStr(JsonObject obj, String key) {
+    if (obj.has(key) && !obj.get(key).isJsonNull()) {
+      return obj.get(key).getAsString();
     }
+    return null;
+  }
 
-    // ── Local cache ─────────────────────────────────────────────
+  private static void compareAndRestore(AttributionData data) {
+    String localAuthor = AttributionManager.getOriginalAuthor();
+    String localMessage = AttributionManager.getAttributionMessage();
 
-    private static void saveCache(Plugin plugin, AttributionData data) {
-        try {
-            File file = new File(plugin.getDataFolder(), CACHE_FILE);
-            file.getParentFile().mkdirs();
-            JsonObject obj = new JsonObject();
-            obj.addProperty("author", data.author);
-            obj.addProperty("message", data.message);
-            if (data.modrinthLink != null) obj.addProperty("modrinth_link", data.modrinthLink);
-            if (data.githubLink != null) obj.addProperty("github_link", data.githubLink);
-            if (data.signature != null) obj.addProperty("signature", data.signature);
-            obj.addProperty("cached_at", System.currentTimeMillis());
-            Files.writeString(file.toPath(), obj.toString(), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            // cache write failure is non-critical
-        }
+    boolean authorMatch = data.author != null && data.author.equalsIgnoreCase(localAuthor);
+    boolean messageMatch = data.message != null && data.message.equals(localMessage);
+
+    if (!authorMatch || !messageMatch) {
+      FppLogger.warn("Attribution data mismatch detected — restored from API.");
     }
+  }
 
-    private static AttributionData loadCache(Plugin plugin) {
-        try {
-            File file = new File(plugin.getDataFolder(), CACHE_FILE);
-            if (!file.exists()) return null;
-            String json = Files.readString(file.toPath(), StandardCharsets.UTF_8);
-            return parseResponse(json);
-        } catch (Exception e) {
-            return null;
-        }
+  private static void saveCache(Plugin plugin, AttributionData data) {
+    try {
+      File file = new File(plugin.getDataFolder(), CACHE_FILE);
+      file.getParentFile().mkdirs();
+      JsonObject obj = new JsonObject();
+      obj.addProperty("author", data.author);
+      obj.addProperty("message", data.message);
+      if (data.modrinthLink != null) obj.addProperty("modrinth_link", data.modrinthLink);
+      if (data.githubLink != null) obj.addProperty("github_link", data.githubLink);
+      if (data.signature != null) obj.addProperty("signature", data.signature);
+      obj.addProperty("cached_at", System.currentTimeMillis());
+      Files.writeString(file.toPath(), obj.toString(), StandardCharsets.UTF_8);
+    } catch (Exception e) {
+
     }
+  }
 
-    // ── Data record ─────────────────────────────────────────────
+  private static AttributionData loadCache(Plugin plugin) {
+    try {
+      File file = new File(plugin.getDataFolder(), CACHE_FILE);
+      if (!file.exists()) return null;
+      String json = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+      return parseResponse(json);
+    } catch (Exception e) {
+      return null;
+    }
+  }
 
-    public record AttributionData(
-            String author,
-            String message,
-            String modrinthLink,
-            String githubLink,
-            String signature) {}
+  public record AttributionData(
+      String author, String message, String modrinthLink, String githubLink, String signature) {}
 }
-

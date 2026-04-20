@@ -2,7 +2,6 @@ package me.bill.fakePlayerPlugin.listener;
 
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
-
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -12,27 +11,27 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
 
 public class PlayerWorldChangeListener implements Listener {
 
-    private final FakePlayerPlugin plugin;
-    private final FakePlayerManager manager;
+  private final FakePlayerPlugin plugin;
+  private final FakePlayerManager manager;
 
-    public PlayerWorldChangeListener(FakePlayerPlugin plugin, FakePlayerManager manager) {
-        this.plugin = plugin;
-        this.manager = manager;
-    }
+  public PlayerWorldChangeListener(FakePlayerPlugin plugin, FakePlayerManager manager) {
+    this.plugin = plugin;
+    this.manager = manager;
+  }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onWorldChange(PlayerChangedWorldEvent event) {
-        if (manager.getCount() == 0) return;
+  @EventHandler(priority = EventPriority.MONITOR)
+  public void onWorldChange(PlayerChangedWorldEvent event) {
+    if (manager.getCount() == 0) return;
 
-        Player player = event.getPlayer();
+    Player player = event.getPlayer();
 
-        Bukkit.getScheduler()
-                .runTaskLater(
-                        plugin,
-                        () -> {
-                            if (!player.isOnline()) return;
-                            manager.syncToPlayer(player);
-                        },
-                        3L);
-    }
+    Bukkit.getScheduler()
+        .runTaskLater(
+            plugin,
+            () -> {
+              if (!player.isOnline()) return;
+              manager.syncToPlayer(player);
+            },
+            3L);
+  }
 }

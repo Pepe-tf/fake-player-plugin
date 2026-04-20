@@ -1,6 +1,6 @@
 # ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ ᴘʟᴜɢɪɴ (FPP)
 
-> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, follow-target automation, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot PvE attack settings, per-bot XP & item pickup control, tab-list ping simulation, NameTag plugin integration, LuckPerms integration, proxy network support, Velocity companion plugin, and full hot-reload.
+> Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, follow-target automation, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot PvE attack settings, per-bot XP & item pickup control, tab-list ping simulation, NameTag plugin integration, LuckPerms integration, proxy network support, Velocity companion plugin, full Paper 1.21.x compatibility (1.21.0–1.21.11), and full hot-reload.
 
 [![Version](https://img.shields.io/modrinth/v/fake-player-plugin-%28fpp%29?style=flat-square&label=version&color=0079FF&logo=modrinth)](https://modrinth.com/plugin/fake-player-plugin-(fpp))
 ![MC](https://img.shields.io/badge/Minecraft-1.21.x-0079FF?style=flat-square)
@@ -350,6 +350,11 @@ A lightweight standalone Velocity plugin that makes FPP bots count on the **prox
 
 **`pathfinding.max-fall`**
 - New `pathfinding.max-fall` key (default `3`) — A* pathfinder will not descend more than this many blocks in a single unbroken fall
+
+**Bug Fixes & Build**
+- **`Attribute.MAX_HEALTH` compatibility** — fixed `NoSuchFieldError` crash on Paper/Purpur 1.21.1 and older. New `AttributeCompat` utility resolves the correct enum constant at class-load time (`MAX_HEALTH` on 1.21.3+, `GENERIC_MAX_HEALTH` on older builds) — all Paper 1.21.x versions are now fully supported
+- **FPP Velocity banner** — replaced `█` block characters in the anti-scam section with `═` double-line rules matching the rest of the console banner style; version bumped to 1.6.6
+- **IntelliJ build** — `fpp-velocity.iml` was missing, causing the IntelliJ artifact builder to output an empty `fpp-velocity.jar`; the module file is now committed with the correct source root and full Velocity API transitive classpath
 
 **DB Schema v15 → v16 → v17**
 - v15→v16: `fpp_active_bots` gains `pve_enabled BOOLEAN DEFAULT 0`, `pve_range DOUBLE DEFAULT 16.0`, `pve_priority VARCHAR(16)`, `pve_mob_type VARCHAR(64)` — per-bot PvE settings

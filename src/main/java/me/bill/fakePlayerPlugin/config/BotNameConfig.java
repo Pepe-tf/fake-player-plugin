@@ -1,66 +1,64 @@
 package me.bill.fakePlayerPlugin.config;
 
-import me.bill.fakePlayerPlugin.FakePlayerPlugin;
-import me.bill.fakePlayerPlugin.util.YamlFileSyncer;
-
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
-
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.util.YamlFileSyncer;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 public final class BotNameConfig {
 
-    private static FakePlayerPlugin plugin;
-    private static FileConfiguration cfg;
+  private static FakePlayerPlugin plugin;
+  private static FileConfiguration cfg;
 
-    private BotNameConfig() {}
+  private BotNameConfig() {}
 
-    public static void init(FakePlayerPlugin instance) {
-        plugin = instance;
-        reload();
+  public static void init(FakePlayerPlugin instance) {
+    plugin = instance;
+    reload();
+  }
+
+  public static void reload() {
+
+    YamlFileSyncer.syncMissingKeys(plugin, "bot-names.yml", "bot-names.yml");
+
+    File file = new File(plugin.getDataFolder(), "bot-names.yml");
+    if (!file.exists()) {
+      plugin.saveResource("bot-names.yml", false);
     }
 
-    public static void reload() {
+    FileConfiguration disk = YamlConfiguration.loadConfiguration(file);
+    disk.options().copyDefaults(true);
 
-        YamlFileSyncer.syncMissingKeys(plugin, "bot-names.yml", "bot-names.yml");
-
-        File file = new File(plugin.getDataFolder(), "bot-names.yml");
-        if (!file.exists()) {
-            plugin.saveResource("bot-names.yml", false);
-        }
-
-        FileConfiguration disk = YamlConfiguration.loadConfiguration(file);
-        disk.options().copyDefaults(true);
-
-        InputStream jarStream = plugin.getResource("bot-names.yml");
-        if (jarStream != null) {
-            YamlConfiguration jarDefaults =
-                    YamlConfiguration.loadConfiguration(
-                            new InputStreamReader(jarStream, StandardCharsets.UTF_8));
-            disk.setDefaults(jarDefaults);
-        }
-
-        cfg = disk;
-        int count = cfg.getStringList("name").size();
-        Config.debug("BotNameConfig loaded: " + count + " name(s) from " + file.getPath());
+    InputStream jarStream = plugin.getResource("bot-names.yml");
+    if (jarStream != null) {
+      YamlConfiguration jarDefaults =
+          YamlConfiguration.loadConfiguration(
+              new InputStreamReader(jarStream, StandardCharsets.UTF_8));
+      disk.setDefaults(jarDefaults);
     }
 
-    public static List<String> getNames() {
-        if (cfg == null) return Arrays.asList("Alex", "Steve", "Notch");
+    cfg = disk;
+    int count = cfg.getStringList("name").size();
+    Config.debug("BotNameConfig loaded: " + count + " name(s) from " + file.getPath());
+  }
 
-        List<String> names = cfg.getStringList("name");
-        if (names.isEmpty()) {
+  public static List<String> getNames() {
+    if (cfg == null) return Arrays.asList("Alex", "Steve", "Notch");
 
-            names = cfg.getStringList("names");
-        }
-        if (names.isEmpty()) {
-            return Arrays.asList("Alex", "Steve", "Notch", "Herobrine", "Jeb_");
-        }
-        return names;
+    List<String> names = cfg.getStringList("name");
+    if (names.isEmpty()) {
+
+      names = cfg.getStringList("names");
     }
+    if (names.isEmpty()) {
+      return Arrays.asList("Alex", "Steve", "Notch", "Herobrine", "Jeb_");
+    }
+    return names;
+  }
 }
