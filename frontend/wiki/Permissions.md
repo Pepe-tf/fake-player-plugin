@@ -1,6 +1,6 @@
 ﻿# 🔐 Permissions
 
-> **Complete permission reference - v1.6.6**  
+> **Complete permission reference - v1.6.6.1**  
 > FPP uses **`fpp.op`** (alias **`fpp.admin`**) for admins and **`fpp.use`** for user-tier access.  
 > All nodes are declared in `plugin.yml` so they appear in LuckPerms tab-completion.
 

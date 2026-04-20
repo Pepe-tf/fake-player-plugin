@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP command reference - v1.6.6**  
+> **Complete FPP command reference - v1.6.6.1**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`
 
 ---
@@ -15,8 +15,10 @@
 | `/fpp list` | `fpp.list` | List local and remote bots |
 | `/fpp info` | `fpp.info` / `fpp.info.user` | Query bot sessions and ownership |
 | `/fpp inventory <bot>` | `fpp.inventory` | Open bot inventory GUI |
-| `/fpp move <bot> <player>` | `fpp.move` | Follow / navigate to player |
+| `/fpp move <bot> <player>` | `fpp.move` | Follow / navigate to player (positional syntax) |
+| `/fpp move <bot\|all> --to <player>` | `fpp.move` | Follow / navigate to player (canonical flag form) |
 | `/fpp move <bot\|all> --wp <route> [--random]` | `fpp.move` | Follow a named waypoint route |
+| `/fpp move <bot\|all> --roam [x,y,z] [radius]` | `fpp.move` | Autonomous random wander within a radius |
 | `/fpp move <bot\|all> --stop` | `fpp.move` | Stop movement / patrol |
 | `/fpp mine <bot>` | `fpp.mine` | Continuous mining |
 | `/fpp mine <bot> once\|stop` | `fpp.mine` | One-shot or stop mining |
@@ -191,20 +193,35 @@ Permission: `fpp.inventory`
 
 ```text
 /fpp move <bot> <player>
+/fpp move <bot|all> --to <player>
 /fpp move <bot|all> --wp <route> [--random]
+/fpp move <bot|all> --roam [x,y,z] [radius]
 /fpp move <bot|all> --stop
 ```
 
 Shared A* navigation command.
 
 #### Follow player mode
-Makes the bot navigate to an online player.
+Makes the bot navigate to an online player. `--to <player>` is the canonical flag form; the old positional `<bot> <player>` syntax still works as a backward-compat fallback.
+
+#### Roam mode (`--roam`)
+Bot wanders continuously within a configurable radius (3–500 blocks) around a fixed center.
+- If no coordinates are given, the bot's current location is used as the center
+- Radius must be between 3 and 500 blocks
+- Roam state persists across restarts (saved to `data/bot-tasks.yml` YAML — not in the DB task table)
+- Stop with `--stop`
+
+```text
+/fpp move Steve --roam
+/fpp move Steve --roam 100,64,200 50
+/fpp move all --roam 0,64,0 100
+```
 
 #### Waypoint route mode
 Makes the bot patrol a named route created with `/fpp waypoint`.
 
 #### Stop mode
-Stops the bot's active navigation or patrol without deleting the route.
+Stops the bot's active navigation, roam, or patrol without deleting the route.
 
 **Move types used by pathfinding**
 - `WALK`
@@ -218,6 +235,7 @@ Stops the bot's active navigation or patrol without deleting the route.
 - target-follow recalculates when target moves beyond `pathfinding.follow-recalc-distance`
 - stuck detection forces jump + recalc
 - patrols use `pathfinding.patrol-arrival-distance`
+- roam uses `pathfinding.max-fall` to avoid unsafe drops
 
 Permission: `fpp.move`
 

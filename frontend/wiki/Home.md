@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin - Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.6.6 · **Platform:** Paper 1.21+ · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
+> **Version:** 1.6.6.1 · **Platform:** Paper 1.21.x (up to 1.21.11) · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
 
 ---
 
@@ -130,6 +130,23 @@
 - **63 Config Versions** — Automatic migration system with backup before every change- **Hot Reload** - Change settings without restart via `/fpp reload`
 - **Backup System** - Automatic timestamped backups before any migration
 - **In-Game Settings GUI** - Toggle booleans and tune numbers without touching files
+
+---
+
+## 🆕 What's New in v1.6.6.1
+
+### 🚀 **FPP BungeeCord Companion (`fpp-bungee.jar`)**
+- New standalone **BungeeCord/Waterfall proxy plugin** — drop `fpp-bungee.jar` into your proxy `plugins/` folder, no config needed
+- Inflates server-list player count to include FPP bots; merges bot names into the hover sample list
+- Listens for `BOT_SPAWN`, `BOT_DESPAWN`, `SERVER_OFFLINE` messages from FPP backends; maintains a live bot registry
+- Prints an anti-scam warning on every startup (FPP is free and open-source)
+- Compatible with BungeeCord and Waterfall; source in `bungee-companion/`
+
+### 🐛 **Bug Fixes**
+- **Bot join/leave message color fix** — `BotBroadcast` now parses display names with full MiniMessage + legacy `&`/`§` color support; color tags no longer render as raw text
+- **`Attribute.MAX_HEALTH` compatibility** — resolved `NoSuchFieldError` on Paper/Purpur 1.21.1 and older via new `AttributeCompat` utility
+
+See [📋 Changelog](Changelog.md) for full v1.6.6.1 release notes.
 
 ---
 

@@ -300,11 +300,25 @@ The bot continuously follows an online player using `PathfindingService` (Owner 
 
 ```text
 /fpp move <bot> <player>
+/fpp move <bot|all> --to <player>
 ```
 
-The bot continuously recalculates as the target moves.
+The bot navigates to the target player. `--to` is the canonical flag form; the positional syntax still works.
 
 > **Tip:** Use `/fpp follow` when you want the bot to keep following indefinitely and survive restarts. Use `/fpp move` for one-shot navigation to a player position where the bot should stop on arrival.
+
+### Roam mode (autonomous random wander)
+
+```text
+/fpp move <bot|all> --roam [x,y,z] [radius]
+/fpp move <bot|all> --stop
+```
+
+The bot wanders continuously within a fixed radius (3–500 blocks) around a center point.
+
+- If no coordinates are given, the bot's current position becomes the center
+- Roam state persists across restarts via `data/bot-tasks.yml` (YAML-only; not stored in the DB task table)
+- Respects `pathfinding.max-fall` — will not choose paths with unsafe drops
 
 ### Patrol a waypoint route
 
