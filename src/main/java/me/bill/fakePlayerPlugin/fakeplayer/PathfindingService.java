@@ -2,6 +2,7 @@ package me.bill.fakePlayerPlugin.fakeplayer;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -12,6 +13,9 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.Bisected;
+import org.bukkit.block.data.Openable;
+import org.bukkit.block.data.type.Door;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -68,7 +72,12 @@ public final class PathfindingService {
           null);
     }
 
-    public NavigationRequest {
+    public NavigationRequest(
+        @NotNull Owner owner,
+        @NotNull Supplier<@Nullable Location> destinationSupplier,
+        double arrivalDistance,
+        double recalcDistance,
+        int maxNullPathRecalculations) {
       if (owner == null) throw new IllegalArgumentException("owner");
       if (destinationSupplier == null) throw new IllegalArgumentException("destinationSupplier");
       if (arrivalDistance <= 0) throw new IllegalArgumentException("arrivalDistance must be > 0");
@@ -79,9 +88,12 @@ public final class PathfindingService {
 
   private record Session(Owner owner, BukkitTask task) {}
 
+  private record DoorRef(UUID worldId, int x, int y, int z) {}
+
   private final FakePlayerPlugin plugin;
   private final FakePlayerManager manager;
   private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
+  private final Map<UUID, Set<DoorRef>> openedDoorRefs = new ConcurrentHashMap<>();
 
   private Material cachedPlaceMaterial = null;
   private String cachedPlaceMaterialName = null;
@@ -112,6 +124,10 @@ public final class PathfindingService {
     Session session = sessions.remove(botUuid);
     if (session != null && !session.task().isCancelled()) {
       session.task().cancel();
+    }
+    Set<DoorRef> opened = openedDoorRefs.remove(botUuid);
+    if (opened != null) {
+      closeOpenedDoors(opened, null, true);
     }
     manager.clearNavJump(botUuid);
     manager.unlockNavigation(botUuid);
@@ -188,6 +204,9 @@ public final class PathfindingService {
     final int[] detourWpIdx = {0};
     final int[] detourNullCount = {0};
 
+    final Set<DoorRef> openedDoors = ConcurrentHashMap.newKeySet();
+    openedDoorRefs.put(botUuid, openedDoors);
+
     BukkitTask task =
         new BukkitRunnable() {
           @Override
@@ -208,6 +227,7 @@ public final class PathfindingService {
             }
 
             Location botLoc = bot.getLocation();
+            closeOpenedDoors(openedDoors, botLoc, false);
 
             double arrivalSq = request.arrivalDistance() * request.arrivalDistance();
             double dx0 = botLoc.getX() - dest.getX();
@@ -324,6 +344,7 @@ public final class PathfindingService {
                 float dYaw = (float) Math.toDegrees(Math.atan2(-ddx, ddz));
                 bot.setRotation(dYaw, 0f);
                 NmsPlayerSpawner.setHeadYaw(bot, dYaw);
+                maybeOpenDoorAhead(bot, dYaw, openedDoors);
                 bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
                 NmsPlayerSpawner.setMovementForward(bot, 1.0f);
                 if (!bot.isInWater() && !bot.isInLava() && dwp.y() > botLoc.getBlockY()) {
@@ -348,6 +369,7 @@ public final class PathfindingService {
               float coastYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
               bot.setRotation(coastYaw, 0f);
               NmsPlayerSpawner.setHeadYaw(bot, coastYaw);
+              maybeOpenDoorAhead(bot, coastYaw, openedDoors);
               bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
               NmsPlayerSpawner.setMovementForward(bot, 1.0f);
               return;
@@ -526,6 +548,7 @@ public final class PathfindingService {
                 float coastYaw = (float) Math.toDegrees(Math.atan2(-cdx, cdz));
                 bot.setRotation(coastYaw, 0f);
                 NmsPlayerSpawner.setHeadYaw(bot, coastYaw);
+                maybeOpenDoorAhead(bot, coastYaw, openedDoors);
                 bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
                 NmsPlayerSpawner.setMovementForward(bot, 1.0f);
                 return;
@@ -542,6 +565,7 @@ public final class PathfindingService {
             float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
             bot.setRotation(yaw, 0f);
             NmsPlayerSpawner.setHeadYaw(bot, yaw);
+            maybeOpenDoorAhead(bot, yaw, openedDoors);
 
             bot.setSprinting(
                 distToTarget > Config.pathfindingSprintDistance()
@@ -608,6 +632,10 @@ public final class PathfindingService {
           private void cleanup(@Nullable Player bot, boolean arrived, boolean pathFailure) {
             manager.clearNavJump(botUuid);
             manager.unlockNavigation(botUuid);
+            Set<DoorRef> opened = openedDoorRefs.remove(botUuid);
+            if (opened != null) {
+              closeOpenedDoors(opened, bot != null ? bot.getLocation() : null, true);
+            }
             if (bot != null) {
               NmsPlayerSpawner.setMovementForward(bot, 0f);
               NmsPlayerSpawner.setJumping(bot, false);
@@ -744,6 +772,85 @@ public final class PathfindingService {
     if (!w.getBlockAt(bx, by + 2, bz).isPassable())
       return new Location(w, bx + 0.5, by + 2.5, bz + 0.5);
     return null;
+  }
+
+  private static void maybeOpenDoorAhead(Player bot, float yaw, Set<DoorRef> openedDoors) {
+    if (bot.isInWater() || bot.isInLava()) return;
+    Location bl = bot.getLocation();
+    World w = bl.getWorld();
+    int fx = (int) Math.floor(bl.getX() + Math.sin(-Math.toRadians(yaw)) * 0.8);
+    int fz = (int) Math.floor(bl.getZ() + Math.cos(-Math.toRadians(yaw)) * 0.8);
+    int fy = bl.getBlockY();
+    tryOpenDoor(w.getBlockAt(fx, fy, fz), openedDoors);
+    tryOpenDoor(w.getBlockAt(fx, fy + 1, fz), openedDoors);
+  }
+
+  private static void tryOpenDoor(Block rawBlock, Set<DoorRef> openedDoors) {
+    Block lower = normalizeDoorLowerHalf(rawBlock);
+    if (lower == null) return;
+    if (!(lower.getBlockData() instanceof Door doorData)) return;
+    if (!doorData.isOpen()) {
+      setDoorOpen(lower, true);
+    }
+    openedDoors.add(new DoorRef(lower.getWorld().getUID(), lower.getX(), lower.getY(), lower.getZ()));
+  }
+
+  @Nullable
+  private static Block normalizeDoorLowerHalf(Block block) {
+    if (!(block.getBlockData() instanceof Door doorData)) return null;
+    if (doorData.getHalf() == Bisected.Half.TOP) {
+      Block lower = block.getRelative(0, -1, 0);
+      return lower.getBlockData() instanceof Door ? lower : null;
+    }
+    return block;
+  }
+
+  private static void setDoorOpen(Block lower, boolean open) {
+    if (!(lower.getBlockData() instanceof Door lowerData)) return;
+    if (lowerData.isOpen() != open) {
+      lowerData.setOpen(open);
+      lower.setBlockData(lowerData, true);
+    }
+    Block upper = lower.getRelative(0, 1, 0);
+    if (upper.getBlockData() instanceof Door upperData && upperData.isOpen() != open) {
+      upperData.setOpen(open);
+      upper.setBlockData(upperData, true);
+    }
+  }
+
+  private static void closeOpenedDoors(Set<DoorRef> openedDoors, @Nullable Location botLoc, boolean force) {
+    if (openedDoors.isEmpty()) return;
+    for (DoorRef ref : Set.copyOf(openedDoors)) {
+      World w = Bukkit.getWorld(ref.worldId());
+      if (w == null) {
+        openedDoors.remove(ref);
+        continue;
+      }
+      Block lower = w.getBlockAt(ref.x(), ref.y(), ref.z());
+      if (!(lower.getBlockData() instanceof Door doorData)) {
+        openedDoors.remove(ref);
+        continue;
+      }
+      if (!doorData.isOpen()) {
+        openedDoors.remove(ref);
+        continue;
+      }
+
+      if (!force && botLoc != null && botLoc.getWorld() != null) {
+        if (!botLoc.getWorld().getUID().equals(ref.worldId())) {
+          continue;
+        }
+        double dx = (ref.x() + 0.5) - botLoc.getX();
+        double dy = (ref.y() + 0.5) - botLoc.getY();
+        double dz = (ref.z() + 0.5) - botLoc.getZ();
+        if (dx * dx + dy * dy + dz * dz < 9.0) {
+          continue;
+        }
+      }
+
+      setDoorOpen(lower, false);
+      openedDoors.remove(ref);
+    }
   }
 
   private static void applySwimExitImpulse(Player bot) {
