@@ -17,6 +17,7 @@ import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.fakeplayer.PathfindingService;
 import me.bill.fakePlayerPlugin.fakeplayer.PathfindingService.NavigationRequest;
 import me.bill.fakePlayerPlugin.fakeplayer.PathfindingService.Owner;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -216,5 +217,15 @@ public final class FppApiImpl implements FppApi {
   @Override
   public @NotNull String getVersion() {
     return plugin.getDescription().getVersion();
+  }
+
+  @Override
+  public @Nullable Player getOnlinePlayer(@NotNull String name) {
+    return Bukkit.getPlayer(name);
+  }
+
+  @Override
+  public int getOnlineCount() {
+    return Bukkit.getOnlinePlayers().size();
   }
 }

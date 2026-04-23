@@ -1,6 +1,7 @@
 package me.bill.fakePlayerPlugin.listener;
 
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
+import java.lang.reflect.Method;
 import java.util.*;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
@@ -26,6 +27,9 @@ public class ServerListListener implements Listener {
 
   @EventHandler(priority = EventPriority.HIGHEST)
   public void onPing(PaperServerListPingEvent event) {
+    if (shouldKeepPlayersHidden(event)) {
+      return;
+    }
 
     List<FakePlayer> localBots = new ArrayList<>(manager.getActivePlayers());
 
@@ -76,7 +80,7 @@ public class ServerListListener implements Listener {
         }
       }
 
-      if (Config.isNetworkMode()) {
+      if (Config.isNetworkMode() && Config.serverListIncludeRemote()) {
         var cache = plugin.getRemoteBotCache();
         if (cache != null) {
           for (RemoteBotEntry remote : cache.getAll()) {
@@ -107,5 +111,24 @@ public class ServerListListener implements Listener {
     List<PaperServerListPingEvent.ListedPlayerInfo> listed = event.getListedPlayers();
     listed.clear();
     listed.addAll(freshSample);
+  }
+
+  private static boolean shouldKeepPlayersHidden(PaperServerListPingEvent event) {
+    String[] boolMethods = {
+      "shouldHidePlayers",
+      "getHidePlayers",
+      "isHidePlayers",
+      "isPlayersHidden"
+    };
+    for (String methodName : boolMethods) {
+      try {
+        Method m = event.getClass().getMethod(methodName);
+        if (m.getReturnType() == boolean.class) {
+          return (boolean) m.invoke(event);
+        }
+      } catch (Throwable ignored) {
+      }
+    }
+    return event.getNumPlayers() < 0;
   }
 }

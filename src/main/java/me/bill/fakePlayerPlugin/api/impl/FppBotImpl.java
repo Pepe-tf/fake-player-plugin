@@ -4,72 +4,48 @@ import java.time.Duration;
 import java.util.UUID;
 import me.bill.fakePlayerPlugin.api.FppBot;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Internal implementation of {@link FppBot} that wraps a {@link FakePlayer}.
- * Addon code must never cast to or import this class — only use the {@link FppBot} interface.
- */
 public final class FppBotImpl implements FppBot {
 
   private final FakePlayer fp;
 
-  public FppBotImpl(@NotNull FakePlayer fp) {
-    this.fp = fp;
-  }
+  public FppBotImpl(@NotNull FakePlayer fp) { this.fp = fp; }
 
-  /** Returns the underlying {@link FakePlayer}. Internal use only. */
-  public @NotNull FakePlayer getHandle() {
-    return fp;
-  }
-
-  // ── Identity ──────────────────────────────────────────────────────────────
+  public @NotNull FakePlayer getHandle() { return fp; }
 
   @Override public @NotNull String getName() { return fp.getName(); }
   @Override public @NotNull UUID   getUuid() { return fp.getUuid(); }
 
-  @Override
-  public @NotNull String getDisplayName() {
+  @Override public @NotNull String getDisplayName() {
     String dn = fp.getDisplayName();
     return dn != null ? dn : fp.getName();
   }
 
-  @Override
-  public @Nullable String getSkinName() { return fp.getSkinName(); }
-
-  // ── Location ──────────────────────────────────────────────────────────────
-
-  @Override
-  public @NotNull Location getLocation() {
-    return fp.getLiveLocation();
+  @Override public void setDisplayName(@NotNull String name) {
+    fp.setDisplayName(name);
   }
 
-  @Override
-  public @NotNull String getWorldName() {
+  @Override public @Nullable String getSkinName() { return fp.getSkinName(); }
+
+  @Override public @NotNull Location getLocation() { return fp.getLiveLocation(); }
+
+  @Override public @NotNull String getWorldName() {
     Location loc = fp.getLiveLocation();
     return loc.getWorld() != null ? loc.getWorld().getName() : "unknown";
   }
 
-  // ── Entity ────────────────────────────────────────────────────────────────
+  @Override public @Nullable Player getEntity() { return fp.getPhysicsEntity(); }
 
-  @Override
-  public @Nullable Player getEntity() { return fp.getPhysicsEntity(); }
-
-  @Override
-  public boolean isBodyless() { return fp.isBodyless(); }
-
-  // ── State flags ───────────────────────────────────────────────────────────
+  @Override public boolean isBodyless() { return fp.isBodyless(); }
 
   @Override public boolean isFrozen()                  { return fp.isFrozen(); }
   @Override public void    setFrozen(boolean frozen)   { fp.setFrozen(frozen); }
   @Override public boolean isAlive()                   { return fp.isAlive(); }
   @Override public boolean isRespawning()              { return fp.isRespawning(); }
-
-  // ── Chat / AI ─────────────────────────────────────────────────────────────
 
   @Override public boolean  isChatEnabled()                  { return fp.isChatEnabled(); }
   @Override public void     setChatEnabled(boolean enabled)  { fp.setChatEnabled(enabled); }
@@ -77,8 +53,6 @@ public final class FppBotImpl implements FppBot {
   @Override public void     setChatTier(@Nullable String t)  { fp.setChatTier(t); }
   @Override public @Nullable String getAiPersonality()       { return fp.getAiPersonality(); }
   @Override public void     setAiPersonality(@Nullable String p) { fp.setAiPersonality(p); }
-
-  // ── Per-bot toggles ───────────────────────────────────────────────────────
 
   @Override public boolean isHeadAiEnabled()                   { return fp.isHeadAiEnabled(); }
   @Override public void    setHeadAiEnabled(boolean e)         { fp.setHeadAiEnabled(e); }
@@ -88,8 +62,6 @@ public final class FppBotImpl implements FppBot {
   @Override public void    setPickUpItemsEnabled(boolean e)    { fp.setPickUpItemsEnabled(e); }
   @Override public boolean isPickUpXpEnabled()                 { return fp.isPickUpXpEnabled(); }
   @Override public void    setPickUpXpEnabled(boolean e)       { fp.setPickUpXpEnabled(e); }
-
-  // ── Pathfinding overrides ─────────────────────────────────────────────────
 
   @Override public boolean isNavParkour()                    { return fp.isNavParkour(); }
   @Override public void    setNavParkour(boolean e)          { fp.setNavParkour(e); }
@@ -102,8 +74,6 @@ public final class FppBotImpl implements FppBot {
   @Override public int     getChunkLoadRadius()              { return fp.getChunkLoadRadius(); }
   @Override public void    setChunkLoadRadius(int r)         { fp.setChunkLoadRadius(r); }
 
-  // ── PvE settings ──────────────────────────────────────────────────────────
-
   @Override public boolean isPveEnabled()                    { return fp.isPveEnabled(); }
   @Override public void    setPveEnabled(boolean e)          { fp.setPveEnabled(e); }
   @Override public double  getPveRange()                     { return fp.getPveRange(); }
@@ -111,30 +81,38 @@ public final class FppBotImpl implements FppBot {
   @Override public @Nullable String getPvePriority()         { return fp.getPvePriority(); }
   @Override public void    setPvePriority(@Nullable String p){ fp.setPvePriority(p); }
 
-  // ── Ownership ─────────────────────────────────────────────────────────────
-
-  @Override
-  public @NotNull String getSpawnedBy() {
+  @Override public @NotNull String getSpawnedBy() {
     String s = fp.getSpawnedBy();
     return s != null ? s : "CONSOLE";
   }
 
-  @Override
-  public @NotNull UUID getSpawnedByUuid() {
+  @Override public @NotNull UUID getSpawnedByUuid() {
     UUID u = fp.getSpawnedByUuid();
     return u != null ? u : new UUID(0, 0);
   }
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
 
   @Override public @NotNull Duration getUptime()       { return fp.getUptime(); }
   @Override public int               getDeathCount()   { return fp.getDeathCount(); }
   @Override public double            getTotalDamageTaken() { return fp.getTotalDamageTaken(); }
 
-  // ── Object ────────────────────────────────────────────────────────────────
+  @Override public boolean isInWater() {
+    Player ent = fp.getPhysicsEntity();
+    return ent != null && ent.isInWater();
+  }
 
-  @Override
-  public boolean equals(Object o) {
+  @Override public boolean isInLava() {
+    Player ent = fp.getPhysicsEntity();
+    return ent != null && ent.isInLava();
+  }
+
+  @Override public boolean isSprinting() {
+    Player ent = fp.getPhysicsEntity();
+    return ent != null && ent.isSprinting();
+  }
+
+  @Override public int getPing() { return fp.getPing(); }
+
+  @Override public boolean equals(Object o) {
     if (this == o) return true;
     if (!(o instanceof FppBotImpl other)) return false;
     return fp.getUuid().equals(other.fp.getUuid());
