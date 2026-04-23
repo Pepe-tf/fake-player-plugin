@@ -101,8 +101,6 @@ public class ServerListListener implements Listener {
       }
     }
 
-    if (freshSample.isEmpty()) return;
-
     Collections.shuffle(freshSample);
     if (freshSample.size() > MAX_SAMPLE) freshSample = freshSample.subList(0, MAX_SAMPLE);
 

@@ -315,6 +315,17 @@ public final class BotRenameHelper {
   }
 
   private void broadcastRename(@NotNull String oldName, @NotNull String newName) {
+    // Fire API rename event.
+    var fppApi = plugin.getFppApi();
+    if (fppApi != null) {
+      FakePlayer renamedFp = manager.getByName(newName);
+      if (renamedFp != null) {
+        me.bill.fakePlayerPlugin.api.event.FppBotRenameEvent renameEvt =
+            new me.bill.fakePlayerPlugin.api.event.FppBotRenameEvent(
+                new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(renamedFp), oldName, newName);
+        Bukkit.getPluginManager().callEvent(renameEvt);
+      }
+    }
     Component msg = Lang.get("bot-rename", "old", oldName, "new", newName);
     Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(msg));
     Bukkit.getConsoleSender().sendMessage(msg);

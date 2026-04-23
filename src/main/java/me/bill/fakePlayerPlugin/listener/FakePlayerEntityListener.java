@@ -161,6 +161,15 @@ public class FakePlayerEntityListener implements Listener {
     fp.incrementDeathCount();
     fp.setAlive(false);
 
+    // Fire API death event.
+    var fppApi = plugin.getFppApi();
+    if (fppApi != null) {
+      me.bill.fakePlayerPlugin.api.event.FppBotDeathEvent deathEvt =
+          new me.bill.fakePlayerPlugin.api.event.FppBotDeathEvent(
+              new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(fp), killer);
+      org.bukkit.Bukkit.getPluginManager().callEvent(deathEvt);
+    }
+
     final String name = fp.getName();
 
     fp.setPlayer(null);

@@ -455,6 +455,25 @@ public final class Config {
     return Math.max(pathfindingMaxNodes(), cfg.getInt("pathfinding.max-nodes-extended", 4000));
   }
 
+
+  /** Number of lateral sweep steps tried on each side when searching for a detour waypoint. */
+  public static int pathfindingDetourAttempts() {
+    return Math.max(1, Math.min(cfg.getInt("pathfinding.detour-attempts", 5), 20));
+  }
+
+  /** Total lateral radius (in blocks) spread across detour-attempts steps. */
+  public static double pathfindingDetourRadius() {
+    return Math.max(2.0, Math.min(cfg.getDouble("pathfinding.detour-radius", 16.0), 64.0));
+  }
+
+  /**
+   * Global default: whether bots sprint-jump periodically while navigating on flat ground.
+   * Overridable per-bot via FakePlayer.navSprintJump.
+   */
+  public static boolean pathfindingSprintJump() {
+    return cfg.getBoolean("pathfinding.sprint-jump", false);
+  }
+
   public static boolean pvpAiEnabled() {
     return cfg.getBoolean("pvp-ai.pvp", false);
   }

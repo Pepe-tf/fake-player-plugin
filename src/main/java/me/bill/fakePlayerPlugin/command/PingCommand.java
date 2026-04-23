@@ -30,7 +30,7 @@ public class PingCommand implements FppCommand {
 
   @Override
   public String getUsage() {
-    return "[<bot>|--count <n>] [--ping <ms>|--random]";
+    return "[<bot>|--count <n>] [--ping <ms>|--random|--reset]";
   }
 
   @Override
@@ -54,6 +54,7 @@ public class PingCommand implements FppCommand {
     int count = -1;
     int fixedPing = -1;
     boolean random = false;
+    boolean reset = false;
 
     int i = 0;
     while (i < args.length) {
@@ -64,6 +65,13 @@ public class PingCommand implements FppCommand {
           return true;
         }
         random = true;
+        i++;
+      } else if (arg.equalsIgnoreCase("--reset")) {
+        if (random || fixedPing >= 0) {
+          sender.sendMessage(Lang.get("ping-conflict-options"));
+          return true;
+        }
+        reset = true;
         i++;
       } else if (arg.equalsIgnoreCase("--ping")) {
         if (random) {
@@ -123,33 +131,39 @@ public class PingCommand implements FppCommand {
       return true;
     }
 
-    if (!random && fixedPing < 0) {
+    if (!random && !reset && fixedPing < 0) {
       fixedPing = DEFAULT_PING;
     }
 
     if (botTarget != null) {
-      return handleSingleBot(sender, botTarget, fixedPing, random);
+      return handleSingleBot(sender, botTarget, fixedPing, random, reset);
     }
 
-    return handleMultipleBots(sender, count, fixedPing, random);
+    return handleMultipleBots(sender, count, fixedPing, random, reset);
   }
 
   private boolean handleSingleBot(
-      CommandSender sender, String name, int fixedPing, boolean random) {
+      CommandSender sender, String name, int fixedPing, boolean random, boolean reset) {
     FakePlayer fp = manager.getByName(name);
     if (fp == null) {
       sender.sendMessage(Lang.get("ping-bot-not-found", "name", name));
       return true;
     }
-    int ping = random ? randomPing() : fixedPing;
+    int ping = reset ? -1 : (random ? randomPing() : fixedPing);
     manager.applyPing(fp, ping);
+    manager.persistBotSettings(fp);
     sender.sendMessage(
-        Lang.get("ping-set", "name", fp.getDisplayName(), "ping", String.valueOf(ping)));
+        Lang.get(
+            "ping-set",
+            "name",
+            fp.getDisplayName(),
+            "ping",
+            ping < 0 ? "default" : String.valueOf(ping)));
     return true;
   }
 
   private boolean handleMultipleBots(
-      CommandSender sender, int count, int fixedPing, boolean random) {
+      CommandSender sender, int count, int fixedPing, boolean random, boolean reset) {
     List<FakePlayer> bots = new ArrayList<>(manager.getActivePlayers());
     if (bots.isEmpty()) {
       sender.sendMessage(Lang.get("ping-no-bots"));
@@ -162,8 +176,9 @@ public class PingCommand implements FppCommand {
     }
 
     for (FakePlayer fp : bots) {
-      int ping = random ? randomPing() : fixedPing;
+      int ping = reset ? -1 : (random ? randomPing() : fixedPing);
       manager.applyPing(fp, ping);
+      manager.persistBotSettings(fp);
     }
 
     sender.sendMessage(
@@ -172,7 +187,7 @@ public class PingCommand implements FppCommand {
             "count",
             String.valueOf(bots.size()),
             "ping",
-            random ? "random" : String.valueOf(fixedPing)));
+            reset ? "default" : (random ? "random" : String.valueOf(fixedPing))));
     return true;
   }
 
@@ -195,6 +210,7 @@ public class PingCommand implements FppCommand {
       List<String> opts = new ArrayList<>();
       opts.add("--ping");
       opts.add("--random");
+      opts.add("--reset");
       opts.add("--count");
       manager.getActiveNames().stream()
           .filter(n -> n.toLowerCase().startsWith(prefix))
@@ -215,6 +231,7 @@ public class PingCommand implements FppCommand {
       List<String> opts = new ArrayList<>();
       if ("--ping".startsWith(cur)) opts.add("--ping");
       if ("--random".startsWith(cur)) opts.add("--random");
+      if ("--reset".startsWith(cur)) opts.add("--reset");
       if ("--count".startsWith(cur)) opts.add("--count");
       return opts;
     }

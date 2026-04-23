@@ -1213,31 +1213,25 @@ public final class BotChatAI implements Listener {
   }
 
   public static void dispatchChat(Player player, String rawMessage) {
-    try {
-      Set<Audience> viewers = new LinkedHashSet<>(Bukkit.getOnlinePlayers());
-      viewers.add(Bukkit.getConsoleSender());
-      Component message = Component.text(rawMessage);
-
-      @SuppressWarnings("UnstableApiUsage")
-      AsyncChatEvent event =
-          new AsyncChatEvent(
-              false, player, viewers, ChatRenderer.defaultRenderer(), message, message, null);
-
-      Bukkit.getPluginManager().callEvent(event);
-
-      if (!event.isCancelled()) {
-        Component displayName = player.displayName();
-        for (Audience viewer : event.viewers()) {
-          viewer.sendMessage(event.renderer().render(player, displayName, event.message(), viewer));
+    // Fire API chat event — addons can cancel or mutate the message.
+    FakePlayerPlugin pluginInst = FakePlayerPlugin.getInstance();
+    if (pluginInst != null) {
+      var fppApi = pluginInst.getFppApi();
+      if (fppApi != null) {
+        FakePlayer fp = pluginInst.getFakePlayerManager() != null
+            ? pluginInst.getFakePlayerManager().getByUuid(player.getUniqueId())
+            : null;
+        if (fp != null) {
+          me.bill.fakePlayerPlugin.api.event.FppBotChatEvent chatEvt =
+              new me.bill.fakePlayerPlugin.api.event.FppBotChatEvent(
+                  new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(fp), rawMessage);
+          org.bukkit.Bukkit.getPluginManager().callEvent(chatEvt);
+          if (chatEvt.isCancelled()) return;
+          rawMessage = chatEvt.getMessage();
         }
       }
-    } catch (Throwable t) {
-      Config.debugChat(
-          "AsyncChatEvent dispatch failed ("
-              + t.getMessage()
-              + ") - falling back to player.chat()");
-      player.chat(rawMessage);
     }
+    player.chat(rawMessage);
   }
 
   public static void broadcastRemote(

@@ -7,7 +7,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 public final class ConfigMigrator {
 
-  public static final int CURRENT_VERSION = 65;
+  public static final int CURRENT_VERSION = 66;
 
   private static boolean rawDebug = false;
 
@@ -123,6 +123,7 @@ public final class ConfigMigrator {
     if (stored < 63) anyChange |= v62to63(cfg);
     if (stored < 64) anyChange |= v63to64(cfg);
     if (stored < 65) anyChange |= v64to65(cfg);
+    if (stored < 66) anyChange |= v65to66(cfg);
 
     fillDefaults(plugin, cfg);
 
@@ -1258,6 +1259,15 @@ public final class ConfigMigrator {
       return true;
     }
     return false;
+  }
+
+  private static boolean v65to66(YamlConfiguration cfg) {
+    boolean changed = false;
+    changed |= setIfMissing(cfg, "pathfinding.detour-attempts", 5);
+    changed |= setIfMissing(cfg, "pathfinding.detour-radius", 16.0);
+    changed |= setIfMissing(cfg, "pathfinding.sprint-jump", false);
+    if (changed) log("v65→v66", "added pathfinding.detour-attempts, detour-radius, sprint-jump");
+    return changed;
   }
 
   private static boolean setIfMissing(YamlConfiguration cfg, String path, Object value) {

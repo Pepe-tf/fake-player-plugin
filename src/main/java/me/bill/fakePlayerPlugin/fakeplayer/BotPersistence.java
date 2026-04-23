@@ -670,6 +670,7 @@ public final class BotPersistence {
       section.put("nav-parkour", fp.isNavParkour());
       section.put("nav-break-blocks", fp.isNavBreakBlocks());
       section.put("nav-place-blocks", fp.isNavPlaceBlocks());
+      section.put("nav-sprint-jump", fp.isNavSprintJump());
       section.put("swim-ai-enabled", fp.isSwimAiEnabled());
       section.put("chunk-load-radius", fp.getChunkLoadRadius());
       section.put("pve-enabled", fp.isPveEnabled());
@@ -681,6 +682,9 @@ public final class BotPersistence {
         section.put("xp-total", bot.getTotalExperience());
         section.put("xp-level", bot.getLevel());
         section.put("xp-progress", (double) bot.getExp());
+      }
+      if (fp.hasCustomPing()) {
+        section.put("ping", fp.getPing());
       }
       if (fp.getChatTier() != null) {
         section.put("chat-tier", fp.getChatTier());
@@ -765,6 +769,9 @@ public final class BotPersistence {
                     row.navParkour(),
                     row.navBreakBlocks(),
                     row.navPlaceBlocks(),
+                    Config.pathfindingSprintJump(),
+                    row.swimAiEnabled(),
+                    row.ping(),
                     row.rightClickCmd(),
                     row.pveEnabled(),
                     row.pveRange(),
@@ -836,10 +843,14 @@ public final class BotPersistence {
         Object navPbRaw = map.get("nav-place-blocks");
         boolean navPlaceBlocks =
             navPbRaw instanceof Boolean npb ? npb : Config.pathfindingPlaceBlocks();
+        Object navSjRaw = map.get("nav-sprint-jump");
+        boolean navSprintJump = navSjRaw instanceof Boolean nsj ? nsj : Config.pathfindingSprintJump();
         Object swimAiRaw = map.get("swim-ai-enabled");
         boolean swimAiEnabled = !(swimAiRaw instanceof Boolean sae) || sae;
         Object clrRaw = map.get("chunk-load-radius");
         int chunkLoadRadius = clrRaw instanceof Number clrn ? clrn.intValue() : -1;
+        Object pingRaw = map.get("ping");
+        int ping = pingRaw instanceof Number pr ? pr.intValue() : -1;
         Object rccRaw = map.get("right-click-command");
         String rightClickCommand = rccRaw instanceof String rcc ? rcc : null;
         Object xpTotalRaw = map.get("xp-total");
@@ -894,6 +905,9 @@ public final class BotPersistence {
                 navParkour,
                 navBreakBlocks,
                 navPlaceBlocks,
+                navSprintJump,
+                swimAiEnabled,
+                ping,
                 rightClickCommand,
                 pveEnabled,
                 pveRange,
@@ -963,6 +977,9 @@ public final class BotPersistence {
       fp.setNavParkour(sb.navParkour);
       fp.setNavBreakBlocks(sb.navBreakBlocks);
       fp.setNavPlaceBlocks(sb.navPlaceBlocks);
+      fp.setNavSprintJump(sb.navSprintJump);
+      fp.setSwimAiEnabled(sb.swimAiEnabled);
+      fp.setPing(sb.ping);
       fp.setPveEnabled(sb.pveEnabled);
       fp.setPveRange(sb.pveRange);
       if (sb.pvePriority != null) fp.setPvePriority(sb.pvePriority);
@@ -1555,6 +1572,9 @@ public final class BotPersistence {
       boolean navParkour,
       boolean navBreakBlocks,
       boolean navPlaceBlocks,
+      boolean navSprintJump,
+      boolean swimAiEnabled,
+      int ping,
       String rightClickCommand,
       boolean pveEnabled,
       double pveRange,

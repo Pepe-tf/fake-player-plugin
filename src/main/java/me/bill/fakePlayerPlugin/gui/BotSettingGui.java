@@ -559,6 +559,10 @@ public final class BotSettingGui implements Listener {
         bot.setSwimAiEnabled(!bot.isSwimAiEnabled());
         yield bot.isSwimAiEnabled();
       }
+      case "nav_sprint_jump" -> {
+        bot.setNavSprintJump(!bot.isNavSprintJump());
+        yield bot.isNavSprintJump();
+      }
       case "pickup_items" -> {
         boolean v = !bot.isPickUpItemsEnabled();
         bot.setPickUpItemsEnabled(v);
@@ -1109,6 +1113,7 @@ public final class BotSettingGui implements Listener {
     bot.setChatEnabled(true);
     bot.setChatTier(null);
     bot.setAiPersonality(null);
+    bot.setPing(-1);
 
     bot.setPveEnabled(false);
     var attackCmd = plugin.getAttackCommand();
@@ -1120,6 +1125,7 @@ public final class BotSettingGui implements Listener {
     bot.setNavParkour(Config.pathfindingParkour());
     bot.setNavBreakBlocks(Config.pathfindingBreakBlocks());
     bot.setNavPlaceBlocks(Config.pathfindingPlaceBlocks());
+    bot.setNavSprintJump(Config.pathfindingSprintJump());
 
     if (isOp) bot.setRightClickCommand(null);
 
@@ -1366,6 +1372,7 @@ public final class BotSettingGui implements Listener {
       case "nav_parkour" -> bot.isNavParkour() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "nav_break_blocks" -> bot.isNavBreakBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "nav_place_blocks" -> bot.isNavPlaceBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+      case "nav_sprint_jump" -> bot.isNavSprintJump() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pve_enabled" -> bot.isPveEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1410,6 +1417,7 @@ public final class BotSettingGui implements Listener {
       case "nav_parkour" -> bot.isNavParkour();
       case "nav_break_blocks" -> bot.isNavBreakBlocks();
       case "nav_place_blocks" -> bot.isNavPlaceBlocks();
+      case "nav_sprint_jump" -> bot.isNavSprintJump();
       case "pve_enabled" -> bot.isPveEnabled();
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1433,6 +1441,7 @@ public final class BotSettingGui implements Listener {
       case "nav_break_blocks" ->
           bot.isNavBreakBlocks() ? Material.DIAMOND_PICKAXE : Material.IRON_PICKAXE;
       case "nav_place_blocks" -> bot.isNavPlaceBlocks() ? Material.GRASS_BLOCK : Material.DIRT;
+      case "nav_sprint_jump" -> bot.isNavSprintJump() ? Material.FEATHER : Material.LEATHER_BOOTS;
       case "pve_enabled" -> bot.isPveEnabled() ? Material.IRON_SWORD : Material.WOODEN_SWORD;
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1611,6 +1620,16 @@ public final class BotSettingGui implements Listener {
                     + (Config.swimAiEnabled() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
                 Material.WATER_BUCKET,
                 false),
+            BotEntry.toggle(
+                "nav_sprint_jump",
+                "ꜱᴘʀɪɴᴛ-ᴊᴜᴍᴘ",
+                "ʙᴏᴛ ᴊᴜᴍᴘꜱ ᴘᴇʀɪᴏᴅɪᴄᴀʟʟʏ ᴡʜɪʟᴇ\n"
+                    + "ꜱᴘʀɪɴᴛɪɴɢ ᴅᴜʀɪɴɢ ᴘᴀᴛʜꜰɪɴᴅɪɴɢ.\n"
+                    + "ᴅɪꜱᴀʙʟᴇ ᴛᴏ ᴡᴀʟᴋ ᴡɪᴛʜᴏᴜᴛ ᴊᴜᴍᴘɪɴɢ.\n"
+                    + "ɢʟᴏʙᴀʟ: "
+                    + (Config.pathfindingSprintJump() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
+                Material.FEATHER,
+                false),
             BotEntry.action(
                 "chunk_load_radius",
                 "ᴄʜᴜɴᴋ ʀᴀᴅɪᴜꜱ",
@@ -1621,6 +1640,13 @@ public final class BotSettingGui implements Listener {
                     + globalMax
                     + " = ꜰɪʜᴇᴅ ʀᴀᴅɪᴜꜱ (ᴄᴀᴘᴘᴇᴅ ᴀᴛ ɢʟᴏʙᴀʟ ᴍᴀx)",
                 Material.MAP,
+                false),
+            BotEntry.action(
+                "tab_ping",
+                "ᴛᴀʙ ᴘɪɴɢ",
+                "ꜱᴇᴛ ᴛʜᴇ ʙᴏᴛ'ꜱ ᴠɪꜱɪʙʟᴇ ᴘɪɴɢ/ʟᴀᴛᴇɴᴄʏ.\n"
+                    + "ᴜꜱᴇ 0-9999 ᴍꜱ ᴏʀ ᴛʏᴘᴇ ʀᴇꜱᴇᴛ ᴛᴏ ᴄʟᴇᴀʀ.",
+                Material.CLOCK,
                 false),
             BotEntry.toggle(
                 "pickup_items",

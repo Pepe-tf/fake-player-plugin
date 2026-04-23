@@ -172,6 +172,16 @@ public final class PathfindingService {
     final boolean[] isPlacing = {false};
     final int[] placeLeft = {0};
 
+    // Sprint-jump counter: fires a jump every 6 ticks while sprint-jumping is enabled.
+    final int[] sprintJumpTick = {0};
+
+    // Detour state: when A* returns null AND a wall is directly ahead, we compute a detour
+    // waypoint and path to it first before resuming toward the real target.
+    @SuppressWarnings("unchecked")
+    final List<BotPathfinder.Move>[] detourPath = (List<BotPathfinder.Move>[]) new List<?>[] {null};
+    final int[] detourWpIdx = {0};
+    final int[] detourNullCount = {0};
+
     BukkitTask task =
         new BukkitRunnable() {
           @Override
@@ -247,6 +257,27 @@ public final class PathfindingService {
                   cleanup(bot, false, true);
                   return;
                 }
+                // Direct path failed — try to compute a detour around the obstacle.
+                BotPathfinder.PathOptions detourOpts =
+                    new BotPathfinder.PathOptions(
+                        fp.isNavParkour(), fp.isNavBreakBlocks(), fp.isNavPlaceBlocks());
+                int[] dg = BotPathfinder.findDetourGoal(
+                    botLoc.getWorld(),
+                    botLoc.getBlockX(), botLoc.getBlockY(), botLoc.getBlockZ(),
+                    dest.getBlockX(), dest.getBlockY(), dest.getBlockZ(),
+                    Config.pathfindingDetourAttempts(),
+                    Config.pathfindingDetourRadius() / (double) Config.pathfindingDetourAttempts(),
+                    detourOpts);
+                if (dg != null) {
+                  detourPath[0] = BotPathfinder.findPathMoves(
+                      botLoc.getWorld(),
+                      botLoc.getBlockX(), botLoc.getBlockY(), botLoc.getBlockZ(),
+                      dg[0], dg[1], dg[2], detourOpts);
+                  detourWpIdx[0] = (detourPath[0] != null && detourPath[0].size() > 1) ? 1 : 0;
+                } else {
+                  detourPath[0] = null;
+                  detourWpIdx[0] = 0;
+                }
               } else {
                 nullPathRecalcs[0] = 0;
               }
@@ -257,14 +288,71 @@ public final class PathfindingService {
             }
 
             List<BotPathfinder.Move> path = pathRef[0];
+
+            // If we have an active detour path, follow it until exhausted.
+            if ((path == null || path.isEmpty() || wpIdx[0] >= path.size())
+                && detourPath[0] != null && detourWpIdx[0] < detourPath[0].size()) {
+              path = detourPath[0];
+              // Use detourWpIdx inline below by aliasing path and index
+              BotPathfinder.Move dwp = detourPath[0].get(detourWpIdx[0]);
+              double dwpCX = dwp.x() + 0.5;
+              double dwpCZ = dwp.z() + 0.5;
+              double dwpXZDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), dwpCX, dwpCZ);
+              boolean dwpYClose = Math.abs(botLoc.getY() - dwp.y()) < 1.2;
+              if (dwpXZDist < Config.pathfindingWaypointArrivalDistance() && dwpYClose) {
+                detourWpIdx[0]++;
+                if (detourWpIdx[0] >= detourPath[0].size()) {
+                  detourPath[0] = null;
+                  recalcIn[0] = 0; // detour done — immediately replan toward real target
+                  // Fall through to coast/replan logic below rather than returning here.
+                } else {
+                  dwp = detourPath[0].get(detourWpIdx[0]);
+                  dwpCX = dwp.x() + 0.5;
+                  dwpCZ = dwp.z() + 0.5;
+                  dwpXZDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), dwpCX, dwpCZ);
+                }
+              }
+              if (detourPath[0] != null) {
+                double ddx = dwpCX - botLoc.getX();
+                double ddz = dwpCZ - botLoc.getZ();
+                float dYaw = (float) Math.toDegrees(Math.atan2(-ddx, ddz));
+                bot.setRotation(dYaw, 0f);
+                NmsPlayerSpawner.setHeadYaw(bot, dYaw);
+                bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
+                NmsPlayerSpawner.setMovementForward(bot, 1.0f);
+                if (!bot.isInWater() && !bot.isInLava() && dwp.y() > botLoc.getBlockY()) {
+                  manager.requestNavJump(botUuid);
+                }
+                prevX[0] = botLoc.getX();
+                prevZ[0] = botLoc.getZ();
+                return;
+              }
+              // detour just finished — fall through to coast/replan below
+            }
+
             if (path == null || path.isEmpty() || wpIdx[0] >= path.size()) {
-              walkToward(bot, dest, distToTarget);
+              // Path exhausted or null — force an immediate replan next tick.
+              // Do NOT walk toward the target directly; that causes wall-walking.
+              if (distToTargetSq > request.arrivalDistance() * request.arrivalDistance() * 4) {
+                recalcIn[0] = 0;
+              }
+              // Keep momentum toward target so we don't visibly stutter between segments.
+              double dx = dest.getX() - botLoc.getX();
+              double dz = dest.getZ() - botLoc.getZ();
+              float coastYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+              bot.setRotation(coastYaw, 0f);
+              NmsPlayerSpawner.setHeadYaw(bot, coastYaw);
+              bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
+              NmsPlayerSpawner.setMovementForward(bot, 1.0f);
               return;
             }
 
             BotPathfinder.Move wp = path.get(wpIdx[0]);
-            double wpCX = wp.x() + 0.5;
-            double wpCZ = wp.z() + 0.5;
+            boolean finalWaypoint = wpIdx[0] >= path.size() - 1;
+            // Keep intermediate nodes block-centered, but let the final leg aim at the real
+            // requested destination so navigation no longer visibly snaps onto the snapped goal.
+            double wpCX = finalWaypoint ? dest.getX() : wp.x() + 0.5;
+            double wpCZ = finalWaypoint ? dest.getZ() : wp.z() + 0.5;
 
             if (wp.type() == BotPathfinder.MoveType.BREAK) {
               if (!isBreaking[0]) {
@@ -357,23 +445,58 @@ public final class PathfindingService {
             }
 
             if (wp.type() == BotPathfinder.MoveType.SWIM) {
-              stuckFor[0] = 0;
               double sdx = wpCX - botLoc.getX();
               double sdz = wpCZ - botLoc.getZ();
-              float sYaw = (float) Math.toDegrees(Math.atan2(-sdx, sdz));
-              bot.setRotation(sYaw, wp.y() > botLoc.getBlockY() ? -30f : 20f);
-              NmsPlayerSpawner.setHeadYaw(bot, sYaw);
-              NmsPlayerSpawner.setMovementForward(bot, 1.0f);
-              bot.setSprinting(false);
+              double swimDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
+              double swimYDist = Math.abs(botLoc.getY() - wp.y());
+              boolean verticalSwimStep = swimDist < 0.25;
+              float sYaw = verticalSwimStep
+                  ? bot.getLocation().getYaw()
+                  : (float) Math.toDegrees(Math.atan2(-sdx, sdz));
 
-              if (wp.y() >= botLoc.getBlockY() && (bot.isInWater() || bot.isInLava())) {
-                NmsPlayerSpawner.setJumping(bot, true);
+              int targetY = wp.y();
+              int currentY = botLoc.getBlockY();
+              float swimPitch;
+              boolean shouldJump;
+
+              if (targetY > currentY) {
+                // Rising — pitch slightly upward, jump to ascend.
+                swimPitch = -25f;
+                shouldJump = true;
+              } else if (targetY < currentY) {
+                // Diving — pitch downward, no jump so bot sinks.
+                swimPitch = 45f;
+                shouldJump = false;
+              } else {
+                // Horizontal swim — pitch near 0, jump to maintain depth.
+                swimPitch = -10f;
+                shouldJump = bot.isInWater() || bot.isInLava();
               }
+
+              bot.setRotation(sYaw, swimPitch);
+              NmsPlayerSpawner.setHeadYaw(bot, sYaw);
+              NmsPlayerSpawner.setMovementForward(bot, verticalSwimStep ? 0f : 1.0f);
+              // Sprint-swimming in Minecraft requires the sprinting flag.
+              bot.setSprinting(!verticalSwimStep);
+              NmsPlayerSpawner.setJumping(bot, shouldJump);
+
+              double swimMoved = xzDistRaw(botLoc.getX(), botLoc.getZ(), prevX[0], prevZ[0]);
+              if (!verticalSwimStep && swimMoved < Config.pathfindingStuckThreshold()) {
+                if (++stuckFor[0] >= Math.max(12, Config.pathfindingStuckTicks() * 2)) {
+                  // Swimming in place usually means the current water path is bad or the bot is
+                  // fighting the shoreline/waterline. Force an immediate replan instead of
+                  // endlessly rotating around a nearly-zero X/Z target.
+                  recalcIn[0] = 0;
+                  stuckFor[0] = 0;
+                }
+              } else {
+                stuckFor[0] = 0;
+              }
+
               prevX[0] = botLoc.getX();
               prevZ[0] = botLoc.getZ();
 
-              double swimDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
-              if (swimDist < 0.8 && Math.abs(botLoc.getY() - wp.y()) < 1.5) {
+              if (swimDist < 0.8 && swimYDist < 1.5) {
                 wpIdx[0]++;
               }
               return;
@@ -381,15 +504,30 @@ public final class PathfindingService {
 
             double wpXZDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
             boolean wpYClose = Math.abs(botLoc.getY() - wp.y()) < 1.2;
-            if (wpXZDist < Config.pathfindingWaypointArrivalDistance() && wpYClose) {
+            // For ASCEND steps, don't consume the waypoint until the bot has actually
+            // reached the upper block — prevents the jump from being skipped when the
+            // waypoint arrival radius is satisfied while the bot is still at the lower level.
+            boolean wpAscendReady =
+                wp.type() != BotPathfinder.MoveType.ASCEND
+                    || botLoc.getY() >= wp.y() - 0.3;
+            if (wpXZDist < Config.pathfindingWaypointArrivalDistance() && wpYClose && wpAscendReady) {
               wpIdx[0]++;
               if (wpIdx[0] >= path.size()) {
+                // Segment complete — keep coasting toward destination while replan fires.
                 recalcIn[0] = 0;
+                double cdx = dest.getX() - botLoc.getX();
+                double cdz = dest.getZ() - botLoc.getZ();
+                float coastYaw = (float) Math.toDegrees(Math.atan2(-cdx, cdz));
+                bot.setRotation(coastYaw, 0f);
+                NmsPlayerSpawner.setHeadYaw(bot, coastYaw);
+                bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
+                NmsPlayerSpawner.setMovementForward(bot, 1.0f);
                 return;
               }
               wp = path.get(wpIdx[0]);
-              wpCX = wp.x() + 0.5;
-              wpCZ = wp.z() + 0.5;
+              finalWaypoint = wpIdx[0] >= path.size() - 1;
+              wpCX = finalWaypoint ? dest.getX() : wp.x() + 0.5;
+              wpCZ = finalWaypoint ? dest.getZ() : wp.z() + 0.5;
               wpXZDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
             }
 
@@ -406,11 +544,26 @@ public final class PathfindingService {
 
             if (!bot.isInWater() && !bot.isInLava()) {
               if (wp.y() > botLoc.getBlockY()) {
-                manager.requestNavJump(botUuid);
+                // Fire jump whenever the next waypoint is above us and we're within 2.5 blocks XZ,
+                // not just when we're at the waypoint — the bot needs to be jumping on approach.
+                if (wpXZDist <= 2.5) {
+                  manager.requestNavJump(botUuid);
+                }
               } else if (wp.type() == BotPathfinder.MoveType.PARKOUR
                   && wpXZDist >= 1.0
                   && wpXZDist <= 3.5) {
                 manager.requestNavJump(botUuid);
+              } else if (fp.isNavSprintJump() && bot.isSprinting()) {
+                // Sprint-jump: fire a jump every 6 ticks while on flat ground and sprinting.
+                // Only jump when the next waypoint is at the same Y (not already ascending).
+                if (wp.y() == botLoc.getBlockY() && bot.isOnGround()) {
+                  if (++sprintJumpTick[0] >= 6) {
+                    sprintJumpTick[0] = 0;
+                    manager.requestNavJump(botUuid);
+                  }
+                } else {
+                  sprintJumpTick[0] = 0;
+                }
               }
             }
 
@@ -418,9 +571,24 @@ public final class PathfindingService {
             if (moved < Config.pathfindingStuckThreshold()) {
               if (++stuckFor[0] >= Config.pathfindingStuckTicks()) {
                 if (!bot.isInWater() && !bot.isInLava()) {
-                  manager.requestNavJump(botUuid);
+                  // Only jump if the block ahead is a single-block step (not a full wall).
+                  // A full wall means jumping won't help — trigger a replan/detour instead.
+                  World w = botLoc.getWorld();
+                  float facingYaw = bot.getLocation().getYaw();
+                  int fx = (int) Math.floor(botLoc.getX() + Math.sin(-Math.toRadians(facingYaw)) * 0.8);
+                  int fz = (int) Math.floor(botLoc.getZ() + Math.cos(-Math.toRadians(facingYaw)) * 0.8);
+                  int fy = botLoc.getBlockY();
+                  boolean feetBlocked = !BotPathfinder.canPassThrough(w, fx, fy, fz);
+                  boolean headBlocked = !BotPathfinder.canPassThrough(w, fx, fy + 1, fz);
+                  boolean aboveClear = BotPathfinder.canPassThrough(w, fx, fy + 2, fz);
+                  if (feetBlocked && !headBlocked && aboveClear) {
+                    // Single-block step — jump over it.
+                    manager.requestNavJump(botUuid);
+                  }
+                  // Whether or not we jumped, force an immediate replan so the detour
+                  // logic gets a chance to route around the obstacle.
+                  recalcIn[0] = 0;
                 }
-                recalcIn[0] = 0;
                 stuckFor[0] = 0;
               }
             } else {
@@ -463,8 +631,28 @@ public final class PathfindingService {
                         Math.atan2(-(target.getX() - bl.getX()), target.getZ() - bl.getZ()));
             bot.setRotation(yaw, 0f);
             NmsPlayerSpawner.setHeadYaw(bot, yaw);
+            // Check for a wall directly ahead — if foot AND head are blocked, stop moving
+            // rather than walking into the wall.
+            World w = bl.getWorld();
+            int fx = (int) Math.floor(bl.getX() + Math.sin(-Math.toRadians(yaw)) * 0.8);
+            int fz = (int) Math.floor(bl.getZ() + Math.cos(-Math.toRadians(yaw)) * 0.8);
+            int fy = bl.getBlockY();
+            boolean feetBlocked = !BotPathfinder.canPassThrough(w, fx, fy, fz);
+            boolean headBlocked = !BotPathfinder.canPassThrough(w, fx, fy + 1, fz);
+            if (feetBlocked && headBlocked) {
+              // Full wall ahead — stop and let the replan/detour handle it.
+              NmsPlayerSpawner.setMovementForward(bot, 0f);
+              bot.setSprinting(false);
+              return;
+            }
             bot.setSprinting(dist > Config.pathfindingSprintDistance());
             NmsPlayerSpawner.setMovementForward(bot, 1.0f);
+            // Single-block step ahead — jump over it.
+            if (!bot.isInWater() && !bot.isInLava()) {
+              if (feetBlocked && !headBlocked) {
+                manager.requestNavJump(botUuid);
+              }
+            }
           }
         }.runTaskTimer(plugin, 0L, 1L);
 

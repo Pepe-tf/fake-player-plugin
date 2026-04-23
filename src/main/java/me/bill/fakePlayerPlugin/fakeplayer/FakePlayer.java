@@ -65,6 +65,9 @@ public final class FakePlayer {
 
   private boolean bodyless = false;
 
+  /** True when this bot was spawned via {@code spawnRestored} (server restart persistence). */
+  private boolean restoredSpawn = false;
+
   private String luckpermsGroup = null;
 
   private BotType botType = BotType.AFK;
@@ -88,6 +91,8 @@ public final class FakePlayer {
   private boolean navBreakBlocks = Config.pathfindingBreakBlocks();
 
   private boolean navPlaceBlocks = Config.pathfindingPlaceBlocks();
+
+  private boolean navSprintJump = Config.pathfindingSprintJump();
 
   private boolean swimAiEnabled = Config.swimAiEnabled();
 
@@ -392,6 +397,14 @@ public final class FakePlayer {
     this.navPlaceBlocks = v;
   }
 
+  public boolean isNavSprintJump() {
+    return navSprintJump;
+  }
+
+  public void setNavSprintJump(boolean v) {
+    this.navSprintJump = v;
+  }
+
   public boolean isSwimAiEnabled() {
     return swimAiEnabled;
   }
@@ -487,6 +500,14 @@ public final class FakePlayer {
 
   public void setBodyless(boolean bodyless) {
     this.bodyless = bodyless;
+  }
+
+  public boolean isRestoredSpawn() {
+    return restoredSpawn;
+  }
+
+  public void setRestoredSpawn(boolean restoredSpawn) {
+    this.restoredSpawn = restoredSpawn;
   }
 
   public Entity getNametagEntity() {

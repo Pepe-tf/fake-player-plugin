@@ -78,6 +78,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
   private me.bill.fakePlayerPlugin.ai.BotConversationManager botConversationManager;
   private me.bill.fakePlayerPlugin.ai.PersonalityRepository personalityRepository;
 
+  private me.bill.fakePlayerPlugin.api.impl.FppApiImpl fppApi;
+
   private Component updateNotificationMessage = null;
 
   private boolean luckPermsAvailable = false;
@@ -139,7 +141,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
     Config.debugStartup("Language file loaded (lang=" + Config.getLanguage() + ").");
 
     detectedMcVersion = CompatibilityChecker.extractMcVersion();
-    if (CompatibilityChecker.isVersionAtLeast(detectedMcVersion, "1.21.12")) {
+    if (!CompatibilityChecker.isSupportedVersion(detectedMcVersion)) {
       versionUnsupported = true;
       String pv = getPluginMeta().getVersion();
       FppLogger.warn("═══════════════════════════════════════════════════════════════════");
@@ -147,7 +149,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
       FppLogger.warn("═══════════════════════════════════════════════════════════════════");
       FppLogger.warn("  Plugin    : FakePlayerPlugin v" + pv);
       FppLogger.warn("  Server MC : " + detectedMcVersion + "  (NOT supported)");
-      FppLogger.warn("  Supported : up to MC 1.21.11");
+      FppLogger.warn("  Supported : up to MC 1.21.11, and 26.1.x");
       FppLogger.warn("  Action    : All /fpp commands have been DISABLED.");
       FppLogger.warn("  Support   : If you think this is a bug, contact us:");
       FppLogger.warn("              Discord → https://discord.gg/RfjEJDG2TM");
@@ -240,6 +242,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
     fakePlayerManager.refreshCleanNamePool();
 
+    fppApi = new me.bill.fakePlayerPlugin.api.impl.FppApiImpl(this, fakePlayerManager);
+
     // Load persisted despawn snapshots (DB primary, YAML fallback) so bots that were manually
     // despawned before the restart can have their inventory/XP restored on next spawn.
     fakePlayerManager.initDespawnSnapshots();
@@ -294,6 +298,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
         new me.bill.fakePlayerPlugin.command.MineCommand(
             this, fakePlayerManager, storageStore, mineSelectionStore, pathfindingService);
     commandManager.register(mineCommand);
+    commandManager.register(
+        new me.bill.fakePlayerPlugin.command.FindCommand(
+            this, fakePlayerManager, pathfindingService, mineCommand));
     commandManager.register(
         new me.bill.fakePlayerPlugin.command.StorageCommand(fakePlayerManager, storageStore));
     placeCommand =
@@ -638,6 +645,17 @@ public final class FakePlayerPlugin extends JavaPlugin {
   @SuppressWarnings("unused")
   public CommandManager getCommandManager() {
     return commandManager;
+  }
+
+  /** Returns the public addon API entry point. Available after {@code onEnable} completes. */
+  @SuppressWarnings("unused")
+  public me.bill.fakePlayerPlugin.api.FppApi getFppApi() {
+    return fppApi;
+  }
+
+  /** Internal accessor for subsystems that need the concrete impl (e.g. fireTickHandlers). */
+  public me.bill.fakePlayerPlugin.api.impl.FppApiImpl getFppApiImpl() {
+    return fppApi;
   }
 
   @SuppressWarnings("unused")

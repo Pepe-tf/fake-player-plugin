@@ -124,6 +124,7 @@ permissions:
       fpp.useitem.once:         true
       fpp.useitem.stop:         true
       fpp.attack:               true
+      fpp.find:                 true
       fpp.follow:               true
       fpp.waypoint:             true
       fpp.badword:              true
@@ -568,6 +569,16 @@ permissions:
     description: >
       Bot PvE attack — walk to sender, mirror look direction, attack entities.
       Respects 1.9+ attack cooldown and item-specific cooldowns dynamically.
+    default: op
+
+  # ════════════════════════════════════════════════════════════════════════════
+  #  FIND
+  # ════════════════════════════════════════════════════════════════════════════
+
+  fpp.find:
+    description: >
+      Search for nearby blocks of a chosen type and mine them one by one.
+      Supports --radius and --count flags.
     default: op
 
   # ════════════════════════════════════════════════════════════════════════════

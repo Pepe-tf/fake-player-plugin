@@ -252,13 +252,28 @@ public class FakePlayerManager {
 
                   Integer navHold = navJumpHolding.get(fp.getUuid());
                   boolean navJump = navHold != null && navHold > 0;
+                  boolean navJumpFirstTick = navHold != null && navHold == 5;
                   if (navHold != null) {
                     if (navHold <= 1) navJumpHolding.remove(fp.getUuid());
                     else navJumpHolding.put(fp.getUuid(), navHold - 1);
                   }
 
+                  // On the very first tick of a nav-jump request, apply a direct upward
+                  // velocity impulse if the bot is on the ground.  The NMS jumping field
+                  // requires onGround=true inside doTick() which can be unreliable when the
+                  // bot is pressing against a block face — the direct impulse is not gated
+                  // on onGround and always fires.
+                  if (navJumpFirstTick && bot.isOnGround()
+                      && !bot.isInWater() && !bot.isInLava()) {
+                    org.bukkit.util.Vector vel = bot.getVelocity();
+                    vel.setY(0.42);
+                    bot.setVelocity(vel);
+                  }
+
                   if (fp.isSwimAiEnabled()) {
-                    NmsPlayerSpawner.setJumping(bot, navJump || bot.isInWater() || bot.isInLava());
+                    boolean isNavigating = plugin.getPathfindingService() != null
+                        && plugin.getPathfindingService().isNavigating(fp.getUuid());
+                    SwimAI.tick(bot, navJump, isNavigating);
                   } else if (navJump) {
 
                     NmsPlayerSpawner.setJumping(bot, true);
@@ -299,15 +314,6 @@ public class FakePlayerManager {
                             fp.getUuid(),
                             k -> new float[] {beforeCapture.getYaw(), beforeCapture.getPitch()});
 
-                    float[] spawnRot =
-                        botSpawnRotation.computeIfAbsent(
-                            fp.getUuid(),
-                            k -> {
-                              Location sl = fp.getSpawnLocation();
-                              if (sl != null) return new float[] {sl.getYaw(), sl.getPitch()};
-                              return new float[] {beforeCapture.getYaw(), beforeCapture.getPitch()};
-                            });
-
                     float prevYaw = rot[0];
                     float prevPitch = rot[1];
 
@@ -323,10 +329,6 @@ public class FakePlayerManager {
                       float targetPitch = (float) (-Math.toDegrees(Math.atan2(dy, horiz)));
                       rot[0] = lerpAngle(rot[0], targetYaw, speed);
                       rot[1] = lerpAngle(rot[1], targetPitch, speed);
-                    } else {
-
-                      rot[0] = lerpAngle(rot[0], spawnRot[0], speed);
-                      rot[1] = lerpAngle(rot[1], spawnRot[1], speed);
                     }
 
                     if (Math.abs(rot[0] - prevYaw) > 0.01f
@@ -375,6 +377,10 @@ public class FakePlayerManager {
 
                     bot.setVelocity(ZERO_VELOCITY);
                   }
+
+                  // Fire addon tick handlers.
+                  var fppApiTick = plugin.getFppApiImpl();
+                  if (fppApiTick != null) fppApiTick.fireTickHandlers(fp, bot);
                 }
 
                 Location after = bot.getLocation();
@@ -1136,6 +1142,15 @@ public class FakePlayerManager {
                       10L);
             }
           }
+
+          // Fire API spawn event.
+          var fppApi = plugin.getFppApi();
+          if (fppApi != null) {
+            me.bill.fakePlayerPlugin.api.event.FppBotSpawnEvent spawnEvt =
+                new me.bill.fakePlayerPlugin.api.event.FppBotSpawnEvent(
+                    new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(fp), fp.isRestoredSpawn());
+            Bukkit.getPluginManager().callEvent(spawnEvt);
+          }
         },
         () -> {
           if (!activePlayers.containsKey(fp.getUuid())) return;
@@ -1175,6 +1190,7 @@ public class FakePlayerManager {
     PlayerProfile profile = Bukkit.createProfile(uuid, name);
     FakePlayer fp = new FakePlayer(uuid, name, profile);
     fp.setBotType(botType);
+    fp.setRestoredSpawn(true);
 
     boolean isUserBot = name.startsWith("ubot_");
     if (isUserBot) {
@@ -1621,6 +1637,15 @@ public class FakePlayerManager {
   public boolean delete(String name) {
     FakePlayer fp = getByName(name);
     if (fp == null) return false;
+
+    // Fire API despawn event before any state is removed.
+    var fppApi = plugin.getFppApi();
+    if (fppApi != null) {
+      me.bill.fakePlayerPlugin.api.event.FppBotDespawnEvent despawnEvt =
+          new me.bill.fakePlayerPlugin.api.event.FppBotDespawnEvent(
+              new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(fp));
+      Bukkit.getPluginManager().callEvent(despawnEvt);
+    }
 
     final FakePlayer target = fp;
     final String botName = target.getName();
@@ -2510,6 +2535,7 @@ public class FakePlayerManager {
         fp.isNavPlaceBlocks(),
         fp.isSwimAiEnabled(),
         fp.getChunkLoadRadius(),
+        fp.getPing(),
         fp.isPveEnabled(),
         fp.getPveRange(),
         fp.getPvePriority(),

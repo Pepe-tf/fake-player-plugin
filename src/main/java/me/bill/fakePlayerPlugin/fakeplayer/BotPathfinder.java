@@ -85,12 +85,144 @@ public final class BotPathfinder {
     }
   }
 
+  /**
+   * Attempts to find a detour waypoint when the direct A* path between (sx,sy,sz) and (tx,ty,tz)
+   * fails (e.g. blocked by a wall). Sweeps perpendicular offsets left and right of the direct line
+   * at increasing radii, then tries a combination of forward-offset + lateral, returning the first
+   * walkable candidate that A* can actually reach. Returns null if no detour is found.
+   *
+   * @param attempts number of lateral offset steps to try on each side (config: pathfinding.detour-attempts)
+   * @param stepSize lateral step size in blocks per attempt (config: pathfinding.detour-radius / attempts)
+   */
+  public static int[] findDetourGoal(
+      World world,
+      int sx, int sy, int sz,
+      int tx, int ty, int tz,
+      int attempts,
+      double stepSize,
+      PathOptions opts) {
+
+    double dx = tx - sx;
+    double dz = tz - sz;
+    double dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist < 0.001) return null;
+
+    // Unit vector toward target, and perpendicular (right = rotate 90° CW)
+    double ux = dx / dist;
+    double uz = dz / dist;
+    double rx = uz;   // perpendicular right
+    double rz = -ux;
+
+    // How far forward to place the detour goal (60-80 % of the distance, capped at max-range*0.8)
+    int configuredMaxRange = Config.pathfindingMaxRange();
+    double fwdDist = Math.min(dist * 0.7, configuredMaxRange * 0.8);
+
+    int fwdX = sx + (int) Math.round(ux * fwdDist);
+    int fwdZ = sz + (int) Math.round(uz * fwdDist);
+    int fwdY = sy + (int) Math.round((ty - sy) * 0.7);
+
+    for (int attempt = 1; attempt <= attempts; attempt++) {
+      double offset = attempt * stepSize;
+
+      // Try right then left
+      for (int sign : new int[]{1, -1}) {
+        int cx = fwdX + (int) Math.round(rx * offset * sign);
+        int cz = fwdZ + (int) Math.round(rz * offset * sign);
+
+        // Snap candidate to a walkable Y within ±4 of projected Y
+        Integer cy = snapWalkableY(world, cx, fwdY, cz);
+        if (cy == null) continue;
+
+        // Verify A* can actually path from start to this candidate
+        List<Move> testPath = findPathMoves(world, sx, sy, sz, cx, cy, cz, opts);
+        if (testPath != null && testPath.size() > 1) {
+          return new int[]{cx, cy, cz};
+        }
+      }
+
+      // Also try pure lateral (no forward component) at larger offsets
+      if (attempt >= 2) {
+        double latOffset = attempt * stepSize * 1.5;
+        for (int sign : new int[]{1, -1}) {
+          int cx = sx + (int) Math.round(rx * latOffset * sign);
+          int cz = sz + (int) Math.round(rz * latOffset * sign);
+          Integer cy = snapWalkableY(world, cx, sy, cz);
+          if (cy == null) continue;
+          List<Move> testPath = findPathMoves(world, sx, sy, sz, cx, cy, cz, opts);
+          if (testPath != null && testPath.size() > 1) {
+            return new int[]{cx, cy, cz};
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Snaps the given (x, z) to the nearest walkable Y within ±4 blocks of baseY.
+   * Returns null if no walkable position found.
+   */
+  private static Integer snapWalkableY(World world, int x, int baseY, int z) {
+    for (int off = 0; off <= 4; off++) {
+      for (int sign : (off == 0 ? new int[]{0} : new int[]{off, -off})) {
+        int cy = baseY + sign;
+        if (!inBounds(world, cy)) continue;
+        if (walkable(world, x, cy, z)) return cy;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Projects an intermediate waypoint toward (tx,ty,tz) that is within max-range of the bot.
+   * Used by PathfindingService when the true destination is farther than the A* search radius.
+   * Returns null if neither the projected point nor any fallback in a ±4-block Y sweep is walkable.
+   */
+  public static int[] intermediateGoal(
+      World world, int sx, int sy, int sz, int tx, int ty, int tz) {
+    int configuredMaxRange = Config.pathfindingMaxRange();
+    double dx = tx - sx, dy = ty - sy, dz = tz - sz;
+    double dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist <= configuredMaxRange) {
+      return new int[] {tx, ty, tz};
+    }
+    // Scale back to 80% of max-range so A* has room to manoeuvre.
+    double scale = (configuredMaxRange * 0.80) / dist;
+    int ix = sx + (int) Math.round(dx * scale);
+    int iz = sz + (int) Math.round(dz * scale);
+
+    // Use the real surface Y at the projected XZ instead of linear interpolation.
+    // Linear interpolation produces wildly wrong Y values when terrain changes height,
+    // causing snap() to fail and the bot to path to an underground/airborne waypoint.
+    int iy;
+    if (world.isChunkLoaded(ix >> 4, iz >> 4)) {
+      iy = world.getHighestBlockYAt(ix, iz);
+    } else {
+      // Chunk not loaded — fall back to linear interpolation; snap() will correct within ±3.
+      iy = sy + (int) Math.round(dy * scale);
+    }
+
+    // Try surface Y first, then ±4 blocks for overhangs/caves.
+    for (int off = 0; off <= 4; off++) {
+      for (int sign : (off == 0 ? new int[] {0} : new int[] {off, -off})) {
+        int cy = iy + sign;
+        if (walkable(world, ix, cy, iz)) return new int[] {ix, cy, iz};
+      }
+    }
+    // Last resort: return the surface Y anyway so snap() has the best starting point.
+    return new int[] {ix, iy, iz};
+  }
+
   public static List<Move> findPathMoves(
       World world, int sx, int sy, int sz, int tx, int ty, int tz, PathOptions opts) {
 
     int configuredMaxRange = Config.pathfindingMaxRange();
-    if (Math.abs(sx - tx) + Math.abs(sy - ty) + Math.abs(sz - tz) > configuredMaxRange * 3) {
-      return null;
+
+    // If destination is out of A* range, redirect to an intermediate waypoint.
+    double xzDist = Math.sqrt((double)(sx-tx)*(sx-tx) + (double)(sz-tz)*(sz-tz));
+    if (xzDist > configuredMaxRange) {
+      int[] inter = intermediateGoal(world, sx, sy, sz, tx, ty, tz);
+      tx = inter[0]; ty = inter[1]; tz = inter[2];
     }
 
     Pos start = snap(world, sx, sy, sz);
@@ -151,12 +283,16 @@ public final class BotPathfinder {
 
   private static final MoveType[] MOVE_TYPES = MoveType.values();
 
-  private static final long X_BIAS = 1 << 19;
-  private static final long Z_BIAS = 1 << 19;
-  private static final long Y_BIAS = 1 << 11;
+  // Key layout (64 bits):
+  //   bits 63-38  : x + 33554432   (26 bits, covers ±30M blocks)
+  //   bits 37-12  : z + 33554432   (26 bits, covers ±30M blocks)
+  //   bits 11-0   : y + 2048       (12 bits, covers y -2048..+2047)
+  private static final long X_BIAS = 33_554_432L; // 2^25
+  private static final long Z_BIAS = 33_554_432L;
+  private static final long Y_BIAS = 2048L;
 
   private static long posKey(int x, int y, int z) {
-    return ((long) (x + X_BIAS) << 32) | ((long) (y + Y_BIAS) << 20) | (z + Z_BIAS);
+    return ((long) (x + X_BIAS) << 38) | ((long) (z + Z_BIAS) << 12) | (long) (y + Y_BIAS);
   }
 
   private static List<int[]> neighbors(World world, int x, int y, int z, PathOptions opts) {
@@ -349,7 +485,9 @@ public final class BotPathfinder {
   public static boolean canPassThrough(World world, int x, int y, int z) {
     if (y < world.getMinHeight() || y > world.getMaxHeight()) return true;
     try {
-      if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+      if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+        return true;
+      }
       Block block = world.getBlockAt(x, y, z);
       Material mat = block.getType();
 
@@ -388,7 +526,9 @@ public final class BotPathfinder {
   public static boolean canStandOn(World world, int x, int y, int z) {
     if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
     try {
-      if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+      if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+        return !true;
+      }
       Block block = world.getBlockAt(x, y, z);
       Material mat = block.getType();
 
@@ -452,7 +592,9 @@ public final class BotPathfinder {
   private static boolean isHazard(World world, int x, int y, int z) {
     if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
     try {
-      if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+      if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+        return !true;
+      }
       return HAZARDS.contains(world.getBlockAt(x, y, z).getType());
     } catch (Exception e) {
       return true;
@@ -462,7 +604,9 @@ public final class BotPathfinder {
   private static boolean isWater(World world, int x, int y, int z) {
     if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
     try {
-      if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+      if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+        return !true;
+      }
       Block block = world.getBlockAt(x, y, z);
       if (block.getType() == Material.WATER) return true;
 
@@ -478,7 +622,9 @@ public final class BotPathfinder {
   private static boolean isSlowBlock(World world, int x, int y, int z) {
     if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
     try {
-      if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+      if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+        return !true;
+      }
       return SLOW_BLOCKS.contains(world.getBlockAt(x, y, z).getType());
     } catch (Exception e) {
       return false;
@@ -488,7 +634,9 @@ public final class BotPathfinder {
   private static boolean canBreak(World world, int x, int y, int z) {
     if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
     try {
-      if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+      if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+        return !true;
+      }
       Material mat = world.getBlockAt(x, y, z).getType();
       if (mat.isAir()) return false;
 
@@ -524,7 +672,7 @@ public final class BotPathfinder {
   }
 
   private static Pos snap(World world, int x, int y, int z) {
-    for (int dy = 0; dy <= 3; dy++) {
+    for (int dy = 0; dy <= 8; dy++) {
       if (dy == 0 && walkable(world, x, y, z)) return new Pos(x, y, z);
       if (dy > 0 && walkable(world, x, y + dy, z)) return new Pos(x, y + dy, z);
       if (dy > 0 && walkable(world, x, y - dy, z)) return new Pos(x, y - dy, z);

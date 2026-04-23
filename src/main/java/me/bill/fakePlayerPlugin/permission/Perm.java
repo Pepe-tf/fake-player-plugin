@@ -119,6 +119,8 @@ public final class Perm {
 
   public static final String ATTACK = "fpp.attack";
 
+  public static final String FIND = "fpp.find";
+
   public static final String FOLLOW = "fpp.follow";
 
   public static final String PLACE = "fpp.place";

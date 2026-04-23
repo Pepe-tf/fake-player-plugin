@@ -3,6 +3,7 @@ package me.bill.fakePlayerPlugin.command;
 import java.util.*;
 import java.util.stream.Collectors;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.api.FppAddonCommand;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
@@ -28,6 +29,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
   private final List<FppCommand> commands = new ArrayList<>();
   private final Map<String, FppCommand> byName = new LinkedHashMap<>();
+  private final Map<String, FppAddonCommand> addonByName = new LinkedHashMap<>();
   private final FakePlayerPlugin plugin;
 
   public CommandManager(FakePlayerPlugin plugin) {
@@ -49,6 +51,20 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
   public List<FppCommand> getCommands() {
     return Collections.unmodifiableList(commands);
+  }
+
+  /**
+   * Registers an addon sub-command contributed via {@link me.bill.fakePlayerPlugin.api.FppApi}.
+   * Duplicate names (case-insensitive) are silently ignored.
+   */
+  public void registerAddonCommand(@org.jetbrains.annotations.NotNull FppAddonCommand command) {
+    String key = command.getName().toLowerCase();
+    if (byName.containsKey(key) || addonByName.containsKey(key)) return;
+    addonByName.put(key, command);
+    for (String alias : command.getAliases()) {
+      addonByName.putIfAbsent(alias.toLowerCase(), command);
+    }
+    Config.debug("Registered addon command: fpp " + command.getName());
   }
 
   public void setHelpGui(me.bill.fakePlayerPlugin.gui.HelpGui helpGui) {
@@ -88,6 +104,17 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     FppCommand sub = byName.get(subName);
 
     if (sub == null) {
+      // Check addon commands.
+      FppAddonCommand addon = addonByName.get(subName);
+      if (addon != null) {
+        String perm = addon.getPermission();
+        if (perm != null && !perm.isBlank() && !sender.hasPermission(perm)) {
+          sender.sendMessage(Lang.get("no-permission"));
+          return true;
+        }
+        addon.execute(sender, Arrays.copyOfRange(args, 1, args.length));
+        return true;
+      }
       Config.debug(sender.getName() + " used unknown sub-command: " + subName);
       sender.sendMessage(Lang.get("unknown-command", label));
       return true;
@@ -115,11 +142,20 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
     if (args.length == 1) {
 
-      return commands.stream()
+      List<String> names = commands.stream()
           .filter(cmd -> cmd.canUse(sender))
           .map(FppCommand::getName)
           .filter(name -> name.startsWith(args[0].toLowerCase()))
-          .collect(Collectors.toList());
+          .collect(Collectors.toCollection(ArrayList::new));
+      // Add matching addon command names.
+      for (FppAddonCommand addon : addonByName.values()) {
+        String perm = addon.getPermission();
+        boolean allowed = perm == null || perm.isBlank() || sender.hasPermission(perm);
+        if (allowed && addon.getName().startsWith(args[0].toLowerCase())) {
+          names.add(addon.getName());
+        }
+      }
+      return names;
     }
 
     if (args.length >= 2) {
@@ -127,6 +163,12 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
       if (sub != null && sub.canUse(sender)) {
         return sub.tabComplete(sender, Arrays.copyOfRange(args, 1, args.length));
+      }
+
+      // Check addon tab-complete.
+      FppAddonCommand addon = addonByName.get(args[0].toLowerCase());
+      if (addon != null) {
+        return addon.tabComplete(sender, Arrays.copyOfRange(args, 1, args.length));
       }
     }
 
