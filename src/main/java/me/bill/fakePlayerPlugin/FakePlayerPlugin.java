@@ -69,6 +69,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
   private me.bill.fakePlayerPlugin.command.AttackCommand attackCommand;
   private me.bill.fakePlayerPlugin.command.FollowCommand followCommand;
   private me.bill.fakePlayerPlugin.command.SleepCommand sleepCommand;
+  private me.bill.fakePlayerPlugin.command.FindCommand findCommand;
+  private me.bill.fakePlayerPlugin.command.StopCommand stopCommand;
   private PathfindingService pathfindingService;
   private me.bill.fakePlayerPlugin.command.WaypointStore waypointStore;
   private me.bill.fakePlayerPlugin.command.StorageStore storageStore;
@@ -300,9 +302,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
         new me.bill.fakePlayerPlugin.command.MineCommand(
             this, fakePlayerManager, storageStore, mineSelectionStore, pathfindingService);
     commandManager.register(mineCommand);
-    commandManager.register(
+    findCommand =
         new me.bill.fakePlayerPlugin.command.FindCommand(
-            this, fakePlayerManager, pathfindingService, mineCommand));
+            this, fakePlayerManager, pathfindingService, mineCommand);
+    commandManager.register(findCommand);
     commandManager.register(
         new me.bill.fakePlayerPlugin.command.StorageCommand(fakePlayerManager, storageStore));
     placeCommand =
@@ -349,6 +352,18 @@ public final class FakePlayerPlugin extends JavaPlugin {
     sleepCommand.setAttackCommand(attackCommand);
     sleepCommand.setFollowCommand(followCommand);
     sleepCommand.setMoveCommand(moveCommand);
+    sleepCommand.setFindCommand(findCommand);
+
+    stopCommand = new me.bill.fakePlayerPlugin.command.StopCommand(fakePlayerManager);
+    stopCommand.setMoveCommand(moveCommand);
+    stopCommand.setMineCommand(mineCommand);
+    stopCommand.setUseCommand(useCommand);
+    stopCommand.setPlaceCommand(placeCommand);
+    stopCommand.setAttackCommand(attackCommand);
+    stopCommand.setFollowCommand(followCommand);
+    stopCommand.setFindCommand(findCommand);
+    stopCommand.setSleepCommand(sleepCommand);
+    commandManager.register(stopCommand);
 
     var fppCmd = getCommand("fpp");
     if (fppCmd != null) {

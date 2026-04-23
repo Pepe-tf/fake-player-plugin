@@ -86,6 +86,7 @@ public final class ChunkLoader {
       for (long[] coord : spiral) {
         long key = packKey((int) coord[0], (int) coord[1]);
         if (state.keys.add(key)) {
+          world.getChunkAt((int) coord[0], (int) coord[1]);
           world.addPluginChunkTicket((int) coord[0], (int) coord[1], plugin);
         }
       }
@@ -130,11 +131,13 @@ public final class ChunkLoader {
   }
 
   private static Location resolvePosition(FakePlayer fp) {
+    Location loc = fp.getLiveLocation();
+    if (loc != null && loc.getWorld() != null) return loc;
 
     Player player = fp.getPlayer();
-    if (player != null && player.isValid()) return player.getLocation();
+    if (player != null && player.getWorld() != null) return player.getLocation();
 
-    Location loc = fp.getSpawnLocation();
+    loc = fp.getSpawnLocation();
     if (loc != null && loc.getWorld() != null) return loc;
     return null;
   }

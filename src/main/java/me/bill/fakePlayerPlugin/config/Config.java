@@ -432,7 +432,7 @@ public final class Config {
   }
 
   public static int pathfindingStuckTicks() {
-    return Math.max(1, cfg.getInt("pathfinding.stuck-ticks", 8));
+    return Math.max(1, cfg.getInt("pathfinding.stuck-ticks", 5));
   }
 
   public static double pathfindingStuckThreshold() {

@@ -28,6 +28,7 @@ public final class PathfindingService {
   private static final int SWIM_SURFACE_SCAN = 6;
   private static final int SWIM_CEILING_SCAN = 3;
   private static final int SWIM_NEAR_SURFACE_THRESHOLD = 2;
+  private static final double MIN_TURN_XZ_DIST = 0.2;
 
   public enum Owner {
     MOVE,
@@ -78,6 +79,16 @@ public final class PathfindingService {
         double arrivalDistance,
         double recalcDistance,
         int maxNullPathRecalculations) {
+      this(
+          owner,
+          destinationSupplier,
+          arrivalDistance,
+          recalcDistance,
+          maxNullPathRecalculations,
+          null,
+          null,
+          null,
+          null);
       if (owner == null) throw new IllegalArgumentException("owner");
       if (destinationSupplier == null) throw new IllegalArgumentException("destinationSupplier");
       if (arrivalDistance <= 0) throw new IllegalArgumentException("arrivalDistance must be > 0");
@@ -186,6 +197,8 @@ public final class PathfindingService {
     final int[] nullPathRecalcs = {0};
     final double[] prevX = {initialBot.getLocation().getX()};
     final double[] prevZ = {initialBot.getLocation().getZ()};
+    final boolean[] cleaningUp = {false};
+    final BukkitTask[] taskRef = {null};
 
     final boolean[] isBreaking = {false};
     final int[] breakLeft = {0};
@@ -211,6 +224,9 @@ public final class PathfindingService {
         new BukkitRunnable() {
           @Override
           public void run() {
+            if (cleaningUp[0]) {
+              return;
+            }
 
             Player bot = fp.getPlayer();
             if (bot == null || !bot.isOnline()) {
@@ -265,7 +281,11 @@ public final class PathfindingService {
 
               BotPathfinder.PathOptions opts =
                   new BotPathfinder.PathOptions(
-                      fp.isNavParkour(), fp.isNavBreakBlocks(), fp.isNavPlaceBlocks());
+                      fp.isNavParkour(),
+                      fp.isNavBreakBlocks(),
+                      fp.isNavPlaceBlocks(),
+                      fp.isNavAvoidWater(),
+                      fp.isNavAvoidLava());
 
               List<BotPathfinder.Move> newPath =
                   BotPathfinder.findPathMoves(
@@ -286,7 +306,11 @@ public final class PathfindingService {
                 // Direct path failed — try to compute a detour around the obstacle.
                 BotPathfinder.PathOptions detourOpts =
                     new BotPathfinder.PathOptions(
-                        fp.isNavParkour(), fp.isNavBreakBlocks(), fp.isNavPlaceBlocks());
+                        fp.isNavParkour(),
+                        fp.isNavBreakBlocks(),
+                        fp.isNavPlaceBlocks(),
+                        fp.isNavAvoidWater(),
+                        fp.isNavAvoidLava());
                 int[] dg = BotPathfinder.findDetourGoal(
                     botLoc.getWorld(),
                     botLoc.getBlockX(), botLoc.getBlockY(), botLoc.getBlockZ(),
@@ -341,7 +365,7 @@ public final class PathfindingService {
               if (detourPath[0] != null) {
                 double ddx = dwpCX - botLoc.getX();
                 double ddz = dwpCZ - botLoc.getZ();
-                float dYaw = (float) Math.toDegrees(Math.atan2(-ddx, ddz));
+                float dYaw = stableYaw(bot.getLocation().getYaw(), ddx, ddz);
                 bot.setRotation(dYaw, 0f);
                 NmsPlayerSpawner.setHeadYaw(bot, dYaw);
                 maybeOpenDoorAhead(bot, dYaw, openedDoors);
@@ -366,7 +390,7 @@ public final class PathfindingService {
               // Keep momentum toward target so we don't visibly stutter between segments.
               double dx = dest.getX() - botLoc.getX();
               double dz = dest.getZ() - botLoc.getZ();
-              float coastYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+              float coastYaw = stableYaw(bot.getLocation().getYaw(), dx, dz);
               bot.setRotation(coastYaw, 0f);
               NmsPlayerSpawner.setHeadYaw(bot, coastYaw);
               maybeOpenDoorAhead(bot, coastYaw, openedDoors);
@@ -477,7 +501,15 @@ public final class PathfindingService {
               double sdz = wpCZ - botLoc.getZ();
               double swimDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
               double swimYDist = Math.abs(botLoc.getY() - wp.y());
-              boolean verticalSwimStep = swimDist < 0.25;
+              if (swimDist < Math.max(0.55, Config.pathfindingWaypointArrivalDistance())
+                  && swimYDist < 1.5) {
+                wpIdx[0]++;
+                prevX[0] = botLoc.getX();
+                prevZ[0] = botLoc.getZ();
+                return;
+              }
+
+              boolean verticalSwimStep = swimDist < 0.45;
               float sYaw = verticalSwimStep
                   ? bot.getLocation().getYaw()
                   : (float) Math.toDegrees(Math.atan2(-sdx, sdz));
@@ -523,10 +555,6 @@ public final class PathfindingService {
 
               prevX[0] = botLoc.getX();
               prevZ[0] = botLoc.getZ();
-
-              if (swimDist < 0.8 && swimYDist < 1.5) {
-                wpIdx[0]++;
-              }
               return;
             }
 
@@ -545,7 +573,7 @@ public final class PathfindingService {
                 recalcIn[0] = 0;
                 double cdx = dest.getX() - botLoc.getX();
                 double cdz = dest.getZ() - botLoc.getZ();
-                float coastYaw = (float) Math.toDegrees(Math.atan2(-cdx, cdz));
+                float coastYaw = stableYaw(bot.getLocation().getYaw(), cdx, cdz);
                 bot.setRotation(coastYaw, 0f);
                 NmsPlayerSpawner.setHeadYaw(bot, coastYaw);
                 maybeOpenDoorAhead(bot, coastYaw, openedDoors);
@@ -562,7 +590,7 @@ public final class PathfindingService {
 
             double dx = wpCX - botLoc.getX();
             double dz = wpCZ - botLoc.getZ();
-            float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+            float yaw = stableYaw(bot.getLocation().getYaw(), dx, dz);
             bot.setRotation(yaw, 0f);
             NmsPlayerSpawner.setHeadYaw(bot, yaw);
             maybeOpenDoorAhead(bot, yaw, openedDoors);
@@ -630,6 +658,10 @@ public final class PathfindingService {
           }
 
           private void cleanup(@Nullable Player bot, boolean arrived, boolean pathFailure) {
+            if (cleaningUp[0]) {
+              return;
+            }
+            cleaningUp[0] = true;
             manager.clearNavJump(botUuid);
             manager.unlockNavigation(botUuid);
             Set<DoorRef> opened = openedDoorRefs.remove(botUuid);
@@ -641,8 +673,18 @@ public final class PathfindingService {
               NmsPlayerSpawner.setJumping(bot, false);
               bot.setSprinting(false);
             }
-            cancel();
             sessions.remove(botUuid);
+            BukkitTask currentTask = taskRef[0];
+            if (currentTask != null) {
+              Bukkit.getScheduler()
+                  .runTask(
+                      plugin,
+                      () -> {
+                        if (!currentTask.isCancelled()) {
+                          currentTask.cancel();
+                        }
+                      });
+            }
             if (arrived) {
 
               if (request.lockOnArrival() != null) {
@@ -659,10 +701,7 @@ public final class PathfindingService {
 
           private void walkToward(Player bot, Location target, double dist) {
             Location bl = bot.getLocation();
-            float yaw =
-                (float)
-                    Math.toDegrees(
-                        Math.atan2(-(target.getX() - bl.getX()), target.getZ() - bl.getZ()));
+            float yaw = stableYaw(bot.getLocation().getYaw(), target.getX() - bl.getX(), target.getZ() - bl.getZ());
             bot.setRotation(yaw, 0f);
             NmsPlayerSpawner.setHeadYaw(bot, yaw);
             // Check for a wall directly ahead — if foot AND head are blocked, stop moving
@@ -690,11 +729,19 @@ public final class PathfindingService {
           }
         }.runTaskTimer(plugin, 0L, 1L);
 
+    taskRef[0] = task;
     sessions.put(botUuid, new Session(request.owner(), task));
   }
 
   public static void tickSwimAi(Player bot, boolean navJump, boolean isNavigating) {
     if (!bot.isInWater() && !bot.isInLava()) return;
+
+    if (isNavigating) {
+      if (navJump) {
+        NmsPlayerSpawner.setJumping(bot, true);
+      }
+      return;
+    }
 
     if (navJump) {
       NmsPlayerSpawner.setJumping(bot, true);
@@ -702,6 +749,7 @@ public final class PathfindingService {
     }
 
     if (bot.isInLava()) {
+      bot.setSprinting(true);
       NmsPlayerSpawner.setJumping(bot, true);
       return;
     }
@@ -715,11 +763,20 @@ public final class PathfindingService {
     int distToSurface = distanceToSurface(world, bx, by, bz);
     boolean hasCeiling = hasSolidCeiling(world, bx, by, bz);
 
+    // In shallow water while touching the bottom, passive swim-AI causes jittery
+    // jump/sprint toggles. Let normal ground movement handle these transitions.
+    if (bot.isOnGround() && distToSurface <= 1) {
+      NmsPlayerSpawner.setJumping(bot, false);
+      bot.setSprinting(false);
+      return;
+    }
+
     if (distToSurface == 0) {
       if (isAtWaterExit(world, bx, by, bz, loc.getYaw())) {
         applySwimExitImpulse(bot);
       }
       NmsPlayerSpawner.setJumping(bot, false);
+      bot.setSprinting(false);
       return;
     }
 
@@ -728,16 +785,17 @@ public final class PathfindingService {
         applySwimExitImpulse(bot);
       }
       NmsPlayerSpawner.setJumping(bot, false);
+      bot.setSprinting(false);
       return;
     }
 
     NmsPlayerSpawner.setJumping(bot, true);
+    bot.setSprinting(true);
 
     if (!isNavigating) {
       Location current = bot.getLocation();
       bot.setRotation(current.getYaw(), -20f);
       NmsPlayerSpawner.setHeadYaw(bot, current.getYaw());
-      bot.setSprinting(true);
       NmsPlayerSpawner.setMovementForward(bot, 1.0f);
     }
   }
@@ -746,12 +804,18 @@ public final class PathfindingService {
     Location bl = bot.getLocation();
     double initDist = xzDist(bl, dest);
     if (initDist <= arrivalDistance) return;
-    float initYaw =
-        (float) Math.toDegrees(Math.atan2(-(dest.getX() - bl.getX()), dest.getZ() - bl.getZ()));
+    float initYaw = stableYaw(bot.getLocation().getYaw(), dest.getX() - bl.getX(), dest.getZ() - bl.getZ());
     bot.setRotation(initYaw, 0f);
     NmsPlayerSpawner.setHeadYaw(bot, initYaw);
     bot.setSprinting(initDist > Config.pathfindingSprintDistance());
     NmsPlayerSpawner.setMovementForward(bot, 1.0f);
+  }
+
+  private static float stableYaw(float currentYaw, double dx, double dz) {
+    if (dx * dx + dz * dz < MIN_TURN_XZ_DIST * MIN_TURN_XZ_DIST) {
+      return currentYaw;
+    }
+    return (float) Math.toDegrees(Math.atan2(-dx, dz));
   }
 
   @Nullable

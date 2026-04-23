@@ -84,6 +84,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
   private static Method lerpMotion3Method;
   private static Method setDeltaMovementMethod;
   private static Class<?> vec3Class;
+  private static Field hasImpulseField;
 
   private static Field scanXField, scanYField, scanZField;
 
@@ -198,12 +199,13 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
                             + lerpMotionVec3Method.getName());
                     lerpMotionVec3Method.invoke(this.player, movement);
 
+                    markVelocityChanged();
                     logPostApplyVelocity("GET_MOVEMENT");
                   }
                   case GET_XA -> {
-                    double xa = (double) getXaMethod.invoke(packet);
-                    double ya = (double) getYaMethod.invoke(packet);
-                    double za = (double) getZaMethod.invoke(packet);
+                    double xa = toMotionComponent(getXaMethod.invoke(packet));
+                    double ya = toMotionComponent(getYaMethod.invoke(packet));
+                    double za = toMotionComponent(getZaMethod.invoke(packet));
                     Config.debugNms(
                         "[KB-DEBUG] GET_XA velocity=(" + xa + "," + ya + "," + za + ")");
                     if (lerpMotion3Method != null) {
@@ -215,12 +217,13 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
                               .newInstance(xa, ya, za);
                       setDeltaMovementMethod.invoke(this.player, v);
                     }
+                    markVelocityChanged();
                     logPostApplyVelocity("GET_XA");
                   }
                   case FIELD_SCAN -> {
-                    double fx = (double) scanXField.get(packet);
-                    double fy = (double) scanYField.get(packet);
-                    double fz = (double) scanZField.get(packet);
+                    double fx = toMotionComponent(scanXField.get(packet));
+                    double fy = toMotionComponent(scanYField.get(packet));
+                    double fz = toMotionComponent(scanZField.get(packet));
                     Config.debugNms(
                         "[KB-DEBUG] FIELD_SCAN velocity=(" + fx + "," + fy + "," + fz + ")");
                     if (lerpMotion3Method != null) {
@@ -232,6 +235,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
                               .newInstance(fx, fy, fz);
                       setDeltaMovementMethod.invoke(this.player, v);
                     }
+                    markVelocityChanged();
                     logPostApplyVelocity("FIELD_SCAN");
                   }
                   case NONE ->
@@ -274,6 +278,30 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     } catch (Exception e) {
       Config.debugNms("[KB-DEBUG] could not read post-apply velocity: " + e.getMessage());
     }
+  }
+
+  private void markVelocityChanged() {
+    this.player.hurtMarked = true;
+    try {
+      if (hasImpulseField == null) {
+        hasImpulseField = findDeclaredField(ServerPlayer.class, "hasImpulse", boolean.class);
+      }
+      if (hasImpulseField != null) {
+        hasImpulseField.setBoolean(this.player, true);
+      }
+    } catch (Exception e) {
+      Config.debugNms("[KB-DEBUG] could not set hasImpulse: " + e.getMessage());
+    }
+  }
+
+  private static double toMotionComponent(Object value) {
+    if (!(value instanceof Number number)) {
+      throw new IllegalArgumentException("Unsupported motion component type: " + value);
+    }
+    if (value instanceof Double || value instanceof Float) {
+      return number.doubleValue();
+    }
+    return number.doubleValue() / 8000.0D;
   }
 
   private static synchronized KbStrategy resolveStrategy() {
@@ -353,12 +381,9 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
         {"motX", "motY", "motZ"},
       };
       for (String[] triplet : nameTriplets) {
-        Field fx =
-            findDeclaredField(ClientboundSetEntityMotionPacket.class, triplet[0], double.class);
-        Field fy =
-            findDeclaredField(ClientboundSetEntityMotionPacket.class, triplet[1], double.class);
-        Field fz =
-            findDeclaredField(ClientboundSetEntityMotionPacket.class, triplet[2], double.class);
+        Field fx = findDeclaredNumericField(ClientboundSetEntityMotionPacket.class, triplet[0]);
+        Field fy = findDeclaredNumericField(ClientboundSetEntityMotionPacket.class, triplet[1]);
+        Field fz = findDeclaredNumericField(ClientboundSetEntityMotionPacket.class, triplet[2]);
         if (fx != null && fy != null && fz != null) {
           scanXField = fx;
           scanYField = fy;
@@ -382,7 +407,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
 
       java.util.List<Field> doubleFields = new java.util.ArrayList<>();
       for (Field f : ClientboundSetEntityMotionPacket.class.getDeclaredFields()) {
-        if (f.getType() == double.class) {
+        if (isNumericType(f.getType())) {
           f.setAccessible(true);
           doubleFields.add(f);
         }
@@ -458,5 +483,26 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     } catch (NoSuchFieldException ignored) {
     }
     return null;
+  }
+
+  private static Field findDeclaredNumericField(Class<?> clazz, String name) {
+    try {
+      Field f = clazz.getDeclaredField(name);
+      if (isNumericType(f.getType())) {
+        f.setAccessible(true);
+        return f;
+      }
+    } catch (NoSuchFieldException ignored) {
+    }
+    return null;
+  }
+
+  private static boolean isNumericType(Class<?> type) {
+    return type == double.class
+        || type == float.class
+        || type == int.class
+        || type == long.class
+        || type == short.class
+        || type == byte.class;
   }
 }

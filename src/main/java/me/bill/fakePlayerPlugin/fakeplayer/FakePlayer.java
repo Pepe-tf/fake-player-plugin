@@ -92,6 +92,10 @@ public final class FakePlayer {
 
   private boolean navPlaceBlocks = Config.pathfindingPlaceBlocks();
 
+  private boolean navAvoidWater = false;
+
+  private boolean navAvoidLava = false;
+
   private boolean navSprintJump = Config.pathfindingSprintJump();
 
   private boolean swimAiEnabled = Config.swimAiEnabled();
@@ -160,7 +164,7 @@ public final class FakePlayer {
   }
 
   public Location getLiveLocation() {
-    if (player != null && player.isValid()) return player.getLocation();
+    if (player != null && player.isOnline() && !player.isDead()) return player.getLocation();
     return spawnLocation;
   }
 
@@ -403,6 +407,22 @@ public final class FakePlayer {
 
   public void setNavPlaceBlocks(boolean v) {
     this.navPlaceBlocks = v;
+  }
+
+  public boolean isNavAvoidWater() {
+    return navAvoidWater;
+  }
+
+  public void setNavAvoidWater(boolean v) {
+    this.navAvoidWater = v;
+  }
+
+  public boolean isNavAvoidLava() {
+    return navAvoidLava;
+  }
+
+  public void setNavAvoidLava(boolean v) {
+    this.navAvoidLava = v;
   }
 
   public boolean isNavSprintJump() {

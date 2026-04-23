@@ -71,8 +71,13 @@ public final class BotPathfinder {
     }
   }
 
-  public record PathOptions(boolean parkour, boolean breakBlocks, boolean placeBlocks) {
-    public static final PathOptions DEFAULT = new PathOptions(false, false, false);
+  public record PathOptions(
+      boolean parkour,
+      boolean breakBlocks,
+      boolean placeBlocks,
+      boolean avoidWater,
+      boolean avoidLava) {
+    public static final PathOptions DEFAULT = new PathOptions(false, false, false, false, false);
 
     public boolean anyEnabled() {
       return parkour || breakBlocks || placeBlocks;
@@ -225,8 +230,8 @@ public final class BotPathfinder {
       tx = inter[0]; ty = inter[1]; tz = inter[2];
     }
 
-    Pos start = snap(world, sx, sy, sz);
-    Pos goal = snap(world, tx, ty, tz);
+    Pos start = snap(world, sx, sy, sz, opts, true);
+    Pos goal = snap(world, tx, ty, tz, opts, false);
     if (start == null || goal == null) return null;
     if (start.equals(goal))
       return List.of(new Move(start.x(), start.y(), start.z(), MoveType.WALK));
@@ -324,8 +329,15 @@ public final class BotPathfinder {
       boolean feetClear = canPassThrough(world, nx, y, nz);
       boolean headClear = canPassThrough(world, nx, y + 1, nz);
       boolean floorSolid = canStandOn(world, nx, y - 1, nz);
+      boolean srcInWater = isWater(world, x, y, z) || isWater(world, x, y + 1, z);
+      boolean srcInLava = isLava(world, x, y, z) || isLava(world, x, y + 1, z);
+      boolean destInWater = isWater(world, nx, y, nz) || isWater(world, nx, y + 1, nz);
+      boolean destInLava =
+          isLava(world, nx, y, nz) || isLava(world, nx, y + 1, nz) || isLava(world, nx, y - 1, nz);
 
       if (feetClear && headClear && floorSolid) {
+        if (opts.avoidWater() && destInWater && !srcInWater) continue;
+        if (opts.avoidLava() && destInLava && !srcInLava) continue;
         int cost = base;
 
         if (isWater(world, nx, y, nz)) cost += WATER_PEN;
@@ -394,7 +406,9 @@ public final class BotPathfinder {
         }
       }
 
-      if (isWater(world, nx, y, nz) && isWater(world, nx, y + 1, nz)) {
+      if ((!opts.avoidWater() || srcInWater)
+          && isWater(world, nx, y, nz)
+          && isWater(world, nx, y + 1, nz)) {
 
         out.add(new int[] {nx, y, nz, SWIM_C, SW});
 
@@ -419,7 +433,7 @@ public final class BotPathfinder {
       }
     }
 
-    if (isWater(world, x, y, z)) {
+    if ((!opts.avoidWater() || isWater(world, x, y + 1, z)) && isWater(world, x, y, z)) {
       if (isWater(world, x, y + 1, z) || canPassThrough(world, x, y + 1, z)) {
         out.add(new int[] {x, y + 1, z, SWIM_C, SW});
       }
@@ -619,6 +633,18 @@ public final class BotPathfinder {
     }
   }
 
+  private static boolean isLava(World world, int x, int y, int z) {
+    if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
+    try {
+      if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+        return !true;
+      }
+      return world.getBlockAt(x, y, z).getType() == Material.LAVA;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
   private static boolean isSlowBlock(World world, int x, int y, int z) {
     if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
     try {
@@ -671,14 +697,15 @@ public final class BotPathfinder {
         || canStandOn(world, x, y, z - 1);
   }
 
-  private static Pos snap(World world, int x, int y, int z) {
+  private static Pos snap(World world, int x, int y, int z, PathOptions opts, boolean allowFluidStart) {
     for (int dy = 0; dy <= 8; dy++) {
       if (dy == 0 && walkable(world, x, y, z)) return new Pos(x, y, z);
       if (dy > 0 && walkable(world, x, y + dy, z)) return new Pos(x, y + dy, z);
       if (dy > 0 && walkable(world, x, y - dy, z)) return new Pos(x, y - dy, z);
     }
 
-    if (isWater(world, x, y, z)) return new Pos(x, y, z);
+    if (isWater(world, x, y, z) && (allowFluidStart || !opts.avoidWater())) return new Pos(x, y, z);
+    if (isLava(world, x, y, z) && (allowFluidStart || !opts.avoidLava())) return new Pos(x, y, z);
     return null;
   }
 

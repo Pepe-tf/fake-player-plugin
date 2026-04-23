@@ -127,6 +127,7 @@ permissions:
       fpp.find:                 true
       fpp.follow:               true
       fpp.sleep:                true
+      fpp.stop:                 true
       fpp.waypoint:             true
       fpp.badword:              true
       fpp.rename:               true
@@ -590,8 +591,12 @@ permissions:
     description: Make a bot continuously follow a player using pathfinding.
     default: op
 
-  fpp.sleep:
+   fpp.sleep:
     description: Set a sleep origin and radius for a bot — the bot auto-sleeps at night and wakes at dawn.
+    default: op
+
+   fpp.stop:
+    description: Stop all active tasks (move/mine/use/place/attack/follow/find/sleep) for one or all bots.
     default: op
 
   # ════════════════════════════════════════════════════════════════════════════

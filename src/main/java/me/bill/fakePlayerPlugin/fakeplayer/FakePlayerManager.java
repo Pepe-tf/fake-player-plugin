@@ -2537,6 +2537,8 @@ public class FakePlayerManager {
         fp.isNavParkour(),
         fp.isNavBreakBlocks(),
         fp.isNavPlaceBlocks(),
+        fp.isNavAvoidWater(),
+        fp.isNavAvoidLava(),
         fp.isSwimAiEnabled(),
         fp.getChunkLoadRadius(),
         fp.getPing(),

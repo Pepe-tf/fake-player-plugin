@@ -227,7 +227,7 @@ pathfinding:
   recalc-interval: 60            # Heartbeat recalc interval in ticks
 
   # ── Stuck Detection ────────────────────────────────────────────────────────
-  stuck-ticks: 8                 # Low-movement ticks before a bot is considered stuck
+  stuck-ticks: 5                 # Low-movement ticks before a bot is considered stuck
   stuck-threshold: 0.04          # Min horizontal movement per tick before triggering stuck logic
 
   # ── Block Interaction ──────────────────────────────────────────────────────

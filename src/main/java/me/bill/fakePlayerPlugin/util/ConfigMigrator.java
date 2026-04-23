@@ -1124,7 +1124,7 @@ public final class ConfigMigrator {
     changed |= setIfMissing(cfg, "pathfinding.sprint-distance", 6.0);
     changed |= setIfMissing(cfg, "pathfinding.follow-recalc-distance", 3.5);
     changed |= setIfMissing(cfg, "pathfinding.recalc-interval", 60);
-    changed |= setIfMissing(cfg, "pathfinding.stuck-ticks", 8);
+    changed |= setIfMissing(cfg, "pathfinding.stuck-ticks", 5);
     changed |= setIfMissing(cfg, "pathfinding.stuck-threshold", 0.04);
     changed |= setIfMissing(cfg, "pathfinding.break-ticks", 15);
     changed |= setIfMissing(cfg, "pathfinding.place-ticks", 5);

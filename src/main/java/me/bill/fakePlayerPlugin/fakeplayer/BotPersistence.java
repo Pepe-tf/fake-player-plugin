@@ -670,6 +670,8 @@ public final class BotPersistence {
       section.put("nav-parkour", fp.isNavParkour());
       section.put("nav-break-blocks", fp.isNavBreakBlocks());
       section.put("nav-place-blocks", fp.isNavPlaceBlocks());
+      section.put("nav-avoid-water", fp.isNavAvoidWater());
+      section.put("nav-avoid-lava", fp.isNavAvoidLava());
       section.put("nav-sprint-jump", fp.isNavSprintJump());
       section.put("swim-ai-enabled", fp.isSwimAiEnabled());
       section.put("chunk-load-radius", fp.getChunkLoadRadius());
@@ -769,6 +771,8 @@ public final class BotPersistence {
                     row.navParkour(),
                     row.navBreakBlocks(),
                     row.navPlaceBlocks(),
+                    row.navAvoidWater(),
+                    row.navAvoidLava(),
                     Config.pathfindingSprintJump(),
                     row.swimAiEnabled(),
                     row.ping(),
@@ -843,6 +847,10 @@ public final class BotPersistence {
         Object navPbRaw = map.get("nav-place-blocks");
         boolean navPlaceBlocks =
             navPbRaw instanceof Boolean npb ? npb : Config.pathfindingPlaceBlocks();
+        Object navAwRaw = map.get("nav-avoid-water");
+        boolean navAvoidWater = navAwRaw instanceof Boolean naw && naw;
+        Object navAlRaw = map.get("nav-avoid-lava");
+        boolean navAvoidLava = navAlRaw instanceof Boolean nal && nal;
         Object navSjRaw = map.get("nav-sprint-jump");
         boolean navSprintJump = navSjRaw instanceof Boolean nsj ? nsj : Config.pathfindingSprintJump();
         Object swimAiRaw = map.get("swim-ai-enabled");
@@ -905,6 +913,8 @@ public final class BotPersistence {
                 navParkour,
                 navBreakBlocks,
                 navPlaceBlocks,
+                navAvoidWater,
+                navAvoidLava,
                 navSprintJump,
                 swimAiEnabled,
                 ping,
@@ -977,6 +987,8 @@ public final class BotPersistence {
       fp.setNavParkour(sb.navParkour);
       fp.setNavBreakBlocks(sb.navBreakBlocks);
       fp.setNavPlaceBlocks(sb.navPlaceBlocks);
+      fp.setNavAvoidWater(sb.navAvoidWater);
+      fp.setNavAvoidLava(sb.navAvoidLava);
       fp.setNavSprintJump(sb.navSprintJump);
       fp.setSwimAiEnabled(sb.swimAiEnabled);
       fp.setPing(sb.ping);
@@ -1572,6 +1584,8 @@ public final class BotPersistence {
       boolean navParkour,
       boolean navBreakBlocks,
       boolean navPlaceBlocks,
+      boolean navAvoidWater,
+      boolean navAvoidLava,
       boolean navSprintJump,
       boolean swimAiEnabled,
       int ping,
