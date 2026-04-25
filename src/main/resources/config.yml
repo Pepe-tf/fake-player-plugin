@@ -232,7 +232,6 @@ pathfinding:
   patrol-arrival-distance: 1.5   # Reached-waypoint radius for patrol loops
   waypoint-arrival-distance: 0.65 # Active path waypoint snap radius
   sprint-distance: 6.0           # Start sprinting when farther than this many blocks
-  sprint-jump: false             # Attempt rhythmic sprint-jumps while navigating on flat ground
   follow-recalc-distance: 3.5    # Moving targets force a recalc after moving this far
   recalc-interval: 60            # Heartbeat recalc interval in ticks
 

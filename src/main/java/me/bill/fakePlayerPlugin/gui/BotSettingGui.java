@@ -1666,7 +1666,6 @@ public final class BotSettingGui implements Listener {
       case "nav_parkour" -> bot.isNavParkour() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "nav_break_blocks" -> bot.isNavBreakBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "nav_place_blocks" -> bot.isNavPlaceBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
-      case "nav_sprint_jump" -> bot.isNavSprintJump() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pve_enabled" -> bot.isPveEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pve_move" -> bot.isPveMoveToTarget() ? "✔ ᴄʜᴀꜱɪɴɢ" : "✘ ꜱᴛᴀᴛɪᴏɴᴀʀʏ";
       case "share_control" -> bot.getSharedControllers().size() + " ꜱʜᴀʀᴇᴅ";
@@ -1713,7 +1712,6 @@ public final class BotSettingGui implements Listener {
       case "nav_parkour" -> bot.isNavParkour();
       case "nav_break_blocks" -> bot.isNavBreakBlocks();
       case "nav_place_blocks" -> bot.isNavPlaceBlocks();
-      case "nav_sprint_jump" -> bot.isNavSprintJump();
       case "pve_enabled" -> bot.isPveEnabled();
       case "pve_move" -> bot.isPveMoveToTarget();
       case "follow_player" -> {
@@ -1738,7 +1736,6 @@ public final class BotSettingGui implements Listener {
       case "nav_break_blocks" ->
           bot.isNavBreakBlocks() ? Material.DIAMOND_PICKAXE : Material.IRON_PICKAXE;
       case "nav_place_blocks" -> bot.isNavPlaceBlocks() ? Material.GRASS_BLOCK : Material.DIRT;
-      case "nav_sprint_jump" -> bot.isNavSprintJump() ? Material.FEATHER : Material.LEATHER_BOOTS;
       case "pve_enabled" -> bot.isPveEnabled() ? Material.IRON_SWORD : Material.WOODEN_SWORD;
       case "pve_move" -> bot.isPveMoveToTarget() ? Material.GOLDEN_BOOTS : Material.CHAINMAIL_BOOTS;
       case "share_control" -> Material.PLAYER_HEAD;
@@ -2124,15 +2121,6 @@ public final class BotSettingGui implements Listener {
                     + "ɢʟᴏʙᴀʟ: "
                     + (Config.pathfindingParkour() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
                 Material.SLIME_BALL,
-                false),
-            BotEntry.toggle(
-                "nav_sprint_jump",
-                "ꜱᴘʀɪɴᴛ-ᴊᴜᴍᴘ",
-                "ʙᴏᴛ ᴊᴜᴍᴘꜱ ᴘᴇʀɪᴏᴅɪᴄᴀʟʟʏ ᴡʜɪʟᴇ\n"
-                    + "ꜱᴘʀɪɴᴛɪɴɢ ᴅᴜʀɪɴɢ ᴘᴀᴛʜꜰɪɴᴅɪɴɢ.\n"
-                    + "ɢʟᴏʙᴀʟ: "
-                    + (Config.pathfindingSprintJump() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
-                Material.FEATHER,
                 false),
             BotEntry.toggle(
                 "nav_break_blocks",

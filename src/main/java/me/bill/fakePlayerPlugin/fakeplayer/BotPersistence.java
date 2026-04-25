@@ -709,7 +709,6 @@ public final class BotPersistence {
       section.put("nav-place-blocks", fp.isNavPlaceBlocks());
       section.put("nav-avoid-water", fp.isNavAvoidWater());
       section.put("nav-avoid-lava", fp.isNavAvoidLava());
-      section.put("nav-sprint-jump", fp.isNavSprintJump());
       section.put("swim-ai-enabled", fp.isSwimAiEnabled());
       section.put("auto-eat-enabled", fp.isAutoEatEnabled());
       section.put("auto-place-bed-enabled", fp.isAutoPlaceBedEnabled());
@@ -819,7 +818,6 @@ public final class BotPersistence {
                     row.navPlaceBlocks(),
                     row.navAvoidWater(),
                     row.navAvoidLava(),
-                    Config.pathfindingSprintJump(),
                     row.swimAiEnabled(),
                     row.ping(),
                     row.rightClickCmd(),
@@ -915,8 +913,6 @@ public final class BotPersistence {
         boolean navAvoidWater = navAwRaw instanceof Boolean naw && naw;
         Object navAlRaw = map.get("nav-avoid-lava");
         boolean navAvoidLava = navAlRaw instanceof Boolean nal && nal;
-        Object navSjRaw = map.get("nav-sprint-jump");
-        boolean navSprintJump = navSjRaw instanceof Boolean nsj ? nsj : Config.pathfindingSprintJump();
         Object swimAiRaw = map.get("swim-ai-enabled");
         boolean swimAiEnabled = !(swimAiRaw instanceof Boolean sae) || sae;
         Object autoEatRaw = map.get("auto-eat-enabled");
@@ -995,7 +991,6 @@ public final class BotPersistence {
                 navPlaceBlocks,
                 navAvoidWater,
                 navAvoidLava,
-                navSprintJump,
                 swimAiEnabled,
                 ping,
                 rightClickCommand,
@@ -1074,7 +1069,6 @@ public final class BotPersistence {
       fp.setNavPlaceBlocks(sb.navPlaceBlocks);
       fp.setNavAvoidWater(sb.navAvoidWater);
       fp.setNavAvoidLava(sb.navAvoidLava);
-      fp.setNavSprintJump(sb.navSprintJump);
       fp.setSwimAiEnabled(sb.swimAiEnabled);
       fp.setAutoEatEnabled(sb.autoEatEnabled);
       fp.setAutoPlaceBedEnabled(sb.autoPlaceBedEnabled);
@@ -1752,7 +1746,6 @@ public final class BotPersistence {
       boolean navPlaceBlocks,
       boolean navAvoidWater,
       boolean navAvoidLava,
-      boolean navSprintJump,
       boolean swimAiEnabled,
       int ping,
       String rightClickCommand,

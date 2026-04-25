@@ -75,8 +75,6 @@ public final class FppBotImpl implements FppBot {
   @Override public void    setNavBreakBlocks(boolean e)      { fp.setNavBreakBlocks(e); }
   @Override public boolean isNavPlaceBlocks()                { return fp.isNavPlaceBlocks(); }
   @Override public void    setNavPlaceBlocks(boolean e)      { fp.setNavPlaceBlocks(e); }
-  @Override public boolean isNavSprintJump()                 { return fp.isNavSprintJump(); }
-  @Override public void    setNavSprintJump(boolean e)       { fp.setNavSprintJump(e); }
   @Override public int     getChunkLoadRadius()              { return fp.getChunkLoadRadius(); }
   @Override public void    setChunkLoadRadius(int r)         { fp.setChunkLoadRadius(r); }
 

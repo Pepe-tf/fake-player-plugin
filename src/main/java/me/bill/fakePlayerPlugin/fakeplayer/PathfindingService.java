@@ -20,6 +20,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.Openable;
 import org.bukkit.block.data.type.Door;
+import org.bukkit.block.data.type.Gate;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
@@ -106,12 +107,12 @@ public final class PathfindingService {
 
   private record Session(Owner owner, int taskId) {}
 
-  private record DoorRef(UUID worldId, int x, int y, int z) {}
+  private record OpenableRef(UUID worldId, int x, int y, int z) {}
 
   private final FakePlayerPlugin plugin;
   private final FakePlayerManager manager;
   private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
-  private final Map<UUID, Set<DoorRef>> openedDoorRefs = new ConcurrentHashMap<>();
+  private final Map<UUID, Set<OpenableRef>> openedDoorRefs = new ConcurrentHashMap<>();
 
   private Material cachedPlaceMaterial = null;
   private String cachedPlaceMaterialName = null;
@@ -143,7 +144,7 @@ public final class PathfindingService {
     if (session != null) {
       FppScheduler.cancelTask(session.taskId());
     }
-    Set<DoorRef> opened = openedDoorRefs.remove(botUuid);
+    Set<OpenableRef> opened = openedDoorRefs.remove(botUuid);
     if (opened != null) {
       closeOpenedDoors(opened, null, true);
     }
@@ -226,8 +227,6 @@ public final class PathfindingService {
     final double[] prevZ = {initialBot.getLocation().getZ()};
     final boolean[] cleaningUp = {false};
     final int[] taskIdRef = {-1};
-    final boolean[] sprintJumpEnabled = {fp.isNavSprintJump()};
-
     final boolean[] isBreaking = {false};
     final int[] breakLeft = {0};
     final Location[] breakLoc = {null};
@@ -248,7 +247,7 @@ public final class PathfindingService {
     final int[] detourWpIdx = {0};
     final int[] detourNullCount = {0};
 
-    final Set<DoorRef> openedDoors = ConcurrentHashMap.newKeySet();
+    final Set<OpenableRef> openedDoors = ConcurrentHashMap.newKeySet();
     openedDoorRefs.put(botUuid, openedDoors);
 
     Runnable tick =
@@ -274,7 +273,6 @@ public final class PathfindingService {
             }
 
             Location botLoc = bot.getLocation();
-            sprintJumpEnabled[0] = fp.isNavSprintJump();
             closeOpenedDoors(openedDoors, botLoc, false);
 
             // Consume nav jump state on the entity's region thread — no cross-thread race.
@@ -283,19 +281,21 @@ public final class PathfindingService {
             // on the same thread as the nav tick that called requestNavJump().
             Integer navHold = manager.getNavJumpHolding(botUuid);
             if (navHold != null) {
-              if (!sprintJumpEnabled[0]) {
+              NmsPlayerSpawner.setJumping(bot, true);
+              if (((org.bukkit.entity.Entity) bot).isOnGround()
+                  && !bot.isInWater()
+                  && !bot.isInLava()) {
+                org.bukkit.util.Vector v = bot.getVelocity();
+                v.setY(Math.max(v.getY(), 0.42));
+                NmsPlayerSpawner.applyServerVelocity(bot, v);
+              }
+              if (navHold <= 1) {
                 manager.clearNavJump(botUuid);
-              } else {
-                if (navHold == 5
-                    && ((org.bukkit.entity.Entity) bot).isOnGround()
-                    && !bot.isInWater()
-                    && !bot.isInLava()) {
-                  org.bukkit.util.Vector v = bot.getVelocity();
-                  v.setY(0.42);
-                  bot.setVelocity(v);
+                if (!bot.isInWater() && !bot.isInLava()) {
+                  NmsPlayerSpawner.setJumping(bot, false);
                 }
-                if (navHold <= 1) manager.clearNavJump(botUuid);
-                else manager.setNavJumpHolding(botUuid, navHold - 1);
+              } else {
+                manager.setNavJumpHolding(botUuid, navHold - 1);
               }
             }
 
@@ -450,8 +450,7 @@ public final class PathfindingService {
                 maybeOpenDoorAhead(bot, dYaw, openedDoors);
                 bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
                 NmsPlayerSpawner.setMovementForward(bot, 1.0f);
-                if (sprintJumpEnabled[0]
-                    && !bot.isInWater()
+                if (!bot.isInWater()
                     && !bot.isInLava()
                     && dwp.y() > botLoc.getBlockY()) {
                   manager.requestNavJump(botUuid);
@@ -560,9 +559,7 @@ public final class PathfindingService {
               NmsPlayerSpawner.setMovementForward(bot, 0f);
               bot.setSprinting(false);
 
-              if (sprintJumpEnabled[0]) {
-                manager.requestNavJump(botUuid);
-              }
+              manager.requestNavJump(botUuid);
 
               if (botLoc.getY() - botLoc.getBlockY() > 0.4) {
                 Block below =
@@ -750,7 +747,7 @@ public final class PathfindingService {
               boolean exitingFluid = applyShorelineExitAssist(bot, yaw, botLoc, wp.y());
               NmsPlayerSpawner.setJumping(bot, exitingFluid || wp.y() >= botLoc.getBlockY());
             } else {
-              if (sprintJumpEnabled[0] && wp.y() > botLoc.getBlockY()) {
+              if (wp.y() > botLoc.getBlockY()) {
                 // Fire jump whenever the next waypoint is above us and we're within 2.5 blocks XZ,
                 // not just when we're at the waypoint — the bot needs to be jumping on approach.
                 if (wpXZDist <= 2.5) {
@@ -759,7 +756,7 @@ public final class PathfindingService {
               } else if (wp.type() == BotPathfinder.MoveType.PARKOUR
                   && wpXZDist >= 1.0
                   && wpXZDist <= 3.5) {
-                if (sprintJumpEnabled[0]) manager.requestNavJump(botUuid);
+                manager.requestNavJump(botUuid);
               }
             }
 
@@ -784,7 +781,7 @@ public final class PathfindingService {
                     }
                   } else if (feetBlocked && !headBlocked && aboveClear) {
                     // Single-block step — jump over it.
-                    if (sprintJumpEnabled[0]) manager.requestNavJump(botUuid);
+                    manager.requestNavJump(botUuid);
                     hardWallStuckFor[0] = 0;
                   } else {
                     hardWallStuckFor[0] = 0;
@@ -811,7 +808,7 @@ public final class PathfindingService {
             cleaningUp[0] = true;
             manager.clearNavJump(botUuid);
             manager.unlockNavigation(botUuid);
-            Set<DoorRef> opened = openedDoorRefs.remove(botUuid);
+            Set<OpenableRef> opened = openedDoorRefs.remove(botUuid);
             if (opened != null) {
               closeOpenedDoors(opened, bot != null ? bot.getLocation() : null, true);
             }
@@ -886,7 +883,7 @@ public final class PathfindingService {
             bot.setSprinting(dist > Config.pathfindingSprintDistance());
             NmsPlayerSpawner.setMovementForward(bot, 1.0f);
             // Single-block step ahead — jump over it.
-            if (sprintJumpEnabled[0] && !bot.isInWater() && !bot.isInLava()) {
+            if (!bot.isInWater() && !bot.isInLava()) {
               if (feetBlocked && !headBlocked) {
                 manager.requestNavJump(botUuid);
               }
@@ -1021,29 +1018,36 @@ public final class PathfindingService {
     return null;
   }
 
-  private static void maybeOpenDoorAhead(Player bot, float yaw, Set<DoorRef> openedDoors) {
+  private static void maybeOpenDoorAhead(Player bot, float yaw, Set<OpenableRef> openedDoors) {
     if (bot.isInWater() || bot.isInLava()) return;
     Location bl = bot.getLocation();
     World w = bl.getWorld();
-    int fx = (int) Math.floor(bl.getX() + Math.sin(-Math.toRadians(yaw)) * 0.8);
-    int fz = (int) Math.floor(bl.getZ() + Math.cos(-Math.toRadians(yaw)) * 0.8);
     int fy = bl.getBlockY();
-    tryOpenDoor(w.getBlockAt(fx, fy, fz), openedDoors);
-    tryOpenDoor(w.getBlockAt(fx, fy + 1, fz), openedDoors);
+    int bx = bl.getBlockX();
+    int bz = bl.getBlockZ();
+    tryOpenPassage(w.getBlockAt(bx, fy, bz), openedDoors);
+    tryOpenPassage(w.getBlockAt(bx, fy + 1, bz), openedDoors);
+    for (double dist : new double[] {0.8, 1.2}) {
+      int fx = (int) Math.floor(bl.getX() + Math.sin(-Math.toRadians(yaw)) * dist);
+      int fz = (int) Math.floor(bl.getZ() + Math.cos(-Math.toRadians(yaw)) * dist);
+      tryOpenPassage(w.getBlockAt(fx, fy, fz), openedDoors);
+      tryOpenPassage(w.getBlockAt(fx, fy + 1, fz), openedDoors);
+    }
   }
 
-  private static void tryOpenDoor(Block rawBlock, Set<DoorRef> openedDoors) {
-    Block lower = normalizeDoorLowerHalf(rawBlock);
-    if (lower == null) return;
-    if (!(lower.getBlockData() instanceof Door doorData)) return;
-    if (!doorData.isOpen()) {
-      setDoorOpen(lower, true);
+  private static void tryOpenPassage(Block rawBlock, Set<OpenableRef> openedDoors) {
+    Block managed = normalizeManagedOpenable(rawBlock);
+    if (managed == null) return;
+    if (!(managed.getBlockData() instanceof Openable openable)) return;
+    if (!openable.isOpen()) {
+      setManagedOpenable(managed, true);
     }
-    openedDoors.add(new DoorRef(lower.getWorld().getUID(), lower.getX(), lower.getY(), lower.getZ()));
+    openedDoors.add(new OpenableRef(managed.getWorld().getUID(), managed.getX(), managed.getY(), managed.getZ()));
   }
 
   @Nullable
-  private static Block normalizeDoorLowerHalf(Block block) {
+  private static Block normalizeManagedOpenable(Block block) {
+    if (block.getBlockData() instanceof Gate) return block;
     if (!(block.getBlockData() instanceof Door doorData)) return null;
     if (doorData.getHalf() == Bisected.Half.TOP) {
       Block lower = block.getRelative(0, -1, 0);
@@ -1052,33 +1056,40 @@ public final class PathfindingService {
     return block;
   }
 
-  private static void setDoorOpen(Block lower, boolean open) {
-    if (!(lower.getBlockData() instanceof Door lowerData)) return;
+  private static void setManagedOpenable(Block base, boolean open) {
+    if (base.getBlockData() instanceof Gate gateData) {
+      if (gateData.isOpen() != open) {
+        gateData.setOpen(open);
+        base.setBlockData(gateData, true);
+      }
+      return;
+    }
+    if (!(base.getBlockData() instanceof Door lowerData)) return;
     if (lowerData.isOpen() != open) {
       lowerData.setOpen(open);
-      lower.setBlockData(lowerData, true);
+      base.setBlockData(lowerData, true);
     }
-    Block upper = lower.getRelative(0, 1, 0);
+    Block upper = base.getRelative(0, 1, 0);
     if (upper.getBlockData() instanceof Door upperData && upperData.isOpen() != open) {
       upperData.setOpen(open);
       upper.setBlockData(upperData, true);
     }
   }
 
-  private static void closeOpenedDoors(Set<DoorRef> openedDoors, @Nullable Location botLoc, boolean force) {
+  private static void closeOpenedDoors(Set<OpenableRef> openedDoors, @Nullable Location botLoc, boolean force) {
     if (openedDoors.isEmpty()) return;
-    for (DoorRef ref : Set.copyOf(openedDoors)) {
+    for (OpenableRef ref : Set.copyOf(openedDoors)) {
       World w = Bukkit.getWorld(ref.worldId());
       if (w == null) {
         openedDoors.remove(ref);
         continue;
       }
-      Block lower = w.getBlockAt(ref.x(), ref.y(), ref.z());
-      if (!(lower.getBlockData() instanceof Door doorData)) {
+      Block managed = w.getBlockAt(ref.x(), ref.y(), ref.z());
+      if (!(managed.getBlockData() instanceof Openable openable)) {
         openedDoors.remove(ref);
         continue;
       }
-      if (!doorData.isOpen()) {
+      if (!openable.isOpen()) {
         openedDoors.remove(ref);
         continue;
       }
@@ -1095,7 +1106,7 @@ public final class PathfindingService {
         }
       }
 
-      setDoorOpen(lower, false);
+      setManagedOpenable(managed, false);
       openedDoors.remove(ref);
     }
   }

@@ -263,7 +263,9 @@ public class FakePlayerManager {
                       && plugin.getPathfindingService().isNavigating(fp.getUuid());
 
                   if (fp.isSwimAiEnabled()) {
-                    PathfindingService.tickSwimAi(bot, false, isNavigating);
+                    boolean navJump =
+                        isNavigating && navJumpHolding.getOrDefault(fp.getUuid(), 0) > 0;
+                    PathfindingService.tickSwimAi(bot, navJump, isNavigating);
                   }
 
                   if (fp.isAutoEatEnabled()) {

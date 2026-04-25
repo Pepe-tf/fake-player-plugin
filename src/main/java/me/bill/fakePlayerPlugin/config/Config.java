@@ -484,14 +484,6 @@ public final class Config {
     return Math.max(2.0, Math.min(cfg.getDouble("pathfinding.detour-radius", 16.0), 64.0));
   }
 
-  /**
-   * Global default: whether bots sprint-jump periodically while navigating on flat ground.
-   * Overridable per-bot via FakePlayer.navSprintJump.
-   */
-  public static boolean pathfindingSprintJump() {
-    return cfg.getBoolean("pathfinding.sprint-jump", false);
-  }
-
   public static double collisionWalkRadius() {
     return cfg.getDouble("collision.walk-radius", 0.85);
   }

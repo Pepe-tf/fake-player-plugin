@@ -7,6 +7,7 @@ import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Waterlogged;
+import org.bukkit.block.data.type.Door;
 import org.bukkit.block.data.type.Fence;
 import org.bukkit.block.data.type.Gate;
 import org.bukkit.block.data.type.Slab;
@@ -536,6 +537,8 @@ public final class BotPathfinder {
 
       if (mat == Material.LAVA) return false;
 
+      if (block.getBlockData() instanceof Door) return true;
+
       if (block.getBlockData() instanceof Fence) return false;
       if (block.getBlockData() instanceof Wall) return false;
       if (mat.name().contains("_WALL")
@@ -543,7 +546,7 @@ public final class BotPathfinder {
           || mat == Material.MOSSY_COBBLESTONE_WALL) return false;
 
       if (block.getBlockData() instanceof Gate gate) {
-        return gate.isOpen();
+        return true;
       }
 
       if (block.getBlockData() instanceof TrapDoor trapDoor) {
@@ -578,6 +581,8 @@ public final class BotPathfinder {
       if (block.getBlockData() instanceof Slab slab) {
         return true;
       }
+
+      if (block.getBlockData() instanceof Gate) return false;
 
       if (mat.name().contains("CARPET")) return true;
 
@@ -741,10 +746,10 @@ public final class BotPathfinder {
       Block block = world.getBlockAt(x, y, z);
       Material mat = block.getType();
       if (mat.isAir() || mat == Material.WATER || mat == Material.LAVA) return false;
+      if (block.getBlockData() instanceof Door || block.getBlockData() instanceof Gate) return false;
       if (block.getBlockData() instanceof Fence || block.getBlockData() instanceof Wall) return true;
       if (mat.name().contains("_WALL")) return true;
       if (isClimbable(world, x, y, z)) return false;
-      if (block.getBlockData() instanceof Gate gate) return !gate.isOpen();
       if (block.getBlockData() instanceof TrapDoor trapDoor) return !trapDoor.isOpen();
       return !block.isPassable();
     } catch (Exception e) {

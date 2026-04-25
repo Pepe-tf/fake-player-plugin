@@ -46,8 +46,6 @@ public interface FppBot {
   void setNavBreakBlocks(boolean enabled);
   boolean isNavPlaceBlocks();
   void setNavPlaceBlocks(boolean enabled);
-  boolean isNavSprintJump();
-  void setNavSprintJump(boolean enabled);
   int getChunkLoadRadius();
   void setChunkLoadRadius(int radius);
   boolean isPveEnabled();
