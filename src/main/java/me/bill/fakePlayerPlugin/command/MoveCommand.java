@@ -66,7 +66,7 @@ public final class MoveCommand implements FppCommand {
 
   @Override
   public String getUsage() {
-    return "<bot|all> --to <player>  |  <bot|all> --pos <x> <y> <z>  |  <bot|all> --wp"
+    return "<bot|all> --to <player>  |  <bot|all> --coords <x> <y> <z> [alias: --pos]  |  <bot|all> --wp"
         + " <route> [--random]  |  <bot|all> --roam [x,y,z] [radius]  |  <bot|all> --stop";
   }
 

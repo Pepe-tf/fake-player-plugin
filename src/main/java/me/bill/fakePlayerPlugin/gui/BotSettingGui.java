@@ -223,7 +223,7 @@ public final class BotSettingGui implements Listener {
     this.plugin = plugin;
     this.manager = manager;
     this.renameHelper = new BotRenameHelper(plugin, manager);
-    this.categories = List.of(general(), chat(), pve(), automation(), pathfinding(), pvp(), danger());
+    this.categories = List.of(general(), chat(), pve(), pathfinding(), pvp(), danger());
   }
 
   public void registerExtensionTab(FppSettingsTab tab) {
@@ -784,18 +784,6 @@ public final class BotSettingGui implements Listener {
         fireSettingChange(bot, "pve_move", old, bot.isPveMoveToTarget());
         restartPveIfActive(bot);
         yield bot.isPveMoveToTarget();
-      }
-      case "auto_eat" -> {
-        boolean old = bot.isAutoEatEnabled();
-        bot.setAutoEatEnabled(!old);
-        fireSettingChange(bot, "auto_eat", old, bot.isAutoEatEnabled());
-        yield bot.isAutoEatEnabled();
-      }
-      case "auto_place_bed" -> {
-        boolean old = bot.isAutoPlaceBedEnabled();
-        bot.setAutoPlaceBedEnabled(!old);
-        fireSettingChange(bot, "auto_place_bed", old, bot.isAutoPlaceBedEnabled());
-        yield bot.isAutoPlaceBedEnabled();
       }
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1681,8 +1669,6 @@ public final class BotSettingGui implements Listener {
       case "nav_sprint_jump" -> bot.isNavSprintJump() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pve_enabled" -> bot.isPveEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pve_move" -> bot.isPveMoveToTarget() ? "✔ ᴄʜᴀꜱɪɴɢ" : "✘ ꜱᴛᴀᴛɪᴏɴᴀʀʏ";
-      case "auto_eat" -> bot.isAutoEatEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
-      case "auto_place_bed" -> bot.isAutoPlaceBedEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "share_control" -> bot.getSharedControllers().size() + " ꜱʜᴀʀᴇᴅ";
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1730,8 +1716,6 @@ public final class BotSettingGui implements Listener {
       case "nav_sprint_jump" -> bot.isNavSprintJump();
       case "pve_enabled" -> bot.isPveEnabled();
       case "pve_move" -> bot.isPveMoveToTarget();
-      case "auto_eat" -> bot.isAutoEatEnabled();
-      case "auto_place_bed" -> bot.isAutoPlaceBedEnabled();
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
         yield followCmd != null && followCmd.isFollowing(bot.getUuid());
@@ -1757,8 +1741,6 @@ public final class BotSettingGui implements Listener {
       case "nav_sprint_jump" -> bot.isNavSprintJump() ? Material.FEATHER : Material.LEATHER_BOOTS;
       case "pve_enabled" -> bot.isPveEnabled() ? Material.IRON_SWORD : Material.WOODEN_SWORD;
       case "pve_move" -> bot.isPveMoveToTarget() ? Material.GOLDEN_BOOTS : Material.CHAINMAIL_BOOTS;
-      case "auto_eat" -> bot.isAutoEatEnabled() ? Material.COOKED_BEEF : Material.ROTTEN_FLESH;
-      case "auto_place_bed" -> bot.isAutoPlaceBedEnabled() ? Material.RED_BED : Material.GRAY_BED;
       case "share_control" -> Material.PLAYER_HEAD;
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1992,16 +1974,6 @@ public final class BotSettingGui implements Listener {
                     + (Config.swimAiEnabled() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
                 Material.WATER_BUCKET,
                 false),
-            BotEntry.toggle(
-                "nav_sprint_jump",
-                "ꜱᴘʀɪɴᴛ-ᴊᴜᴍᴘ",
-                "ʙᴏᴛ ᴊᴜᴍᴘꜱ ᴘᴇʀɪᴏᴅɪᴄᴀʟʟʏ ᴡʜɪʟᴇ\n"
-                    + "ꜱᴘʀɪɴᴛɪɴɢ ᴅᴜʀɪɴɢ ᴘᴀᴛʜꜰɪɴᴅɪɴɢ.\n"
-                    + "ᴅɪꜱᴀʙʟᴇ ᴛᴏ ᴡᴀʟᴋ ᴡɪᴛʜᴏᴜᴛ ᴊᴜᴍᴘɪɴɢ.\n"
-                    + "ɢʟᴏʙᴀʟ: "
-                    + (Config.pathfindingSprintJump() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
-                Material.FEATHER,
-                false),
             BotEntry.action(
                 "chunk_load_radius",
                 "ᴄʜᴜɴᴋ ʀᴀᴅɪᴜꜱ",
@@ -2038,6 +2010,14 @@ public final class BotSettingGui implements Listener {
                 "ʀᴇɴᴀᴍᴇ ʙᴏᴛ",
                 "ᴄʜᴀɴɢᴇ ᴛʜᴇ ʙᴏᴛ'ꜱ ᴍɪɴᴇᴄʀᴀꜰᴛ ɴᴀᴍᴇ.\n" + "ɴᴀᴍᴇᴛᴀɡ, ᴛᴀʙ ᴀɴᴅ ᴅᴇᴀᴛʜ ᴍᴇꜱꜱᴀɢᴇꜱ ᴜᴘᴅᴀᴛᴇ.",
                 Material.NAME_TAG,
+                false),
+            BotEntry.immediate(
+                "share_control",
+                "ꜱʜᴀʀᴇ ᴄᴏɴᴛʀᴏʟ",
+                "ᴏᴘᴇɴ ᴀ ʀᴇᴀʟ-ᴘʟᴀʏᴇʀ ꜱᴇʟᴇᴄᴛᴏʀ\n"
+                    + "ᴛᴏ ɢʀᴀɴᴛ ᴏʀ ʀᴇᴠᴏᴋᴇ ᴄᴏɴᴛʀᴏʟ.\n"
+                    + "ᴏɴʟʏ ᴏᴡɴᴇʀꜱ ᴀɴᴅ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ꜱʜᴀʀᴇ.",
+                Material.PLAYER_HEAD,
                 false)));
   }
 
@@ -2117,39 +2097,6 @@ public final class BotSettingGui implements Listener {
                 "ᴛᴀʀɡᴇᴛ ᴘʀɪᴏʀɪᴛʏ",
                 "ʜᴏᴡ ᴛʜᴇ ʙᴏᴛ ᴄʜᴏᴏꜱᴇꜱ ɪᴛꜱ ᴛᴀʀɡᴇᴛ.\n" + "ᴄʏᴄʟᴇꜱ: nearest ↔ lowest-health",
                 Material.COMPARATOR,
-                false)));
-  }
-
-  private BotCategory automation() {
-    return new BotCategory(
-        "⚙ ᴀᴜᴛᴏ",
-        Material.REDSTONE,
-        Material.REPEATER,
-        Material.ORANGE_STAINED_GLASS_PANE,
-        List.of(
-            BotEntry.toggle(
-                "auto_eat",
-                "ᴀᴜᴛᴏ ᴇᴀᴛ",
-                "ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ, ᴛʜᴇ ʙᴏᴛ ᴇᴀᴛꜱ\n"
-                    + "ꜰᴏᴏᴅ ꜰʀᴏᴍ ɪᴛꜱ ɪɴᴠᴇɴᴛᴏʀʏ ᴡʜᴇɴ\n"
-                    + "ʜᴜɴɢᴇʀ ɢᴇᴛꜱ ʟᴏᴡ.",
-                Material.COOKED_BEEF,
-                false),
-            BotEntry.toggle(
-                "auto_place_bed",
-                "ᴀᴜᴛᴏ ʙᴇᴅ",
-                "ᴡʜᴇɴ ɴᴏ ʙᴇᴅ ɪꜱ ɴᴇᴀʀʙʏ, ᴛʜᴇ ʙᴏᴛ\n"
-                    + "ᴄᴀɴ ᴘʟᴀᴄᴇ ᴀ ʙᴇᴅ ꜰʀᴏᴍ ɪɴᴠᴇɴᴛᴏʀʏ\n"
-                    + "ᴀɴᴅ ʙʀᴇᴀᴋ ɪᴛ ᴀꜰᴛᴇʀ ꜱʟᴇᴇᴘɪɴɢ.",
-                Material.RED_BED,
-                false),
-            BotEntry.immediate(
-                "share_control",
-                "ꜱʜᴀʀᴇ ᴄᴏɴᴛʀᴏʟ",
-                "ᴏᴘᴇɴ ᴀ ʀᴇᴀʟ-ᴘʟᴀʏᴇʀ ꜱᴇʟᴇᴄᴛᴏʀ\n"
-                    + "ᴛᴏ ɢʀᴀɴᴛ ᴏʀ ʀᴇᴠᴏᴋᴇ ᴄᴏɴᴛʀᴏʟ.\n"
-                    + "ᴏɴʟʏ ᴏᴡɴᴇʀꜱ ᴀɴᴅ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ꜱʜᴀʀᴇ.",
-                Material.PLAYER_HEAD,
                 false)));
   }
 

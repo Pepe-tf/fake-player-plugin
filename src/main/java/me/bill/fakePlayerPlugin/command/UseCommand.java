@@ -328,8 +328,6 @@ public final class UseCommand implements FppCommand {
 
     activeUseLocations.remove(botUuid);
     activeUseOnceFlags.remove(botUuid);
-
-    FakePlayer fp = manager.getByUuid(botUuid);
     if (fp != null) {
       Player bot = fp.getPlayer();
       if (bot != null && bot.isOnline()) ((CraftPlayer) bot).getHandle().releaseUsingItem();

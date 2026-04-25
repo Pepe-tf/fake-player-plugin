@@ -14,6 +14,7 @@ import me.bill.fakePlayerPlugin.util.FppScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Bisected;
@@ -225,6 +226,7 @@ public final class PathfindingService {
     final double[] prevZ = {initialBot.getLocation().getZ()};
     final boolean[] cleaningUp = {false};
     final int[] taskIdRef = {-1};
+    final boolean[] sprintJumpEnabled = {fp.isNavSprintJump()};
 
     final boolean[] isBreaking = {false};
     final int[] breakLeft = {0};
@@ -272,6 +274,7 @@ public final class PathfindingService {
             }
 
             Location botLoc = bot.getLocation();
+            sprintJumpEnabled[0] = fp.isNavSprintJump();
             closeOpenedDoors(openedDoors, botLoc, false);
 
             // Consume nav jump state on the entity's region thread — no cross-thread race.
@@ -280,13 +283,20 @@ public final class PathfindingService {
             // on the same thread as the nav tick that called requestNavJump().
             Integer navHold = manager.getNavJumpHolding(botUuid);
             if (navHold != null) {
-              if (navHold == 5 && bot.isOnGround() && !bot.isInWater() && !bot.isInLava()) {
-                org.bukkit.util.Vector v = bot.getVelocity();
-                v.setY(0.42);
-                bot.setVelocity(v);
+              if (!sprintJumpEnabled[0]) {
+                manager.clearNavJump(botUuid);
+              } else {
+                if (navHold == 5
+                    && ((org.bukkit.entity.Entity) bot).isOnGround()
+                    && !bot.isInWater()
+                    && !bot.isInLava()) {
+                  org.bukkit.util.Vector v = bot.getVelocity();
+                  v.setY(0.42);
+                  bot.setVelocity(v);
+                }
+                if (navHold <= 1) manager.clearNavJump(botUuid);
+                else manager.setNavJumpHolding(botUuid, navHold - 1);
               }
-              if (navHold <= 1) manager.clearNavJump(botUuid);
-              else manager.setNavJumpHolding(botUuid, navHold - 1);
             }
 
             double arrivalSq = request.arrivalDistance() * request.arrivalDistance();
@@ -440,7 +450,10 @@ public final class PathfindingService {
                 maybeOpenDoorAhead(bot, dYaw, openedDoors);
                 bot.setSprinting(distToTarget > Config.pathfindingSprintDistance());
                 NmsPlayerSpawner.setMovementForward(bot, 1.0f);
-                if (!bot.isInWater() && !bot.isInLava() && dwp.y() > botLoc.getBlockY()) {
+                if (sprintJumpEnabled[0]
+                    && !bot.isInWater()
+                    && !bot.isInLava()
+                    && dwp.y() > botLoc.getBlockY()) {
                   manager.requestNavJump(botUuid);
                 }
                 prevX[0] = botLoc.getX();
@@ -547,7 +560,9 @@ public final class PathfindingService {
               NmsPlayerSpawner.setMovementForward(bot, 0f);
               bot.setSprinting(false);
 
-              manager.requestNavJump(botUuid);
+              if (sprintJumpEnabled[0]) {
+                manager.requestNavJump(botUuid);
+              }
 
               if (botLoc.getY() - botLoc.getBlockY() > 0.4) {
                 Block below =
@@ -564,6 +579,8 @@ public final class PathfindingService {
               prevZ[0] = botLoc.getZ();
               return;
             }
+
+            double wpXZDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
 
             if (wp.type() == BotPathfinder.MoveType.SWIM) {
               double sdx = wpCX - botLoc.getX();
@@ -635,7 +652,42 @@ public final class PathfindingService {
               return;
             }
 
-            double wpXZDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), wpCX, wpCZ);
+            if (wp.type() == BotPathfinder.MoveType.CLIMB) {
+              double climbYDist = Math.abs(botLoc.getY() - wp.y());
+              if (wpXZDist < 0.4 && climbYDist < 0.7) {
+                wpIdx[0]++;
+                prevX[0] = botLoc.getX();
+                prevZ[0] = botLoc.getZ();
+                return;
+              }
+
+              // Don't attempt climb movement until we're actually inside the climbable column;
+              // being slightly offset can leave the bot stuck at the bottom of ladders/vines.
+              if (!isInClimbableColumn(botLoc)) {
+                walkToward(bot, new Location(botLoc.getWorld(), wpCX, botLoc.getY(), wpCZ), wpXZDist);
+                prevX[0] = botLoc.getX();
+                prevZ[0] = botLoc.getZ();
+                return;
+              }
+
+              applyClimbMovement(bot, botLoc, wpCX, wpCZ, wp.y());
+
+              double climbMoved = xzDistRaw(botLoc.getX(), botLoc.getZ(), prevX[0], prevZ[0]);
+              if (climbMoved < Config.pathfindingStuckThreshold()
+                  && Math.abs(botLoc.getY() - wp.y()) > 0.5) {
+                if (++stuckFor[0] >= Math.max(10, Config.pathfindingStuckTicks())) {
+                  recalcIn[0] = 0;
+                  stuckFor[0] = 0;
+                }
+              } else {
+                stuckFor[0] = 0;
+              }
+
+              prevX[0] = botLoc.getX();
+              prevZ[0] = botLoc.getZ();
+              return;
+            }
+
             boolean wpYClose = Math.abs(botLoc.getY() - wp.y()) < 1.2;
             // For ASCEND steps, don't consume the waypoint until the bot has actually
             // reached the upper block — prevents the jump from being skipped when the
@@ -698,7 +750,7 @@ public final class PathfindingService {
               boolean exitingFluid = applyShorelineExitAssist(bot, yaw, botLoc, wp.y());
               NmsPlayerSpawner.setJumping(bot, exitingFluid || wp.y() >= botLoc.getBlockY());
             } else {
-              if (wp.y() > botLoc.getBlockY()) {
+              if (sprintJumpEnabled[0] && wp.y() > botLoc.getBlockY()) {
                 // Fire jump whenever the next waypoint is above us and we're within 2.5 blocks XZ,
                 // not just when we're at the waypoint — the bot needs to be jumping on approach.
                 if (wpXZDist <= 2.5) {
@@ -707,7 +759,7 @@ public final class PathfindingService {
               } else if (wp.type() == BotPathfinder.MoveType.PARKOUR
                   && wpXZDist >= 1.0
                   && wpXZDist <= 3.5) {
-                manager.requestNavJump(botUuid);
+                if (sprintJumpEnabled[0]) manager.requestNavJump(botUuid);
               }
             }
 
@@ -732,7 +784,7 @@ public final class PathfindingService {
                     }
                   } else if (feetBlocked && !headBlocked && aboveClear) {
                     // Single-block step — jump over it.
-                    manager.requestNavJump(botUuid);
+                    if (sprintJumpEnabled[0]) manager.requestNavJump(botUuid);
                     hardWallStuckFor[0] = 0;
                   } else {
                     hardWallStuckFor[0] = 0;
@@ -834,7 +886,7 @@ public final class PathfindingService {
             bot.setSprinting(dist > Config.pathfindingSprintDistance());
             NmsPlayerSpawner.setMovementForward(bot, 1.0f);
             // Single-block step ahead — jump over it.
-            if (!bot.isInWater() && !bot.isInLava()) {
+            if (sprintJumpEnabled[0] && !bot.isInWater() && !bot.isInLava()) {
               if (feetBlocked && !headBlocked) {
                 manager.requestNavJump(botUuid);
               }
@@ -891,7 +943,7 @@ public final class PathfindingService {
 
     // In shallow water while touching the bottom, passive swim-AI causes jittery
     // jump/sprint toggles. Let normal ground movement handle these transitions.
-    if (bot.isOnGround() && distToSurface <= 1) {
+    if (((org.bukkit.entity.Entity) bot).isOnGround() && distToSurface <= 1) {
       NmsPlayerSpawner.setJumping(bot, false);
       bot.setSprinting(false);
       return;
@@ -1054,6 +1106,61 @@ public final class PathfindingService {
       vel.setY(0.42);
       bot.setVelocity(vel);
     }
+  }
+
+  private static void applyClimbMovement(
+      Player bot, Location botLoc, double targetX, double targetZ, int targetBlockY) {
+    double dx = targetX - botLoc.getX();
+    double dz = targetZ - botLoc.getZ();
+    double xzDist = xzDistRaw(botLoc.getX(), botLoc.getZ(), targetX, targetZ);
+    float yaw =
+        xzDist < 0.08
+            ? botLoc.getYaw()
+            : (float) Math.toDegrees(Math.atan2(-dx, dz));
+
+    bot.setRotation(yaw, 0f);
+    NmsPlayerSpawner.setHeadYaw(bot, yaw);
+    bot.setSprinting(false);
+    NmsPlayerSpawner.setMovementForward(bot, 0.75f);
+    NmsPlayerSpawner.setMovementStrafe(bot, 0f);
+
+    Vector vel = bot.getVelocity();
+    vel.setX(clamp(dx * 0.45, -0.18, 0.18));
+    vel.setZ(clamp(dz * 0.45, -0.18, 0.18));
+
+    double currentY = botLoc.getY();
+    if (targetBlockY > currentY + 0.2) {
+      vel.setY(Math.max(vel.getY(), 0.22));
+      NmsPlayerSpawner.setJumping(bot, true);
+    } else if (targetBlockY < currentY - 0.2) {
+      vel.setY(Math.min(vel.getY(), -0.18));
+      NmsPlayerSpawner.setJumping(bot, false);
+    } else {
+      vel.setY(Math.max(vel.getY(), 0.08));
+      NmsPlayerSpawner.setJumping(bot, false);
+    }
+
+    bot.setVelocity(vel);
+  }
+
+  private static boolean isInClimbableColumn(Location loc) {
+    World world = loc.getWorld();
+    if (world == null) return false;
+    int x = loc.getBlockX();
+    int y = loc.getBlockY();
+    int z = loc.getBlockZ();
+    return isClimbable(world, x, y, z)
+        || isClimbable(world, x, y + 1, z)
+        || isClimbable(world, x, y - 1, z);
+  }
+
+  private static boolean isClimbable(World world, int x, int y, int z) {
+    if (y < world.getMinHeight() || y > world.getMaxHeight()) return false;
+    return Tag.CLIMBABLE.isTagged(world.getBlockAt(x, y, z).getType());
+  }
+
+  private static double clamp(double value, double min, double max) {
+    return Math.max(min, Math.min(max, value));
   }
 
   private static boolean applyShorelineExitAssist(Player bot, float yaw, Location botLoc, int targetY) {

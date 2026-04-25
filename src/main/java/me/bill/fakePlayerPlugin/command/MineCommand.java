@@ -544,7 +544,6 @@ public final class MineCommand implements FppCommand {
     MiningState state = miningStates.remove(botUuid);
     if (state != null) {
       if (state.currentPos != null) {
-        FakePlayer fp = manager.getByUuid(botUuid);
         if (fp != null) {
           Player bot = fp.getPlayer();
           if (bot != null && bot.isOnline()) {

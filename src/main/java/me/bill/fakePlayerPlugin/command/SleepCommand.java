@@ -561,6 +561,7 @@ public final class SleepCommand implements FppCommand {
     if (!fp.isSleeping()) return;
     FppApiImpl.fireTaskEvent(fp, "sleep", me.bill.fakePlayerPlugin.api.event.FppBotTaskEvent.Action.STOP);
     UUID uuid = fp.getUuid();
+    Player bot = fp.getPlayer();
 
     var sleepEndEvt = new me.bill.fakePlayerPlugin.api.event.FppBotSleepEndEvent(
         new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(fp), bot != null ? bot.getLocation() : null);
@@ -568,7 +569,6 @@ public final class SleepCommand implements FppCommand {
     fp.setSleeping(false);
     manager.unlockAction(uuid);
 
-    Player bot = fp.getPlayer();
     if (bot != null && bot.isOnline()) {
       try {
         ServerPlayer nms = ((CraftPlayer) bot).getHandle();

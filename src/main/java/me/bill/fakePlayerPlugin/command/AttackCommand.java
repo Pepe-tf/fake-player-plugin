@@ -3,6 +3,8 @@ package me.bill.fakePlayerPlugin.command;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.api.impl.FppApiImpl;
+import me.bill.fakePlayerPlugin.api.impl.FppBotImpl;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
@@ -11,7 +13,6 @@ import me.bill.fakePlayerPlugin.fakeplayer.PathfindingService;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.FppScheduler;
-import me.bill.fakePlayerPlugin.api.impl.FppApiImpl;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.AABB;
@@ -549,6 +550,34 @@ public final class AttackCommand implements FppCommand {
     attackTasks.put(uuid, taskId);
   }
 
+  private void navigateToMobTarget(
+      FakePlayer fp, UUID uuid, AttackState state, LivingEntity target, double reach) {
+    if (target == null) return;
+    if (pathfinding.isNavigating(uuid, PathfindingService.Owner.ATTACK)) return;
+    if (fp.getPlayer() == null || !fp.getPlayer().isOnline()) return;
+
+    final UUID targetUuid = target.getUniqueId();
+    double arrivalDistance = Math.max(2.5, reach - 0.5);
+    pathfinding.navigate(
+        fp,
+        new PathfindingService.NavigationRequest(
+            PathfindingService.Owner.ATTACK,
+            () -> {
+              UUID liveTargetUuid = state.currentTargetUuid != null ? state.currentTargetUuid : targetUuid;
+              Entity live = Bukkit.getEntity(liveTargetUuid);
+              if (!(live instanceof LivingEntity le) || !le.isValid() || le.isDead()) return null;
+              Player bot = fp.getPlayer();
+              if (bot == null || !bot.isOnline() || le.getWorld() != bot.getWorld()) return null;
+              return le.getLocation();
+            },
+            arrivalDistance,
+            3.5,
+            3,
+            null,
+            null,
+            null));
+  }
+
   private void startHuntMode(FakePlayer fp, MobFlags flags, Location startLoc) {
     UUID uuid = fp.getUuid();
     Player bot = fp.getPlayer();
@@ -662,7 +691,7 @@ public final class AttackCommand implements FppCommand {
     b.swingMainHand();
 
     var atkEvt = new me.bill.fakePlayerPlugin.api.event.FppBotAttackEvent(
-        new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(fp), bukkit, 1.0);
+        new FppBotImpl(fp), bukkit, 1.0);
     org.bukkit.Bukkit.getPluginManager().callEvent(atkEvt);
     if (atkEvt.isCancelled()) return;
 
@@ -730,11 +759,11 @@ public final class AttackCommand implements FppCommand {
     double reach = nms.gameMode.isCreative() ? 5.0 : 3.5;
     if (state.moveToTarget) {
       if (dist > reach) {
-        b.setSprinting(dist > 6.0);
-        NmsPlayerSpawner.setMovementForward(b, 1.0f);
-      } else {
-        b.setSprinting(false);
-        NmsPlayerSpawner.setMovementForward(b, 0.0f);
+        navigateToMobTarget(fp, uuid, state, currentTarget, reach);
+        return;
+      }
+      if (pathfinding.isNavigating(uuid, PathfindingService.Owner.ATTACK)) {
+        pathfinding.cancel(uuid);
       }
     } else if (!state.huntMode) {
       // stationary mob mode: keep bot frozen at lock location
@@ -759,10 +788,9 @@ public final class AttackCommand implements FppCommand {
     b.swingMainHand();
 
     var atkEvt2 = new me.bill.fakePlayerPlugin.api.event.FppBotAttackEvent(
-        new me.bill.fakePlayerPlugin.api.impl.FppBotImpl(fp), currentTarget, 1.0);
+        new FppBotImpl(fp), currentTarget, 1.0);
     org.bukkit.Bukkit.getPluginManager().callEvent(atkEvt2);
     if (atkEvt2.isCancelled()) return;
-
     nms.attack(nmsTarget);
 
     ItemStack mainHand = b.getInventory().getItemInMainHand();
@@ -883,10 +911,8 @@ public final class AttackCommand implements FppCommand {
   }
 
   public void stopAttacking(UUID botUuid) {
-    FakePlayer fp = manager.getByUuid(botUuid);
-    if (fp != null) {
-      FppApiImpl.fireTaskEvent(fp, "attack", me.bill.fakePlayerPlugin.api.event.FppBotTaskEvent.Action.STOP);
-    }
+    pathfinding.cancel(botUuid);
+
     Integer taskId = attackTasks.remove(botUuid);
     if (taskId != null) FppScheduler.cancelTask(taskId);
 
@@ -909,6 +935,11 @@ public final class AttackCommand implements FppCommand {
       manager.unlockAction(botUuid);
     }
     // hunt mode: no action-lock was held; PathfindingService cancellation is handled by cancelAll()
+
+    FakePlayer fp = manager.getByUuid(botUuid);
+    if (fp != null) {
+      FppApiImpl.fireTaskEvent(fp, "attack", me.bill.fakePlayerPlugin.api.event.FppBotTaskEvent.Action.STOP);
+    }
 
     activeAttackLocations.remove(botUuid);
     activeAttackOnceFlags.remove(botUuid);

@@ -15,6 +15,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.projectiles.ProjectileSource;
 import org.jetbrains.annotations.Nullable;
 
 public final class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerImpl {
@@ -141,6 +147,26 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     int myId = this.player.getId();
     if (packetEntityId != -1 && packetEntityId != myId) return;
 
+    if (!Config.bodyPushable()) return;
+
+    // Only allow player→bot knockback when PvP is enabled in the world
+    // (or allowed by WorldGuard). This prevents fake players from getting
+    // knocked around in no-PvP worlds/regions.
+    try {
+      Player bukkit =
+          this.player.getBukkitEntity() instanceof Player p ? p : null;
+      if (bukkit != null) {
+        var last = bukkit.getLastDamageCause();
+        if (last instanceof EntityDamageByEntityEvent byEntity) {
+          Entity attacker = resolveKnockbackSource(byEntity.getDamager());
+          if (attacker instanceof Player && !isPvpEnabled(bukkit.getLocation())) {
+            return;
+          }
+        }
+      }
+    } catch (Throwable ignored) {
+    }
+
     try {
       KbStrategy strategy = resolveStrategy();
       switch (strategy) {
@@ -184,6 +210,24 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     } catch (Exception e) {
       FppLogger.warn("Knockback apply failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
     }
+  }
+
+  private static boolean isPvpEnabled(Location location) {
+    if (location == null || location.getWorld() == null) return false;
+    if (location.getWorld().getPVP()) return true;
+    FakePlayerPlugin plugin = FakePlayerPlugin.getInstance();
+    return plugin != null
+        && plugin.isWorldGuardAvailable()
+        && me.bill.fakePlayerPlugin.util.WorldGuardHelper.isPvpAllowed(location);
+  }
+
+  private static Entity resolveKnockbackSource(Entity damager) {
+    if (damager == null) return null;
+    if (damager instanceof Projectile projectile) {
+      ProjectileSource shooter = projectile.getShooter();
+      if (shooter instanceof Entity shooterEntity) return shooterEntity;
+    }
+    return damager;
   }
 
   private void logPostApplyVelocity(String strategyName) {

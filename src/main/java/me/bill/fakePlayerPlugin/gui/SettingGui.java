@@ -1577,27 +1577,6 @@ public final class SettingGui implements Listener {
                 Material.GRASS_BLOCK)));
   }
 
-  private Category automation() {
-    return new Category(
-        "⚙ ᴀᴜᴛᴏ",
-        Material.REDSTONE,
-        Material.REPEATER,
-        Material.ORANGE_STAINED_GLASS_PANE,
-        List.of(
-            SettingEntry.toggle(
-                "automation.auto-eat",
-                "ᴀᴜᴛᴏ ᴇᴀᴛ",
-                "ɢʟᴏʙᴀʟ ᴅᴇꜰᴀᴜʟᴛ ꜰᴏʀ ɴᴇᴡ/ʀᴇꜱᴛᴏʀᴇᴅ ʙᴏᴛꜱ.\n"
-                    + "ʙᴏᴛꜱ ᴇᴀᴛ ꜰᴏᴏᴅ ᴡʜᴇɴ ʜᴜɴɢᴇʀ ʙʟᴏᴄᴋꜱ ꜱᴘʀɪɴᴛ.",
-                Material.COOKED_BEEF),
-            SettingEntry.toggle(
-                "automation.auto-place-bed",
-                "ᴀᴜᴛᴏ ʙᴇᴅ",
-                "ɢʟᴏʙᴀʟ ᴅᴇꜰᴀᴜʟᴛ ꜰᴏʀ ɴᴇᴡ/ʀᴇꜱᴛᴏʀᴇᴅ ʙᴏᴛꜱ.\n"
-                    + "ʙᴏᴛꜱ ᴘʟᴀᴄᴇ ᴀ ʙᴇᴅ ꜰʀᴏᴍ ɪɴᴠᴇɴᴛᴏʀʏ ɪꜰ ɴᴏɴᴇ ɪꜱ ɴᴇᴀʀʙʏ.",
-                Material.RED_BED)));
-  }
-
   private Category pathfinding() {
     return new Category(
         "🧭 ᴘᴀᴛʜꜰɪɴᴅɪɴɢ",

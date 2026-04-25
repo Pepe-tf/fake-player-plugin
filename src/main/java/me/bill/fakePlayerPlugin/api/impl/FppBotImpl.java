@@ -322,7 +322,7 @@ public final class FppBotImpl implements FppBot {
   }
   @Override public boolean isPassenger() {
     Player ent = fp.getPhysicsEntity();
-    return ent != null && ent.isPassenger();
+    return ent != null && ent.getVehicle() != null;
   }
   @Override public boolean hasVehicle() {
     Player ent = fp.getPhysicsEntity();
@@ -333,7 +333,7 @@ public final class FppBotImpl implements FppBot {
     if (ent == null) return 3.0;
     double base = 3.0;
     try {
-      var attr = ent.getAttribute(org.bukkit.attribute.Attribute.PLAYER_BLOCK_INTERACTION_RANGE);
+      var attr = ent.getAttribute(org.bukkit.attribute.Attribute.BLOCK_INTERACTION_RANGE);
       if (attr != null) base = attr.getValue();
     } catch (Exception ignored) {}
     return base;

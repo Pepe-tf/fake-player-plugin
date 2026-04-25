@@ -283,26 +283,32 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     }
 
     if (args.length >= 2) {
-      FppCommand sub = byName.get(args[0].toLowerCase());
+      String subName = args[0].toLowerCase(Locale.ROOT);
+      FppCommand sub = byName.get(subName);
 
       if (sub != null && sub.canUse(sender)) {
-        if (isTaskCommand(args[0]) && args.length == 2 && "--group".startsWith(args[1].toLowerCase())) {
-          return List.of("--group");
-        }
-        if (isTaskCommand(args[0])
+        if (isTaskCommand(subName)
             && args.length == 3
             && args[1].equalsIgnoreCase("--group")
             && sender instanceof org.bukkit.entity.Player player
             && plugin.getBotGroupStore() != null) {
-          String prefix = args[2].toLowerCase();
+          String prefix = args[2].toLowerCase(Locale.ROOT);
           return plugin.getBotGroupStore().getGroups(player).stream()
               .filter(name -> name.startsWith(prefix))
               .toList();
         }
-        List<String> result = new ArrayList<>(sub.tabComplete(sender, Arrays.copyOfRange(args, 1, args.length)));
-        List<me.bill.fakePlayerPlugin.api.FppCommandExtension> extensions = commandExtensions.get(args[0].toLowerCase(Locale.ROOT));
+        String[] rawSubArgs = Arrays.copyOfRange(args, 1, args.length);
+        String[] subArgs = adaptTaskTabCompleteArgs(sender, subName, rawSubArgs);
+        List<String> result = new ArrayList<>(sub.tabComplete(sender, subArgs));
+        if (isTaskCommand(subName)
+            && rawSubArgs.length >= 1
+            && rawSubArgs[0].startsWith("-")
+            && "--group".startsWith(rawSubArgs[0].toLowerCase(Locale.ROOT))
+            && !result.contains("--group")) {
+          result.add("--group");
+        }
+        List<me.bill.fakePlayerPlugin.api.FppCommandExtension> extensions = commandExtensions.get(subName);
         if (extensions != null) {
-          String[] subArgs = Arrays.copyOfRange(args, 1, args.length);
           for (var extension : extensions) {
             try {
               for (String suggestion : extension.tabComplete(sender, subArgs)) {
@@ -316,13 +322,31 @@ public class CommandManager implements CommandExecutor, TabCompleter {
       }
 
       // Check addon tab-complete.
-      FppAddonCommand addon = addonByName.get(args[0].toLowerCase());
+      FppAddonCommand addon = addonByName.get(subName);
       if (addon != null) {
         return addon.tabComplete(sender, Arrays.copyOfRange(args, 1, args.length));
       }
     }
 
     return Collections.emptyList();
+  }
+
+  private String[] adaptTaskTabCompleteArgs(
+      CommandSender sender, String subName, String[] subArgs) {
+    if (!isTaskCommand(subName)) return subArgs;
+    if (subArgs.length < 3) return subArgs;
+    if (!subArgs[0].equalsIgnoreCase("--group")) return subArgs;
+    if (!(sender instanceof org.bukkit.entity.Player player)) return subArgs;
+    if (plugin.getBotGroupStore() == null) return subArgs;
+
+    List<me.bill.fakePlayerPlugin.fakeplayer.FakePlayer> bots =
+        plugin.getBotGroupStore().resolve(player, subArgs[1]);
+    if (bots.isEmpty()) return subArgs;
+
+    String[] adapted = new String[subArgs.length - 1];
+    adapted[0] = bots.get(0).getName();
+    System.arraycopy(subArgs, 2, adapted, 1, subArgs.length - 2);
+    return adapted;
   }
 
   private void sendHelpHint(CommandSender sender) {

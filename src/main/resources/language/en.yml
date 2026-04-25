@@ -56,7 +56,7 @@ invalid-number: "{prefix}<red>ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ. ᴘʟᴇᴀꜱ�
 spawn-success:            "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ꜱᴜᴍᴍᴏɴᴇᴅ<gray>. <dark_gray>(<#0079FF>{total}</#0079FF> <gray>ᴀᴄᴛɪᴠᴇ<dark_gray>)"
 spawn-max-reached:        "{prefix}<red>ᴍᴀx ʙᴏᴛ ʟɪᴍɪᴛ ʀᴇᴀᴄʜᴇᴅ <dark_gray>(<#0079FF>{max}</#0079FF> <gray>ʙᴏᴛꜱ<dark_gray>)<red>. ᴅᴇʟᴇᴛᴇ ꜱᴏᴍᴇ ꜰɪʀꜱᴛ."
 spawn-user-limit-reached: "{prefix}<red>ʏᴏᴜ'ᴠᴇ ʀᴇᴀᴄʜᴇᴅ ʏᴏᴜʀ ᴘᴇʀꜱᴏɴᴀʟ ʙᴏᴛ ʟɪᴍɪᴛ <dark_gray>(<#0079FF>{limit}</#0079FF> <gray>ʙᴏᴛ(ꜱ)<dark_gray>)<red>."
-spawn-invalid:            "{prefix}<red>ɪɴᴠᴀʟɪᴅ ᴜꜱᴀɢᴇ. <gray>ᴛʀʏ <#0079FF>/fpp spawn [afk|pvp] [amount] [--name <name>]</#0079FF><gray>."
+spawn-invalid:            "{prefix}<red>ɪɴᴠᴀʟɪᴅ ᴜꜱᴀɢᴇ. <gray>ᴛʀʏ <#0079FF>/fpp spawn [afk|pvp] [amount] [--name <name>] [--relog]</#0079FF><gray>."
 spawn-invalid-name:       "{prefix}<red>ɪɴᴠᴀʟɪᴅ ʙᴏᴛ ɴᴀᴍᴇ. <gray>ᴜꜱᴇ <white>1–16 <gray>ᴄʜᴀʀꜱ <dark_gray>(<white>ʟᴇᴛᴛᴇʀꜱ<gray>, <white>ᴅɪɡɪᴛꜱ<gray>, <white>_<dark_gray>)<gray>."
 spawn-badword-rejected:   "{prefix}<red>ʙᴏᴛ ɴᴀᴍᴇ '<white>{name}<red>' ɪꜱ ɴᴏᴛ ᴀʟʟᴏᴡᴇᴅ <dark_gray>(<gray>ᴄᴏɴᴛᴀɪɴꜱ ʙᴀᴅᴡᴏʀᴅ: <white>{badword}<dark_gray>)<red>."
 spawn-badword-auto-prefixed: "{prefix}<yellow>⚠ <gray>ɴᴀᴍᴇ '<red>{original}<gray>' ᴄᴏɴᴛᴀɪɴᴇᴅ ᴀ ʙᴀᴅᴡᴏʀᴅ — ʀᴇɴᴀᴍᴇᴅ ᴛᴏ '<#0079FF>{name}</#0079FF><gray>'."
@@ -64,6 +64,8 @@ badword-filter-empty-warning: "{prefix}<yellow>⚠ <gray>ʙᴀᴅᴡᴏʀᴅ ꜰ
 spawn-name-taken:         "{prefix}<red>ᴀ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name} <red>ɪꜱ ᴀʟʀᴇᴀᴅʏ ᴀᴄᴛɪᴠᴇ."
 spawn-name-taken-player:  "{prefix}<red>ᴀ ʀᴇᴀʟ ᴘʟᴀʏᴇʀ ɴᴀᴍᴇᴅ <white>{name} <red>ɪꜱ ᴀʟʀᴇᴀᴅʏ ᴏɴʟɪɴᴇ."
 spawn-name-taken-nick:    "{prefix}<red>ᴀ ᴘʟᴀʏᴇʀ ɪꜱ ᴄᴜʀʀᴇɴᴛʟʏ ɴɪᴄᴋᴇᴅ ᴀꜱ <white>{name}<red>. <gray>ᴄʜᴏᴏꜱᴇ ᴀ ᴅɪꜰꜰᴇʀᴇɴᴛ ʙᴏᴛ ɴᴀᴍᴇ."
+spawn-relog-not-found:    "{prefix}<red>ɴᴏ ꜱᴀᴠᴇᴅ ʙᴏᴛ ᴡᴀꜱ ꜰᴏᴜɴᴅ ɴᴀᴍᴇᴅ <white>{name}<red>."
+spawn-relog-world-missing: "{prefix}<red>ᴄᴀɴ'ᴛ ʀᴇʟᴏɢ <white>{name}<red> — ᴘʀᴇᴠɪᴏᴜꜱ ᴡᴏʀʟᴅ <white>{world}<red> ɪꜱ ɴᴏᴛ ʟᴏᴀᴅᴇᴅ."
 spawn-no-names-left:      "{prefix}<red>ᴀʟʟ ɴᴀᴍᴇꜱ ɪɴ ᴛʜᴇ ᴘᴏᴏʟ ᴀʀᴇ ɪɴ ᴜꜱᴇ. <gray>ʀᴇᴅᴜᴄᴇ ᴀᴄᴛɪᴠᴇ ʙᴏᴛꜱ ᴏʀ ᴀᴅᴅ ᴍᴏʀᴇ ɴᴀᴍᴇꜱ."
 
 # ── Console / location errors ──────────────────────────────────────────────────
@@ -361,7 +363,6 @@ move-all-roam-started:    "{prefix}<gray><white>{count}</white> <gray>ʙᴏᴛ(�
 move-roam-invalid-coords: "{prefix}<red>ɪɴᴠᴀʟɪᴅ ᴄᴏᴏʀᴅɪɴᴀᴛᴇꜱ. ᴜꜱᴇ ꜰᴏʀᴍᴀᴛ <white>x,y,z</white> <red>(ᴇ.ɢ. <white>100,64,-200</white>)<red>."
 move-roam-invalid-radius: "{prefix}<red>ʀᴀᴅɪᴜꜱ ᴍᴜꜱᴛ ʙᴇ ʙᴇᴛᴡᴇᴇɴ <white>3</white> <red>ᴀɴᴅ <white>500</white><red>."
 move-roam-usage:          "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp move <bot> --roam [x,y,z] [radius]</#0079FF><gray>."
-move-coords-usage:        "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp move <bot> --coords <x> <y> <z></#0079FF><gray>."
 move-coords-invalid:      "{prefix}<red>ɪɴᴠᴀʟɪᴅ ᴄᴏᴏʀᴅɪɴᴀᴛᴇꜱ. ᴜꜱᴇ ɴᴜᴍʙᴇʀꜱ ᴏʀ <white>~<red> ꜰᴏʀ ʀᴇʟᴀᴛɪᴠᴇ ᴏꜰꜰꜱᴇᴛ."
 move-coords-navigating:   "{prefix}<gray><#0079FF>{name}</#0079FF> <gray>ɪꜱ ɴᴀᴠɪɢᴀᴛɪɴɢ ᴛᴏ <white>{x}, {y}, {z}<gray>."
 

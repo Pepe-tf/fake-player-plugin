@@ -41,7 +41,7 @@ public final class FollowCommand implements FppCommand {
 
   @Override
   public String getUsage() {
-    return "<bot|all> <player>  |  <bot|all> --stop";
+    return "<bot|all> <player|--start>  |  <bot|all> --stop";
   }
 
   @Override
@@ -189,7 +189,6 @@ public final class FollowCommand implements FppCommand {
         me.bill.fakePlayerPlugin.api.event.FppBotFollowEvent.Action.START,
         target);
     org.bukkit.Bukkit.getPluginManager().callEvent(followEvt);
-    if (followEvt.isCancelled()) return;
     final UUID botUuid = fp.getUuid();
     final UUID targetUuid = target.getUniqueId();
     activeFollows.put(botUuid, targetUuid);

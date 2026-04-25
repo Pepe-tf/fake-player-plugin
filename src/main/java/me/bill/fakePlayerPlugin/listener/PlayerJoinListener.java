@@ -77,10 +77,10 @@ public class PlayerJoinListener implements Listener {
   @EventHandler(priority = EventPriority.LOWEST)
   public void onQuitEarly(PlayerQuitEvent event) {
 
-    if (manager.isDespawning(event.getPlayer().getUniqueId())) {
-      event.quitMessage(null);
-      return;
-    }
+    // Do not suppress quit messages here for plugin-driven despawns.
+    // The MONITOR handler below decides based on config + rename/transition state.
+    // If we null it here, bots never show leave messages even when enabled.
+    if (manager.isDespawning(event.getPlayer().getUniqueId())) return;
 
     if (manager.getCount() == 0) return;
 

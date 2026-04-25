@@ -53,10 +53,9 @@ public class BotCollisionListener implements Listener {
       return;
     }
 
-    if (attacker instanceof Player
-        && plugin.isWorldGuardAvailable()
-        && !me.bill.fakePlayerPlugin.util.WorldGuardHelper.isPvpAllowed(target.getLocation())) {
-      Config.debugNms("[KB-DEBUG] BotCollision: SKIP - player PVP blocked for bot=" + target.getName());
+    if (attacker instanceof Player && !isPvpEnabled(target.getLocation())) {
+      Config.debugNms(
+          "[KB-DEBUG] BotCollision: SKIP - player PVP blocked for bot=" + target.getName());
       return;
     }
 
@@ -340,6 +339,13 @@ public class BotCollisionListener implements Listener {
   private boolean isPvpBot(Entity entity) {
     FakePlayer fp = manager.getByEntity(entity);
     return fp != null && fp.getBotType() == BotType.PVP;
+  }
+
+  private boolean isPvpEnabled(Location location) {
+    if (location == null || location.getWorld() == null) return false;
+    if (location.getWorld().getPVP()) return true;
+    return plugin.isWorldGuardAvailable()
+        && me.bill.fakePlayerPlugin.util.WorldGuardHelper.isPvpAllowed(location);
   }
 
   private static Entity resolveKnockbackSource(Entity damager) {
