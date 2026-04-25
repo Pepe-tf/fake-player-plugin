@@ -7,7 +7,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 public final class ConfigMigrator {
 
-  public static final int CURRENT_VERSION = 66;
+  public static final int CURRENT_VERSION = 67;
 
   private static boolean rawDebug = false;
 
@@ -127,6 +127,7 @@ public final class ConfigMigrator {
     if (stored < 63) anyChange |= v62to63(cfg);
     if (stored < 64) anyChange |= v63to64(cfg);
     if (stored < 65) anyChange |= v64to65(cfg);
+    if (stored < 67) anyChange |= v66to67(cfg);
 
     fillDefaults(plugin, cfg);
 
@@ -1280,6 +1281,11 @@ public final class ConfigMigrator {
       log("v64→v65", "set body.drop-items-on-despawn = false (preserve inventory on despawn)");
       return true;
     }
+    return false;
+  }
+
+  private static boolean v66to67(YamlConfiguration cfg) {
+    log("v66→v67", "housekeeping stamp — bot-name.mode default changed to random");
     return false;
   }
 

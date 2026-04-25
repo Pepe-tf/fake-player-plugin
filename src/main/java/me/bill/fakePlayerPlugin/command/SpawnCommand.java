@@ -29,7 +29,7 @@ public class SpawnCommand implements FppCommand {
 
   @Override
   public String getUsage() {
-    return "[amount] [world [x y z]] [--name <name>]";
+    return "[amount] [world [x y z]] [--name <name>] [--random-name]";
   }
 
   @Override
@@ -63,6 +63,7 @@ public class SpawnCommand implements FppCommand {
     double coordX = 0, coordY = 0, coordZ = 0;
     boolean hasCoords = false;
     boolean isConsole = !(sender instanceof Player);
+    boolean forceRandomName = false;
 
     List<String> positional = new ArrayList<>();
     for (int i = 0; i < args.length; i++) {
@@ -73,6 +74,8 @@ public class SpawnCommand implements FppCommand {
           sender.sendMessage(Lang.get("spawn-invalid"));
           return true;
         }
+      } else if (args[i].equalsIgnoreCase("--random-name")) {
+        forceRandomName = true;
       } else {
         positional.add(args[i]);
       }
@@ -315,7 +318,7 @@ public class SpawnCommand implements FppCommand {
       return true;
     }
 
-    int result = manager.spawn(location, count, spawner, customName, bypassMax, botType);
+    int result = manager.spawn(location, count, spawner, customName, bypassMax, botType, forceRandomName);
 
     switch (result) {
       case -1 -> {
@@ -368,6 +371,9 @@ public class SpawnCommand implements FppCommand {
         skipNext = true;
         continue;
       }
+      if (a.equalsIgnoreCase("--random-name")) {
+        continue;
+      }
       positional.add(a);
     }
 
@@ -401,6 +407,7 @@ public class SpawnCommand implements FppCommand {
             .filter(n -> n.toLowerCase().startsWith(typed))
             .forEach(suggestions::add);
         if ("--name".startsWith(typed)) suggestions.add("--name");
+        if ("--random-name".startsWith(typed)) suggestions.add("--random-name");
       }
       return suggestions;
     }
@@ -424,6 +431,7 @@ public class SpawnCommand implements FppCommand {
             .filter(n -> n.toLowerCase().startsWith(typed))
             .forEach(suggestions::add);
         if ("--name".startsWith(typed)) suggestions.add("--name");
+        if ("--random-name".startsWith(typed)) suggestions.add("--random-name");
       }
     } else if (completedTokens == 1) {
       String prev = eff.get(completedTokens - 1);

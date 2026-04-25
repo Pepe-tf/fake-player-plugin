@@ -15,6 +15,7 @@ import me.bill.fakePlayerPlugin.api.impl.FppBotImpl;
 import me.bill.fakePlayerPlugin.util.FppScheduler;
 import me.bill.fakePlayerPlugin.util.BotTabTeam;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import me.bill.fakePlayerPlugin.util.RandomNameGenerator;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -688,6 +689,17 @@ public class FakePlayerManager {
       String customName,
       boolean bypassMax,
       BotType botType) {
+    return spawn(location, count, spawner, customName, bypassMax, botType, false);
+  }
+
+  public int spawn(
+      Location location,
+      int count,
+      Player spawner,
+      String customName,
+      boolean bypassMax,
+      BotType botType,
+      boolean forceRandomName) {
     int maxBots = Config.maxBots();
     if (!bypassMax && maxBots > 0) {
       int available = maxBots - activePlayers.size();
@@ -729,7 +741,7 @@ public class FakePlayerManager {
         baseName = customName;
         name = customName;
       } else {
-        name = generateName();
+        name = generateName(forceRandomName);
         baseName = name;
       }
 
@@ -2589,6 +2601,13 @@ public class FakePlayerManager {
   }
 
   private String generateName() {
+    return generateName(false);
+  }
+
+  private String generateName(boolean forceRandom) {
+    if (forceRandom || "random".equals(Config.botNameMode())) {
+      return generateRandomName();
+    }
 
     List<String> pool = cleanNamePool;
     if (pool.isEmpty()) return fallbackName();
@@ -2607,6 +2626,17 @@ public class FakePlayerManager {
       return chosen;
     }
     return fallbackName();
+  }
+
+  private String generateRandomName() {
+    String generated;
+    int attempts = 0;
+    do {
+      generated = RandomNameGenerator.generate();
+      if (++attempts > 200) return fallbackName();
+    } while (generated == null || usedNames.contains(generated) || Bukkit.getPlayerExact(generated) != null);
+    usedNames.add(generated);
+    return generated;
   }
 
   private String fallbackName() {

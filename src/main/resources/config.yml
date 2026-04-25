@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed automatically. Do NOT edit.
-config-version: 66
+config-version: 67
 language: en
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -50,6 +50,11 @@ leave-delay:
 # Placeholders: {bot_name}  {spawner}  {num}
 # Colors:  <#0079FF>{bot_name}</#0079FF>  or  <gray>{bot_name}</gray>
 bot-name:
+  # Name source for auto-generated bot names (no --name flag).
+  #   pool   — pick from bot-names.yml (requires names in the file)
+  #   random — generate a realistic Minecraft-style username on the fly (default)
+  mode: random
+
   admin-format: '{bot_name}'           # Used for /fpp spawn (admin)
   user-format:  'bot-{spawner}-{num}'  # Used for /fpp spawn (user tier)
 

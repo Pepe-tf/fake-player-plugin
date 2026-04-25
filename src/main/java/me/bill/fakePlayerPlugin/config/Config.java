@@ -138,6 +138,10 @@ public final class Config {
     return cfg.getString("bot-name.user-format", "<gray>[bot-{spawner}-{num}]</gray>");
   }
 
+  public static String botNameMode() {
+    return cfg.getString("bot-name.mode", "random").toLowerCase();
+  }
+
   public static String luckpermsDefaultGroup() {
     return cfg.getString("luckperms.default-group", "");
   }
