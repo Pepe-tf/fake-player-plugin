@@ -54,9 +54,8 @@ public class BotCollisionListener implements Listener {
     }
 
     if (attacker instanceof Player
-        && (!Config.pvpAiEnabled()
-            || (plugin.isWorldGuardAvailable()
-                && !me.bill.fakePlayerPlugin.util.WorldGuardHelper.isPvpAllowed(target.getLocation())))) {
+        && plugin.isWorldGuardAvailable()
+        && !me.bill.fakePlayerPlugin.util.WorldGuardHelper.isPvpAllowed(target.getLocation())) {
       Config.debugNms("[KB-DEBUG] BotCollision: SKIP - player PVP blocked for bot=" + target.getName());
       return;
     }

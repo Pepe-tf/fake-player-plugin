@@ -61,9 +61,8 @@ public class FakePlayerEntityListener implements Listener {
 
     if (event instanceof EntityDamageByEntityEvent byEntity
         && byEntity.getDamager() instanceof Player attacker) {
-      if (!Config.pvpAiEnabled()
-          || (plugin.isWorldGuardAvailable()
-              && !WorldGuardHelper.isPvpAllowed(event.getEntity().getLocation()))) {
+      if (plugin.isWorldGuardAvailable()
+          && !WorldGuardHelper.isPvpAllowed(event.getEntity().getLocation())) {
         event.setCancelled(true);
         return;
       }
