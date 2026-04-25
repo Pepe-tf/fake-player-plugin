@@ -55,7 +55,7 @@ public final class BotRenameHelper {
       return ValidationResult.failure(messages, Lang.get("rename-invalid-name"));
     }
 
-    ResolvedName resolved = resolveTarget(bot.getBotType(), requestedName);
+    ResolvedName resolved = resolveTarget(requestedName);
     Component availabilityProblem = validateAvailability(bot, resolved.finalName());
     if (availabilityProblem != null) {
       return ValidationResult.failure(messages, availabilityProblem);
@@ -89,7 +89,7 @@ public final class BotRenameHelper {
                   badword != null ? badword : "???"));
         }
 
-        resolved = resolveTarget(bot.getBotType(), sanitized);
+        resolved = resolveTarget(sanitized);
         availabilityProblem = validateAvailability(bot, resolved.finalName());
         if (availabilityProblem != null) {
           return ValidationResult.failure(messages, availabilityProblem);
@@ -138,7 +138,7 @@ public final class BotRenameHelper {
         continue;
       }
 
-      ResolvedName resolved = resolveTarget(bot.getBotType(), trimmed);
+      ResolvedName resolved = resolveTarget(trimmed);
       if (!BadwordFilter.isAllowed(resolved.spawnArg())) {
         continue;
       }
@@ -337,16 +337,8 @@ public final class BotRenameHelper {
     };
   }
 
-  private ResolvedName resolveTarget(@NotNull BotType botType, @NotNull String requestedName) {
-    String spawnArg = requestedName;
-    String finalName = requestedName;
-    if (botType == BotType.PVP) {
-      if (spawnArg.toLowerCase().startsWith("pvp_")) {
-        spawnArg = spawnArg.substring(4);
-      }
-      finalName = "pvp_" + spawnArg;
-    }
-    return new ResolvedName(spawnArg, finalName);
+  private ResolvedName resolveTarget(@NotNull String requestedName) {
+    return new ResolvedName(requestedName, requestedName);
   }
 
   private record ResolvedName(String spawnArg, String finalName) {}

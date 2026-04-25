@@ -223,7 +223,7 @@ public final class BotSettingGui implements Listener {
     this.plugin = plugin;
     this.manager = manager;
     this.renameHelper = new BotRenameHelper(plugin, manager);
-    this.categories = List.of(general(), chat(), pve(), pathfinding(), pvp(), danger());
+    this.categories = List.of(general(), chat(), pve(), pathfinding(), danger());
   }
 
   public void registerExtensionTab(FppSettingsTab tab) {
@@ -2100,100 +2100,6 @@ public final class BotSettingGui implements Listener {
                 false)));
   }
 
-  private BotCategory pvp() {
-    return new BotCategory(
-        "⚔ ᴘᴠᴘ",
-        Material.NETHERITE_SWORD,
-        Material.IRON_SWORD,
-        Material.RED_STAINED_GLASS_PANE,
-        List.of(
-            BotEntry.comingSoon(
-                "pvp_difficulty",
-                "ᴅɪꜰꜰɪᴄᴜʟᴛʏ",
-                "ᴏᴠᴇʀʀɪᴅᴇ ᴛʜɪꜱ ʙᴏᴛ'ꜱ ꜱᴋɪʟʟ ʟᴇᴠᴇʟ.\n"
-                    + "ɴᴘᴄ / ᴇᴀꜢʏ / ᴍᴇᴅɪᴜᴍ / ʜᴀʀᴅ / ᴛɪᴇʀ1 / ʜᴀᴄᴋᴇʀ.",
-                Material.DIAMOND_SWORD),
-            BotEntry.comingSoon(
-                "pvp_combat_mode",
-                "ᴄᴏᴍʙᴀᴛ ᴍᴏᴅᴇ",
-                "ᴘᴇʀ-ʙᴏᴛ ᴄʀʏꜱᴛᴀʟ / ꜱᴡᴏʀᴅ / ꜰɪꜱᴛ\nᴄᴏᴍʙᴀᴛ ꜱᴛʏʟᴇ ꜱᴇʟᴇᴄᴛɪᴏɴ.",
-                Material.END_CRYSTAL),
-            BotEntry.comingSoon(
-                "pvp_critting",
-                "ᴄʀɪᴛᴛɪɴɢ",
-                "ʙᴏᴛ ʟᴀɴᴅꜱ ᴄʀɪᴛɪᴄᴀʟ ʜɪᴛꜱ ʙʏ\nꜰᴀʟʟɪɴɢ ᴅᴜʀɪɴɢ ᴀᴛᴛᴀᴄᴋꜱ.",
-                Material.NETHERITE_SWORD),
-            BotEntry.comingSoon(
-                "pvp_s_tapping",
-                "ꜱ-ᴛᴀᴘᴘɪɴɢ",
-                "ʙᴏᴛ ᴛᴀᴘꜱ ꜱ ᴅᴜʀɪɴɢ ꜱᴡɪɴɢ\n" + "ᴛᴏ ʀᴇꜱᴇᴛ ᴀᴛᴛᴀᴄᴋ ᴄᴏᴏʟᴅᴏᴡɴ.",
-                Material.CLOCK),
-            BotEntry.comingSoon(
-                "pvp_strafing",
-                "ꜱᴛʀᴀꜰɪɴɢ",
-                "ʙᴏᴛ ᴄɪʀᴄʟᴇꜱ ᴀʀᴏᴜɴᴅ ᴛʜᴇ ᴛᴀʀɡᴇᴛ\nᴡʜɪʟᴇ ꜰɪɡʜᴛɪɴɢ.",
-                Material.FEATHER),
-            BotEntry.comingSoon(
-                "pvp_shield",
-                "ꜱʜɪᴇʟᴅɪɴɢ",
-                "ʙᴏᴛ ᴄᴀʀʀɪᴇꜱ ᴀɴᴅ ᴜꜱᴇꜱ ᴀ ꜱʜɪᴇʟᴅ\nᴛᴏ ʙʟᴏᴄᴋ ɪɴᴄᴏᴍɪɴɢ ᴀᴛᴛᴀᴄᴋꜱ.",
-                Material.SHIELD),
-            BotEntry.comingSoon(
-                "pvp_speed_buffs",
-                "ꜱᴘᴇᴇᴅ ʙᴜꜰꜰꜱ",
-                "ʙᴏᴛ ʜᴀꜱ ꜱᴘᴇᴇᴅ & ꜱᴛʀᴇɴɡʜ ᴘᴏᴛɪᴏɴ\nᴇ꜀꜀ᴛꜱ ᴀᴄɪᴠᴇ.",
-                Material.SUGAR),
-            BotEntry.comingSoon(
-                "pvp_jump_reset",
-                "ᴊᴜᴍᴘ ʀᴇꜱᴇᴛ",
-                "ʙᴏᴛ ᴊᴜᴍᴘꜱ ᴊᴜꜱᴛ ʙᴇꜰᴏʀᴇ ꜱᴡɪɴɢɪɴɢ\n" + "ᴛᴏ ɡᴀɪɴ ᴛʜᴇ ᴡ-ᴛᴀᴘ ᴋɴᴏᴄᴋʙᴀᴄᴋ ʙᴏɴᴜꜱ.",
-                Material.SLIME_BALL),
-            BotEntry.comingSoon(
-                "pvp_random",
-                "ʀᴀɴᴅᴏᴍ ᴘʟᴀʏꜱᴛʏʟᴇ",
-                "ʀᴀɴᴅᴏᴍɪꜱᴇ ᴛᴇᴄʜɴɪQᴜᴇꜱ ᴇᴀᴄʜ ʀᴏᴜɴᴅ\nᴛᴏ ᴋᴇᴇᴘ ᴛʜᴇ ꜰɪɡʜᴛ ᴜɴᴘʀᴇᴅɪᴄᴛᴀʙʟᴇ.",
-                Material.COMPARATOR),
-            BotEntry.comingSoon(
-                "pvp_gear",
-                "ɢᴇᴀʀ ᴛʏᴘᴇ",
-                "ʙᴏᴛ ᴡᴇᴀʀꜱ ᴅɪᴀᴍᴏɴᴅ ᴏʀ\nɴᴇᴛʜᴇʀɪᴛᴇ ᴀʀᴍᴏᴜʀ.",
-                Material.DIAMOND_CHESTPLATE),
-            BotEntry.comingSoon(
-                "pvp_auto_refill",
-                "ᴀᴜᴛᴏ-ʀᴇꜰɪʟʟ ᴛᴏᴛᴇᴍ",
-                "ʙᴏᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇ-ᴇQᴜɪᴘꜱ ᴀ\nᴛᴏᴍ ᴀꜰᴛᴇʀ ᴘᴏᴘᴘɪɴɢ ᴏɴᴇ.",
-                Material.TOTEM_OF_UNDYING),
-            BotEntry.comingSoon(
-                "pvp_auto_respawn",
-                "ᴀᴜᴛᴏ-ʀᴇꜱᴘᴀᴡɴ",
-                "ʙᴏᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇꜱᴘᴀᴡɴꜱ\nᴀɴᴅ ʀᴇᴊᴏɪɴꜱ ᴀꜰᴛᴇʀ ᴅᴇᴀᴛʜ.",
-                Material.RESPAWN_ANCHOR),
-            BotEntry.comingSoon(
-                "pvp_spawn_prot",
-                "ꜱᴘᴀᴡɴ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ",
-                "ʙᴏᴛ ꜱᴛᴀʏꜱ ɪɴᴠᴜʟɴᴇʀᴀʙʟᴇ ꜰᴏʀ\nᴀ ꜱʜʏʀᴛ ɡᴀᴄᴇ ᴘᴇʀᴏᴅ ᴀᴛ ꜱᴘᴀᴡɴ.",
-                Material.GRASS_BLOCK),
-            BotEntry.comingSoon(
-                "pvp_target",
-                "ᴛᴀʀɡᴇᴛ ᴘʀɪᴏʀɪᴛʏ",
-                "ᴄʜᴏᴏꜱᴇ ᴡʜɪᴄʜ ᴘʟᴀʏᴇʀ ᴛʏᴘᴇ ᴛʜᴪꜱ\nʙᴏᴛ ᴘʀɪᴏʀɪᴛɪꜬ ᴀꜱ ᴛᴀʀɡᴇᴛ.",
-                Material.ORANGE_DYE),
-            BotEntry.comingSoon(
-                "pvp_aggression",
-                "ᴀɡɡʀᴇꜱꜱɪᴏɴ",
-                "ᴄᴏɴᴛʀᴏʟ ʜᴏᴡ ᴀɢɡʀᴇꜱꜱɪᴏɴ ʙᴏᴛ ᴡɪʟʟ\nʙᴀᴄᴋ ᴏ꜡꜡.",
-                Material.BLAZE_POWDER),
-            BotEntry.comingSoon(
-                "pvp_flee_health",
-                "ꜰʟᴇᴇ ʜᴇᴀʟᴛʜ",
-                "ʙᴏᴛ ʀᴇᴛʀᴇᴀᴛꜱ ᴡʜᴇɴ ɪᴛꜱ ʜᴇᴀʟᴛʜ\nᴅʀᴏᴘꜱ ʙᴀʟᴏᴡ ᴛʜɪꜱ ᴠᴀʟᴜᴇ.",
-                Material.RED_DYE),
-            BotEntry.comingSoon(
-                "pvp_combo_length",
-                "ᴄᴏᴍʙᴏ ʟᴇɴɡᴛʜ",
-                "ᴍᴀxɪᴍᴜᴍ ʜɪᴛꜱ ɪɴ ᴀ ꜱɪɴɡʟᴇ ʙᴜʀꜱᴛ\nʙᴇꜰᴏʀᴇ ʙᴀᴄᴋɪɴɢ ᴏ꜡꜡.",
-                Material.IRON_SWORD)));
-  }
 
   private BotCategory pathfinding() {
     return new BotCategory(

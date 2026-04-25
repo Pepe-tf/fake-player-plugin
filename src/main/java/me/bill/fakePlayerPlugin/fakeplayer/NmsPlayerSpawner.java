@@ -256,7 +256,7 @@ public final class NmsPlayerSpawner {
           FppLogger.debug("NmsPlayerSpawner: attack(Entity) method cached");
         } else {
           FppLogger.warn(
-              "NmsPlayerSpawner: attack(Entity) method not found - PVP bots will use"
+              "NmsPlayerSpawner: attack(Entity) method not found - bots will use"
                   + " fallback damage");
         }
       } catch (Exception e) {

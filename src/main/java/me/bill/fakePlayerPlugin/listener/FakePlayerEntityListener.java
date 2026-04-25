@@ -4,7 +4,6 @@ import java.util.UUID;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast;
-import me.bill.fakePlayerPlugin.fakeplayer.BotType;
 import me.bill.fakePlayerPlugin.fakeplayer.ChunkLoader;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerBody;
@@ -122,22 +121,6 @@ public class FakePlayerEntityListener implements Listener {
     }
   }
 
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  public void onBotDamagedByPlayer(EntityDamageByEntityEvent event) {
-    if (!isFakeBotBody(event.getEntity())) return;
-    if (!(event.getEntity() instanceof Player victim)) return;
-    if (!(event.getDamager() instanceof Player attacker)) return;
-
-    FakePlayer fp = manager.getByEntity(victim);
-    if (fp == null) return;
-
-    if (fp.getBotType() != BotType.PVP) return;
-
-    if (manager.getPvpAI() != null) {
-      manager.getPvpAI().onBotAttacked(victim.getUniqueId(), attacker.getUniqueId());
-    }
-  }
-
   @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
   public void onEntityPortal(EntityPortalEvent event) {
     if (!isFakeBotBody(event.getEntity())) return;
@@ -174,8 +157,7 @@ public class FakePlayerEntityListener implements Listener {
     FakePlayer fp = manager.getByEntity(event.getEntity());
     if (fp == null) return;
 
-    if (fp.getBotType() != me.bill.fakePlayerPlugin.fakeplayer.BotType.PVP
-        && Config.suppressDrops()) {
+    if (Config.suppressDrops()) {
       event.getDrops().clear();
       event.setDroppedExp(0);
     }

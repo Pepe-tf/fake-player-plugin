@@ -103,8 +103,6 @@ public class FakePlayerManager {
   private BotPersistence persistence;
   private BotTabTeam botTabTeam;
 
-  private final BotPvpAI pvpAI;
-
   private BotSwapAI botSwapAI;
 
   private BotIdentityCache identityCache;
@@ -161,7 +159,6 @@ public class FakePlayerManager {
   public FakePlayerManager(FakePlayerPlugin plugin) {
     this.plugin = plugin;
     FAKE_PLAYER_KEY = new NamespacedKey(plugin, "fake_player_name");
-    this.pvpAI = new BotPvpAI(this);
 
     if (!me.bill.fakePlayerPlugin.util.AttributionManager.quickAuthorCheck()
         || !me.bill.fakePlayerPlugin.util.AttributionApiManager.quickEndpointCheck()) {
@@ -297,14 +294,9 @@ public class FakePlayerManager {
                     }
                   }
 
-                  if (fp.getBotType() == BotType.PVP) {
-                    pvpAI.tickBot(fp, bot, online);
-                  }
-
                   NmsPlayerSpawner.tickPhysics(bot);
 
                   if (doHeadAi
-                      && fp.getBotType() != BotType.PVP
                       && fp.isHeadAiEnabled()
                       && !actionLockedBots.containsKey(fp.getUuid())
                       && !navLockedBots.contains(fp.getUuid())) {
@@ -592,7 +584,6 @@ public class FakePlayerManager {
               .replace("{num}", String.valueOf(alreadyOwned + i + 1))
               .replace("{bot_name}", cleanBotName);
 
-      if (botType == BotType.PVP) rawUserName = "pvp_" + rawUserName;
       fp.setRawDisplayName(rawUserName);
       String userDisplay = finalizeDisplayName(rawUserName, ubn.internalName());
       fp.setDisplayName(userDisplay);
@@ -657,7 +648,7 @@ public class FakePlayerManager {
 
     if (customName != null) {
 
-      String effectiveName = (botType == BotType.PVP) ? "pvp_" + customName : customName;
+      String effectiveName = customName;
 
       if (effectiveName.isEmpty()
           || effectiveName.length() > 16
@@ -684,10 +675,7 @@ public class FakePlayerManager {
 
       if (customName != null) {
         baseName = customName;
-        name = (botType == BotType.PVP) ? "pvp_" + customName : customName;
-      } else if (botType == BotType.PVP) {
-        name = generatePvpName();
-        baseName = (name != null && name.startsWith("pvp_")) ? name.substring(4) : name;
+        name = customName;
       } else {
         name = generateName();
         baseName = name;
@@ -1201,7 +1189,7 @@ public class FakePlayerManager {
                                     if (!activePlayers.containsKey(botUuid)) return;
                                     refreshLpDisplayName(fp);
 
-                                    if (botSwapAI != null && fp.getBotType() != BotType.PVP) {
+                                    if (botSwapAI != null) {
                                       botSwapAI.schedule(fp);
                                     }
                                   },
@@ -1210,7 +1198,7 @@ public class FakePlayerManager {
                 5L);
           } else {
 
-              if (botSwapAI != null && fp.getBotType() != BotType.PVP) {
+              if (botSwapAI != null) {
               FppScheduler.runSyncLater(
                   plugin,
                   () -> {
@@ -1263,8 +1251,6 @@ public class FakePlayerManager {
 
     if (identityCache != null) identityCache.prime(name, uuid);
 
-    if (botType == BotType.AFK && name.startsWith("pvp_")) botType = BotType.PVP;
-
     PlayerProfile profile = Bukkit.createProfile(uuid, name);
     FakePlayer fp = new FakePlayer(uuid, name, profile);
     fp.setBotType(botType);
@@ -1273,8 +1259,6 @@ public class FakePlayerManager {
     boolean isUserBot = name.startsWith("ubot_");
     if (isUserBot) {
       fp.setSkinName(pickRandomSkinName());
-    } else if (botType == BotType.PVP && name.startsWith("pvp_")) {
-      fp.setSkinName(name.substring(4));
     } else {
       fp.setSkinName(name);
     }
@@ -1298,7 +1282,6 @@ public class FakePlayerManager {
               .replace("{num}", String.valueOf(botIdx))
               .replace("{bot_name}", name);
 
-      if (botType == BotType.PVP && !rawName.startsWith("pvp_")) rawName = "pvp_" + rawName;
       Config.debug(
           "[Restore] user-bot '"
               + name
@@ -1427,8 +1410,6 @@ public class FakePlayerManager {
     activePlayers.clear();
     usedNames.clear();
     entityIdIndex.clear();
-
-    pvpAI.cancelAll();
 
     botHeadRotation.clear();
     botSpawnRotation.clear();
@@ -1757,8 +1738,6 @@ public class FakePlayerManager {
     if (target.getPhysicsEntity() != null)
       entityIdIndex.remove(target.getPhysicsEntity().getEntityId());
 
-    pvpAI.stopBot(target.getUuid());
-
     if (botSwapAI != null) botSwapAI.cancel(target.getUuid());
 
     botHeadRotation.remove(target.getUuid());
@@ -1870,7 +1849,6 @@ public class FakePlayerManager {
     nameIndex.clear();
     usedNames.clear();
     entityIdIndex.clear();
-    pvpAI.cancelAll();
 
     botHeadRotation.clear();
     botSpawnRotation.clear();
@@ -2033,7 +2011,6 @@ public class FakePlayerManager {
               botSpawnRotation.remove(fp.getUuid());
               actionLockedBots.remove(fp.getUuid());
               navLockedBots.remove(fp.getUuid());
-              pvpAI.stopBot(fp.getUuid());
               if (db != null) db.recordRemoval(fp.getUuid(), "DIED");
               Config.debug("Removed from registry: " + name);
               return true;
@@ -2374,10 +2351,6 @@ public class FakePlayerManager {
     return activePlayers.size();
   }
 
-  public BotPvpAI getPvpAI() {
-    return pvpAI;
-  }
-
   public List<FakePlayer> getBotsOwnedBy(java.util.UUID ownerUuid) {
     return activePlayers.values().stream()
         .filter(fp -> ownerUuid.equals(fp.getSpawnedByUuid()))
@@ -2582,39 +2555,6 @@ public class FakePlayerManager {
       return chosen;
     }
     return fallbackName();
-  }
-
-  private String generatePvpName() {
-
-    List<String> pool = cleanNamePool;
-    if (!pool.isEmpty()) {
-      String chosen = null;
-      int count = 0;
-      for (String n : pool) {
-        if (n == null || n.isEmpty() || !n.matches("[a-zA-Z0-9_]+")) continue;
-
-        String base = n.length() > 12 ? n.substring(0, 12) : n;
-
-        String candidate = "pvp_" + base;
-        if (usedNames.contains(candidate) || Bukkit.getPlayerExact(candidate) != null) continue;
-        count++;
-        if (ThreadLocalRandom.current().nextInt(count) == 0) chosen = candidate;
-      }
-      if (chosen != null) {
-        usedNames.add(chosen);
-        return chosen;
-      }
-    }
-
-    String generated;
-    int attempts = 0;
-    do {
-      generated = "pvp_Bot" + ThreadLocalRandom.current().nextInt(1000, 9999);
-      if (generated.length() > 16) generated = generated.substring(0, 16);
-      if (++attempts > 200) return null;
-    } while (usedNames.contains(generated) || Bukkit.getPlayerExact(generated) != null);
-    usedNames.add(generated);
-    return generated;
   }
 
   private String fallbackName() {

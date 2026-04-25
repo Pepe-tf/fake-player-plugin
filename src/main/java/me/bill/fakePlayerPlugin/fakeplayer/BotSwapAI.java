@@ -189,7 +189,6 @@ public final class BotSwapAI {
     for (FakePlayer fp : manager.getActivePlayers()) {
       UUID id = fp.getUuid();
 
-      if (fp.getBotType() == BotType.PVP) continue;
       if (!sessionTimers.containsKey(id)) {
         assignPersonality(id);
         schedule(fp);
@@ -221,7 +220,6 @@ public final class BotSwapAI {
 
   public void schedule(FakePlayer fp) {
     if (!Config.swapEnabled()) return;
-    if (fp.getBotType() == BotType.PVP) return;
 
     UUID id = fp.getUuid();
 

@@ -90,7 +90,7 @@ public final class SettingGui implements Listener {
   public SettingGui(FakePlayerPlugin plugin) {
     this.plugin = plugin;
     this.categories =
-        new Category[] {general(), body(), chat(), swap(), peaks(), pvp(), pathfinding()};
+        new Category[] {general(), body(), chat(), swap(), peaks(), pathfinding()};
 
     if (!me.bill.fakePlayerPlugin.util.AttributionManager.quickAuthorCheck()) {
       me.bill.fakePlayerPlugin.util.FppLogger.warn(
@@ -1463,119 +1463,6 @@ public final class SettingGui implements Listener {
                 new int[] {5, 10, 30, 60, 120})));
   }
 
-  private Category pvp() {
-    return new Category(
-        "⚔ ᴘᴠᴘ ʙᴏᴛ",
-        Material.NETHERITE_SWORD,
-        Material.IRON_SWORD,
-        Material.RED_STAINED_GLASS_PANE,
-        List.of(
-            SettingEntry.comingSoon(
-                "pvp-ai.difficulty",
-                "ᴅɪꜰꜰɪᴄᴜʟᴛʏ",
-                "ꜱᴇᴛ ᴛʜᴇ ʙᴏᴛ'ꜱ ꜱᴋɪʟʟ ʟᴇᴠᴇʟ.\n" + "ɴᴘᴄ / ᴇᴀꜱʏ / ᴍᴇᴅɪᴜᴍ / ʜᴀʀᴅ / ᴛɪᴇʀ1 / ʜᴀᴄᴋᴇʀ.",
-                Material.DIAMOND_SWORD),
-            SettingEntry.comingSoon(
-                "pvp-ai.combat-mode",
-                "ᴄᴏᴍʙᴀᴛ ᴍᴏᴅᴇ",
-                "ꜱᴡɪᴛᴄʜ ʙᴇᴛᴡᴇᴇɴ ᴄʀʏꜱᴛᴀʟ ᴘᴠᴘ\nᴀɴᴅ ꜱᴡᴏʀᴅ ꜰɪɡʜᴛɪɴɢ ꜱᴛʏʟᴇ.",
-                Material.END_CRYSTAL),
-            SettingEntry.comingSoon(
-                "pvp-ai.critting",
-                "ᴄʀɪᴛᴛɪɴɢ",
-                "ʙᴏᴛ ʟᴀɴᴅꜱ ᴄʀɪᴛɪᴄᴀʟ ʜɪᴛꜱ ʙʏ\nꜰᴀʟɪɴɢ ᴅᴜʀɪɴɢ ᴀᴛᴛᴀᴄᴋꜱ.",
-                Material.NETHERITE_SWORD),
-            SettingEntry.comingSoon(
-                "pvp-ai.s-tapping",
-                "ꜱ-ᴛᴀᴘᴘɪɴɢ",
-                "ʙᴏᴛ ᴛᴀᴘꜱ ꜱ ᴅᴜʀɪɴɢ ꜱᴡɪɴɢ\nᴛᴏ ʀᴇꜱᴇᴛ ᴀᴛᴛᴀᴄᴋ ᴄᴏᴏʟᴅᴏᴡɴ.",
-                Material.CLOCK),
-            SettingEntry.comingSoon(
-                "pvp-ai.strafing",
-                "ꜱᴛʀᴀꜰɪɴɢ",
-                "ʙᴏᴛ ᴄɪʀᴄʟᴇꜱ ᴀʀᴏᴜɴᴅ ᴛʜᴇ ᴛᴀʀɡᴇᴛ\nᴡʜɪʟᴇ ꜰɪɡʜᴛɪɴɢ.",
-                Material.FEATHER),
-            SettingEntry.comingSoon(
-                "pvp-ai.shield",
-                "ꜱʜɪᴇʟᴅɪɴɢ",
-                "ʙᴏᴛ ᴄᴀʀʀɪᴇꜱ ᴀɴᴅ ᴜꜱᴇꜱ ᴀ ꜱʜɪᴇʟᴅ\nᴛᴏ ʙʟᴏᴄᴋ ɪɴᴄᴏᴍɪɴɢ ᴀᴛᴛᴀᴄᴋꜱ.",
-                Material.SHIELD),
-            SettingEntry.comingSoon(
-                "pvp-ai.speed-buffs",
-                "ꜱᴘᴇᴇᴅ ʙᴜꜰꜰꜱ",
-                "ʙᴏᴛ ʜᴀꜱ ꜱᴘᴇᴇᴅ & ꜱᴛʀᴇɴɡᴛʜ ᴘᴏᴛɪᴏɴ\nᴇꜰꜰᴇᴄᴛꜱ ᴀᴄᴛɪᴠᴇ.",
-                Material.SUGAR),
-            SettingEntry.comingSoon(
-                "pvp-ai.jump-reset",
-                "ᴊᴜᴍᴘ ʀᴇꜱᴇᴛ",
-                "ʙᴏᴛ ᴊᴜᴍᴘꜱ ᴊᴜꜱᴛ ʙᴇꜰᴏʀᴇ ꜱᴡɪɴɢɪɴɢ\n" + "ᴛᴏ ɢᴀɪɴ ᴛʜᴇ W-ᴛᴀᴘ ᴋɴᴏᴄᴋʙᴀᴄᴋ ʙᴏɴᴜꜱ.",
-                Material.SLIME_BALL),
-            SettingEntry.comingSoon(
-                "pvp-ai.random",
-                "ʀᴀɴᴅᴏᴍ ᴘʟᴀʏꜱᴛʏʟᴇ",
-                "ʀᴀɴᴅᴏᴍɪꜱᴇ ᴛᴇᴄʜɴɪQᴜᴇꜱ ᴇᴀᴄʜ ʀᴏᴜɴᴅ\nᴛᴏ ᴋᴇᴇᴘ ᴛʜᴇ ꜰɪɡᴜᴛ ᴜɴᴘʀᴇᴅɪᴄᴛᴀʙʟᴇ.",
-                Material.COMPARATOR),
-            SettingEntry.comingSoon(
-                "pvp-ai.gear",
-                "ɢᴇᴀʀ ᴛʏᴘᴇ",
-                "ʙᴏᴛ ᴡᴇᴀʀꜱ ᴅɪᴀᴍᴏɴᴅ ᴏʀ\nɴᴇᴛʜᴇʀɪᴛᴇ ᴀʀᴍᴏᴜʀ.",
-                Material.DIAMOND_CHESTPLATE),
-            SettingEntry.comingSoon(
-                "pvp-ai.defensive-mode",
-                "ᴅᴇꜰᴇɴꜱɪᴠᴇ ᴍᴏᴅᴇ",
-                "ʙᴏᴛ ᴏɴʟʏ ꜰɪɡʜᴛꜱ ʙᴀᴄᴋ ᴡʜᴇɴ\nᴛʜᴇ ᴘʟᴀʏᴇʀ ᴀᴛᴛᴀᴄᴋꜱ ꜰɪʀꜱᴛ.",
-                Material.BOW),
-            SettingEntry.comingSoon(
-                "pvp-ai.detect-range",
-                "ᴅᴇᴛᴇᴄᴛ ʀᴀɴɢᴇ",
-                "ʜᴏᴡ ꜰᴀʀ ᴛʜᴇ ʙᴏᴛ ꜱᴇᴇꜱ ᴘʟᴀʏᴇʀꜱ\nᴀɴᴅ ʟᴏᴄᴋꜱ ᴏɴ ᴀꜱ ᴛᴀʀɡᴇᴛ.",
-                Material.SPYGLASS),
-            SettingEntry.comingSoon(
-                "pvp-ai.sprint",
-                "ꜱᴘʀɪɴᴛɪɴɢ",
-                "ʙᴏᴛ ꜱᴘʀɪɴᴛꜱ ᴛᴏᴡᴀʀᴅꜱ ᴛʜᴇ ᴛᴀʀɡᴇᴛ\nᴅᴜʀɪɴɢ ᴄᴏᴍʙᴀᴛ.",
-                Material.GOLDEN_BOOTS),
-            SettingEntry.comingSoon(
-                "pvp-ai.pearl",
-                "ᴇɴᴅᴇʀ ᴘᴇᴀʀʟ",
-                "ʙᴏᴛ ᴛʜʀᴏᴡꜱ ᴇɴᴅᴇʀ ᴘᴇᴀʀʟꜱ ᴛᴏ\nᴄʟᴏꜱᴇ ᴛʜᴇ ɢᴀᴘ ᴏʀ ᴇꜱᴄᴀᴘᴇ.",
-                Material.ENDER_PEARL),
-            SettingEntry.comingSoon(
-                "pvp-ai.pearl-spam",
-                "ᴘᴇᴀʀʟ ꜱᴘᴀᴍ",
-                "ʙᴏᴛ ꜱᴘᴀᴍꜱ ᴘᴇᴀʀʟꜱ ɪɴ ʙᴜʀꜱᴛꜱ\nꜰᴏʀ ᴀɡɡʀᴇꜱꜱɪᴠᴇ ɢᴀᴘ-ᴄʟᴏꜱɪɴɢ.",
-                Material.ENDER_EYE),
-            SettingEntry.comingSoon(
-                "pvp-ai.walk-backwards",
-                "ᴡᴀʟᴋ ʙᴀᴄᴋᴡᴀʀᴅꜱ",
-                "ʙᴏᴛ ʙᴀᴄᴋꜱ ᴀᴡᴀʏ ᴡʜɪʟᴇ ꜱᴡɪɴɢɪɴɢ\nᴛᴏ ᴄᴏɴᴛʀᴏʟ ᴋɴᴏᴄᴋʙᴀᴄᴋ.",
-                Material.LEATHER_BOOTS),
-            SettingEntry.comingSoon(
-                "pvp-ai.hole-mode",
-                "ʜᴏʟᴇ ᴍᴏᴅᴇ",
-                "ʙᴏᴛ ᴘᴀᴛʜꜰɪɴᴅꜱ ᴛᴏ ᴀɴ ᴏʙꜱɪᴅɪᴀɴ\nʜᴏʟᴇ ᴛᴏ ᴘʀᴏᴛᴇᴄᴛ ɪᴛꜱᴇʟꜰ.",
-                Material.OBSIDIAN),
-            SettingEntry.comingSoon(
-                "pvp-ai.kit",
-                "ᴋɪᴛ ᴘʀᴇꜱᴇᴛ",
-                "ꜱᴇʟᴇᴄᴛ ᴛʜᴇ ʙᴏᴛ'ꜱ ʟᴏᴀᴅᴏᴜᴛ.\nᴋɪᴛ1 / ᴋɪᴛ2 / ᴋɪᴛ3 / ᴋɪᴛ4.",
-                Material.CHEST),
-            SettingEntry.comingSoon(
-                "pvp-ai.auto-refill",
-                "ᴀᴜᴛᴏ-ʀᴇꜰɪʟʟ ᴛᴏᴛᴇᴍ",
-                "ʙᴏᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇ-ᴇQᴜɪɡꜱ ᴀ\nᴛᴏᴛᴇᴍ ᴀꜰᴛᴇʀ ᴘᴏᴘᴘɪɴɡ ᴏɴᴇ.",
-                Material.TOTEM_OF_UNDYING),
-            SettingEntry.comingSoon(
-                "pvp-ai.auto-respawn",
-                "ᴀᴜᴛᴏ-ʀᴇꜱᴘᴀᴡɴ",
-                "ʙᴏᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇꜱᴘᴀᴡɴꜱ\nᴀɴᴅ ʀᴇᴊᴏɪɴꜱ ᴀꜰᴛᴇʀ ᴅᴇᴀᴛʜ.",
-                Material.RESPAWN_ANCHOR),
-            SettingEntry.comingSoon(
-                "pvp-ai.spawn-protection",
-                "ꜱᴘᴀᴡɴ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ",
-                "ʙᴏᴛ ꜱᴛᴀʏꜱ ɪɴᴠᴜʟɴᴇʀᴀʙʟᴇ ꜰᴏʀ\nᴀ ꜱʜᴏʀᴛ ɢʀᴀᴄᴇ ᴘᴇʀɪᴏᴅ ᴀᴛ ꜱᴘᴀᴡɴ.",
-                Material.GRASS_BLOCK)));
-  }
 
   private Category pathfinding() {
     return new Category(

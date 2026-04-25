@@ -18,14 +18,6 @@ public class SpawnCommand implements FppCommand {
 
   private final FakePlayerManager manager;
 
-  private static final java.util.UUID DEV_UUID =
-      java.util.UUID.fromString("a318f9f4-e2bf-479c-a47a-6a2c1b0b9e66");
-
-  private boolean isPvpUnlocked(CommandSender sender) {
-    if (!(sender instanceof Player p)) return false;
-    return DEV_UUID.equals(p.getUniqueId());
-  }
-
   public SpawnCommand(FakePlayerManager manager) {
     this.manager = manager;
   }
@@ -67,7 +59,6 @@ public class SpawnCommand implements FppCommand {
 
     int count = 1;
     String customName = null;
-    String targetPlayerName = null;
     String worldName = null;
     double coordX = 0, coordY = 0, coordZ = 0;
     boolean hasCoords = false;
@@ -82,13 +73,6 @@ public class SpawnCommand implements FppCommand {
           sender.sendMessage(Lang.get("spawn-invalid"));
           return true;
         }
-      } else if (args[i].equalsIgnoreCase("--player")) {
-        if (i + 1 < args.length) {
-          targetPlayerName = args[++i];
-        } else {
-          sender.sendMessage(Lang.get("spawn-invalid"));
-          return true;
-        }
       } else {
         positional.add(args[i]);
       }
@@ -96,15 +80,8 @@ public class SpawnCommand implements FppCommand {
 
     BotType botType = BotType.AFK;
     if (!positional.isEmpty() && BotType.isValid(positional.get(0))) {
-      BotType parsed = BotType.parse(positional.get(0));
-
-      if (parsed == BotType.PVP && !isPvpUnlocked(sender)) {
-        positional.remove(0);
-
-      } else {
-        botType = parsed;
-        positional.remove(0);
-      }
+      botType = BotType.parse(positional.get(0));
+      positional.remove(0);
     }
 
     int idx = 0;
@@ -340,32 +317,6 @@ public class SpawnCommand implements FppCommand {
 
     int result = manager.spawn(location, count, spawner, customName, bypassMax, botType);
 
-    if (result > 0 && targetPlayerName != null && botType == BotType.PVP) {
-      Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
-      if (targetPlayer == null) {
-        sender.sendMessage(Lang.get("player-not-found", "player", targetPlayerName));
-      } else {
-
-        List<me.bill.fakePlayerPlugin.fakeplayer.FakePlayer> allBots =
-            new ArrayList<>(manager.getActivePlayers());
-
-        int startIdx = Math.max(0, allBots.size() - result);
-        for (int i = startIdx; i < allBots.size(); i++) {
-          me.bill.fakePlayerPlugin.fakeplayer.FakePlayer bot = allBots.get(i);
-          if (bot.getBotType() == BotType.PVP) {
-            manager.getPvpAI().setSpecificTarget(bot.getUuid(), targetPlayer.getUniqueId());
-          }
-        }
-        sender.sendMessage(
-            Lang.get(
-                "pvp-bot-target-set",
-                "bot",
-                String.valueOf(result),
-                "player",
-                targetPlayer.getName()));
-      }
-    }
-
     switch (result) {
       case -1 -> {
         int max = Config.maxBots();
@@ -413,7 +364,7 @@ public class SpawnCommand implements FppCommand {
         skipNext = false;
         continue;
       }
-      if (a.equalsIgnoreCase("--name") || a.equalsIgnoreCase("--player")) {
+      if (a.equalsIgnoreCase("--name")) {
         skipNext = true;
         continue;
       }
@@ -421,17 +372,6 @@ public class SpawnCommand implements FppCommand {
     }
 
     String typed = positional.isEmpty() ? "" : positional.getLast().toLowerCase();
-
-    if (args.length >= 2) {
-      String prevArg = args[args.length - 2];
-      if (prevArg.equalsIgnoreCase("--player")) {
-
-        return Bukkit.getOnlinePlayers().stream()
-            .map(Player::getName)
-            .filter(name -> name.toLowerCase().startsWith(typed))
-            .toList();
-      }
-    }
 
     boolean typeConsumed = positional.size() >= 2 && BotType.isValid(positional.get(0));
 
@@ -441,7 +381,6 @@ public class SpawnCommand implements FppCommand {
     if (!typeConsumed && positional.size() <= 1) {
 
       if ("afk".startsWith(typed)) suggestions.add("afk");
-      if ("pvp".startsWith(typed) && isPvpUnlocked(sender)) suggestions.add("pvp");
 
       if (isAdmin) {
         Config.spawnCountPresetsAdmin().stream()
@@ -462,7 +401,6 @@ public class SpawnCommand implements FppCommand {
             .filter(n -> n.toLowerCase().startsWith(typed))
             .forEach(suggestions::add);
         if ("--name".startsWith(typed)) suggestions.add("--name");
-        if ("--player".startsWith(typed)) suggestions.add("--player");
       }
       return suggestions;
     }
@@ -486,7 +424,6 @@ public class SpawnCommand implements FppCommand {
             .filter(n -> n.toLowerCase().startsWith(typed))
             .forEach(suggestions::add);
         if ("--name".startsWith(typed)) suggestions.add("--name");
-        if ("--player".startsWith(typed)) suggestions.add("--player");
       }
     } else if (completedTokens == 1) {
       String prev = eff.get(completedTokens - 1);
@@ -496,12 +433,10 @@ public class SpawnCommand implements FppCommand {
             .filter(n -> n.toLowerCase().startsWith(typed))
             .forEach(suggestions::add);
         if (isAdmin && "--name".startsWith(typed)) suggestions.add("--name");
-        if (isAdmin && "--player".startsWith(typed)) suggestions.add("--player");
       } else if (Bukkit.getWorld(prev) != null) {
         if (typed.isEmpty() || "~".startsWith(typed)) suggestions.add("~");
         if (typed.isEmpty()) suggestions.add("<x>");
         if (isAdmin && "--name".startsWith(typed)) suggestions.add("--name");
-        if (isAdmin && "--player".startsWith(typed)) suggestions.add("--player");
       }
     } else if (completedTokens >= 2) {
       String prevPrev = eff.get(completedTokens - 2);
@@ -516,7 +451,6 @@ public class SpawnCommand implements FppCommand {
         if (typed.isEmpty()) suggestions.add("<z>");
       }
       if (isAdmin && "--name".startsWith(typed)) suggestions.add("--name");
-      if (isAdmin && "--player".startsWith(typed)) suggestions.add("--player");
     }
 
     return suggestions;

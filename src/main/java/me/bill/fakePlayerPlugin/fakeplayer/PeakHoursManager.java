@@ -186,7 +186,7 @@ public final class PeakHoursManager {
 
   public boolean putBotToSleepByName(String name) {
     FakePlayer fp = manager.getByName(name);
-    if (fp == null || fp.getBotType() == BotType.PVP) return false;
+    if (fp == null) return false;
     putToSleep(fp);
     return true;
   }

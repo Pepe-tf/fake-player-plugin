@@ -803,7 +803,7 @@ public final class BotPersistence {
                     row.yaw(),
                     row.pitch(),
                     null,
-                    row.botName().startsWith("pvp_") ? BotType.PVP : BotType.AFK,
+                    BotType.AFK,
                     row.chatEnabled(),
                     row.chatTier(),
                     row.aiPersonality(),

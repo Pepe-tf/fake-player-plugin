@@ -26,8 +26,6 @@ public final class Config {
     cfg.options().copyDefaults(true);
 
     cfg.set("body.enabled", true);
-
-    cfg.set("pvp-ai.pvp", false);
     plugin.saveConfig();
   }
 
@@ -492,94 +490,6 @@ public final class Config {
    */
   public static boolean pathfindingSprintJump() {
     return cfg.getBoolean("pathfinding.sprint-jump", false);
-  }
-
-  public static boolean pvpAiEnabled() {
-    return cfg.getBoolean("pvp-ai.pvp", false);
-  }
-
-  public static String pvpAiDifficulty() {
-    return cfg.getString("pvp-ai.difficulty", "medium").toLowerCase();
-  }
-
-  public static String pvpAiCombatMode() {
-    return cfg.getString("pvp-ai.combat-mode", "crystal").toLowerCase();
-  }
-
-  public static String pvpAiGear() {
-    return cfg.getString("pvp-ai.gear", "netherite").toLowerCase();
-  }
-
-  public static boolean pvpAiDefensiveMode() {
-    return cfg.getBoolean("pvp-ai.defensive-mode", true);
-  }
-
-  public static double pvpAiDetectRange() {
-    return cfg.getDouble("pvp-ai.detect-range", 32.0);
-  }
-
-  public static String pvpAiKit() {
-    return cfg.getString("pvp-ai.kit", "kit1").toLowerCase();
-  }
-
-  public static boolean pvpAiCritting() {
-    return cfg.getBoolean("pvp-ai.critting", true);
-  }
-
-  public static boolean pvpAiSTapping() {
-    return cfg.getBoolean("pvp-ai.s-tapping", true);
-  }
-
-  public static boolean pvpAiStrafing() {
-    return cfg.getBoolean("pvp-ai.strafing", true);
-  }
-
-  public static boolean pvpAiShielding() {
-    return cfg.getBoolean("pvp-ai.shielding", false);
-  }
-
-  public static boolean pvpAiSpeedBuffs() {
-    return cfg.getBoolean("pvp-ai.speed-buffs", true);
-  }
-
-  public static boolean pvpAiJumpReset() {
-    return cfg.getBoolean("pvp-ai.jump-reset", true);
-  }
-
-  public static boolean pvpAiRandom() {
-    return cfg.getBoolean("pvp-ai.random", false);
-  }
-
-  public static boolean pvpAiSprint() {
-    return cfg.getBoolean("pvp-ai.sprint", true);
-  }
-
-  public static boolean pvpAiWalkBackwards() {
-    return cfg.getBoolean("pvp-ai.walk-backwards", false);
-  }
-
-  public static boolean pvpAiPearl() {
-    return cfg.getBoolean("pvp-ai.pearl", true);
-  }
-
-  public static boolean pvpAiPearlSpam() {
-    return cfg.getBoolean("pvp-ai.pearl-spam", false);
-  }
-
-  public static boolean pvpAiHoleMode() {
-    return cfg.getBoolean("pvp-ai.hole-mode", false);
-  }
-
-  public static boolean pvpAiAutoRefill() {
-    return cfg.getBoolean("pvp-ai.auto-refill", true);
-  }
-
-  public static boolean pvpAiAutoRespawn() {
-    return cfg.getBoolean("pvp-ai.auto-respawn", true);
-  }
-
-  public static boolean pvpAiSpawnProtection() {
-    return cfg.getBoolean("pvp-ai.spawn-protection", true);
   }
 
   public static double collisionWalkRadius() {

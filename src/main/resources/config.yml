@@ -250,40 +250,6 @@ pathfinding:
   max-nodes-extended: 1800       # Node cap when parkour/break/place are enabled
   max-fall: 3                    # Max blocks the bot will fall during navigation (1-16)
 
-# ── PVP AI  ·  ⚠ COMING SOON ─────────────────────────────────────────────────
-# Restricted to internal testing — all settings below are locked to their defaults.
-# Editing them has no effect until the PVP system is publicly released.
-pvp-ai:
-  pvp: false          # Master switch. Forced false — dev-only until public release.
-
-  # Core
-  difficulty: medium  # easy · medium · hard · tier1 · hacker
-  combat-mode: crystal  # crystal = end-crystal PvP · sword = melee
-  gear: netherite     # diamond or netherite
-  defensive-mode: true  # true = retaliate only when attacked · false = aggressive
-  detect-range: 32.0  # How far (blocks) the bot scans for targets
-  kit: kit1           # Kit preset at spawn: kit1 / kit2 / kit3 / kit4
-
-  # Techniques
-  critting: true          # Land critical hits by falling during attacks
-  s-tapping: true         # Tap S mid-swing to reset attack cooldown
-  strafing: true          # Circle the target while fighting
-  shielding: false        # Equip and use a shield to block hits
-  speed-buffs: true       # Active Speed & Strength effects
-  jump-reset: true        # W-tap for knockback bonus on hits
-  random: false           # Randomise techniques each round
-  sprint: true            # Sprint toward the target during combat
-  walk-backwards: false   # Back away while swinging to control knockback
-
-  # Abilities
-  pearl: true             # Throw ender pearls to close gaps / escape
-  pearl-spam: false       # Spam pearls in bursts for aggressive gap-closing
-  hole-mode: false        # Pathfind to an obsidian hole for cover
-  auto-refill: true       # Re-equip a totem after popping one
-  auto-respawn: true      # Automatically respawn and rejoin after death
-  spawn-protection: true  # Stay invulnerable during a short grace period at spawn
-
-
 # ═════════════════════════════════════════════════════════════════════════════
 #  5 · BOT CHAT
 #  Bots send random messages from bot-messages.yml at configurable intervals.
@@ -414,7 +380,6 @@ fake-chat:
     enabled: false
     keywords: {}
     # Example:
-    #   pvp: "pvp-reactions"
     #   trade: "trade-reactions"
     #   help: "help-reactions"
 
