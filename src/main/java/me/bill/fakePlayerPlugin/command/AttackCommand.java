@@ -100,6 +100,7 @@ public final class AttackCommand implements FppCommand {
     String priority = "nearest";
     Set<EntityType> filterTypes = new HashSet<>();
 
+    FakePlayer.PveSmartAttackMode smartAttackMode = FakePlayer.PveSmartAttackMode.OFF;
     boolean moveToTarget = false;
 
     /** True when in --hunt mode (PathfindingService drives movement, not raw input). */
@@ -112,10 +113,22 @@ public final class AttackCommand implements FppCommand {
     float currentPitch = 0f;
   }
 
-  private record MobFlags(double range, String priority, Set<EntityType> filterTypes, boolean moveToTarget, boolean huntMode) {
+  private record MobFlags(
+      double range,
+      String priority,
+      Set<EntityType> filterTypes,
+      FakePlayer.PveSmartAttackMode smartAttackMode,
+      boolean huntMode) {
     /** Backward-compat 4-arg constructor used by persistence-resume and settings paths. */
     MobFlags(double range, String priority, Set<EntityType> filterTypes, boolean moveToTarget) {
-      this(range, priority, filterTypes, moveToTarget, false);
+      this(
+          range,
+          priority,
+          filterTypes,
+          moveToTarget
+              ? FakePlayer.PveSmartAttackMode.ON_MOVE
+              : FakePlayer.PveSmartAttackMode.ON_NO_MOVE,
+          false);
     }
   }
 
@@ -248,7 +261,14 @@ public final class AttackCommand implements FppCommand {
 
     MobFlags mobFlags =
         mobMode
-            ? new MobFlags(range, priority, filterType != null ? Set.of(filterType) : Set.of(), moveToTarget, huntMode)
+            ? new MobFlags(
+                range,
+                priority,
+                filterType != null ? Set.of(filterType) : Set.of(),
+                moveToTarget
+                    ? FakePlayer.PveSmartAttackMode.ON_MOVE
+                    : FakePlayer.PveSmartAttackMode.ON_NO_MOVE,
+                huntMode)
             : null;
 
     if (botName.equalsIgnoreCase("all")) {
@@ -525,7 +545,7 @@ public final class AttackCommand implements FppCommand {
       return;
     }
 
-    if (!flags.moveToTarget()) {
+    if (!flags.smartAttackMode().movesWhileAttacking()) {
       FppScheduler.teleportAsync(bot, lockLoc);
       manager.lockForAction(uuid, lockLoc);
     }
@@ -539,7 +559,8 @@ public final class AttackCommand implements FppCommand {
     state.priority = flags.priority();
     state.filterTypes =
         flags.filterTypes() != null ? new HashSet<>(flags.filterTypes()) : new HashSet<>();
-    state.moveToTarget = flags.moveToTarget();
+    state.smartAttackMode = flags.smartAttackMode();
+    state.moveToTarget = flags.smartAttackMode().movesWhileAttacking();
     state.currentYaw = lockLoc.getYaw();
     state.currentPitch = lockLoc.getPitch();
     attackStates.put(uuid, state);
@@ -906,7 +927,9 @@ public final class AttackCommand implements FppCommand {
       }
     }
 
-    MobFlags flags = new MobFlags(fp.getPveRange(), fp.getPvePriority(), filterTypes, fp.isPveMoveToTarget());
+    if (!fp.isPveEnabled()) return;
+    MobFlags flags =
+        new MobFlags(fp.getPveRange(), fp.getPvePriority(), filterTypes, fp.getPveSmartAttackMode(), false);
     startMobMode(fp, flags, bot.getLocation());
   }
 

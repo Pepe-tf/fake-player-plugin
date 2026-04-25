@@ -2714,6 +2714,7 @@ public class FakePlayerManager {
         fp.isPveEnabled(),
         fp.getPveRange(),
         fp.getPvePriority(),
-        fp.getPveMobType());
+        fp.getPveMobType(),
+        fp.getPveSmartAttackMode().name());
   }
 }

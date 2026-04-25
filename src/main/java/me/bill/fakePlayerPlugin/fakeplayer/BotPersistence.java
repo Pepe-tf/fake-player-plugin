@@ -719,6 +719,7 @@ public final class BotPersistence {
             fp.getSharedControllers().stream().map(UUID::toString).sorted().toList());
       }
       section.put("pve-enabled", fp.isPveEnabled());
+      section.put("pve-smart-attack-mode", fp.getPveSmartAttackMode().name());
       section.put("pve-range", fp.getPveRange());
       if (fp.getPvePriority() != null) section.put("pve-priority", fp.getPvePriority());
       if (fp.getPveMobType() != null) section.put("pve-mob-type", fp.getPveMobType());
@@ -822,6 +823,7 @@ public final class BotPersistence {
                     row.ping(),
                     row.rightClickCmd(),
                     row.pveEnabled(),
+                    row.pveSmartAttackMode(),
                     row.pveRange(),
                     row.pvePriority(),
                     row.pveMobType(),
@@ -949,6 +951,13 @@ public final class BotPersistence {
         String aiPersonality = apRaw instanceof String s3 ? s3 : null;
         Object pveEnRaw = map.get("pve-enabled");
         boolean pveEnabled = pveEnRaw instanceof Boolean pve && pve;
+        Object pveModeRaw = map.get("pve-smart-attack-mode");
+        String pveSmartAttackMode =
+            pveModeRaw instanceof String psm
+                ? psm
+                : (map.get("pve-move") instanceof Boolean pveMove && pveMove)
+                    ? "ON_MOVE"
+                    : (pveEnabled ? "ON_NO_MOVE" : "OFF");
         Object pveRgRaw = map.get("pve-range");
         double pveRange =
             pveRgRaw instanceof Number prn ? prn.doubleValue() : Config.attackMobDefaultRange();
@@ -995,6 +1004,7 @@ public final class BotPersistence {
                 ping,
                 rightClickCommand,
                 pveEnabled,
+                pveSmartAttackMode,
                 pveRange,
                 pvePriority,
                 pveMobType,
@@ -1074,7 +1084,7 @@ public final class BotPersistence {
       fp.setAutoPlaceBedEnabled(sb.autoPlaceBedEnabled);
       for (UUID shared : sb.sharedControllers) fp.addSharedController(shared);
       fp.setPing(sb.ping);
-      fp.setPveEnabled(sb.pveEnabled);
+      fp.setPveSmartAttackMode(sb.pveSmartAttackMode);
       fp.setPveRange(sb.pveRange);
       if (sb.pvePriority != null) fp.setPvePriority(sb.pvePriority);
       if (sb.pveMobType != null) fp.setPveMobType(sb.pveMobType);
@@ -1750,6 +1760,7 @@ public final class BotPersistence {
       int ping,
       String rightClickCommand,
       boolean pveEnabled,
+      String pveSmartAttackMode,
       double pveRange,
       String pvePriority,
       String pveMobType,

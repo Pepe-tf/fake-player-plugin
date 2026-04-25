@@ -927,61 +927,26 @@ public final class PathfindingService {
       return;
     }
 
-    if (navJump) {
-      NmsPlayerSpawner.setJumping(bot, true);
-      return;
-    }
-
-    if (bot.isInLava()) {
-      bot.setSprinting(true);
-      NmsPlayerSpawner.setJumping(bot, true);
-      return;
-    }
-
     Location loc = bot.getLocation();
     World world = bot.getWorld();
     int bx = loc.getBlockX();
     int by = loc.getBlockY();
     int bz = loc.getBlockZ();
+    Location eyeLoc = bot.getEyeLocation();
+    boolean onGround = ((org.bukkit.entity.Entity) bot).isOnGround();
+    boolean eyeInFluid =
+        isSwimAiFluid(world.getBlockAt(eyeLoc).getType(), bot.isInLava());
+    boolean blockAboveFluid =
+        isSwimAiFluid(world.getBlockAt(bx, by + 1, bz).getType(), bot.isInLava());
+    boolean nearSurface = !eyeInFluid && !blockAboveFluid;
 
-    int distToSurface = distanceToSurface(world, bx, by, bz);
-    boolean hasCeiling = hasSolidCeiling(world, bx, by, bz);
+    boolean shouldFloat = navJump || bot.isInLava() || eyeInFluid || (!onGround && !nearSurface);
+    NmsPlayerSpawner.setJumping(bot, shouldFloat);
+    bot.setSprinting(false);
+  }
 
-    // In shallow water while touching the bottom, passive swim-AI causes jittery
-    // jump/sprint toggles. Let normal ground movement handle these transitions.
-    if (((org.bukkit.entity.Entity) bot).isOnGround() && distToSurface <= 1) {
-      NmsPlayerSpawner.setJumping(bot, false);
-      bot.setSprinting(false);
-      return;
-    }
-
-    if (distToSurface == 0) {
-      if (isAtWaterExit(world, bx, by, bz, loc.getYaw())) {
-        applySwimExitImpulse(bot);
-      }
-      NmsPlayerSpawner.setJumping(bot, false);
-      bot.setSprinting(false);
-      return;
-    }
-
-    if (distToSurface <= SWIM_NEAR_SURFACE_THRESHOLD && !hasCeiling) {
-      if (distToSurface == 1 && isAtWaterExit(world, bx, by, bz, loc.getYaw())) {
-        applySwimExitImpulse(bot);
-      }
-      NmsPlayerSpawner.setJumping(bot, false);
-      bot.setSprinting(false);
-      return;
-    }
-
-    NmsPlayerSpawner.setJumping(bot, true);
-    bot.setSprinting(true);
-
-    if (!isNavigating) {
-      Location current = bot.getLocation();
-      bot.setRotation(current.getYaw(), -20f);
-      NmsPlayerSpawner.setHeadYaw(bot, current.getYaw());
-      NmsPlayerSpawner.setMovementForward(bot, 1.0f);
-    }
+  private static boolean isSwimAiFluid(Material type, boolean lavaMode) {
+    return lavaMode ? type == Material.LAVA : type == Material.WATER || type == Material.BUBBLE_COLUMN;
   }
 
   private static boolean isFoliaWorldDataNotReady(NullPointerException e) {

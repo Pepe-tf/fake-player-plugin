@@ -104,10 +104,40 @@ public final class FakePlayer {
 
   private int chunkLoadRadius = -1;
 
-  private boolean pveEnabled = false;
+  public enum PveSmartAttackMode {
+    OFF,
+    ON_NO_MOVE,
+    ON_MOVE;
+
+    public boolean isEnabled() {
+      return this != OFF;
+    }
+
+    public boolean movesWhileAttacking() {
+      return this == ON_MOVE;
+    }
+
+    public PveSmartAttackMode next() {
+      return switch (this) {
+        case OFF -> ON_NO_MOVE;
+        case ON_NO_MOVE -> ON_MOVE;
+        case ON_MOVE -> OFF;
+      };
+    }
+
+    public static PveSmartAttackMode fromStoredValue(String raw) {
+      if (raw == null || raw.isBlank()) return OFF;
+      return switch (raw.trim().toUpperCase(java.util.Locale.ROOT)) {
+        case "ON", "ON_WITHOUT_MOVEMENT", "ON_NO_MOVE", "NO_MOVE", "WITHOUT_MOVEMENT" -> ON_NO_MOVE;
+        case "ON_MOVE", "MOVE", "ON_WITH_MOVEMENT", "WITH_MOVEMENT" -> ON_MOVE;
+        default -> OFF;
+      };
+    }
+  }
+
+  private PveSmartAttackMode pveSmartAttackMode = PveSmartAttackMode.OFF;
   private double pveRange = Config.attackMobDefaultRange();
   private String pvePriority = Config.attackMobDefaultPriority();
-  private boolean pveMoveToTarget = false;
   private Set<String> pveMobTypes = new LinkedHashSet<>();
   private final Set<UUID> sharedControllers = ConcurrentHashMap.newKeySet();
   private boolean autoEatEnabled = Config.autoEatEnabled();
@@ -565,11 +595,15 @@ public final class FakePlayer {
   }
 
   public boolean isPveEnabled() {
-    return pveEnabled;
+    return pveSmartAttackMode.isEnabled();
   }
 
   public void setPveEnabled(boolean v) {
-    this.pveEnabled = v;
+    if (!v) {
+      this.pveSmartAttackMode = PveSmartAttackMode.OFF;
+    } else if (this.pveSmartAttackMode == PveSmartAttackMode.OFF) {
+      this.pveSmartAttackMode = PveSmartAttackMode.ON_NO_MOVE;
+    }
   }
 
   public double getPveRange() {
@@ -588,12 +622,24 @@ public final class FakePlayer {
     this.pvePriority = v;
   }
 
+  public PveSmartAttackMode getPveSmartAttackMode() {
+    return pveSmartAttackMode;
+  }
+
+  public void setPveSmartAttackMode(PveSmartAttackMode mode) {
+    this.pveSmartAttackMode = mode != null ? mode : PveSmartAttackMode.OFF;
+  }
+
+  public void setPveSmartAttackMode(String mode) {
+    this.pveSmartAttackMode = PveSmartAttackMode.fromStoredValue(mode);
+  }
+
   public boolean isPveMoveToTarget() {
-    return pveMoveToTarget;
+    return pveSmartAttackMode.movesWhileAttacking();
   }
 
   public void setPveMoveToTarget(boolean v) {
-    this.pveMoveToTarget = v;
+    this.pveSmartAttackMode = v ? PveSmartAttackMode.ON_MOVE : PveSmartAttackMode.ON_NO_MOVE;
   }
 
   public String getPveMobType() {

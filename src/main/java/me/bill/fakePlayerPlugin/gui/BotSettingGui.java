@@ -646,6 +646,14 @@ public final class BotSettingGui implements Listener {
         sendActionBarConfirm(player, entry.label(), bot.getPvePriority());
         build(player);
       }
+      case CYCLE_PVE_MODE -> {
+        cyclePveMode(bot);
+        manager.persistBotSettings(bot);
+        restartPveIfActive(bot);
+        playUiClick(player, 1.0f);
+        sendActionBarConfirm(player, entry.label(), pveModeLabel(bot));
+        build(player);
+      }
       case ACTION -> {
         if (entry.id().startsWith("ext:")) {
           String[] parts = entry.id().split(":");
@@ -756,28 +764,8 @@ public final class BotSettingGui implements Listener {
         fireSettingChange(bot, "nav_place_blocks", old, bot.isNavPlaceBlocks());
         yield bot.isNavPlaceBlocks();
       }
-      case "pve_enabled" -> {
-        boolean old = bot.isPveEnabled();
-        bot.setPveEnabled(!old);
-        fireSettingChange(bot, "pve_enabled", old, bot.isPveEnabled());
-
-        var attackCmd = plugin.getAttackCommand();
-        if (attackCmd != null) {
-          if (bot.isPveEnabled()) {
-            attackCmd.startMobModeFromSettings(bot);
-          } else {
-            attackCmd.stopAttacking(bot.getUuid());
-          }
-        }
-        yield bot.isPveEnabled();
-      }
-      case "pve_move" -> {
-        boolean old = bot.isPveMoveToTarget();
-        bot.setPveMoveToTarget(!old);
-        fireSettingChange(bot, "pve_move", old, bot.isPveMoveToTarget());
-        restartPveIfActive(bot);
-        yield bot.isPveMoveToTarget();
-      }
+      case "pve_enabled" -> bot.isPveEnabled();
+      case "pve_move" -> bot.isPveMoveToTarget();
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
         if (followCmd == null) yield false;
@@ -874,6 +862,38 @@ public final class BotSettingGui implements Listener {
     String current = bot.getPvePriority();
     bot.setPvePriority("nearest".equals(current) ? "lowest-health" : "nearest");
     fireSettingChange(bot, "pve_priority", old, bot.getPvePriority());
+  }
+
+  private void cyclePveMode(FakePlayer bot) {
+    var oldMode = bot.getPveSmartAttackMode();
+    boolean oldEnabled = bot.isPveEnabled();
+    boolean oldMove = bot.isPveMoveToTarget();
+
+    bot.setPveSmartAttackMode(oldMode.next());
+    fireSettingChange(bot, "pve_smart_attack_mode", oldMode.name(), bot.getPveSmartAttackMode().name());
+    if (oldEnabled != bot.isPveEnabled()) {
+      fireSettingChange(bot, "pve_enabled", oldEnabled, bot.isPveEnabled());
+    }
+    if (oldMove != bot.isPveMoveToTarget()) {
+      fireSettingChange(bot, "pve_move", oldMove, bot.isPveMoveToTarget());
+    }
+
+    var attackCmd = plugin.getAttackCommand();
+    if (attackCmd != null) {
+      if (bot.isPveEnabled()) {
+        attackCmd.startMobModeFromSettings(bot);
+      } else {
+        attackCmd.stopAttacking(bot.getUuid());
+      }
+    }
+  }
+
+  private String pveModeLabel(FakePlayer bot) {
+    return switch (bot.getPveSmartAttackMode()) {
+      case OFF -> "✘ ᴏꜰꜰ";
+      case ON_NO_MOVE -> "✔ ᴏɴ · ꜱᴛɪʟʟ";
+      case ON_MOVE -> "✔ ᴏɴ · ᴍᴏᴠᴇ";
+    };
   }
 
   private void applyImmediate(Player player, FakePlayer bot, String id) {}
@@ -1408,7 +1428,7 @@ public final class BotSettingGui implements Listener {
     if (attackCmd != null) attackCmd.stopAttacking(bot.getUuid());
     bot.setPveRange(Config.attackMobDefaultRange());
     bot.setPvePriority(Config.attackMobDefaultPriority());
-    bot.setPveMoveToTarget(false);
+    bot.setPveSmartAttackMode(FakePlayer.PveSmartAttackMode.OFF);
     bot.setPveMobTypes(new java.util.LinkedHashSet<>());
 
     bot.setNavParkour(Config.pathfindingParkour());
@@ -1657,8 +1677,7 @@ public final class BotSettingGui implements Listener {
       case "nav_parkour" -> bot.isNavParkour() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "nav_break_blocks" -> bot.isNavBreakBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "nav_place_blocks" -> bot.isNavPlaceBlocks() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
-      case "pve_enabled" -> bot.isPveEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
-      case "pve_move" -> bot.isPveMoveToTarget() ? "✔ ᴄʜᴀꜱɪɴɢ" : "✘ ꜱᴛᴀᴛɪᴏɴᴀʀʏ";
+      case "pve_enabled" -> pveModeLabel(bot);
       case "share_control" -> bot.getSharedControllers().size() + " ꜱʜᴀʀᴇᴅ";
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1727,8 +1746,11 @@ public final class BotSettingGui implements Listener {
       case "nav_break_blocks" ->
           bot.isNavBreakBlocks() ? Material.DIAMOND_PICKAXE : Material.IRON_PICKAXE;
       case "nav_place_blocks" -> bot.isNavPlaceBlocks() ? Material.GRASS_BLOCK : Material.DIRT;
-      case "pve_enabled" -> bot.isPveEnabled() ? Material.IRON_SWORD : Material.WOODEN_SWORD;
-      case "pve_move" -> bot.isPveMoveToTarget() ? Material.GOLDEN_BOOTS : Material.CHAINMAIL_BOOTS;
+      case "pve_enabled" -> switch (bot.getPveSmartAttackMode()) {
+        case OFF -> Material.WOODEN_SWORD;
+        case ON_NO_MOVE -> Material.IRON_SWORD;
+        case ON_MOVE -> Material.DIAMOND_SWORD;
+      };
       case "share_control" -> Material.PLAYER_HEAD;
       case "follow_player" -> {
         var followCmd = plugin.getFollowCommand();
@@ -1955,8 +1977,8 @@ public final class BotSettingGui implements Listener {
             BotEntry.toggle(
                 "swim_ai_enabled",
                 "ꜱᴡɪᴍ ᴀɪ",
-                "ʙᴏᴛ ᴀᴜᴛᴏ-ꜱᴡɪᴍꜱ ᴜᴘᴡᴀʀᴅ ɪɴ ᴡᴀᴛᴇʀ/ʟᴀᴠᴀ\n"
-                    + "ᴡʜᴇɴ ᴇɴᴀʙᴜᴇᴅ (ꜱᴘᴀᴄᴇʙᴀʀ ʜᴏʟᴅ).\n"
+                "ʙᴏᴛ ᴜꜱᴇꜱ ʙᴀꜱɪᴄ ꜰʟᴏᴀᴛ/ᴊᴜᴍᴘ ꜱᴡɪᴍ ʙᴇʜᴀᴠɪᴏʀ\n"
+                    + "ɪɴ ᴡᴀᴛᴇʀ ᴏʀ ʟᴀᴠᴀ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
                     + "ᴅɪꜱᴀʙᴇ ᴛᴏ ʟᴇᴛ ᴛʜᴇ ʙᴏᴛ ꜱɪɴᴋ.\n"
                     + "ɢʟᴏʙᴀʟ: "
                     + (Config.swimAiEnabled() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
@@ -1972,13 +1994,6 @@ public final class BotSettingGui implements Listener {
                     + globalMax
                     + " = ꜰɪʜᴇᴅ ʀᴀᴅɪᴜꜱ (ᴄᴀᴘᴘᴇᴅ ᴀᴛ ɢʟᴏʙᴀʟ ᴍᴀx)",
                 Material.MAP,
-                false),
-            BotEntry.action(
-                "tab_ping",
-                "ᴛᴀʙ ᴘɪɴɢ",
-                "ꜱᴇᴛ ᴛʜᴇ ʙᴏᴛ'ꜱ ᴠɪꜱɪʙʟᴇ ᴘɪɴɢ/ʟᴀᴛᴇɴᴄʏ.\n"
-                    + "ᴜꜱᴇ 0-9999 ᴍꜱ ᴏʀ ᴛʏᴘᴇ ʀᴇꜱᴇᴛ ᴛᴏ ᴄʟᴇᴀʀ.",
-                Material.CLOCK,
                 false),
             BotEntry.toggle(
                 "pickup_items",
@@ -2047,12 +2062,13 @@ public final class BotSettingGui implements Listener {
         Material.STONE_SWORD,
         Material.LIME_STAINED_GLASS_PANE,
         List.of(
-            BotEntry.toggle(
+            BotEntry.cyclePveMode(
                 "pve_enabled",
                 "ꜱᴍᴀʀᴛ ᴀᴛᴛᴀᴄᴋ",
-                "ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ, ᴛʜɪꜱ ʙᴏᴛ ᴀᴜᴛᴏ-ᴀᴛᴛᴀᴄᴋꜱ\n"
-                    + "ɴᴇᴀʀʙʏ ᴍᴏʙꜱ ᴡɪᴛʜ ᴘʀᴏᴘᴇʀ\n"
-                    + "ᴡᴇᴀᴘᴏɴ ᴄᴏᴏʟᴅᴏᴡɴꜱ ᴀɴᴅ ꜱᴍᴏᴏᴛʜ ʀᴏᴛᴀᴛɪᴏɴ.",
+                "ᴄʏᴄʟᴇꜱ ʙᴇᴛᴡᴇᴇɴ ᴏꜰꜰ, ᴏɴ ᴡɪᴛʜᴏᴜᴛ\n"
+                    + "ᴍᴏᴠᴇᴍᴇɴᴛ, ᴀɴᴅ ᴏɴ ᴡɪᴛʜ ᴍᴏᴠᴇᴍᴇɴᴛ.\n"
+                    + "ꜱᴍᴀʀᴛ ᴀᴛᴛᴀᴄᴋ ᴜꜱᴇꜱ ᴡᴇᴀᴘᴏɴ ᴄᴏᴏʟᴅᴏᴡɴꜱ\n"
+                    + "ᴀɴᴅ ꜱᴍᴏᴏᴛʜ ʀᴏᴛᴀᴛɪᴏɴ.",
                 Material.IRON_SWORD,
                 false),
             BotEntry.mobSelector(
@@ -2063,14 +2079,6 @@ public final class BotSettingGui implements Listener {
                     + "ᴄʟɪᴄᴋ ᴛᴏ ᴛᴏɢɢʟᴇ ᴍᴜʟᴛɪᴘʟᴇ ᴍᴏʙꜱ.\n"
                     + "'ᴀʟʟ ʜᴏꜱᴛɪʟᴇ' = ᴄʟᴇᴀʀ ᴀʟʟ.",
                 Material.ZOMBIE_HEAD,
-                false),
-            BotEntry.toggle(
-                "pve_move",
-                "ᴍᴏᴠᴇ ᴡʜɪʟᴇ ᴀᴛᴛᴀᴄᴋɪɴɢ",
-                "ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ, ꜱᴍᴀʀᴛ ᴀᴛᴛᴀᴄᴋ ᴄʜᴀꜱᴇꜱ\n"
-                    + "ᴛᴀʀɢᴇᴛꜱ ᴛʜᴀᴛ ᴀʀᴇ ᴏᴜᴛ ᴏꜰ ᴍᴇʟᴇᴇ ʀᴀɴɢᴇ.\n"
-                    + "ᴅɪꜱᴀʙʟᴇᴅ = ꜱᴛᴀɴᴅ ꜱᴛɪʟʟ ᴀɴᴅ ᴀᴛᴛᴀᴄᴋ ɴᴇᴀʀʙʏ ᴍᴏʙꜱ.",
-                Material.CHAINMAIL_BOOTS,
                 false),
             BotEntry.action(
                 "pve_range",
@@ -2195,6 +2203,7 @@ public final class BotSettingGui implements Listener {
     CYCLE_TIER,
     CYCLE_PERSONALITY,
     CYCLE_PRIORITY,
+    CYCLE_PVE_MODE,
     ACTION,
     MOB_SELECTOR,
     IMMEDIATE,
@@ -2225,6 +2234,11 @@ public final class BotSettingGui implements Listener {
     static BotEntry cyclePriority(
         String id, String label, String desc, Material icon, boolean opOnly) {
       return new BotEntry(id, label, desc, icon, BotEntryType.CYCLE_PRIORITY, opOnly);
+    }
+
+    static BotEntry cyclePveMode(
+        String id, String label, String desc, Material icon, boolean opOnly) {
+      return new BotEntry(id, label, desc, icon, BotEntryType.CYCLE_PVE_MODE, opOnly);
     }
 
     static BotEntry action(String id, String label, String desc, Material icon, boolean opOnly) {

@@ -11,7 +11,7 @@ import me.bill.fakePlayerPlugin.util.FppLogger;
 
 public class DatabaseManager {
 
-  private static final int SCHEMA_VERSION = 19;
+  private static final int SCHEMA_VERSION = 20;
 
   public static int getCurrentSchemaVersion() {
     return SCHEMA_VERSION;
@@ -107,6 +107,7 @@ public class DatabaseManager {
           + "  pve_range        DOUBLE  DEFAULT 16.0,"
           + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
           + "  pve_mob_type     VARCHAR(64) DEFAULT NULL,"
+          + "  pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF',"
           + "  skin_texture     TEXT    DEFAULT NULL,"
           + "  skin_signature   TEXT    DEFAULT NULL"
           + ")";
@@ -147,6 +148,7 @@ public class DatabaseManager {
           + "  pve_range        DOUBLE  DEFAULT 16.0,"
           + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
           + "  pve_mob_type     VARCHAR(64) DEFAULT NULL,"
+          + "  pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF',"
           + "  skin_texture     TEXT    DEFAULT NULL,"
           + "  skin_signature   TEXT    DEFAULT NULL"
           + ")";
@@ -391,6 +393,9 @@ public class DatabaseManager {
           + "  saved_at       BIGINT       NOT NULL,"
           + "  PRIMARY KEY (bot_name, server_id)"
           + ")"
+    },
+    {
+      "ALTER TABLE fpp_active_bots ADD COLUMN pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'"
     }
   };
 
@@ -596,6 +601,7 @@ public class DatabaseManager {
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN pve_range        DOUBLE  DEFAULT 16.0");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN pve_priority     VARCHAR(16) DEFAULT NULL");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN pve_mob_type     VARCHAR(64) DEFAULT NULL");
+    execSilent("ALTER TABLE fpp_active_bots ADD COLUMN pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'");
     execSilent("CREATE INDEX IF NOT EXISTS idx_sessions_bot_name    ON fpp_bot_sessions(bot_name)");
     execSilent("CREATE INDEX IF NOT EXISTS idx_sessions_spawned_by  ON fpp_bot_sessions(spawned_by)");
     execSilent("CREATE INDEX IF NOT EXISTS idx_sessions_removed_at  ON fpp_bot_sessions(removed_at)");
@@ -1155,6 +1161,12 @@ public class DatabaseManager {
       pveMobType = rs.getString("pve_mob_type");
     } catch (SQLException ignored) {
     }
+    String pveSmartAttackMode = pveEnabled ? "ON_NO_MOVE" : "OFF";
+    try {
+      String raw = rs.getString("pve_smart_attack_mode");
+      if (raw != null && !raw.isBlank()) pveSmartAttackMode = raw;
+    } catch (SQLException ignored) {
+    }
     String skinTexture = null;
     try {
       skinTexture = rs.getString("skin_texture");
@@ -1199,6 +1211,7 @@ public class DatabaseManager {
         pveRange,
         pvePriority,
         pveMobType,
+        pveSmartAttackMode,
         skinTexture,
         skinSignature);
   }
@@ -2080,10 +2093,11 @@ public class DatabaseManager {
       boolean pveEnabled,
       double pveRange,
       String pvePriority,
-      String pveMobType) {
+      String pveMobType,
+      String pveSmartAttackMode) {
     if (!isAlive()) return;
     final String tier = chatTier, rcc = rightClickCmd, pers = aiPersonality;
-    final String pvePri = pvePriority, pveMob = pveMobType;
+    final String pvePri = pvePriority, pveMob = pveMobType, pveMode = pveSmartAttackMode;
     enqueue(
         () -> {
           if (!isAlive()) return;
@@ -2091,7 +2105,7 @@ public class DatabaseManager {
               "UPDATE fpp_active_bots SET frozen=?,chat_enabled=?,chat_tier=?,right_click_cmd=?,"
                   + "ai_personality=?,pickup_items=?,pickup_xp=?,head_ai_enabled=?,"
                   + "nav_parkour=?,nav_break_blocks=?,nav_place_blocks=?,nav_avoid_water=?,nav_avoid_lava=?,swim_ai_enabled=?,chunk_load_radius=?,"
-                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=? WHERE bot_uuid=?";
+                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?,pve_smart_attack_mode=? WHERE bot_uuid=?";
           try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setBoolean(1, frozen);
             ps.setBoolean(2, chatEnabled);
@@ -2118,7 +2132,9 @@ public class DatabaseManager {
             else ps.setNull(19, java.sql.Types.VARCHAR);
             if (pveMob != null) ps.setString(20, pveMob);
             else ps.setNull(20, java.sql.Types.VARCHAR);
-            ps.setString(21, uuid);
+            if (pveMode != null) ps.setString(21, pveMode);
+            else ps.setString(21, "OFF");
+            ps.setString(22, uuid);
             ps.executeUpdate();
           } catch (SQLException e) {
             FppLogger.error("DB updateBotAllSettings: " + e.getMessage());
@@ -2422,6 +2438,7 @@ public class DatabaseManager {
       double pveRange,
       String pvePriority,
       String pveMobType,
+      String pveSmartAttackMode,
       String skinTexture,
       String skinSignature) {}
 
