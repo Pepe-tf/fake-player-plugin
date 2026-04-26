@@ -52,6 +52,7 @@ public final class Perm {
   public static final String TP = "fpp.tp";
 
   public static final String USER_TPH = "fpp.tph";
+  public static final String USER_TPH_ALL = "fpp.tph.all";
 
   public static final String USER_XP = "fpp.xp";
 

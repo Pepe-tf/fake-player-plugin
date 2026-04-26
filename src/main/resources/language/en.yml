@@ -196,6 +196,7 @@ tph-specify-name: "{prefix}<red>ʏᴏᴜ ʜᴀᴠᴇ ᴍᴜʟᴛɪᴘʟᴇ ʙᴏ
 tph-not-found:    "{prefix}<red>ɴᴏ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
 tph-not-yours:    "{prefix}<red>ʏᴏᴜ ᴅᴏ ɴᴏᴛ ᴏᴡɴ ᴀ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
 tph-failed:       "{prefix}<red>ꜰᴀɪʟᴇᴅ ᴛᴏ ᴛᴇʟᴇᴘᴏʀᴛ <white>{name}<red>."
+tph-all-result:   "{prefix}<gray>ᴛᴇʟᴇᴘᴏʀᴛᴇᴅ <#0079FF>{count}</#0079FF> <gray>ʙᴏᴛ(ꜱ) ᴛᴏ ʏᴏᴜ. <dark_gray>(<gray>ꜰᴀɪʟᴇᴅ: <white>{failed}</white><dark_gray>)"
 tp-specify-name:  "{prefix}<red>ᴍᴜʟᴛɪᴘʟᴇ ʙᴏᴛꜱ ᴀʀᴇ ᴀᴄᴛɪᴠᴇ. <gray>ꜱᴘᴇᴄɪꜰʏ ᴡʜɪᴄʜ ᴏɴᴇ."
 
 

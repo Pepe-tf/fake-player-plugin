@@ -619,9 +619,12 @@ public final class PathfindingService {
 
               bot.setRotation(sYaw, swimPitch);
               NmsPlayerSpawner.setHeadYaw(bot, sYaw);
-              NmsPlayerSpawner.setMovementForward(bot, verticalSwimStep ? 0f : 1.0f);
+              // Even "mostly vertical" swim steps still need some forward carry. Hard-stopping
+              // forward input here makes bots stall in water and fight the path whenever the next
+              // swim node is almost directly above/below but not perfectly aligned.
+              NmsPlayerSpawner.setMovementForward(bot, verticalSwimStep ? 0.45f : 1.0f);
               // Sprint-swimming in Minecraft requires the sprinting flag.
-              bot.setSprinting(!verticalSwimStep);
+              bot.setSprinting(true);
               NmsPlayerSpawner.setJumping(bot, shouldJump);
 
               double swimMoved = xzDistRaw(botLoc.getX(), botLoc.getZ(), prevX[0], prevZ[0]);
@@ -753,7 +756,9 @@ public final class PathfindingService {
             if (bot.isInWater() || bot.isInLava()) {
               // When the next waypoint is on land, keep holding jump while pushing forward.
               // Without this, bots reach the shoreline but fail to climb out of the fluid.
-              boolean exitingFluid = applyShorelineExitAssist(bot, yaw, botLoc, wp.y());
+              boolean exitingFluid =
+                  !isFluidWaypoint(bot.getWorld(), wp, bot.isInLava())
+                      && applyShorelineExitAssist(bot, yaw, botLoc, wp.y());
               NmsPlayerSpawner.setJumping(bot, exitingFluid || wp.y() >= botLoc.getBlockY());
             } else {
               if (wp.y() > botLoc.getBlockY()) {
@@ -1357,6 +1362,13 @@ public final class PathfindingService {
       bot.setVelocity(vel);
     }
     return true;
+  }
+
+  private static boolean isFluidWaypoint(
+      @NotNull World world, @NotNull BotPathfinder.Move wp, boolean lavaMode) {
+    Material feet = world.getBlockAt(wp.x(), wp.y(), wp.z()).getType();
+    Material head = world.getBlockAt(wp.x(), wp.y() + 1, wp.z()).getType();
+    return isSwimAiFluid(feet, lavaMode) || isSwimAiFluid(head, lavaMode);
   }
 
   private static boolean isAtWaterExit(World world, int bx, int by, int bz, float yaw) {
