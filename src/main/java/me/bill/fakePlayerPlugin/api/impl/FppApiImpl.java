@@ -369,7 +369,7 @@ public final class FppApiImpl implements FppApi {
 
   @Override
   public @NotNull String getVersion() {
-    return plugin.getDescription().getVersion();
+    return plugin.getPluginMeta().getVersion();
   }
 
   @Override

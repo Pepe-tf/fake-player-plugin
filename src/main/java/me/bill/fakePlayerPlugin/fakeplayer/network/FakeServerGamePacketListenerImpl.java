@@ -212,6 +212,7 @@ public final class FakeServerGamePacketListenerImpl extends ServerGamePacketList
     }
   }
 
+  @SuppressWarnings("deprecation")
   private static boolean isPvpEnabled(Location location) {
     if (location == null || location.getWorld() == null) return false;
     if (location.getWorld().getPVP()) return true;

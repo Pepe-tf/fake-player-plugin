@@ -31,7 +31,7 @@ public class ReloadCommand implements FppCommand {
   private static final TextColor RED = NamedTextColor.RED;
 
   private static final List<String> TARGETS =
-      List.of("all", "config", "lang", "chat", "ai", "skins", "secrets", "swap");
+      List.of("all", "config", "lang", "chat", "ai", "skins", "secrets", "swap", "extensions");
 
   private final FakePlayerPlugin plugin;
 
@@ -82,6 +82,7 @@ public class ReloadCommand implements FppCommand {
       case "ai", "secrets" -> reloadAi(sender);
       case "skins" -> reloadSkins(sender);
       case "swap" -> reloadSwap(sender);
+      case "extensions" -> reloadExtensions(sender);
       case "all" -> reloadAll(sender);
       default -> {
         sender.sendMessage(
@@ -267,6 +268,16 @@ public class ReloadCommand implements FppCommand {
     }
   }
 
+  private void reloadExtensions(CommandSender sender) {
+    var loader = plugin.getExtensionLoader();
+    if (loader != null) {
+      loader.reload();
+      sendStep(sender, "Extensions reloaded from plugins/FakePlayerPlugin/extensions/");
+    } else {
+      sendStep(sender, "Extension loader not available");
+    }
+  }
+
   private void reloadAll(CommandSender sender) {
 
     Config.reload();
@@ -410,6 +421,8 @@ public class ReloadCommand implements FppCommand {
       btt.rebuild(fpm.getActivePlayers());
       sendStep(sender, "~fpp scoreboard team rebuilt  (" + fpm.getCount() + " bot(s))");
     }
+
+    reloadExtensions(sender);
 
     int issues = ConfigValidator.validate();
     if (issues > 0) {

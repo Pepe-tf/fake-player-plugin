@@ -326,6 +326,7 @@ public class BotCollisionListener implements Listener {
     return val != null && val.startsWith(FakePlayerBody.VISUAL_PDC_VALUE);
   }
 
+  @SuppressWarnings("deprecation")
   private boolean isPvpEnabled(Location location) {
     if (location == null || location.getWorld() == null) return false;
     if (location.getWorld().getPVP()) return true;

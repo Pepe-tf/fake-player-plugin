@@ -85,6 +85,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
   private me.bill.fakePlayerPlugin.ai.PersonalityRepository personalityRepository;
 
   private me.bill.fakePlayerPlugin.api.impl.FppApiImpl fppApi;
+  private me.bill.fakePlayerPlugin.extension.ExtensionLoader extensionLoader;
 
   private Component updateNotificationMessage = null;
 
@@ -255,6 +256,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
     fakePlayerManager.refreshCleanNamePool();
 
     fppApi = new me.bill.fakePlayerPlugin.api.impl.FppApiImpl(this, fakePlayerManager);
+
+    extensionLoader = new me.bill.fakePlayerPlugin.extension.ExtensionLoader(this);
+    extensionLoader.loadExtensions();
 
     // Load persisted despawn snapshots (DB primary, YAML fallback) so bots that were manually
     // despawned before the restart can have their inventory/XP restored on next spawn.
@@ -638,6 +642,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
     Config.debugStartup("onDisable called.");
 
     if (fppApi != null) fppApi.disableAllAddons();
+    if (extensionLoader != null) extensionLoader.closeClassLoaders();
 
     int botsRemoved = fakePlayerManager != null ? fakePlayerManager.getCount() : 0;
 
@@ -831,6 +836,10 @@ public final class FakePlayerPlugin extends JavaPlugin {
     return personalityRepository;
   }
 
+  public me.bill.fakePlayerPlugin.extension.ExtensionLoader getExtensionLoader() {
+    return extensionLoader;
+  }
+
   public Component getUpdateNotification() {
     return updateNotificationMessage;
   }
@@ -861,7 +870,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
   private void ensureDataDirectories() {
     java.io.File root = getDataFolder();
-    String[] dirs = {"skins", "data", "language", "personalities"};
+    String[] dirs = {"skins", "data", "language", "personalities", "extensions"};
     for (String dir : dirs) {
       java.io.File d = new java.io.File(root, dir);
       if (!d.exists()) {
@@ -887,6 +896,24 @@ public final class FakePlayerPlugin extends JavaPlugin {
         w.println("# Run /fpp reload after adding or removing skin files.");
       } catch (java.io.IOException e) {
         Config.debugStartup("Could not write skins/README.txt: " + e.getMessage());
+      }
+    }
+
+    java.io.File extReadme = new java.io.File(root, "extensions/README.txt");
+    if (!extReadme.exists()) {
+      try (java.io.PrintWriter w = new java.io.PrintWriter(extReadme)) {
+        w.println("# FakePlayerPlugin - Extensions Folder");
+        w.println("#");
+        w.println("# Drop extension JAR files here to load them automatically.");
+        w.println("#");
+        w.println("# Requirements:");
+        w.println(
+            "#   - JAR must contain a class implementing me.bill.fakePlayerPlugin.api.FppExtension");
+        w.println("#   - That class must have a public no-arg constructor");
+        w.println("#");
+        w.println("# Run /fpp reload or restart the server after adding or removing extensions.");
+      } catch (java.io.IOException e) {
+        Config.debugStartup("Could not write extensions/README.txt: " + e.getMessage());
       }
     }
   }
