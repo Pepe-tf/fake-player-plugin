@@ -21,7 +21,16 @@
       "Bash(sed -i '367,386d' README.md)",
       "Bash(sed -n '363,370p' README.md)",
       "Bash(sed -i '366d' README.md)",
-      "Bash(sed -n '362,368p' README.md)"
+      "Bash(sed -n '362,368p' README.md)",
+      "Bash(npm install *)",
+      "Bash(node index.js)",
+      "Bash(echo \"Server PID: $!\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"test-server-1\",\"player_count\":12,\"bot_count\":5,\"version\":\"1.6.6.7\"}')",
+      "Bash(curl -s http://localhost:3000/api/online-stats)",
+      "Bash(kill %1)",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-a\",\"player_count\":10,\"bot_count\":3,\"version\":\"1.6.6.7\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-b\",\"player_count\":25,\"bot_count\":8,\"version\":\"1.6.6.7\"}')",
+      "Bash(xargs sed *)"
     ]
   }
 }

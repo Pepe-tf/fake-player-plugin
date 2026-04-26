@@ -46,7 +46,7 @@ If you're running a Velocity proxy network, use the **companion plugins**:
 
 ## 📖 More Information
 
-- Wiki: https://fakeplayerplugin.xyz
+- Wiki: https://fpp.wtf
 - GitHub: https://github.com/Pepe-tf/fake-player-plugin
 - Modrinth: https://modrinth.com/plugin/fake-player-plugin-(fpp)
 - Discord: https://discord.gg/QSN7f67nkJ

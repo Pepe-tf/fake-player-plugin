@@ -24,7 +24,7 @@ public final class UpdateChecker {
   private static final String MODRINTH_PAGE =
       "https://modrinth.com/plugin/fake-player-plugin-(fpp)";
 
-  private static final String VERCEL_API_BASE = "https://fake-player-plugin.vercel.app";
+  private static final String VERCEL_API_BASE = "https://fpp.wtf";
 
   private static final Pattern VERSION_REGEX = Pattern.compile("v?\\d+(?:\\.\\d+)+");
 
