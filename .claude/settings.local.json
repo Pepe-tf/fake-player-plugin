@@ -30,7 +30,10 @@
       "Bash(kill %1)",
       "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-a\",\"player_count\":10,\"bot_count\":3,\"version\":\"1.6.6.7\"}')",
       "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-b\",\"player_count\":25,\"bot_count\":8,\"version\":\"1.6.6.7\"}')",
-      "Bash(xargs sed *)"
+      "Bash(xargs sed *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"srv-1\",\"player_count\":8,\"bot_count\":3,\"version\":\"1.6.6.7\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"srv-1\",\"player_count\":5,\"bot_count\":3,\"version\":\"1.6.6.7\"}')"
     ]
   }
 }

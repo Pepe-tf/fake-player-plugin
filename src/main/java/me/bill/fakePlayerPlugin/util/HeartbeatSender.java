@@ -15,7 +15,7 @@ public final class HeartbeatSender {
 
   private static final String ENDPOINT =
       "https://fpp.wtf/api/heartbeat";
-  private static final long INTERVAL_TICKS = 20L * 60L; // 60 seconds
+  private static final long INTERVAL_TICKS = 20L * 30L; // 30 seconds
 
   private final Plugin plugin;
   private final FakePlayerManager fakePlayerManager;
@@ -56,8 +56,11 @@ public final class HeartbeatSender {
   private void sendBlocking() {
     try {
       String serverId = Config.serverId();
-      int playerCount = Bukkit.getOnlinePlayers().size();
+      int totalOnline = Bukkit.getOnlinePlayers().size();
       int botCount = fakePlayerManager == null ? 0 : fakePlayerManager.getCount();
+      // Bots are real ServerPlayer entities and appear in getOnlinePlayers(),
+      // so subtract them so the web dashboard shows *real* human players.
+      int playerCount = Math.max(0, totalOnline - botCount);
       String version = plugin.getPluginMeta().getVersion();
 
       JsonObject payload = new JsonObject();
@@ -71,8 +74,8 @@ public final class HeartbeatSender {
       HttpURLConnection conn =
           (HttpURLConnection) URI.create(ENDPOINT).toURL().openConnection();
       conn.setRequestMethod("POST");
-      conn.setConnectTimeout(8_000);
-      conn.setReadTimeout(8_000);
+      conn.setConnectTimeout(5_000);
+      conn.setReadTimeout(5_000);
       conn.setDoOutput(true);
       conn.setRequestProperty("Content-Type", "application/json");
       conn.setRequestProperty("Content-Length", String.valueOf(body.length));
