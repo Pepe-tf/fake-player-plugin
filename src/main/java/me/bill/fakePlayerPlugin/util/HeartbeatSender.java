@@ -55,13 +55,23 @@ public final class HeartbeatSender {
 
   private void sendBlocking() {
     try {
-      String serverId = Config.serverId();
+      String configuredId = Config.serverId();
       int totalOnline = Bukkit.getOnlinePlayers().size();
       int botCount = fakePlayerManager == null ? 0 : fakePlayerManager.getCount();
       // Bots are real ServerPlayer entities and appear in getOnlinePlayers(),
       // so subtract them so the web dashboard shows *real* human players.
       int playerCount = Math.max(0, totalOnline - botCount);
       String version = plugin.getPluginMeta().getVersion();
+
+      // If server_id is the generic "default", make it unique per JVM
+      // by appending IP:port. This prevents multiple backend servers from
+      // overwriting each other in the web dashboard.
+      String serverId = configuredId;
+      if ("default".equalsIgnoreCase(configuredId) || configuredId.isBlank()) {
+        String ip = Bukkit.getServer().getIp();
+        int port = Bukkit.getServer().getPort();
+        serverId = "default@" + (ip.isEmpty() ? "0.0.0.0" : ip) + ":" + port;
+      }
 
       JsonObject payload = new JsonObject();
       payload.addProperty("server_id", serverId);
