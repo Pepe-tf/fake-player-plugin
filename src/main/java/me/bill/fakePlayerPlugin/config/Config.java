@@ -101,6 +101,10 @@ public final class Config {
     return cfg.getBoolean("metrics.enabled", true);
   }
 
+  public static boolean heartbeatEnabled() {
+    return cfg.getBoolean("heartbeat.enabled", true);
+  }
+
   public static int spawnCooldown() {
     return Math.max(0, cfg.getInt("spawn-cooldown", 0));
   }

@@ -79,6 +79,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
   private me.bill.fakePlayerPlugin.command.BotGroupStore botGroupStore;
   private me.bill.fakePlayerPlugin.command.InventoryCommand inventoryCommand;
   private me.bill.fakePlayerPlugin.fakeplayer.SkinManager skinManager;
+  private me.bill.fakePlayerPlugin.util.HeartbeatSender heartbeatSender;
 
   private me.bill.fakePlayerPlugin.ai.AIProviderRegistry aiProviderRegistry;
   private me.bill.fakePlayerPlugin.ai.BotConversationManager botConversationManager;
@@ -554,6 +555,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
 
     UpdateChecker.check(this);
 
+    heartbeatSender = new me.bill.fakePlayerPlugin.util.HeartbeatSender(this, fakePlayerManager);
+    heartbeatSender.start();
+
     fppMetrics = new FppMetrics();
     if (Config.metricsEnabled()) {
       try {
@@ -686,6 +690,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
       databaseManager.close();
       dbFlushed = true;
     }
+
+    if (heartbeatSender != null) heartbeatSender.stop();
 
     if (fppMetrics != null) fppMetrics.shutdown();
 
