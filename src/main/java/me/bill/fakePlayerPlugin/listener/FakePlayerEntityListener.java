@@ -185,7 +185,7 @@ public class FakePlayerEntityListener implements Listener {
     fp.setPlayer(null);
     manager.removeFromEntityIndex(event.getEntity().getEntityId());
 
-    if (Config.respawnOnDeath()) {
+    if (fp.isRespawnOnDeath()) {
 
       int delay = Math.max(1, Config.respawnDelay());
       if (chunkLoader != null) chunkLoader.releaseForBot(fp);

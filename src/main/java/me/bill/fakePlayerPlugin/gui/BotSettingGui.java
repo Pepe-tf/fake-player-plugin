@@ -39,6 +39,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.jetbrains.annotations.NotNull;
 import me.bill.fakePlayerPlugin.api.event.FppBotDespawnEvent;
 import me.bill.fakePlayerPlugin.api.event.FppBotSettingChangeEvent;
@@ -712,6 +713,12 @@ public final class BotSettingGui implements Listener {
         fireSettingChange(bot, "frozen", old, bot.isFrozen());
         yield bot.isFrozen();
       }
+      case "respawn_on_death" -> {
+        boolean old = bot.isRespawnOnDeath();
+        bot.setRespawnOnDeath(!old);
+        fireSettingChange(bot, "respawn_on_death", old, bot.isRespawnOnDeath());
+        yield bot.isRespawnOnDeath();
+      }
       case "head_ai_enabled" -> {
         boolean old = bot.isHeadAiEnabled();
         bot.setHeadAiEnabled(!old);
@@ -1208,6 +1215,7 @@ public final class BotSettingGui implements Listener {
     int slot = 0;
     for (Player candidate : Bukkit.getOnlinePlayers()) {
       if (slot >= 45) break;
+      if (manager.getByUuid(candidate.getUniqueId()) != null) continue;
       if (candidate.getUniqueId().equals(bot.getSpawnedByUuid())) continue;
       if (candidate.getUniqueId().equals(player.getUniqueId())) continue;
       inv.setItem(slot++, buildSharePlayerItem(candidate, bot.hasSharedController(candidate.getUniqueId())));
@@ -1228,21 +1236,24 @@ public final class BotSettingGui implements Listener {
 
   private ItemStack buildSharePlayerItem(Player player, boolean shared) {
     ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-    ItemMeta meta = item.getItemMeta();
-    if (shared) {
-      meta.addEnchant(Enchantment.UNBREAKING, 1, true);
-      meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+    SkullMeta meta = (SkullMeta) item.getItemMeta();
+    if (meta != null) {
+      meta.setPlayerProfile(player.getPlayerProfile());
+      if (shared) {
+        meta.addEnchant(Enchantment.UNBREAKING, 1, true);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+      }
+      meta.displayName(
+          Component.text(player.getName())
+              .color(shared ? SELECTED_GREEN : ACCENT)
+              .decoration(TextDecoration.ITALIC, false));
+      meta.lore(
+          List.of(
+              Component.text(shared ? "✔ ᴄᴀɴ ᴄᴏɴᴛʀᴏʟ ᴛʜɪꜱ ʙᴏᴛ" : "✘ ɴᴏ ᴄᴏɴᴛʀᴏʟ ᴀᴄᴄᴇꜱꜱ")
+                  .color(shared ? SELECTED_GREEN : GRAY),
+              Component.text("ᴄʟɪᴄᴋ ᴛᴏ ᴛᴏɢɢʟᴇ").color(YELLOW)));
+      item.setItemMeta(meta);
     }
-    meta.displayName(
-        Component.text(player.getName())
-            .color(shared ? SELECTED_GREEN : ACCENT)
-            .decoration(TextDecoration.ITALIC, false));
-    meta.lore(
-        List.of(
-            Component.text(shared ? "✔ ᴄᴀɴ ᴄᴏɴᴛʀᴏʟ ᴛʜɪꜱ ʙᴏᴛ" : "✘ ɴᴏ ᴄᴏɴᴛʀᴏʟ ᴀᴄᴄᴇꜱꜱ")
-                .color(shared ? SELECTED_GREEN : GRAY),
-            Component.text("ᴄʟɪᴄᴋ ᴛᴏ ᴛᴏɢɢʟᴇ").color(YELLOW)));
-    item.setItemMeta(meta);
     return item;
   }
 
@@ -1412,6 +1423,7 @@ public final class BotSettingGui implements Listener {
     fireSettingChange(bot, "reset", null, null);
 
     bot.setFrozen(false);
+    bot.setRespawnOnDeath(Config.respawnOnDeath());
     bot.setHeadAiEnabled(true);
     bot.setSwimAiEnabled(Config.swimAiEnabled());
     bot.setChunkLoadRadius(-1);
@@ -1667,6 +1679,7 @@ public final class BotSettingGui implements Listener {
   private String valueString(BotEntry entry, FakePlayer bot) {
     return switch (entry.id()) {
       case "frozen" -> bot.isFrozen() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+      case "respawn_on_death" -> bot.isRespawnOnDeath() ? "✔ ʀᴇꜱᴘᴀᴡɴ" : "✘ ᴅᴇꜱᴘᴀᴡɴ";
       case "head_ai_enabled" -> bot.isHeadAiEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "swim_ai_enabled" -> bot.isSwimAiEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pickup_items" -> bot.isPickUpItemsEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
@@ -1714,6 +1727,7 @@ public final class BotSettingGui implements Listener {
   private boolean getBoolValue(String id, FakePlayer bot) {
     return switch (id) {
       case "frozen" -> bot.isFrozen();
+      case "respawn_on_death" -> bot.isRespawnOnDeath();
       case "head_ai_enabled" -> bot.isHeadAiEnabled();
       case "swim_ai_enabled" -> bot.isSwimAiEnabled();
       case "pickup_items" -> bot.isPickUpItemsEnabled();
@@ -1735,6 +1749,8 @@ public final class BotSettingGui implements Listener {
   private Material dynamicIcon(BotEntry entry, FakePlayer bot) {
     return switch (entry.id()) {
       case "frozen" -> bot.isFrozen() ? Material.BLUE_ICE : Material.PACKED_ICE;
+      case "respawn_on_death" ->
+          bot.isRespawnOnDeath() ? Material.TOTEM_OF_UNDYING : Material.SKELETON_SKULL;
       case "head_ai_enabled" ->
           bot.isHeadAiEnabled() ? Material.PLAYER_HEAD : Material.SKELETON_SKULL;
       case "swim_ai_enabled" -> bot.isSwimAiEnabled() ? Material.WATER_BUCKET : Material.BUCKET;
@@ -1966,6 +1982,13 @@ public final class BotSettingGui implements Listener {
                 "ꜰʀᴏᴢᴇɴ",
                 "ʙᴏᴛ ᴄᴀɴɴᴏᴛ ᴍᴏᴠᴇ ᴡʜᴇɴ ꜰʀᴏᴢᴇɴ.\nᴛᴏɡɡʟᴇ ᴛᴏ ᴘᴀᴜꜱᴇ ᴀʟʟ ᴍᴏᴠᴇᴍᴇɴᴛ.",
                 Material.PACKED_ICE,
+                false),
+            BotEntry.toggle(
+                "respawn_on_death",
+                "ʀᴇꜱᴘᴀᴡɴ ᴏɴ ᴅᴇᴀᴛʜ",
+                "ᴛʜɪꜱ ʙᴏᴛ ʀᴇꜱᴘᴀᴡɴꜱ ᴀꜰᴛᴇʀ ᴅᴇᴀᴛʜ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
+                    + "ᴅɪꜱᴀʙʟᴇᴅ = ᴅᴇᴀᴛʜ ᴅᴇꜱᴘᴀᴡɴꜱ ᴛʜᴇ ʙᴏᴛ.",
+                Material.TOTEM_OF_UNDYING,
                 false),
             BotEntry.toggle(
                 "head_ai_enabled",

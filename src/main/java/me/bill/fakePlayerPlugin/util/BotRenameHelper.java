@@ -366,6 +366,7 @@ public final class BotRenameHelper {
     private final float xpProgress;
     private final int totalXp;
     private final boolean chatEnabled;
+    private final boolean respawnOnDeath;
     private final String chatTier;
     private final boolean frozen;
     private final boolean headAiEnabled;
@@ -384,6 +385,7 @@ public final class BotRenameHelper {
         float xpProgress,
         int totalXp,
         boolean chatEnabled,
+        boolean respawnOnDeath,
         String chatTier,
         boolean frozen,
         boolean headAiEnabled,
@@ -400,6 +402,7 @@ public final class BotRenameHelper {
       this.xpProgress = xpProgress;
       this.totalXp = totalXp;
       this.chatEnabled = chatEnabled;
+      this.respawnOnDeath = respawnOnDeath;
       this.chatTier = chatTier;
       this.frozen = frozen;
       this.headAiEnabled = headAiEnabled;
@@ -436,6 +439,7 @@ public final class BotRenameHelper {
           prog,
           tot,
           fp.isChatEnabled(),
+          fp.isRespawnOnDeath(),
           fp.getChatTier(),
           fp.isFrozen(),
           fp.isHeadAiEnabled(),
@@ -477,6 +481,7 @@ public final class BotRenameHelper {
 
     void applyState(@NotNull FakePlayer fp) {
       fp.setChatEnabled(chatEnabled);
+      fp.setRespawnOnDeath(respawnOnDeath);
       fp.setHeadAiEnabled(headAiEnabled);
       fp.setPickUpItemsEnabled(pickUpItemsEnabled);
       fp.setPickUpXpEnabled(pickUpXpEnabled);

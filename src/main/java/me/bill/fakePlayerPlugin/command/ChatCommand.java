@@ -53,8 +53,9 @@ public class ChatCommand implements FppCommand {
       plugin.getConfig().set("fake-chat.enabled", enable);
       plugin.saveConfig();
       Config.reload();
-      if (!enable && plugin.getBotChatAI() != null) {
-        plugin.getBotChatAI().stopAllLoopsNow();
+      if (plugin.getBotChatAI() != null) {
+        if (enable) plugin.getBotChatAI().restartLoops();
+        else plugin.getBotChatAI().cancelAll();
       }
       sender.sendMessage(Lang.get(enable ? "chat-enabled" : "chat-disabled"));
       Config.debug("fake-chat.enabled toggled to " + enable + " by " + sender.getName());
@@ -67,6 +68,9 @@ public class ChatCommand implements FppCommand {
         plugin.getConfig().set("fake-chat.enabled", true);
         plugin.saveConfig();
         Config.reload();
+        if (plugin.getBotChatAI() != null) {
+          plugin.getBotChatAI().restartLoops();
+        }
         sender.sendMessage(Lang.get("chat-enabled"));
         Config.debug("fake-chat.enabled set to true by " + sender.getName());
         return true;
@@ -76,7 +80,7 @@ public class ChatCommand implements FppCommand {
         plugin.saveConfig();
         Config.reload();
         if (plugin.getBotChatAI() != null) {
-          plugin.getBotChatAI().stopAllLoopsNow();
+          plugin.getBotChatAI().cancelAll();
         }
         sender.sendMessage(Lang.get("chat-disabled"));
         Config.debug("fake-chat.enabled set to false by " + sender.getName());

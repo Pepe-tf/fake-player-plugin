@@ -335,14 +335,10 @@ public final class PlaceCommand implements FppCommand {
                 ? Lang.get("place-started-once", "name", fp.getDisplayName())
                 : Lang.get("place-started", "name", fp.getDisplayName()));
       } else {
-
-        Location lockOnArrival = dest.clone();
-        lockOnArrival.setYaw(capturedYaw);
-        lockOnArrival.setPitch(capturedPitch);
         startNavigation(
             fp,
             dest,
-            lockOnArrival,
+            null,
             () -> lockAndStartPlacing(fp, once, dest, capturedYaw, capturedPitch));
         sender.sendMessage(Lang.get("place-walking", "name", fp.getDisplayName()));
       }
@@ -446,19 +442,23 @@ public final class PlaceCommand implements FppCommand {
     Location lockLoc = dest.clone();
     lockLoc.setYaw(capturedYaw);
     lockLoc.setPitch(capturedPitch);
-    FppScheduler.teleportAsync(bot, lockLoc);
+
+    // Apply facing only; avoid teleporting after navigation to prevent visual snapping.
     bot.setRotation(capturedYaw, capturedPitch);
     NmsPlayerSpawner.setHeadYaw(bot, capturedYaw);
     NmsPlayerSpawner.setMovementForward(bot, 0f);
     bot.setSprinting(false);
 
-    manager.lockForAction(uuid, lockLoc);
+    Location actualLoc = bot.getLocation().clone();
+    actualLoc.setYaw(capturedYaw);
+    actualLoc.setPitch(capturedPitch);
+    manager.lockForAction(uuid, actualLoc);
 
     PlaceState state = new PlaceState();
     state.once = once;
     state.capturedYaw = capturedYaw;
     state.capturedPitch = capturedPitch;
-    state.destination = lockLoc.clone();
+    state.destination = actualLoc.clone();
     placeStates.put(uuid, state);
 
     int taskId =
@@ -699,11 +699,10 @@ public final class PlaceCommand implements FppCommand {
     if (xzDist <= Config.pathfindingArrivalDistance()) {
       lockAndStartPlacing(fp, once, loc, capturedYaw, capturedPitch);
     } else {
-      Location lockOnArrival = loc.clone();
       startNavigation(
           fp,
           loc,
-          lockOnArrival,
+          null,
           () -> lockAndStartPlacing(fp, once, loc, capturedYaw, capturedPitch));
     }
   }

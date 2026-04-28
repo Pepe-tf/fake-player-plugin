@@ -700,6 +700,7 @@ public final class BotPersistence {
       section.put("pitch", (double) loc.getPitch());
       section.put("bot-type", fp.getBotType().name());
       section.put("chat-enabled", fp.isChatEnabled());
+      section.put("respawn-on-death", fp.isRespawnOnDeath());
       section.put("head-ai-enabled", fp.isHeadAiEnabled());
       section.put("pickup-items", fp.isPickUpItemsEnabled());
       section.put("pickup-xp", fp.isPickUpXpEnabled());
@@ -805,6 +806,7 @@ public final class BotPersistence {
                     null,
                     BotType.AFK,
                     row.chatEnabled(),
+                    row.respawnOnDeath(),
                     row.chatTier(),
                     row.aiPersonality(),
                     row.headAiEnabled(),
@@ -895,6 +897,8 @@ public final class BotPersistence {
         BotType botType = btRaw instanceof String bts ? BotType.parse(bts) : BotType.AFK;
         Object ceRaw = map.get("chat-enabled");
         boolean chatEnabled = !(ceRaw instanceof Boolean b) || b;
+        Object rodRaw = map.get("respawn-on-death");
+        boolean respawnOnDeath = rodRaw instanceof Boolean rod ? rod : Config.respawnOnDeath();
         Object headAiRaw = map.get("head-ai-enabled");
         boolean headAiEnabled = !(headAiRaw instanceof Boolean hai) || hai;
         Object pickupItemsRaw = map.get("pickup-items");
@@ -986,6 +990,7 @@ public final class BotPersistence {
                 null,
                 botType,
                 chatEnabled,
+                respawnOnDeath,
                 chatTier,
                 aiPersonality,
                 headAiEnabled,
@@ -1070,6 +1075,7 @@ public final class BotPersistence {
       }
 
       fp.setChatEnabled(sb.chatEnabled);
+      fp.setRespawnOnDeath(sb.respawnOnDeath);
       fp.setHeadAiEnabled(sb.headAiEnabled);
       fp.setPickUpItemsEnabled(sb.pickUpItemsEnabled);
       fp.setPickUpXpEnabled(sb.pickUpXpEnabled);
@@ -1742,6 +1748,7 @@ public final class BotPersistence {
       String luckpermsGroup,
       BotType botType,
       boolean chatEnabled,
+      boolean respawnOnDeath,
       String chatTier,
       String aiPersonality,
       boolean headAiEnabled,

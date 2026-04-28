@@ -3,7 +3,6 @@ package me.bill.fakePlayerPlugin.command;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
-import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner;
@@ -31,6 +30,8 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
 public final class UseCommand implements FppCommand {
+
+  private static final double USE_ACTION_ARRIVAL_DISTANCE = 0.35;
 
   private final FakePlayerPlugin plugin;
   private final FakePlayerManager manager;
@@ -121,7 +122,7 @@ public final class UseCommand implements FppCommand {
     cancelAll(fp.getUuid());
 
     double xzDist = PathfindingService.xzDist(bot.getLocation(), dest);
-    if (xzDist <= Config.pathfindingArrivalDistance()) {
+    if (xzDist <= USE_ACTION_ARRIVAL_DISTANCE) {
 
       lockAndStartUsing(fp, once, dest);
       sender.sendMessage(
@@ -171,7 +172,7 @@ public final class UseCommand implements FppCommand {
         new PathfindingService.NavigationRequest(
             PathfindingService.Owner.USE,
             () -> dest,
-            Config.pathfindingArrivalDistance(),
+            USE_ACTION_ARRIVAL_DISTANCE,
             0.0,
             Integer.MAX_VALUE,
             () -> lockAndStartUsing(fp, once, dest),
@@ -185,11 +186,18 @@ public final class UseCommand implements FppCommand {
     Player bot = fp.getPlayer();
     if (bot == null) return;
 
-    FppScheduler.teleportAsync(bot, lockLoc);
+    // Apply the target look direction without teleporting to avoid a visible snap.
+    bot.setRotation(lockLoc.getYaw(), lockLoc.getPitch());
+    NmsPlayerSpawner.setHeadYaw(bot, lockLoc.getYaw());
+    NmsPlayerSpawner.setMovementForward(bot, 0f);
+    bot.setSprinting(false);
 
-    manager.lockForAction(uuid, lockLoc);
+    Location actualLoc = bot.getLocation().clone();
+    actualLoc.setYaw(lockLoc.getYaw());
+    actualLoc.setPitch(lockLoc.getPitch());
+    manager.lockForAction(uuid, actualLoc);
 
-    activeUseLocations.put(uuid, lockLoc.clone());
+    activeUseLocations.put(uuid, actualLoc.clone());
     activeUseOnceFlags.put(uuid, once);
 
     final int[] freeze = {0};
@@ -371,7 +379,7 @@ public final class UseCommand implements FppCommand {
     Player bot = fp.getPlayer();
     if (bot == null || !bot.isOnline()) return;
     cancelAll(fp.getUuid());
-    if (PathfindingService.xzDist(bot.getLocation(), loc) <= Config.pathfindingArrivalDistance()) {
+    if (PathfindingService.xzDist(bot.getLocation(), loc) <= USE_ACTION_ARRIVAL_DISTANCE) {
       lockAndStartUsing(fp, once, loc);
     } else {
       startNavigation(fp, once, loc);

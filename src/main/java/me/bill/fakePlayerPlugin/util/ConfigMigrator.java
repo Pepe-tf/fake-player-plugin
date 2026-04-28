@@ -292,7 +292,7 @@ public final class ConfigMigrator {
 
     if (!cfg.contains("fake-chat")) {
       cfg.set("fake-chat.enabled", false);
-      cfg.set("fake-chat.require-player-online", true);
+      cfg.set("fake-chat.require-player-online", false);
       cfg.set("fake-chat.chance", 0.75);
       cfg.set("fake-chat.interval.min", 5);
       cfg.set("fake-chat.interval.max", 10);

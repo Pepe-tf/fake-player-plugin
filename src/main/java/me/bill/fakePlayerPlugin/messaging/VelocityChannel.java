@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
-import me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast;
 import me.bill.fakePlayerPlugin.fakeplayer.BotChatAI;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerBody;
@@ -475,7 +474,7 @@ public final class VelocityChannel implements PluginMessageListener {
 
   private void handleJoin(DataInputStream in) throws IOException {
     String msgId = in.readUTF();
-    String displayName = in.readUTF();
+    in.readUTF(); // display name (unused; join/leave formatting is event-driven locally)
     String originServer = in.readUTF();
 
     if (isDuplicate(msgId, originServer)) {
@@ -483,13 +482,11 @@ public final class VelocityChannel implements PluginMessageListener {
       return;
     }
     trackIncoming(msgId);
-    if (!Config.joinMessage()) return;
-    BotBroadcast.broadcastJoinByDisplayName(displayName);
   }
 
   private void handleLeave(DataInputStream in) throws IOException {
     String msgId = in.readUTF();
-    String displayName = in.readUTF();
+    in.readUTF(); // display name (unused; join/leave formatting is event-driven locally)
     String originServer = in.readUTF();
 
     if (isDuplicate(msgId, originServer)) {
@@ -497,8 +494,6 @@ public final class VelocityChannel implements PluginMessageListener {
       return;
     }
     trackIncoming(msgId);
-    if (!Config.leaveMessage()) return;
-    BotBroadcast.broadcastLeaveByDisplayName(displayName);
   }
 
   private void handleBotUpdate(DataInputStream in) throws IOException {

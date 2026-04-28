@@ -1,10 +1,10 @@
 package me.bill.fakePlayerPlugin.listener;
 
 import java.lang.reflect.Field;
+import java.util.UUID;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
-import me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.util.FppScheduler;
 import org.bukkit.Bukkit;
@@ -78,8 +78,11 @@ public class PlayerJoinListener implements Listener {
   @EventHandler(priority = EventPriority.LOWEST)
   public void onQuitEarly(PlayerQuitEvent event) {
 
-    if (manager.isDespawning(event.getPlayer().getUniqueId())) {
-      event.quitMessage(null);
+    UUID uuid = event.getPlayer().getUniqueId();
+    if (manager.isDespawning(uuid)) {
+      if (!Config.leaveMessage() || manager.isRenaming(uuid)) {
+        event.quitMessage(null);
+      }
       return;
     }
 
@@ -282,14 +285,8 @@ public class PlayerJoinListener implements Listener {
     java.util.UUID uuid = event.getPlayer().getUniqueId();
 
     if (manager.isDespawning(uuid)) {
-      event.quitMessage(null);
-      if (Config.leaveMessage()
-          && !manager.isRenaming(uuid)
-          && !manager.hasBroadcastedDespawnLeave(uuid)) {
-        String displayName = manager.getDespawningDisplayName(uuid);
-        if (displayName != null) {
-          BotBroadcast.broadcastLeaveByDisplayName(displayName);
-        }
+      if (!Config.leaveMessage() || manager.isRenaming(uuid)) {
+        event.quitMessage(null);
       }
       return;
     }

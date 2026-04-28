@@ -52,6 +52,7 @@ public final class FakePlayer {
   private boolean alive = true;
 
   private boolean respawning = false;
+  private boolean respawnOnDeath = Config.respawnOnDeath();
 
   private int tabRefreshCount = 0;
 
@@ -352,6 +353,14 @@ public final class FakePlayer {
 
   public void setRespawning(boolean v) {
     this.respawning = v;
+  }
+
+  public boolean isRespawnOnDeath() {
+    return respawnOnDeath;
+  }
+
+  public void setRespawnOnDeath(boolean v) {
+    this.respawnOnDeath = v;
   }
 
   public boolean isChatEnabled() {

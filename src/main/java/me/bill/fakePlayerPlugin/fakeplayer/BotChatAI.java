@@ -25,6 +25,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -413,17 +414,27 @@ public final class BotChatAI implements Listener {
   private void sendMessageForced(FakePlayer bot, String message, boolean allowBurst) {
     if (manager.getByUuid(bot.getUuid()) == null) return;
 
+    String prefix = "";
+    String suffix = "";
+    if (plugin.isLuckPermsAvailable()) {
+      prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(bot.getUuid());
+      suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(bot.getUuid());
+    }
+
+    boolean sentViaPlayerChat = false;
     Player playerEntity = bot.getPlayer();
-    if (playerEntity != null && playerEntity.isOnline() && !bot.isBodyless()) {
+    if (playerEntity != null && !bot.isBodyless()) {
       dispatchChat(playerEntity, message);
-    } else {
+      sentViaPlayerChat = true;
+    }
+    if (!sentViaPlayerChat) {
       broadcastFormatted(bot.getDisplayName(), message);
     }
     Config.debugChat(bot.getName() + " said: " + message);
 
     var vc = plugin.getVelocityChannel();
     if (vc != null) {
-      vc.sendChatToNetwork(bot.getName(), bot.getDisplayName(), message, "", "");
+      vc.sendChatToNetwork(bot.getName(), bot.getDisplayName(), message, prefix, suffix);
     }
 
     if (allowBurst) {
@@ -1220,7 +1231,39 @@ public final class BotChatAI implements Listener {
         }
       }
     }
-    player.chat(rawMessage);
+    try {
+      player.chat(rawMessage);
+    } catch (Throwable chatError) {
+      Config.debugChat(
+          "dispatchChat fallback for "
+              + player.getName()
+              + " ("
+              + chatError.getClass().getSimpleName()
+              + ": "
+              + chatError.getMessage()
+              + ")");
+      dispatchLegacyChat(player, rawMessage);
+    }
+  }
+
+  private static void dispatchLegacyChat(Player player, String rawMessage) {
+    java.util.Set<Player> recipients = new java.util.HashSet<>(Bukkit.getOnlinePlayers());
+    AsyncPlayerChatEvent legacy = new AsyncPlayerChatEvent(false, player, rawMessage, recipients);
+    Bukkit.getPluginManager().callEvent(legacy);
+    if (legacy.isCancelled()) return;
+
+    String formatted;
+    try {
+      formatted =
+          String.format(
+              legacy.getFormat(), legacy.getPlayer().getDisplayName(), legacy.getMessage());
+    } catch (Exception ignored) {
+      formatted = "<" + legacy.getPlayer().getName() + "> " + legacy.getMessage();
+    }
+    for (Player recipient : legacy.getRecipients()) {
+      recipient.sendMessage(formatted);
+    }
+    Bukkit.getConsoleSender().sendMessage(formatted);
   }
 
   public static void broadcastRemote(
@@ -1231,7 +1274,14 @@ public final class BotChatAI implements Listener {
     }
     isRemoteBroadcast.set(true);
     try {
-      broadcastFormatted(botDisplayName, message);
+      String decoratedName = (botDisplayName != null) ? botDisplayName : botName;
+      if ((prefix != null && !prefix.isBlank()) || (suffix != null && !suffix.isBlank())) {
+        decoratedName =
+            (prefix != null ? prefix : "")
+                + decoratedName
+                + (suffix != null ? suffix : "");
+      }
+      broadcastFormatted(decoratedName, message);
       Config.debugChat("Broadcast remote message from bot '" + botName + "'.");
     } finally {
       isRemoteBroadcast.remove();

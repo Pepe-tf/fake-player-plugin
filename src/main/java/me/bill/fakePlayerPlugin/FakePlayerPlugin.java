@@ -14,6 +14,7 @@ import me.bill.fakePlayerPlugin.gui.BotSettingGui;
 import me.bill.fakePlayerPlugin.gui.SettingGui;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.listener.BotCollisionListener;
+import me.bill.fakePlayerPlugin.listener.BotLoginOverrideListener;
 import me.bill.fakePlayerPlugin.listener.FakePlayerEntityListener;
 import me.bill.fakePlayerPlugin.listener.FakePlayerKickListener;
 import me.bill.fakePlayerPlugin.listener.PlayerJoinListener;
@@ -422,6 +423,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
         .getPluginManager()
         .registerEvents(
             new me.bill.fakePlayerPlugin.listener.BotSpawnProtectionListener(this), this);
+    getServer()
+        .getPluginManager()
+        .registerEvents(new BotLoginOverrideListener(this, fakePlayerManager), this);
     getServer()
         .getPluginManager()
         .registerEvents(

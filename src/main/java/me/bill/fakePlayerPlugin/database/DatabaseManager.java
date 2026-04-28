@@ -11,7 +11,7 @@ import me.bill.fakePlayerPlugin.util.FppLogger;
 
 public class DatabaseManager {
 
-  private static final int SCHEMA_VERSION = 20;
+  private static final int SCHEMA_VERSION = 21;
 
   public static int getCurrentSchemaVersion() {
     return SCHEMA_VERSION;
@@ -89,6 +89,7 @@ public class DatabaseManager {
           + "  server_id       VARCHAR(64)  NOT NULL DEFAULT 'default',"
           + "  frozen          BOOLEAN DEFAULT 0,"
           + "  chat_enabled    BOOLEAN DEFAULT 1,"
+          + "  respawn_on_death BOOLEAN DEFAULT 0,"
           + "  chat_tier       VARCHAR(16)  DEFAULT NULL,"
           + "  right_click_cmd VARCHAR(256) DEFAULT NULL,"
           + "  ai_personality  VARCHAR(64)  DEFAULT NULL,"
@@ -130,6 +131,7 @@ public class DatabaseManager {
           + "  server_id       VARCHAR(64)  NOT NULL DEFAULT 'default',"
           + "  frozen          BOOLEAN DEFAULT 0,"
           + "  chat_enabled    BOOLEAN DEFAULT 1,"
+          + "  respawn_on_death BOOLEAN DEFAULT 0,"
           + "  chat_tier       VARCHAR(16)  DEFAULT NULL,"
           + "  right_click_cmd VARCHAR(256) DEFAULT NULL,"
           + "  ai_personality  VARCHAR(64)  DEFAULT NULL,"
@@ -396,6 +398,9 @@ public class DatabaseManager {
     },
     {
       "ALTER TABLE fpp_active_bots ADD COLUMN pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'"
+    },
+    {
+      "ALTER TABLE fpp_active_bots ADD COLUMN respawn_on_death BOOLEAN DEFAULT 0"
     }
   };
 
@@ -581,6 +586,7 @@ public class DatabaseManager {
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN server_id         VARCHAR(64)  NOT NULL DEFAULT 'default'");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN frozen            BOOLEAN DEFAULT 0");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN chat_enabled      BOOLEAN DEFAULT 1");
+    execSilent("ALTER TABLE fpp_active_bots ADD COLUMN respawn_on_death  BOOLEAN DEFAULT 0");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN chat_tier         VARCHAR(16) DEFAULT NULL");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN right_click_cmd   VARCHAR(256) DEFAULT NULL");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN ai_personality    VARCHAR(64) DEFAULT NULL");
@@ -904,6 +910,7 @@ public class DatabaseManager {
               null,
               false,
               true,
+              Config.respawnOnDeath(),
               null,
               null,
               null,
@@ -1086,6 +1093,11 @@ public class DatabaseManager {
       chatEnabled = rs.getBoolean("chat_enabled");
     } catch (SQLException ignored) {
     }
+    boolean respawnOnDeath = Config.respawnOnDeath();
+    try {
+      respawnOnDeath = rs.getBoolean("respawn_on_death");
+    } catch (SQLException ignored) {
+    }
     String chatTier = null;
     try {
       chatTier = rs.getString("chat_tier");
@@ -1196,6 +1208,7 @@ public class DatabaseManager {
         pickUpXp,
         frozen,
         chatEnabled,
+        respawnOnDeath,
         chatTier,
         rightClickCmd,
         headAiEnabled,
@@ -1461,6 +1474,7 @@ public class DatabaseManager {
       String luckpermsGroup,
       boolean frozen,
       boolean chatEnabled,
+      boolean respawnOnDeath,
       String chatTier,
       String rightClickCmd,
       String aiPersonality,
@@ -1477,14 +1491,15 @@ public class DatabaseManager {
             ? "INSERT INTO"
                   + " fpp_active_bots(bot_uuid,bot_name,bot_display,spawned_by,spawned_by_uuid,"
                   + "world_name,pos_x,pos_y,pos_z,pos_yaw,pos_pitch,updated_at,luckperms_group,server_id,"
-                  + "frozen,chat_enabled,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
-                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY"
+                  + "frozen,chat_enabled,respawn_on_death,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
+                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY"
                   + " UPDATE bot_name=VALUES(bot_name),bot_display=VALUES(bot_display),"
                   + "spawned_by=VALUES(spawned_by),spawned_by_uuid=VALUES(spawned_by_uuid),"
                   + "world_name=VALUES(world_name),pos_x=VALUES(pos_x),pos_y=VALUES(pos_y),"
                   + "pos_z=VALUES(pos_z),pos_yaw=VALUES(pos_yaw),pos_pitch=VALUES(pos_pitch),"
                   + "updated_at=VALUES(updated_at),luckperms_group=VALUES(luckperms_group),"
                   + "server_id=VALUES(server_id),frozen=VALUES(frozen),chat_enabled=VALUES(chat_enabled),"
+                  + "respawn_on_death=VALUES(respawn_on_death),"
                   + "chat_tier=VALUES(chat_tier),right_click_cmd=VALUES(right_click_cmd),"
                   + "ai_personality=VALUES(ai_personality),"
                   + "pickup_items=VALUES(pickup_items),pickup_xp=VALUES(pickup_xp),"
@@ -1493,8 +1508,8 @@ public class DatabaseManager {
             : "INSERT OR REPLACE INTO"
                   + " fpp_active_bots(bot_uuid,bot_name,bot_display,spawned_by,spawned_by_uuid,"
                   + "world_name,pos_x,pos_y,pos_z,pos_yaw,pos_pitch,updated_at,luckperms_group,server_id,"
-                  + "frozen,chat_enabled,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
-                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                  + "frozen,chat_enabled,respawn_on_death,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
+                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
       ps.setString(1, uuid);
       ps.setString(2, name);
@@ -1513,18 +1528,19 @@ public class DatabaseManager {
       ps.setString(14, serverId);
       ps.setBoolean(15, frozen);
       ps.setBoolean(16, chatEnabled);
-      if (chatTier != null) ps.setString(17, chatTier);
-      else ps.setNull(17, java.sql.Types.VARCHAR);
-      if (rightClickCmd != null) ps.setString(18, rightClickCmd);
+      ps.setBoolean(17, respawnOnDeath);
+      if (chatTier != null) ps.setString(18, chatTier);
       else ps.setNull(18, java.sql.Types.VARCHAR);
-      if (aiPersonality != null) ps.setString(19, aiPersonality);
+      if (rightClickCmd != null) ps.setString(19, rightClickCmd);
       else ps.setNull(19, java.sql.Types.VARCHAR);
-      ps.setBoolean(20, pickUpItems);
-      ps.setBoolean(21, pickUpXp);
-      ps.setBoolean(22, headAiEnabled);
-      ps.setBoolean(23, navParkour);
-      ps.setBoolean(24, navBreakBlocks);
-      ps.setBoolean(25, navPlaceBlocks);
+      if (aiPersonality != null) ps.setString(20, aiPersonality);
+      else ps.setNull(20, java.sql.Types.VARCHAR);
+      ps.setBoolean(21, pickUpItems);
+      ps.setBoolean(22, pickUpXp);
+      ps.setBoolean(23, headAiEnabled);
+      ps.setBoolean(24, navParkour);
+      ps.setBoolean(25, navBreakBlocks);
+      ps.setBoolean(26, navPlaceBlocks);
       ps.executeUpdate();
     } catch (SQLException e) {
       FppLogger.error("DB upsertActiveBot: " + e.getMessage());
@@ -2094,7 +2110,8 @@ public class DatabaseManager {
       double pveRange,
       String pvePriority,
       String pveMobType,
-      String pveSmartAttackMode) {
+      String pveSmartAttackMode,
+      boolean respawnOnDeath) {
     if (!isAlive()) return;
     final String tier = chatTier, rcc = rightClickCmd, pers = aiPersonality;
     final String pvePri = pvePriority, pveMob = pveMobType, pveMode = pveSmartAttackMode;
@@ -2105,7 +2122,7 @@ public class DatabaseManager {
               "UPDATE fpp_active_bots SET frozen=?,chat_enabled=?,chat_tier=?,right_click_cmd=?,"
                   + "ai_personality=?,pickup_items=?,pickup_xp=?,head_ai_enabled=?,"
                   + "nav_parkour=?,nav_break_blocks=?,nav_place_blocks=?,nav_avoid_water=?,nav_avoid_lava=?,swim_ai_enabled=?,chunk_load_radius=?,"
-                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?,pve_smart_attack_mode=? WHERE bot_uuid=?";
+                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?,pve_smart_attack_mode=?,respawn_on_death=? WHERE bot_uuid=?";
           try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setBoolean(1, frozen);
             ps.setBoolean(2, chatEnabled);
@@ -2134,7 +2151,8 @@ public class DatabaseManager {
             else ps.setNull(20, java.sql.Types.VARCHAR);
             if (pveMode != null) ps.setString(21, pveMode);
             else ps.setString(21, "OFF");
-            ps.setString(22, uuid);
+            ps.setBoolean(22, respawnOnDeath);
+            ps.setString(23, uuid);
             ps.executeUpdate();
           } catch (SQLException e) {
             FppLogger.error("DB updateBotAllSettings: " + e.getMessage());
@@ -2423,6 +2441,7 @@ public class DatabaseManager {
       boolean pickUpXp,
       boolean frozen,
       boolean chatEnabled,
+      boolean respawnOnDeath,
       String chatTier,
       String rightClickCmd,
       boolean headAiEnabled,

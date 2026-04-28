@@ -56,7 +56,7 @@ invalid-number: "{prefix}<red>ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ. ᴘʟᴇᴀꜱ�
 spawn-success:            "{prefix}<#0079FF>{count}</#0079FF> <gray>ꜰᴀᴋᴇ ᴘʟᴀʏᴇʀ(ꜱ) <white>ꜱᴜᴍᴍᴏɴᴇᴅ<gray>. <dark_gray>(<#0079FF>{total}</#0079FF> <gray>ᴀᴄᴛɪᴠᴇ<dark_gray>)"
 spawn-max-reached:        "{prefix}<red>ᴍᴀx ʙᴏᴛ ʟɪᴍɪᴛ ʀᴇᴀᴄʜᴇᴅ <dark_gray>(<#0079FF>{max}</#0079FF> <gray>ʙᴏᴛꜱ<dark_gray>)<red>. ᴅᴇʟᴇᴛᴇ ꜱᴏᴍᴇ ꜰɪʀꜱᴛ."
 spawn-user-limit-reached: "{prefix}<red>ʏᴏᴜ'ᴠᴇ ʀᴇᴀᴄʜᴇᴅ ʏᴏᴜʀ ᴘᴇʀꜱᴏɴᴀʟ ʙᴏᴛ ʟɪᴍɪᴛ <dark_gray>(<#0079FF>{limit}</#0079FF> <gray>ʙᴏᴛ(ꜱ)<dark_gray>)<red>."
-spawn-invalid:            "{prefix}<red>ɪɴᴠᴀʟɪᴅ ᴜꜱᴀɢᴇ. <gray>ᴛʀʏ <#0079FF>/fpp spawn [afk] [amount] [--name <name>] [--random-name]</#0079FF><gray>."
+spawn-invalid:            "{prefix}<red>ɪɴᴠᴀʟɪᴅ ᴜꜱᴀɢᴇ. <gray>ᴛʀʏ <#0079FF>/fpp spawn [afk] [amount] [--name <name>] [--random-name] [--notp]</#0079FF><gray>."
 spawn-invalid-name:       "{prefix}<red>ɪɴᴠᴀʟɪᴅ ʙᴏᴛ ɴᴀᴍᴇ. <gray>ᴜꜱᴇ <white>1–16 <gray>ᴄʜᴀʀꜱ <dark_gray>(<white>ʟᴇᴛᴛᴇʀꜱ<gray>, <white>ᴅɪɡɪᴛꜱ<gray>, <white>_<dark_gray>)<gray>."
 spawn-badword-rejected:   "{prefix}<red>ʙᴏᴛ ɴᴀᴍᴇ '<white>{name}<red>' ɪꜱ ɴᴏᴛ ᴀʟʟᴏᴡᴇᴅ <dark_gray>(<gray>ᴄᴏɴᴛᴀɪɴꜱ ʙᴀᴅᴡᴏʀᴅ: <white>{badword}<dark_gray>)<red>."
 spawn-badword-auto-prefixed: "{prefix}<yellow>⚠ <gray>ɴᴀᴍᴇ '<red>{original}<gray>' ᴄᴏɴᴛᴀɪɴᴇᴅ ᴀ ʙᴀᴅᴡᴏʀᴅ — ʀᴇɴᴀᴍᴇᴅ ᴛᴏ '<#0079FF>{name}</#0079FF><gray>'."

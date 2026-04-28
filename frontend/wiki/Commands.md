@@ -10,7 +10,7 @@
 | Command | Permission | Description |
 |---------|------------|-------------|
 | `/fpp help [page]` | *(everyone)* | Interactive help GUI (console gets text fallback) |
-| `/fpp spawn [amount] [--name <name>]` | `fpp.spawn.user` / `fpp.spawn` | Spawn fake player(s) |
+| `/fpp spawn [amount] [--name <name>] [--notp]` | `fpp.spawn.user` / `fpp.spawn` | Spawn fake player(s) |
 | `/fpp despawn <name\|all\|random [n]>` | `fpp.delete` | Remove bots |
 | `/fpp list` | `fpp.list` | List local and remote bots |
 | `/fpp info` | `fpp.info` / `fpp.info.user` | Query bot sessions and ownership |
@@ -95,8 +95,8 @@ Opens the paginated **54-slot help GUI** for players. Console senders get a text
 ### 🎭 `/fpp spawn`
 
 ```text
-/fpp spawn [amount] [--name <name>] [--skin <skin>] [--group <group>]
-/fpp spawn [amount] [world] [x y z] [--name <name>]
+/fpp spawn [amount] [--name <name>] [--skin <skin>] [--group <group>] [--notp]
+/fpp spawn [amount] [world] [x y z] [--name <name>] [--notp]
 ```
 
 Spawn one or more bots.
@@ -116,8 +116,11 @@ Spawn one or more bots.
 /fpp spawn
 /fpp spawn 5
 /fpp spawn --name Steve
+/fpp spawn --name Steve --notp
 /fpp spawn 3 world 100 64 200
 ```
+
+`--notp` uses the bot's last known location when a matching previous session exists.
 
 ---
 
