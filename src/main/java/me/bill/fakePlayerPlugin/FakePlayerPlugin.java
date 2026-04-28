@@ -291,6 +291,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
     commandManager.register(new FreezeCommand(fakePlayerManager));
     commandManager.register(new LpInfoCommand(this, fakePlayerManager));
     commandManager.register(new RankCommand(this, fakePlayerManager));
+    commandManager.register(new me.bill.fakePlayerPlugin.command.PingCommand(this, fakePlayerManager));
+    commandManager.register(new me.bill.fakePlayerPlugin.command.SkinCommand(this, fakePlayerManager));
     commandManager.register(new AlertCommand(this));
     commandManager.register(new SyncCommand(this));
     commandManager.register(new SwapCommand(this, fakePlayerManager));

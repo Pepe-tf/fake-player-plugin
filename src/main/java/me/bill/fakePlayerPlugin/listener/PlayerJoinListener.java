@@ -5,6 +5,7 @@ import java.util.UUID;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
+import me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.util.FppScheduler;
 import org.bukkit.Bukkit;
@@ -80,9 +81,7 @@ public class PlayerJoinListener implements Listener {
 
     UUID uuid = event.getPlayer().getUniqueId();
     if (manager.isDespawning(uuid)) {
-      if (!Config.leaveMessage() || manager.isRenaming(uuid)) {
-        event.quitMessage(null);
-      }
+      event.quitMessage(null);
       return;
     }
 
@@ -285,9 +284,7 @@ public class PlayerJoinListener implements Listener {
     java.util.UUID uuid = event.getPlayer().getUniqueId();
 
     if (manager.isDespawning(uuid)) {
-      if (!Config.leaveMessage() || manager.isRenaming(uuid)) {
-        event.quitMessage(null);
-      }
+      event.quitMessage(null);
       return;
     }
 
@@ -296,12 +293,12 @@ public class PlayerJoinListener implements Listener {
     FakePlayer fp = manager.getByName(event.getPlayer().getName());
     if (fp == null) fp = manager.getByUuid(uuid);
     if (fp != null) {
-      if (fp.isRespawning() || manager.isBodyTransitioning(fp.getUuid())) {
-
+      if (fp.isRespawning() || manager.isBodyTransitioning(fp.getUuid()) || !fp.isAlive()) {
         event.quitMessage(null);
-      } else if (!Config.leaveMessage() || !fp.isAlive()) {
-
-        if (!Config.leaveMessage()) event.quitMessage(null);
+      } else if (!Config.leaveMessage()) {
+        event.quitMessage(null);
+      } else {
+        event.quitMessage(BotBroadcast.leaveComponent(BotBroadcast.resolveDisplayName(fp)));
       }
 
       return;

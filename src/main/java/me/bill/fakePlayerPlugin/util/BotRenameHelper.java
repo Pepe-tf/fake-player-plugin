@@ -10,6 +10,7 @@ import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.BotType;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
+import me.bill.fakePlayerPlugin.fakeplayer.SkinProfile;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -241,6 +242,16 @@ public final class BotRenameHelper {
           snap.applyState(newFp);
           newFp.setSpawnedBy(snap.spawnerName(), snap.spawnerUuid());
 
+          if (snap.resolvedSkin() != null
+              && snap.resolvedSkin().isValid()
+              && plugin.getSkinManager() != null
+              && newFp.getPlayer() != null) {
+            plugin.getSkinManager().applySkinFromProfile(newFp, snap.resolvedSkin());
+          }
+          if (snap.ping() >= 0) {
+            manager.applyPing(newFp, snap.ping());
+          }
+
           if (newFp.getPlayer() != null) {
             snap.applyInventoryAndXp(newFp.getPlayer());
           }
@@ -376,6 +387,8 @@ public final class BotRenameHelper {
     private final String spawnerName;
     private final UUID spawnerUuid;
     private final String aiPersonality;
+    private final SkinProfile resolvedSkin;
+    private final int ping;
 
     private BotSnapshot(
         ItemStack[] mainContents,
@@ -394,7 +407,9 @@ public final class BotRenameHelper {
         String lpGroup,
         String spawnerName,
         UUID spawnerUuid,
-        String aiPersonality) {
+        String aiPersonality,
+        SkinProfile resolvedSkin,
+        int ping) {
       this.mainContents = mainContents;
       this.armorContents = armorContents;
       this.extraContents = extraContents;
@@ -412,6 +427,8 @@ public final class BotRenameHelper {
       this.spawnerName = spawnerName;
       this.spawnerUuid = spawnerUuid;
       this.aiPersonality = aiPersonality;
+      this.resolvedSkin = resolvedSkin;
+      this.ping = ping;
     }
 
     static BotSnapshot from(@NotNull FakePlayer fp) {
@@ -448,7 +465,9 @@ public final class BotRenameHelper {
           lpg,
           fp.getSpawnedBy(),
           fp.getSpawnedByUuid(),
-          fp.getAiPersonality());
+          fp.getAiPersonality(),
+          fp.getResolvedSkin(),
+          fp.getPing());
     }
 
     String lpGroup() {
@@ -461,6 +480,14 @@ public final class BotRenameHelper {
 
     UUID spawnerUuid() {
       return spawnerUuid;
+    }
+
+    SkinProfile resolvedSkin() {
+      return resolvedSkin;
+    }
+
+    int ping() {
+      return ping;
     }
 
     void applyInventoryAndXp(@NotNull Player entity) {
@@ -486,6 +513,10 @@ public final class BotRenameHelper {
       fp.setPickUpItemsEnabled(pickUpItemsEnabled);
       fp.setPickUpXpEnabled(pickUpXpEnabled);
       fp.setAiPersonality(aiPersonality);
+      if (resolvedSkin != null && resolvedSkin.isValid()) {
+        fp.setResolvedSkin(resolvedSkin);
+      }
+      fp.setPing(ping);
       if (chatTier != null) {
         fp.setChatTier(chatTier);
       }

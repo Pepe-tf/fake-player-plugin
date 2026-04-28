@@ -1433,7 +1433,7 @@ public final class BotSettingGui implements Listener {
     bot.setChatEnabled(true);
     bot.setChatTier(null);
     bot.setAiPersonality(null);
-    bot.setPing(-1);
+    manager.applyPing(bot, -1);
 
     bot.setPveEnabled(false);
     var attackCmd = plugin.getAttackCommand();

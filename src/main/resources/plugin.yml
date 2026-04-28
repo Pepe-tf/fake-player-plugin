@@ -91,11 +91,16 @@ permissions:
       fpp.migrate:              true
       fpp.stats:                true
       fpp.freeze:               true
+      fpp.ping:                 true
+      fpp.ping.set:             true
+      fpp.ping.random:          true
+      fpp.ping.bulk:            true
       fpp.lpinfo:               true
       fpp.rank:                 true
       fpp.rank.set:             true
       fpp.rank.clear:           true
       fpp.rank.bulk:            true
+      fpp.skin:                 true
       fpp.alert:                true
       fpp.sync:                 true
       fpp.swap:                 true
@@ -441,6 +446,32 @@ permissions:
     default: false
 
   # ════════════════════════════════════════════════════════════════════════════
+  #  PING
+  # ════════════════════════════════════════════════════════════════════════════
+
+  fpp.ping:
+    description: >
+      Show or spoof bot ping values with /fpp ping. Grants fpp.ping.set,
+      fpp.ping.random, and fpp.ping.bulk.
+    default: op
+    children:
+      fpp.ping.set:    true
+      fpp.ping.random: true
+      fpp.ping.bulk:   true
+
+  fpp.ping.set:
+    description: Set or reset a bot's spoofed ping.
+    default: op
+
+  fpp.ping.random:
+    description: Assign random spoofed ping values to bots.
+    default: op
+
+  fpp.ping.bulk:
+    description: Apply ping changes to multiple random bots via --count.
+    default: op
+
+  # ════════════════════════════════════════════════════════════════════════════
   #  INVENTORY
   # ════════════════════════════════════════════════════════════════════════════
 
@@ -663,6 +694,10 @@ permissions:
 
   fpp.rank.bulk:
     description: Bulk random group assignment (--random --count <n> --set <group>).
+    default: op
+
+  fpp.skin:
+    description: Apply a custom skin URL to an active bot with /fpp skin.
     default: op
 
   # ════════════════════════════════════════════════════════════════════════════

@@ -223,6 +223,13 @@ rank-usage:           "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp rank <bo
 rank-bot-not-found:   "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
 rank-group-not-found: "{prefix}<red>ʟᴜᴄᴋᴘᴇʀᴍꜱ ɢʀᴏᴜᴘ <white>{group}<red> ᴅᴏᴇꜱ ɴᴏᴛ ᴇxɪꜱᴛ."
 
+skin-usage:           "{prefix}<red>ᴜꜱᴀɢᴇ<gray>: <#0079FF>/fpp skin <bot> <url></#0079FF><gray>."
+skin-bot-not-found:   "{prefix}<red>ɴᴏ ᴀᴄᴛɪᴠᴇ ʙᴏᴛ ɴᴀᴍᴇᴅ <white>{name}<red>."
+skin-invalid-url:     "{prefix}<red>ɪɴᴠᴀʟɪᴅ ꜱᴋɪɴ ᴜʀʟ<red>. <gray>ᴜꜱᴇ ᴀɴ <white>http(s)</white> <gray>ᴏʀ <white>data:image</white> ᴜʀʟ."
+skin-applying:        "{prefix}<gray>ᴀᴘᴘʟʏɪɴɢ ᴀ ᴄᴜꜱᴛᴏᴍ ꜱᴋɪɴ ᴛᴏ <#0079FF>{name}</#0079FF><gray>…"
+skin-applied:         "{prefix}<green>✔ <gray>ᴀᴘᴘʟɪᴇᴅ ᴄᴜꜱᴛᴏᴍ ꜱᴋɪɴ ᴛᴏ <#0079FF>{name}</#0079FF><gray>."
+skin-failed:          "{prefix}<red>✘ <gray>ꜰᴀɪʟᴇᴅ ᴛᴏ ᴀᴘᴘʟʏ ᴀ ᴄᴜꜱᴛᴏᴍ ꜱᴋɪɴ ᴛᴏ <#0079FF>{name}</#0079FF><gray>."
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  12 · ALERT  (cross-server broadcast)
@@ -626,12 +633,17 @@ personality-set-usage:      "{prefix}<red>ᴜꜱᴀɢᴇ: <white>/fpp personalit
 
 
 # ── Ping ─────────────────────────────────────────────────────────────────────
-ping-usage:                 "{prefix}<red>ᴜꜱᴀɢᴇ: <white>/fpp ping [<bot>|--count <n>] [--ping <ms>|--random]"
+ping-usage:                 "{prefix}<red>ᴜꜱᴀɢᴇ: <white>/fpp ping [<bot>|--count <n>] [--ping <ms>|--random|--reset]"
+ping-show-spoofed:          "{prefix}<yellow>{name}</yellow> <gray>ɪꜱ ꜱᴘᴏᴏꜰɪɴɢ <white>{ping}ᴍꜱ<gray>."
+ping-show-default:          "{prefix}<yellow>{name}</yellow> <gray>ɪꜱ ᴄᴜʀʀᴇɴᴛʟʏ ꜱʜᴏᴡɪɴɢ <white>{ping}ᴍꜱ<gray> <dark_gray>(ᴅᴇꜰᴀᴜʟᴛ)"
 ping-set:                   "{prefix}<green>ꜱᴇᴛ ᴘɪɴɢ ꜰᴏʀ <yellow>{name}<green> ᴛᴏ <white>{ping}ᴍꜱ<green>."
 ping-set-multiple:          "{prefix}<green>ꜱᴇᴛ ᴘɪɴɢ ꜰᴏʀ <yellow>{count}<green> ʙᴏᴛ(ꜱ) → <white>{ping}ᴍꜱ<green>."
+ping-reset:                 "{prefix}<green>ʀᴇꜱᴇᴛ ᴘɪɴɢ ꜰᴏʀ <yellow>{name}</yellow><green>."
+ping-reset-multiple:        "{prefix}<green>ʀᴇꜱᴇᴛ ᴘɪɴɢ ꜰᴏʀ <yellow>{count}</yellow><green> ʙᴏᴛ(ꜱ)."
+ping-random-multiple:       "{prefix}<green>ᴀꜱꜱɪɢɴᴇᴅ ʀᴀɴᴅᴏᴍ ᴘɪɴɢꜱ ᴛᴏ <yellow>{count}</yellow><green> ʙᴏᴛ(ꜱ)."
 ping-bot-not-found:         "{prefix}<red>ʙᴏᴛ <yellow>'{name}'<red> ɴᴏᴛ ꜰᴏᴜɴᴅ."
 ping-no-bots:               "{prefix}<red>ɴᴏ ʙᴏᴛꜱ ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ."
-ping-conflict-options:      "{prefix}<red>--ᴘɪɴɢ ᴀɴᴅ --ʀᴀɴᴅᴏᴍ ᴄᴀɴɴᴏᴛ ʙᴇ ᴜꜱᴇᴅ ᴛᴏɢᴇᴛʜᴇʀ."
+ping-conflict-options:      "{prefix}<red>ᴄᴏɴꜰʟɪᴄᴛɪɴɢ ᴘɪɴɢ ᴏᴘᴛɪᴏɴꜱ ᴄᴀɴɴᴏᴛ ʙᴇ ᴜꜱᴇᴅ ᴛᴏɢᴇᴛʜᴇʀ."
 ping-duplicate-option:      "{prefix}<red>ᴅᴜᴘʟɪᴄᴀᴛᴇ ᴏᴘᴛɪᴏɴ: <white>{option}"
 ping-missing-value:         "{prefix}<red>ᴍɪꜱꜱɪɴɢ ᴠᴀʟᴜᴇ ꜰᴏʀ <white>{option}"
 ping-out-of-range:          "{prefix}<red>ᴘɪɴɢ ᴠᴀʟᴜᴇ ᴍᴜꜱᴛ ʙᴇ ʙᴇᴛᴡᴇᴇɴ <white>0<red> ᴀɴᴅ <white>9999<red>."

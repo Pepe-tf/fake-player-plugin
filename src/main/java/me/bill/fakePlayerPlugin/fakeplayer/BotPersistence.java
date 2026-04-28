@@ -739,6 +739,9 @@ public final class BotPersistence {
       if (fp.getAiPersonality() != null) {
         section.put("ai-personality", fp.getAiPersonality());
       }
+      if (fp.getLuckpermsGroup() != null && !fp.getLuckpermsGroup().isBlank()) {
+        section.put("luckperms-group", fp.getLuckpermsGroup());
+      }
       if (fp.getRightClickCommand() != null) {
         section.put("right-click-command", fp.getRightClickCommand());
       }
@@ -790,10 +793,13 @@ public final class BotPersistence {
         List<SavedBot> saved = new ArrayList<>();
         for (var row : rows) {
           try {
+            UUID storedUuid = parseUuidOrNull(row.botUuid());
+            UUID effectiveUuid = resolveRestoredUuid(row.botName(), storedUuid);
+            if (effectiveUuid == null) continue;
             saved.add(
                 new SavedBot(
                     row.botName(),
-                    UUID.fromString(row.botUuid()),
+                    effectiveUuid,
                     row.botDisplay(),
                     row.spawnedBy(),
                     UUID.fromString(row.spawnedByUuid()),
@@ -803,7 +809,7 @@ public final class BotPersistence {
                     row.z(),
                     row.yaw(),
                     row.pitch(),
-                    null,
+                    row.luckpermsGroup(),
                     BotType.AFK,
                     row.chatEnabled(),
                     row.respawnOnDeath(),
@@ -881,7 +887,9 @@ public final class BotPersistence {
       if (!(obj instanceof java.util.Map<?, ?> map)) continue;
       try {
         String name = (String) map.get("name");
-        UUID uuid = UUID.fromString((String) map.get("uuid"));
+        UUID storedUuid = parseUuidOrNull((String) map.get("uuid"));
+        UUID uuid = resolveRestoredUuid(name, storedUuid);
+        if (uuid == null) continue;
         String displayName = (String) map.get("display-name");
         Object sbRaw = map.get("spawned-by");
         String spawnedBy = sbRaw instanceof String s ? s : "SERVER";
@@ -953,6 +961,8 @@ public final class BotPersistence {
         String chatTier = ctRaw instanceof String s2 ? s2 : null;
         Object apRaw = map.get("ai-personality");
         String aiPersonality = apRaw instanceof String s3 ? s3 : null;
+        Object lpRaw = map.get("luckperms-group");
+        String luckpermsGroup = lpRaw instanceof String s4 ? s4 : null;
         Object pveEnRaw = map.get("pve-enabled");
         boolean pveEnabled = pveEnRaw instanceof Boolean pve && pve;
         Object pveModeRaw = map.get("pve-smart-attack-mode");
@@ -987,7 +997,7 @@ public final class BotPersistence {
                 z,
                 yaw,
                 pitch,
-                null,
+                luckpermsGroup,
                 botType,
                 chatEnabled,
                 respawnOnDeath,
@@ -1073,6 +1083,9 @@ public final class BotPersistence {
             new SkinProfile(sb.skinTexture, sb.skinSignature, "persisted:" + sb.name));
         Config.debugSkin("Restored persisted skin for bot '" + sb.name + "'");
       }
+      if (sb.luckpermsGroup != null && !sb.luckpermsGroup.isBlank()) {
+        fp.setLuckpermsGroup(sb.luckpermsGroup);
+      }
 
       fp.setChatEnabled(sb.chatEnabled);
       fp.setRespawnOnDeath(sb.respawnOnDeath);
@@ -1103,6 +1116,45 @@ public final class BotPersistence {
       }
 
       manager.persistBotSettings(fp);
+
+      if (sb.ping >= 0) {
+        final UUID restoredUuid = fp.getUuid();
+        final int restoredPing = sb.ping;
+        FppScheduler.runSyncLater(
+            plugin,
+            () -> {
+              FakePlayer restored = manager.getByUuid(restoredUuid);
+              if (restored != null) {
+                manager.applyPing(restored, restoredPing);
+              }
+            },
+            5L);
+      }
+
+      if (sb.luckpermsGroup != null
+          && !sb.luckpermsGroup.isBlank()
+          && plugin.isLuckPermsAvailable()) {
+        final UUID restoredUuid = fp.getUuid();
+        final String restoredGroup = sb.luckpermsGroup;
+        FppScheduler.runSyncLater(
+            plugin,
+            () -> {
+              FakePlayer restored = manager.getByUuid(restoredUuid);
+              if (restored == null) return;
+              me.bill.fakePlayerPlugin.util.LuckPermsHelper
+                  .applyGroupToOnlineUser(restoredUuid, restoredGroup)
+                  .thenRun(
+                      () ->
+                          FppScheduler.runSyncLater(
+                              plugin,
+                              () -> {
+                                FakePlayer refreshed = manager.getByUuid(restoredUuid);
+                                if (refreshed != null) manager.refreshLpDisplayName(refreshed);
+                              },
+                              2L));
+            },
+            15L);
+      }
 
       if (fp.isPveEnabled()) {
         final FakePlayer pveBot = fp;
@@ -1776,6 +1828,51 @@ public final class BotPersistence {
       Set<UUID> sharedControllers,
       boolean autoEatEnabled,
       boolean autoPlaceBedEnabled) {}
+
+  private UUID resolveRestoredUuid(String botName, UUID storedUuid) {
+    me.bill.fakePlayerPlugin.fakeplayer.BotIdentityCache identityCache = plugin.getBotIdentityCache();
+    UUID resolved =
+        identityCache != null && botName != null && !botName.isBlank()
+            ? identityCache.lookupOrCreate(botName)
+            : storedUuid;
+    if (resolved != null && storedUuid != null && !resolved.equals(storedUuid)) {
+      remapLoadedState(storedUuid, resolved);
+      Config.debugDatabase(
+          "BotPersistence: remapped restored UUID for '"
+              + botName
+              + "' "
+              + storedUuid
+              + " -> "
+              + resolved);
+    }
+    return resolved;
+  }
+
+  private void remapLoadedState(UUID oldUuid, UUID newUuid) {
+    if (oldUuid == null || newUuid == null || oldUuid.equals(newUuid)) return;
+    String oldKey = oldUuid.toString();
+    String newKey = newUuid.toString();
+    remapLoadedMap(loadedInventories, oldKey, newKey);
+    remapLoadedMap(loadedXp, oldKey, newKey);
+    remapLoadedMap(loadedTasks, oldKey, newKey);
+  }
+
+  private static <T> void remapLoadedMap(Map<String, T> map, String oldKey, String newKey) {
+    if (map == null || oldKey.equals(newKey)) return;
+    T value = map.remove(oldKey);
+    if (value != null && !map.containsKey(newKey)) {
+      map.put(newKey, value);
+    }
+  }
+
+  private static UUID parseUuidOrNull(String raw) {
+    if (raw == null || raw.isBlank()) return null;
+    try {
+      return UUID.fromString(raw);
+    } catch (IllegalArgumentException ignored) {
+      return null;
+    }
+  }
 
   private record TaskEntry(
       String rightClickCommand,

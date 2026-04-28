@@ -1715,6 +1715,22 @@ public class DatabaseManager {
     return null;
   }
 
+  public List<BotIdentityRow> getBotIdentityRows() {
+    List<BotIdentityRow> list = new ArrayList<>();
+    if (!isAlive()) return list;
+    try (PreparedStatement ps =
+            connection.prepareStatement(
+                "SELECT bot_name, server_id, bot_uuid FROM fpp_bot_identities");
+        ResultSet rs = ps.executeQuery()) {
+      while (rs.next()) {
+        list.add(new BotIdentityRow(rs.getString("bot_name"), rs.getString("server_id"), rs.getString("bot_uuid")));
+      }
+    } catch (SQLException e) {
+      FppLogger.error("DB getBotIdentityRows: " + e.getMessage());
+    }
+    return list;
+  }
+
   public void registerBotUuid(String botName, UUID uuid, String serverId) {
     final String sid = serverId;
     final long now = Instant.now().toEpochMilli();
@@ -1741,6 +1757,77 @@ public class DatabaseManager {
             FppLogger.error("DB registerBotUuid(" + botName + "): " + e.getMessage());
           }
         });
+  }
+
+  public synchronized boolean migrateBotUuid(
+      String botName, String serverId, UUID oldUuid, UUID newUuid) {
+    if (!isAlive() || oldUuid == null || newUuid == null || oldUuid.equals(newUuid)) return false;
+
+    String oldUuidStr = oldUuid.toString();
+    String newUuidStr = newUuid.toString();
+    boolean previousAutoCommit;
+    try {
+      previousAutoCommit = connection.getAutoCommit();
+    } catch (SQLException e) {
+      FppLogger.error("DB migrateBotUuid(" + botName + "): " + e.getMessage());
+      return false;
+    }
+
+    try {
+      connection.setAutoCommit(false);
+
+      int sessionRows = updateBotUuidTable("UPDATE fpp_bot_sessions SET bot_uuid=? WHERE bot_uuid=?", newUuidStr, oldUuidStr);
+      int activeRows = updateBotUuidTable("UPDATE fpp_active_bots SET bot_uuid=? WHERE bot_uuid=?", newUuidStr, oldUuidStr);
+      int taskRows = updateBotUuidTable("UPDATE fpp_bot_tasks SET bot_uuid=? WHERE bot_uuid=?", newUuidStr, oldUuidStr);
+      int identityRows =
+          updateBotUuidTable(
+              "UPDATE fpp_bot_identities SET bot_uuid=? WHERE bot_name=? AND server_id=?",
+              newUuidStr,
+              botName,
+              serverId);
+
+      connection.commit();
+      Config.debugDatabase(
+          "Bot UUID migration: '"
+              + botName
+              + "' "
+              + oldUuid
+              + " -> "
+              + newUuid
+              + " (identities="
+              + identityRows
+              + ", sessions="
+              + sessionRows
+              + ", active="
+              + activeRows
+              + ", tasks="
+              + taskRows
+              + ")");
+      return identityRows > 0 || sessionRows > 0 || activeRows > 0 || taskRows > 0;
+    } catch (SQLException e) {
+      try {
+        connection.rollback();
+      } catch (SQLException ignored) {
+      }
+      FppLogger.error(
+          "DB migrateBotUuid(" + botName + ", " + oldUuid + " -> " + newUuid + "): "
+              + e.getMessage());
+      return false;
+    } finally {
+      try {
+        connection.setAutoCommit(previousAutoCommit);
+      } catch (SQLException ignored) {
+      }
+    }
+  }
+
+  private int updateBotUuidTable(String sql, String... params) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      for (int i = 0; i < params.length; i++) {
+        ps.setString(i + 1, params[i]);
+      }
+      return ps.executeUpdate();
+    }
   }
 
   public void saveSleepingBots(List<SleepingBotRow> bots) {
@@ -2421,6 +2508,8 @@ public class DatabaseManager {
 
   private record PendingLocation(
       String world, double x, double y, double z, float yaw, float pitch) {}
+
+  public record BotIdentityRow(String botName, String serverId, String botUuid) {}
 
   public record ActiveBotRow(
       String botUuid,

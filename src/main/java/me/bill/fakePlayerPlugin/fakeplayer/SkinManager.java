@@ -1333,6 +1333,38 @@ public final class SkinManager {
     return applySkinFromOfflinePlayer(bot, offlineTarget);
   }
 
+  public @NotNull CompletableFuture<Boolean> applySkinByUrl(
+      @NotNull FakePlayer bot, @NotNull String url) {
+    if (url.isBlank()) {
+      return CompletableFuture.completedFuture(false);
+    }
+    if (shouldPreserveNameTagSkin(bot)) {
+      return CompletableFuture.completedFuture(false);
+    }
+
+    CompletableFuture<Boolean> future = new CompletableFuture<>();
+    String trimmedUrl = url.trim();
+    SkinFetcher.fetchByUrl(
+        trimmedUrl,
+        (value, signature) -> {
+          if (value == null || value.isBlank()) {
+            future.complete(false);
+            return;
+          }
+          runOnMainThread(
+                  () -> {
+                    if (shouldPreserveNameTagSkin(bot)) return false;
+                    Player botPlayer = bot.getPlayer();
+                    if (botPlayer == null || !botPlayer.isOnline()) return false;
+                    return applySkinFromProfile(
+                        bot, new SkinProfile(value, signature, "url:" + trimmedUrl));
+                  })
+              .whenComplete(
+                  (applied, throwable) -> future.complete(Boolean.TRUE.equals(applied)));
+        });
+    return future;
+  }
+
   public @NotNull CompletableFuture<Boolean> applySkinFromPlayer(
       @NotNull FakePlayer bot, @NotNull Player from) {
     if (shouldPreserveNameTagSkin(bot)) {

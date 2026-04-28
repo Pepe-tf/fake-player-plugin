@@ -179,7 +179,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
   private static boolean requiresBotOwnership(String name) {
     return Set.of(
             "move", "mine", "find", "place", "use", "attack", "follow", "sleep", "stop",
-            "storage", "inventory", "inv", "settings", "xp", "cmd", "rename")
+            "storage", "inventory", "inv", "settings", "xp", "cmd", "rename", "skin", "ping")
         .contains(name.toLowerCase(Locale.ROOT));
   }
 

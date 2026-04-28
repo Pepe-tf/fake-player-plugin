@@ -135,7 +135,7 @@ public final class SkinFetcher {
     String value = null, signature = null;
     try {
 
-      if (url.contains("textures.minecraft.net")) {
+      if (isDirectTextureUrl(url)) {
         String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
         value = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
 
@@ -331,6 +331,14 @@ public final class SkinFetcher {
     if (url == null) return null;
     String trimmed = url.trim();
     return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private static boolean isDirectTextureUrl(String url) {
+    if (url == null || url.isBlank()) return false;
+    String lower = url.toLowerCase(java.util.Locale.ROOT);
+    return lower.contains("textures.minecraft.net")
+        || lower.startsWith("data:image/")
+        || lower.matches("^https?://.+\\.(png|jpg|jpeg)(\\?.*)?$");
   }
 
   private static JsonObject parseJsonObject(String json) {
