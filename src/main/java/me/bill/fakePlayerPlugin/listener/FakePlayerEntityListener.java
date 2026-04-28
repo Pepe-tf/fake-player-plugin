@@ -264,6 +264,7 @@ public class FakePlayerEntityListener implements Listener {
           () -> {
             for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
 
+            BotBroadcast.broadcastLeave(fp);
             manager.removeByName(name);
           },
           20L);
