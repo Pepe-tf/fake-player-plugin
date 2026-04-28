@@ -40,7 +40,9 @@
       "Bash(curl -s http://localhost:3000/api/online-stats echo \"\" kill %1)",
       "Bash(netstat -tlnp)",
       "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"default@127.0.0.1:25565\",\"player_count\":1,\"bot_count\":0,\"version\":\"1.6.6.7\"}')",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"default@127.0.0.1:25566\",\"player_count\":2,\"bot_count\":20,\"version\":\"1.6.6.7\"}')"
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"default@127.0.0.1:25566\",\"player_count\":2,\"bot_count\":20,\"version\":\"1.6.6.7\"}')",
+      "Bash(grep -oP '\\\\`[A-Za-z]+Command\\\\`')",
+      "Bash(grep -oP '\\\\`[A-Za-z]+\\\\.java\\\\`' /home/admin/IdeaProjects/fake-player-plugin/AGENTS.md)"
     ]
   }
 }
