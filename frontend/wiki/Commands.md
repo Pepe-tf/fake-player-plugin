@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-> **Complete FPP command reference - v1.6.6.7**  
+> **Complete FPP command reference - v1.6.6.8**  
 > All commands use `/fpp` · aliases `/fakeplayer` and `/fp`
 
 ---
@@ -30,15 +30,18 @@
 | `/fpp xp <bot>` | `fpp.xp` | Transfer bot XP to yourself |
 | `/fpp cmd <bot> ...` | `fpp.cmd` | Execute or store right-click commands |
 | `/fpp rename <old> <new>` | `fpp.rename` / `fpp.rename.own` | Rename an active bot |
+| `/fpp setowner <bot> <player>` | `fpp.setowner` | Transfer bot ownership to another player |
 | `/fpp personality ...` | `fpp.personality` | Assign AI personalities to bots |
+| `/fpp skin <bot> <username\|url\|reset>` | `fpp.skin` | Apply a skin by Minecraft username, URL, or reset to default |
 | `/fpp badword ...` | `fpp.badword` | Manage runtime badword list |
 | `/fpp ping [<bot>] [--ping <ms>\|--random] [--count <n>]` | `fpp.ping` | Set simulated tab-list ping |
-| `/fpp attack <bot> [--stop]` | `fpp.attack` | PvE attack — walk to sender, attack entities; `--mob` for stationary mob-targeting |
+| `/fpp attack <bot> [--stop]` | `fpp.attack` | PvE attack — walk to sender, attack entities; `--mob` for stationary mob-targeting; `--hunt` for autonomous roaming mob hunt |
+| `/fpp attack <bot\|all> --hunt [<mob>] [--range <n>] [--priority <mode>]` | `fpp.attack.hunt` | Autonomous roaming mob hunt (not locked, concurrent nav + combat) |
 | `/fpp follow <bot\|all> <player>` | `fpp.follow` | Continuously follow an online player (persists across restarts) |
 | `/fpp follow <bot\|all> --stop` | `fpp.follow` | Stop the bot's follow loop |
 | `/fpp sleep <bot|all> <x y z> <radius>` | `fpp.sleep` | Set a sleep-origin so the bot auto-sleeps at night near that location |
 | `/fpp sleep <bot|all> --stop` | `fpp.sleep` | Clear the bot's sleep-origin |
-| `/fpp stop [<bot>|all]` | `fpp.stop` | Cancel all active tasks for a bot (move, mine, place, use, attack, follow, sleep) |
+| `/fpp stop [<bot>|all]` | `fpp.stop` | Cancel all active tasks for a bot (move, mine, place, use, attack, follow, find, sleep) |
 | `/fpp find <bot> <block> [--radius <n>] [--count <n>]` | `fpp.find` | Bot scans nearby chunks for target blocks and mines them progressively |
 | `/fpp groups [gui|list|create|delete|add|remove]` | `fpp.groups` | Personal bot groups with GUI management |
 | `/fpp chat ...` | `fpp.chat` | Control fake chat globally or per-bot |
@@ -54,6 +57,8 @@
 | `/fpp migrate ...` | `fpp.migrate` | Backup, export, and migration tools |
 | `/fpp sync ...` | `fpp.sync` | Config sync across proxy network |
 | `/fpp alert <message>` | `fpp.alert` | Broadcast network alert |
+| `/fpp save` | `fpp.save` | Immediately save all active bot data to disk |
+| `/fpp bots [bot]` | `fpp.settings` | Paginated GUI of administrable bots; click to open BotSettingGui |
 | `/fpp reload` | `fpp.reload` | Reload config and subsystems |
 
 ---
@@ -435,6 +440,32 @@ The rename flow fully preserves:
 
 ---
 
+### 👤 `/fpp setowner`
+
+```text
+/fpp setowner <bot> <player>
+```
+
+Transfer ownership of a bot to another player. Clears all shared controllers and updates the database if enabled.
+
+Permission: `fpp.setowner`
+
+---
+
+### 🎨 `/fpp skin`
+
+```text
+/fpp skin <bot> <username>
+/fpp skin <bot> <url>
+/fpp skin <bot> reset
+```
+
+Apply a skin to a bot from a Minecraft username, a URL (e.g. Mineskin/Crafatar), or `reset` to restore the default skin. Guards against NameTag conflicts when `nametag-integration.block-nick-conflicts` is enabled.
+
+Permission: `fpp.skin`
+
+---
+
 ### 🎭 `/fpp personality`
 
 ```text
@@ -616,7 +647,19 @@ Permission: `fpp.settings`
 
 ---
 
-### 📊 `/fpp stats`
+### 🤖 `/fpp bots`
+
+```text
+/fpp bots [bot]
+/fpp mybots [bot]
+/fpp botmenu [bot]
+```
+
+Opens a paginated **54-slot chest GUI** of bots the player can administer (filtered by `BotAccess.canAdminister`). Click any bot head to open its `BotSettingGui`. If a bot name is provided, opens that bot's settings directly.
+
+Permission: `fpp.settings`
+
+---
 
 ```text
 /fpp stats
@@ -693,7 +736,17 @@ Permission: `fpp.reload`
 
 ---
 
-### 📡 `/fpp ping`
+### 💾 `/fpp save`
+
+```text
+/fpp save
+```
+
+Immediately save all active bot data to disk (persistence checkpoint). Useful for manual checkpointing before a restart.
+
+Permission: `fpp.save`
+
+---
 
 ```text
 /fpp ping [<bot>]
@@ -724,6 +777,7 @@ Set the simulated tab-list latency (ping bar) for one or all bots.
 /fpp attack <bot> --stop
 /fpp attack <bot> --mob [--range <n>] [--type <mob>] [--priority nearest|lowest-health]
 /fpp attack <bot> --mob --move
+/fpp attack <bot|all> --hunt [<mob>] [--range <n>] [--priority nearest|lowest-health]
 ```
 
 **Classic mode:** bot walks to the command sender's position and continuously attacks nearby entities.
@@ -732,10 +786,14 @@ Set the simulated tab-list latency (ping bar) for one or all bots.
 
 **Mob pursuit (`--mob --move`):** bot chases the target when out of melee range and stops to attack when in reach.
 
+**Hunt mode (`--hunt`):** autonomous roaming mob hunt — the bot is **not** position-locked, allowing concurrent combat and navigation. A 20-tick repeating scan task searches for hostile mobs (optionally filtered by `--type`) within `--range` (default: 32 blocks). The bot navigates to the nearest target via `PathfindingService` (Owner `ATTACK`) and engages when in melee range. Supports `--priority nearest|lowest-health`.
+
 - Respects 1.9+ attack cooldown and item-specific cooldowns dynamically
 - `--stop` cancels the attack loop
 
-Permission: `fpp.attack`
+**Permissions**
+- `fpp.attack` — classic, mob, and mob-pursuit modes
+- `fpp.attack.hunt` — roaming hunt mode
 
 ---
 
@@ -865,6 +923,10 @@ fpp.follow
 fpp.find
 fpp.sleep
 fpp.stop
+fpp.setowner
+fpp.skin
+fpp.save
+fpp.attack.hunt
 ```
 
 For the full permission list, see [Permissions](Permissions).

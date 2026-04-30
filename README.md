@@ -43,14 +43,22 @@ FPP adds fake players to your server that look and behave like real ones:
 - **Transfer XP** — drain a bot's entire XP pool to yourself with `/fpp xp`
 - **Named waypoint routes** — save patrol routes; bots walk them on a loop with `/fpp move --wp`
 - **Rename bots** — rename any active bot with full state preservation (inventory, XP, LP group, tasks)
-- **Per-bot settings GUI** — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvP · Cmds · Danger) — now available to all users with `fpp.settings` permission
+- **Per-bot settings GUI** — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvE · Pathfinding · Danger) — now available to all users with `fpp.settings` permission
 - **AI conversations** — bots respond to `/msg` with AI-generated replies; 7 providers (OpenAI, Groq, Anthropic, Gemini, Ollama, Copilot, Custom); per-bot personalities via `personalities/` folder
 - **Badword filter** — case-insensitive with leet-speak normalization, auto-rename bad names, remote word list
 - **Set bot ping** — simulate realistic tab-list latency per bot with `/fpp ping`; fixed, random, or bulk modes
-- **PvE attack automation** — bots walk to the sender and attack nearby entities or track mob targets with `/fpp attack`
+- **PvE attack automation** — bots attack nearby entities, auto-target mobs (`--mob`), pursue targets (`--move`), or roam-hunt (`--hunt`) with `/fpp attack`
+- **Per-bot PvE smart attack mode** — tri-state `OFF` / `ON (still)` / `ON (move)` configurable per-bot via `BotSettingGui`; mob type selector, range, and priority
 - **Follow-target automation** — bots continuously follow any online player with `/fpp follow`; path recalculates as target moves, persists across restarts
-- **Per-bot PvE settings** — `pveEnabled`, `pveRange`, `pvePriority`, `pveMobTypes` configurable per-bot via `BotSettingGui`
+- **Skin command** — apply any Mojang skin, URL skin, or reset with `/fpp skin <bot> <username|url|reset>`
 - **Skin persistence** — resolved skins saved to DB and re-applied on restart without a new Mojang API round-trip
+- **Per-bot pathfinding overrides** — parkour, break-blocks, place-blocks, nav-avoid-water, nav-avoid-lava configurable per-bot via `BotSettingGui`
+- **Per-bot respawn-on-death** — bots auto-respawn after death instead of being removed
+- **Per-bot auto-eat / auto-place-bed** — realistic survival overrides per bot
+- **Bot select menu** — `/fpp bots` opens a paginated GUI of your manageable bots; click to open per-bot settings
+- **Save command** — `/fpp save` immediately checkpoints all bot data to disk
+- **Set owner** — `/fpp setowner <bot> <player>` transfers bot ownership and clears shared controllers
+- **Roam mode** — `/fpp move <bot> --roam [x,y,z] [radius]` for autonomous random wandering
 - **NameTag integration** — nick-conflict guard, bot isolation from nick cache, skin sync, auto-rename via nick
 - **LuckPerms** — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 - **Proxy/network support** — Velocity & BungeeCord cross-server chat, alerts, and shared database
@@ -129,7 +137,7 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp personality <bot> set\|reset\|show` | Assign or clear AI personality per bot |
 | `/fpp personality list\|reload` | List available personality files or reload them |
 | `/fpp ping [<bot>] [--ping <ms>\|--random] [--count <n>]` | Set simulated tab-list ping for one or all bots |
-| `/fpp attack <bot> [--stop]` | Bot walks to sender and attacks nearby entities (PvE); `--mob` for stationary mob-targeting mode; `--mob --move` to pursue targets |
+| `/fpp attack <bot> [--stop]` | Bot walks to sender and attacks nearby entities (PvE); `--mob` for stationary mob-targeting mode; `--mob --move` to pursue targets; `--hunt` for roaming mob hunt |
 | `/fpp follow <bot\|all> <player>` | Bot continuously follows an online player; path recalculates as target moves |
 | `/fpp follow <bot\|all> --stop` | Stop the bot's current follow loop |
 | `/fpp sleep <bot\|all> <x y z> <radius>` | Set a sleep-origin so the bot auto-sleeps at night near that location |
@@ -137,6 +145,10 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `/fpp stop [<bot>\|all]` | Cancel all active tasks for a bot (move, mine, place, use, attack, follow, sleep) |
 | `/fpp find <bot> <block> [--radius <n>] [--count <n>]` | Bot scans nearby chunks for target blocks and mines them progressively |
 | `/fpp groups [gui\|list\|create\|delete\|add\|remove]` | Personal bot groups with GUI management |
+| `/fpp save` | Immediately save all active bot data to disk (persistence checkpoint) |
+| `/fpp setowner <bot> <player>` | Transfer ownership of a bot to another player |
+| `/fpp bots [bot]` | Open paginated GUI of your manageable bots; click to open settings (aliases: `mybots`, `botmenu`) |
+| `/fpp skin <bot> <username\|url\|reset>` | Apply a skin to a bot from a Minecraft username, URL, or reset to default |
 | `/fpp badword add\|remove\|list\|reload` | Manage the runtime badword list |
 | `/fpp chat [on\|off\|status]` | Toggle the fake chat system |
 | `/fpp swap [on\|off\|status\|now <bot>\|list\|info <bot>]` | Toggle / manage the bot swap/rotation system |
@@ -202,6 +214,9 @@ All commands are under `/fpp` (aliases: `/fakeplayer`, `/fp`).
 | `fpp.find` | Bot block-finding and progressive mining |
 | `fpp.sleep` | Set bot sleep-origin for night auto-sleep |
 | `fpp.stop` | Cancel all active tasks for one or all bots |
+| `fpp.save` | Immediately save all bot data to disk |
+| `fpp.setowner` | Transfer bot ownership to another player |
+| `fpp.skin` | Apply or reset per-bot skins |
 | `fpp.migrate` | Data migration and backup utilities |
 | `fpp.alert` | Broadcast network-wide admin alerts |
 | `fpp.sync` | Push/pull config across proxy network |
@@ -267,8 +282,8 @@ Located at `plugins/FakePlayerPlugin/config.yml`. Run `/fpp reload` after any ch
 | `server-list` | Whether bots count in the server-list player total; `count-bots`, `include-remote-bots` |
 | `config-sync` | Cross-server config push/pull mode (`DISABLED` / `MANUAL` / `AUTO_PULL` / `AUTO_PUSH`) |
 | `database` | `mode` (`LOCAL` / `NETWORK`), `server-id`, SQLite (default) or MySQL |
-| `automation` | `auto-eat`, `auto-place-bed` — realistic bot survival defaults |
-| `attack-mob` | PvE auto-targeting defaults (`default-range`, `default-priority`, etc.) |
+| `automation` | `auto-eat`, `auto-place-bed` — realistic bot survival defaults (per-bot overrides available) |
+| `attack-mob` | PvE auto-targeting defaults (`default-range`, `default-priority`, etc.), smart attack mode |
 
 ---
 
@@ -364,6 +379,57 @@ Identical feature set for BungeeCord/Waterfall networks.
 
 ## Changelog
 
+### v1.6.6.8 *(2026-04-29)*
+
+**Extension Config & Resource System**
+- `FppExtension` interface now provides 6 convenience methods for extension data/config management:
+  - `getDataFolder()` — returns `plugins/FakePlayerPlugin/extensions/<ExtensionName>/`
+  - `getConfig()` — lazy-loads config from disk, merges JAR defaults via `setDefaults()`
+  - `saveDefaultConfig()` — extracts `config.yml` from JAR (tries root first, then `extension-resources/`); performs YamlFileSyncer-style key merge on subsequent calls
+  - `saveDefaultResources()` — extracts all files under `extension-resources/` in the JAR (never overwrites existing files)
+  - `saveResource(jarPath)` — on-demand extraction of a single JAR resource
+  - `reloadConfig()` — reloads config from disk with fresh JAR defaults
+- `FppApi` exposes 3 cross-extension methods: `getExtensionDataFolder(name)`, `saveDefaultExtensionConfig(name)`, `getExtensionConfig(name)`
+- `ExtensionLoader` creates per-extension data folders automatically on load
+- `/fpp reload extensions` now also calls `reloadExtensionConfigs()` to sync config keys after hot-reload
+
+**Per-Bot Settings GUI Overhaul**
+- BotSettingGui now has **5 categories**: ⚙ General · 💬 Chat · 🗡 PvE · 🧭 Pathfinding · ⚠ Danger
+- **General tab** expanded: frozen · respawn-on-death *(new)* · head-AI · swim-AI · chunk-radius · pick-up-items · pick-up-xp · rename · share-control *(new)*
+- **PvE tab** *(new, replaces PvP)*: smart-attack mode (cycle OFF → ON still → ON move) · mob type selector (visual paginated GUI) · detect range · target priority (nearest / lowest-health)
+- **Pathfinding tab** *(new)*: follow-player toggle · parkour · break-blocks · place-blocks
+- **Danger tab**: reset-all-settings *(new)* · delete bot — both require double-click confirmation
+
+**PvE Smart Attack Mode**
+- Per-bot tri-state: `OFF` / `ON_NO_MOVE` (stationary targeting) / `ON_MOVE` (pursues targets via PathfindingService)
+- `PveSmartAttackMode` enum on `FakePlayer` — `pveEnabled` is now a convenience accessor mapping to `pveSmartAttackMode.isEnabled()`
+- Persisted in DB schema v21 (`pve_smart_attack_mode` column) and YAML
+- `/fpp attack <bot> --mob --move` now maps to `ON_MOVE` mode
+
+**Attack Hunt Mode (`--hunt`)**
+- New `/fpp attack <bot|all> --hunt [<mob>] [--range <n>] [--priority <mode>]` — autonomous roaming mob hunt
+- Bot is NOT locked at a position; concurrent combat + 20-tick scan tasks with PathfindingService navigation
+- Default hunt range 32 blocks (vs 8 for stationary `--mob`)
+- Permission: `fpp.attack.hunt` (child of `fpp.op`)
+
+**New Commands**
+- **`/fpp save`** — immediately checkpoint all active bot data to disk. Useful before planned restarts. Permission: `fpp.save`
+- **`/fpp setowner <bot> <player>`** — transfer ownership of a bot; clears all shared controllers; updates DB if enabled. Permission: `fpp.setowner`
+- **`/fpp bots [bot]`** (aliases `mybots`, `botmenu`) — open a paginated GUI of bots you can administer; click any bot to open its BotSettingGui. Permission: `fpp.settings`
+- **`/fpp skin <bot> <username|url|reset>`** — apply any Mojang skin, URL-based skin, or reset to default. Guards against NameTag conflicts. Permission: `fpp.skin`
+
+**Per-Bot Features**
+- `respawnOnDeath` — per-bot toggle; when enabled, bot auto-respawns after death instead of being removed. Initialized from `death.respawn-on-death` config
+- `autoEatEnabled` / `autoPlaceBedEnabled` — per-bot overrides for automation defaults; initialized from `automation.auto-eat` / `automation.auto-place-bed`
+- `defaultWaterPathAvoidanceEnabled` — per-bot water-path-avoidance default (init: `true`)
+- `navAvoidWater` / `navAvoidLava` — per-bot pathfinding water/lava avoidance overrides
+- Mob type selector GUI — visual paginated 54-slot chest for toggling specific mob types per-bot
+
+**DB Schema v18 → v21**
+- v18→v19: `nav_avoid_water BOOLEAN DEFAULT 0`, `nav_avoid_lava BOOLEAN DEFAULT 0`
+- v19→v20: `ping INT DEFAULT -1`
+- v20→v21: `pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'`, `respawn_on_death BOOLEAN DEFAULT 0`
+
 ### v1.6.6.7 *(2026-04-26)*
 
 **Extension / Addon API**
@@ -385,6 +451,7 @@ Identical feature set for BungeeCord/Waterfall networks.
 - **`/fpp stop [<bot>|all]`** — instantly cancels all active tasks for a bot (move, mine, place, use, attack, follow, find, sleep). Permission: `fpp.stop`
 - **`/fpp move <bot> --coords <x> <y> <z>`** — navigate a bot to exact world coordinates; supports `~` relative offsets. Permission: `fpp.move`
 - **`/fpp attack <bot> --mob --move`** — PvE mob-targeting mode now supports pursuit; bot chases the target when out of melee range and stops to attack when in reach. Permission: `fpp.attack`
+- **`/fpp move <bot> --roam [x,y,z] [radius]`** — autonomous random wandering mode; bot continuously explores within a configurable radius around a center point. Persists across restarts via YAML
 
 **WorldEdit Integration**
 - New `--wesel` flag for `/fpp mine` and `/fpp place` — uses the player's current WorldEdit selection as the work area instead of manual `--pos1`/`--pos2`
@@ -527,7 +594,7 @@ Identical feature set for BungeeCord/Waterfall networks.
 
 **BotSettingGui Now Publicly Available**
 - Per-bot settings GUI (shift+right-click any bot) is no longer dev-only — available to all users with `fpp.settings` permission
-- Removed developer UUID gate; any player with `fpp.settings` now opens the 6-row settings chest (General · Chat · PvP · Cmds · Danger)
+- Removed developer UUID gate; any player with `fpp.settings` now opens the 6-row settings chest (General · Chat · PvE · Pathfinding · Danger)
 - Grant `fpp.settings` via LuckPerms to allow non-op users to manage their own bots' per-bot settings
 
 ---
@@ -983,4 +1050,4 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 ---
 
-*Built for Paper 1.21.x · Java 21 · FPP v1.6.6.7 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fpp.wtf) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*
+*Built for Paper 1.21.x · Java 21 · FPP v1.6.6.8 · [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [PaperMC](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/) · [Wiki](https://fpp.wtf) · [GitHub](https://github.com/Pepe-tf/fake-player-plugin)*

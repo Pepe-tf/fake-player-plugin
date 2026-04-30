@@ -2,7 +2,7 @@
 
 FPP stores bot sessions, restart state, analytics, and task persistence in a database.
 
-> **Current plugin line:** v1.6.6  
+> **Current plugin line:** v1.6.6.8  
 > **Default backend:** SQLite  
 > **Optional backend:** MySQL  
 > **Important persistence feature:** active mine/use/place/patrol/follow tasks survive restart
@@ -134,6 +134,10 @@ Stores the bot's last known:
 - per-bot overrides: head-AI, nav-parkour, nav-break-blocks, nav-place-blocks, swim-AI, chunk-load-radius (schema v14)
 - per-bot PvE settings: `pve_enabled`, `pve_range`, `pve_priority`, `pve_mob_type` (schema v16)
 - resolved skin data: `skin_texture`, `skin_signature` — allows bots to reload their skin on restart without a Mojang API call (schema v17)
+- water/lava path avoidance: `nav_avoid_water`, `nav_avoid_lava` (schema v19)
+- tab-list ping override: `ping INT DEFAULT -1` (schema v20)
+- PvE smart attack mode: `pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'` (schema v21)
+- respawn-on-death: `respawn_on_death BOOLEAN DEFAULT 0` (schema v21)
 
 ### `fpp_skin_cache`
 
@@ -316,8 +320,12 @@ mysqldump -u fpp_user -p fpp > fpp_backup.sql
 | v15 | `fpp_skin_cache` table created (Mojang skin resolution cache) |
 | v16 | `fpp_active_bots` gains `pve_enabled`, `pve_range`, `pve_priority`, `pve_mob_type` (per-bot PvE settings) |
 | v17 | `fpp_active_bots` gains `skin_texture`, `skin_signature` (skin persistence across restarts) |
+| v18 | `fpp_despawn_snapshots` table created (despawn inventory/XP snapshots) |
+| v19 | `fpp_active_bots` gains `nav_avoid_water`, `nav_avoid_lava` |
+| v20 | `fpp_active_bots` gains `ping INT DEFAULT -1` |
+| v21 | `fpp_active_bots` gains `pve_smart_attack_mode`, `respawn_on_death` |
 
-> Current schema version: **17** · Check with `/fpp migrate status`
+> Current schema version: **21** · Check with `/fpp migrate status`
 
 ---
 

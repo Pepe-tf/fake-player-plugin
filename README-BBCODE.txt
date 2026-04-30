@@ -2,7 +2,7 @@
 
 [SIZE=5][I]Spawn realistic fake players on your Paper server — with tab list presence, server list count, join/leave messages, in-world bodies, guaranteed skins, chunk loading, bot swap/rotation, fake chat, AI conversations, area mining, block placing, pathfinding, follow-target automation, per-bot settings GUI, per-bot swim AI & chunk-radius overrides, per-bot PvE attack settings, per-bot XP & item pickup control, tab-list ping simulation, NameTag plugin integration, LuckPerms integration, proxy network support, Velocity companion plugin, BungeeCord companion plugin, full Paper 1.21.x compatibility (1.21.0–1.21.11), and full hot-reload.[/I][/SIZE]
 
-[SIZE=4][B]Version:[/B] 1.6.6.7  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper / Folia  [B]Java:[/B] 21+[/SIZE]
+[SIZE=4][B]Version:[/B] 1.6.6.8  [B]Minecraft:[/B] 1.21.x  [B]Platform:[/B] Paper / Folia  [B]Java:[/B] 21+[/SIZE]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)'][B][COLOR=#00AF5C]⬇ Download on Modrinth[/COLOR][/B][/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/'][B][COLOR=#FF6B35]⬇ SpigotMC[/COLOR][/B][/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin'][B][COLOR=#00BFD8]⬇ PaperMC Hangar[/COLOR][/B][/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/'][B][COLOR=#A855F7]⬇ BuiltByBit[/COLOR][/B][/URL]
 [URL='https://discord.gg/QSN7f67nkJ'][B][COLOR=#5865F2]💬 Join Discord[/COLOR][/B][/URL]  [URL='https://fpp.wtf'][B][COLOR=#7B8EF0]📖 Wiki[/COLOR][/B][/URL]  [URL='https://ko-fi.com/fakeplayerplugin'][B][COLOR=#FF5E5B]☕ Support on Ko-fi[/COLOR][/B][/URL]  [URL='https://github.com/sponsors/Pepe-tf'][B][COLOR=#EA4AAA]💖 GitHub Sponsors[/COLOR][/B][/URL]  [URL='https://www.patreon.com/c/F_PP?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink'][B][COLOR=#FF424D]🎗 Patreon[/COLOR][/B][/URL]
@@ -34,14 +34,21 @@ FPP adds fake players to your server that look and behave like real ones:
 [*][B]Transfer XP[/B] — drain a bot's entire XP pool to yourself with [FONT=monospace]/fpp xp[/FONT]
 [*][B]Named waypoint routes[/B] — save patrol routes; bots walk them on a loop with [FONT=monospace]/fpp move --wp[/FONT]
 [*][B]Rename bots[/B] — rename any active bot with full state preservation (inventory, XP, LP group, tasks)
-[*][B]Per-bot settings GUI[/B] — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvP · Cmds · Danger)
+[*][B]Per-bot settings GUI[/B] — shift+right-click any bot to open a 6-row settings chest (General · Chat · PvE · Pathfinding · Danger)
 [*][B]AI conversations[/B] — bots respond to [FONT=monospace]/msg[/FONT] with AI-generated replies; 7 providers (OpenAI, Groq, Anthropic, Gemini, Ollama, Copilot, Custom); per-bot personalities via [FONT=monospace]personalities/[/FONT] folder
 [*][B]Badword filter[/B] — case-insensitive with leet-speak normalization, auto-rename bad names, remote word list
 [*][B]Set bot ping[/B] — simulate realistic tab-list latency per bot with [FONT=monospace]/fpp ping[/FONT]; fixed, random, or bulk modes
-[*][B]PvE attack automation[/B] — bots walk to the sender and attack nearby entities or track mob targets with [FONT=monospace]/fpp attack[/FONT]
+[*][B]PvE attack automation[/B] — bots attack nearby entities, auto-target mobs ([FONT=monospace]--mob[/FONT]), pursue targets ([FONT=monospace]--move[/FONT]), or roam-hunt ([FONT=monospace]--hunt[/FONT]) with [FONT=monospace]/fpp attack[/FONT]
+[*][B]Per-bot PvE smart attack[/B] — tri-state OFF / ON (still) / ON (move) configurable per-bot via BotSettingGui; mob type selector, range, priority
 [*][B]Follow-target automation[/B] — bots continuously follow any online player with [FONT=monospace]/fpp follow[/FONT]; path recalculates as target moves, persists across restarts
-[*][B]Per-bot PvE settings[/B] — pveEnabled, pveRange, pvePriority, pveMobTypes configurable per-bot via BotSettingGui
+[*][B]Skin command[/B] — apply any Mojang skin, URL skin, or reset with [FONT=monospace]/fpp skin <bot> <username|url|reset>[/FONT]
 [*][B]Skin persistence[/B] — resolved skins saved to DB and re-applied on restart without a new Mojang API round-trip
+[*][B]Per-bot pathfinding overrides[/B] — parkour, break-blocks, place-blocks, nav-avoid-water, nav-avoid-lava configurable per-bot via BotSettingGui
+[*][B]Per-bot respawn-on-death[/B] — bots auto-respawn after death instead of being removed
+[*][B]Per-bot auto-eat / auto-place-bed[/B] — realistic survival overrides per bot
+[*][B]Bot select menu[/B] — [FONT=monospace]/fpp bots[/FONT] opens a paginated GUI of your manageable bots
+[*][B]Save command[/B] — [FONT=monospace]/fpp save[/FONT] immediately checkpoints all bot data
+[*][B]Set owner[/B] — [FONT=monospace]/fpp setowner <bot> <player>[/FONT] transfers bot ownership
 [*][B]NameTag integration[/B] — nick-conflict guard, bot isolation from nick cache, skin sync, auto-rename via nick
 [*][B]LuckPerms[/B] — per-bot group assignment, weighted tab-list ordering, prefix/suffix in chat and nametags
 [*][B]Proxy/network support[/B] — Velocity & BungeeCord cross-server chat, alerts, and shared database
@@ -121,7 +128,7 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]/fpp personality <bot> set|reset|show[/FONT][/TD][TD]Assign or clear AI personality per bot[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp personality list|reload[/FONT][/TD][TD]List available personality files or reload them[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>][/FONT][/TD][TD]Set simulated tab-list ping for one or all bots[/TD][/TR]
-[TR][TD][FONT=monospace]/fpp attack <bot> [--stop][/FONT][/TD][TD]Bot walks to sender and attacks nearby entities (PvE); --mob for stationary mob-targeting mode; --mob --move to pursue targets[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp attack <bot> [--stop][/FONT][/TD][TD]Bot walks to sender and attacks nearby entities (PvE); --mob for stationary mob-targeting; --mob --move to pursue; --hunt for roaming hunt[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp follow <bot|all> <player>[/FONT][/TD][TD]Bot continuously follows an online player; path recalculates as target moves[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp follow <bot|all> --stop[/FONT][/TD][TD]Stop the bot's current follow loop[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp sleep <bot|all> <x y z> <radius>[/FONT][/TD][TD]Set a sleep-origin so the bot auto-sleeps at night near that location[/TD][/TR]
@@ -129,6 +136,10 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]/fpp stop [<bot>|all][/FONT][/TD][TD]Cancel all active tasks for a bot (move, mine, place, use, attack, follow, sleep)[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp find <bot> <block> [--radius <n>] [--count <n>][/FONT][/TD][TD]Bot scans nearby chunks for target blocks and mines them progressively[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp groups [gui|list|create|delete|add|remove][/FONT][/TD][TD]Personal bot groups with GUI management[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp save[/FONT][/TD][TD]Immediately save all active bot data to disk[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp setowner <bot> <player>[/FONT][/TD][TD]Transfer ownership of a bot to another player[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp bots [bot][/FONT][/TD][TD]Open paginated GUI of your manageable bots (aliases: mybots, botmenu)[/TD][/TR]
+[TR][TD][FONT=monospace]/fpp skin <bot> <username|url|reset>[/FONT][/TD][TD]Apply or reset a skin for a specific bot[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp badword add|remove|list|reload[/FONT][/TD][TD]Manage the runtime badword filter list[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp chat [on|off|status][/FONT][/TD][TD]Toggle the fake chat system[/TD][/TR]
 [TR][TD][FONT=monospace]/fpp swap [on|off|status|now <bot>|list|info <bot>][/FONT][/TD][TD]Toggle / manage the bot swap/rotation system[/TD][/TR]
@@ -196,6 +207,9 @@ All commands are under [FONT=monospace]/fpp[/FONT] (aliases: [FONT=monospace]/fa
 [TR][TD][FONT=monospace]fpp.find[/FONT][/TD][TD]Bot block-finding and progressive mining[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.sleep[/FONT][/TD][TD]Set bot sleep-origin for night auto-sleep[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.stop[/FONT][/TD][TD]Cancel all active tasks for one or all bots[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.save[/FONT][/TD][TD]Immediately save all bot data to disk[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.setowner[/FONT][/TD][TD]Transfer bot ownership to another player[/TD][/TR]
+[TR][TD][FONT=monospace]fpp.skin[/FONT][/TD][TD]Apply or reset per-bot skins[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.migrate[/FONT][/TD][TD]Backup, migrate, and export database[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.alert[/FONT][/TD][TD]Broadcast network-wide admin alerts[/TD][/TR]
 [TR][TD][FONT=monospace]fpp.sync[/FONT][/TD][TD]Push/pull config across proxy network[/TD][/TR]
@@ -562,9 +576,25 @@ Always download from the official sources:
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
 
-[SIZE=5][B]v1.6.6.7[/B][/SIZE] [I](2026-04-26)[/I]
+[SIZE=5][B]v1.6.6.8[/B][/SIZE] [I](2026-04-29)[/I]
 
-[B]Extension / Addon API[/B]
+[B]Extension Config & Resource System[/B]
+[LIST]
+[*][FONT=monospace]FppExtension[/FONT] interface now provides 6 convenience methods for extension data/config management:
+[LIST]
+[*][FONT=monospace]getDataFolder()[/FONT] — returns [FONT=monospace]plugins/FakePlayerPlugin/extensions/<ExtensionName>/[/FONT]
+[*][FONT=monospace]getConfig()[/FONT] — lazy-loads config from disk, merges JAR defaults via [FONT=monospace]setDefaults()[/FONT]
+[*][FONT=monospace]saveDefaultConfig()[/FONT] — extracts [FONT=monospace]config.yml[/FONT] from JAR (tries root first, then [FONT=monospace]extension-resources/[/FONT]); performs YamlFileSyncer-style key merge on subsequent calls
+[*][FONT=monospace]saveDefaultResources()[/FONT] — extracts all files under [FONT=monospace]extension-resources/[/FONT] in the JAR (never overwrites existing files)
+[*][FONT=monospace]saveResource(jarPath)[/FONT] — on-demand extraction of a single JAR resource
+[*][FONT=monospace]reloadConfig()[/FONT] — reloads config from disk with fresh JAR defaults
+[/LIST]
+[*][FONT=monospace]FppApi[/FONT] exposes 3 cross-extension methods: [FONT=monospace]getExtensionDataFolder(name)[/FONT], [FONT=monospace]saveDefaultExtensionConfig(name)[/FONT], [FONT=monospace]getExtensionConfig(name)[/FONT]
+[*][FONT=monospace]ExtensionLoader[/FONT] creates per-extension data folders automatically on load
+[*][FONT=monospace]/fpp reload extensions[/FONT] now also calls [FONT=monospace]reloadExtensionConfigs()[/FONT] to sync config keys after hot-reload
+[/LIST]
+
+[SIZE=5][B]v1.6.6.7[/B][/SIZE] [I](2026-04-26)[/I]
 [LIST]
 [*]New [FONT=monospace]FppExtension[/FONT] interface — third-party developers can drop [FONT=monospace].jar[/FONT] files into [FONT=monospace]plugins/FakePlayerPlugin/extensions/[/FONT] and FPP will auto-load them on startup
 [*][FONT=monospace]ExtensionLoader[/FONT] scans extension jars for [FONT=monospace]FppExtension[/FONT] implementations, instantiates them, and registers them as addons sorted by priority
@@ -772,7 +802,7 @@ Always download from the official sources:
 [B]⚙️ BotSettingGui Now Publicly Available[/B]
 [LIST]
 [*]Per-bot settings GUI (shift+right-click any bot) is no longer dev-only — available to all users with [FONT=monospace]fpp.settings[/FONT] permission
-[*]Removed developer UUID gate; any player with [FONT=monospace]fpp.settings[/FONT] now opens the 6-row settings chest (General · Chat · PvP · Cmds · Danger)
+[*]Removed developer UUID gate; any player with [FONT=monospace]fpp.settings[/FONT] now opens the 6-row settings chest (General · Chat · PvE · Pathfinding · Danger)
 [*]Grant [FONT=monospace]fpp.settings[/FONT] via LuckPerms to allow non-op users to manage per-bot settings
 [/LIST]
 
@@ -1382,6 +1412,6 @@ Thank you for using Fake Player Plugin. Without you, it wouldn't be where it is 
 
 [HR][/HR]
 
-[CENTER][I]Built for Paper 1.21.x (1.21.0–1.21.11) · Java 21 · FPP v1.6.6.7[/I]
+[CENTER][I]Built for Paper 1.21.x (1.21.0–1.21.11) · Java 21 · FPP v1.6.6.8[/I]
 
 [URL='https://modrinth.com/plugin/fake-player-plugin-(fpp)']Modrinth[/URL]  [URL='https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/']SpigotMC[/URL]  [URL='https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin']PaperMC[/URL]  [URL='https://builtbybit.com/resources/fake-player-plugin.98704/']BuiltByBit[/URL]  [URL='https://fpp.wtf']Wiki[/URL][/CENTER]

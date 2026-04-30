@@ -565,6 +565,14 @@ public class FakePlayerManager {
     return despawningBotIds.get(uuid);
   }
 
+  public void markDespawning(UUID uuid, String displayName) {
+    despawningBotIds.put(uuid, displayName);
+  }
+
+  public void clearDespawningNextTick(UUID uuid) {
+    FppScheduler.runSyncLater(plugin, () -> despawningBotIds.remove(uuid), 1L);
+  }
+
   public void markRenaming(UUID uuid) {
     renamingBotIds.add(uuid);
   }
@@ -1029,41 +1037,15 @@ public class FakePlayerManager {
 
               if (plugin.isWorldGuardAvailable()
                   && !me.bill.fakePlayerPlugin.util.WorldGuardHelper.isPvpAllowed(spawnLoc)) {
-                org.bukkit.Location wgSafeLoc =
-                    me.bill.fakePlayerPlugin.util.WorldGuardHelper.findSafeLocation(
-                        spawnLoc.getWorld());
-                if (wgSafeLoc != null) {
-                  final Player safeBody = body;
-                  final org.bukkit.Location safeTarget = wgSafeLoc;
-                  // Use 25L so this fires after the BotSpawnProtectionListener's
-                  // 20-tick protection window (which is used for custom-world spawns).
-                  FppScheduler.runSyncLater(
-                      plugin,
-                      () -> {
-                        if (!activePlayers.containsKey(fp.getUuid())) return;
-                        if (!safeBody.isOnline()) return;
-                        FppScheduler.teleportAsync(safeBody, safeTarget);
-                        fp.setSpawnLocation(safeTarget);
-                        Config.debug(
-                            "WorldGuard: teleported bot '"
-                                + fp.getName()
-                                + "' out of no-pvp region"
-                                + " to world spawn "
-                                + safeTarget.getBlockX()
-                                + ","
-                                + safeTarget.getBlockY()
-                                + ","
-                                + safeTarget.getBlockZ());
-                      },
-                      25L);
-                } else {
-                  me.bill.fakePlayerPlugin.util.FppLogger.warn(
-                      "WorldGuard: bot '"
-                          + fp.getName()
-                          + "' spawned in a no-pvp region but world spawn"
-                          + " is also in a no-pvp region - cannot find a"
-                          + " safe location.");
-                }
+                Config.debug(
+                    "WorldGuard: bot '"
+                        + fp.getName()
+                        + "' spawned in a no-pvp region at "
+                        + spawnLoc.getBlockX()
+                        + ","
+                        + spawnLoc.getBlockY()
+                        + ","
+                        + spawnLoc.getBlockZ());
               }
 
               final Player savedBody = body;
@@ -1287,6 +1269,7 @@ public class FakePlayerManager {
                                   () -> {
                                     if (!activePlayers.containsKey(botUuid)) return;
                                     refreshLpDisplayName(fp);
+                                    persistBotSettings(fp);
 
                                     if (botSwapAI != null) {
                                       botSwapAI.schedule(fp);
@@ -1532,13 +1515,10 @@ public class FakePlayerManager {
             String despawnName = resolveDespawnDisplayName(target);
             boolean broadcastLeave = Config.leaveMessage() && !renamingBotIds.contains(target.getUuid());
             despawningBotIds.put(target.getUuid(), despawnName);
-            if (broadcastLeave) {
-              BotBroadcast.broadcastLeaveByDisplayName(despawnName);
-            }
             try {
               FakePlayerBody.removeAll(target);
             } finally {
-              clearDespawnTrackingNextTick(target.getUuid());
+              clearDespawningNextTick(target.getUuid());
             }
             if (chunkLoader != null) chunkLoader.releaseForBot(target);
 
@@ -1902,14 +1882,11 @@ public class FakePlayerManager {
                     && !renamingBotIds.contains(target.getUuid())
                     && !suppressLeaveBroadcast;
             despawningBotIds.put(target.getUuid(), despawnName);
-            if (broadcastLeave) {
-              BotBroadcast.broadcastLeaveByDisplayName(despawnName);
-            }
             try {
               if (fastVisualRemove) FakePlayerBody.removeAllFast(target);
               else FakePlayerBody.removeAll(target);
             } finally {
-              clearDespawnTrackingNextTick(target.getUuid());
+              clearDespawningNextTick(target.getUuid());
             }
             if (chunkLoader != null) chunkLoader.releaseForBot(target);
 
@@ -1995,6 +1972,7 @@ public class FakePlayerManager {
     List<Player> snapshot = fastShutdown ? List.of() : new ArrayList<>(Bukkit.getOnlinePlayers());
 
     for (FakePlayer fp : toRemove) {
+      markRenaming(fp.getUuid());
 
       if (fastShutdown) FakePlayerBody.removeAllFast(fp);
       else FakePlayerBody.removeAll(fp);
@@ -2005,6 +1983,7 @@ public class FakePlayerManager {
         for (Player online : snapshot) PacketHelper.sendTabListRemove(online, fp);
       }
 
+      unmarkRenaming(fp.getUuid());
       Config.debug("Shutdown removed bot: " + fp.getName());
     }
 
@@ -2603,6 +2582,20 @@ public class FakePlayerManager {
     refreshLpDisplayName(fp);
   }
 
+  public void refreshSkinForAll(FakePlayer fp) {
+    if (!activePlayers.containsKey(fp.getUuid())) return;
+    if (!Config.tabListEnabled()) return;
+    Player body = fp.getPlayer();
+    if (body == null || !body.isValid()) return;
+    List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+    for (Player p : online) {
+      PacketHelper.sendTabListRemove(p, fp);
+    }
+    for (Player p : online) {
+      PacketHelper.sendTabListAdd(p, fp);
+    }
+  }
+
   private static final java.util.regex.Pattern PLACEHOLDER_PATTERN =
       java.util.regex.Pattern.compile("\\{[a-zA-Z_][a-zA-Z0-9_]*\\}");
 
@@ -2659,15 +2652,6 @@ public class FakePlayerManager {
 
   private String resolveDespawnDisplayName(FakePlayer fp) {
     return BotBroadcast.resolveDisplayName(fp);
-  }
-
-  private void clearDespawnTrackingNextTick(UUID uuid) {
-    FppScheduler.runSyncLater(
-        plugin,
-        () -> {
-          despawningBotIds.remove(uuid);
-        },
-        1L);
   }
 
   private String pickRandomSkinName() {
@@ -2836,6 +2820,7 @@ public class FakePlayerManager {
         fp.getPvePriority(),
         fp.getPveMobType(),
         fp.getPveSmartAttackMode().name(),
-        fp.isRespawnOnDeath());
+        fp.isRespawnOnDeath(),
+        fp.getLuckpermsGroup());
   }
 }

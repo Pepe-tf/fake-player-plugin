@@ -1,5 +1,6 @@
 package me.bill.fakePlayerPlugin.api;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -54,4 +55,9 @@ public interface FppApi {
   <T> void registerService(@NotNull Class<T> serviceClass, @NotNull T instance);
   <T> @Nullable T getService(@NotNull Class<T> serviceClass);
   boolean hasService(@NotNull Class<?> serviceClass);
+
+  // ── Extension config & resources ────────────────────────────────────────────
+  @Nullable File getExtensionDataFolder(@NotNull String extensionName);
+  void saveDefaultExtensionConfig(@NotNull String extensionName);
+  @Nullable org.bukkit.configuration.file.YamlConfiguration getExtensionConfig(@NotNull String extensionName);
 }

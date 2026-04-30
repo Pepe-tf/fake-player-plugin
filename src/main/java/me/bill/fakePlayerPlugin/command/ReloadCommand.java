@@ -272,6 +272,7 @@ public class ReloadCommand implements FppCommand {
     var loader = plugin.getExtensionLoader();
     if (loader != null) {
       loader.reload();
+      loader.reloadExtensionConfigs();
       sendStep(sender, "Extensions reloaded from plugins/FakePlayerPlugin/extensions/");
     } else {
       sendStep(sender, "Extension loader not available");

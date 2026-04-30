@@ -25,7 +25,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
+
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -1246,24 +1246,23 @@ public final class BotChatAI implements Listener {
     }
   }
 
+  @SuppressWarnings("deprecation")
   private static void dispatchLegacyChat(Player player, String rawMessage) {
-    java.util.Set<Player> recipients = new java.util.HashSet<>(Bukkit.getOnlinePlayers());
-    AsyncPlayerChatEvent legacy = new AsyncPlayerChatEvent(false, player, rawMessage, recipients);
-    Bukkit.getPluginManager().callEvent(legacy);
-    if (legacy.isCancelled()) return;
-
-    String formatted;
-    try {
-      formatted =
-          String.format(
-              legacy.getFormat(), legacy.getPlayer().getDisplayName(), legacy.getMessage());
-    } catch (Exception ignored) {
-      formatted = "<" + legacy.getPlayer().getName() + "> " + legacy.getMessage();
+    Component message = Component.text(rawMessage);
+    Component displayName = player.displayName();
+    java.util.Set<Audience> viewers = new java.util.HashSet<>(Bukkit.getOnlinePlayers());
+    viewers.add(Bukkit.getConsoleSender());
+    net.kyori.adventure.chat.SignedMessage signed =
+        net.kyori.adventure.chat.SignedMessage.system(rawMessage, message);
+    ChatRenderer renderer =
+        ChatRenderer.viewerUnaware(
+            (src, dn, msg) -> Component.empty().append(dn).append(Component.text(": ")).append(msg));
+    AsyncChatEvent event = new AsyncChatEvent(false, player, viewers, renderer, message, message, signed);
+    Bukkit.getPluginManager().callEvent(event);
+    if (event.isCancelled()) return;
+    for (Audience viewer : event.viewers()) {
+      viewer.sendMessage(event.renderer().render(player, displayName, event.message(), viewer));
     }
-    for (Player recipient : legacy.getRecipients()) {
-      recipient.sendMessage(formatted);
-    }
-    Bukkit.getConsoleSender().sendMessage(formatted);
   }
 
   public static void broadcastRemote(

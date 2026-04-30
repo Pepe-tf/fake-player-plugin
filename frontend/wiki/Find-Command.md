@@ -1,6 +1,6 @@
 # 🔍 Find Command
 
-> **Bot block-finding and progressive mining — v1.6.6.7**
+> **Bot block-finding and progressive mining — v1.6.6.8**
 
 The `/fpp find` command sends a bot to scan nearby chunks for a specific target block and mine it progressively. It is useful for automated resource gathering without pre-defining a cuboid region.
 

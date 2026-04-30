@@ -2198,10 +2198,12 @@ public class DatabaseManager {
       String pvePriority,
       String pveMobType,
       String pveSmartAttackMode,
-      boolean respawnOnDeath) {
+      boolean respawnOnDeath,
+      String luckpermsGroup) {
     if (!isAlive()) return;
     final String tier = chatTier, rcc = rightClickCmd, pers = aiPersonality;
     final String pvePri = pvePriority, pveMob = pveMobType, pveMode = pveSmartAttackMode;
+    final String lpGroup = luckpermsGroup;
     enqueue(
         () -> {
           if (!isAlive()) return;
@@ -2209,7 +2211,8 @@ public class DatabaseManager {
               "UPDATE fpp_active_bots SET frozen=?,chat_enabled=?,chat_tier=?,right_click_cmd=?,"
                   + "ai_personality=?,pickup_items=?,pickup_xp=?,head_ai_enabled=?,"
                   + "nav_parkour=?,nav_break_blocks=?,nav_place_blocks=?,nav_avoid_water=?,nav_avoid_lava=?,swim_ai_enabled=?,chunk_load_radius=?,"
-                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?,pve_smart_attack_mode=?,respawn_on_death=? WHERE bot_uuid=?";
+                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?,pve_smart_attack_mode=?,respawn_on_death=?,"
+                  + "luckperms_group=? WHERE bot_uuid=?";
           try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setBoolean(1, frozen);
             ps.setBoolean(2, chatEnabled);
@@ -2239,7 +2242,9 @@ public class DatabaseManager {
             if (pveMode != null) ps.setString(21, pveMode);
             else ps.setString(21, "OFF");
             ps.setBoolean(22, respawnOnDeath);
-            ps.setString(23, uuid);
+            if (lpGroup != null) ps.setString(23, lpGroup);
+            else ps.setNull(23, java.sql.Types.VARCHAR);
+            ps.setString(24, uuid);
             ps.executeUpdate();
           } catch (SQLException e) {
             FppLogger.error("DB updateBotAllSettings: " + e.getMessage());

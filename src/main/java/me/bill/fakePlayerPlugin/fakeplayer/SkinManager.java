@@ -1333,6 +1333,55 @@ public final class SkinManager {
     return applySkinFromOfflinePlayer(bot, offlineTarget);
   }
 
+  public @NotNull CompletableFuture<Boolean> applySkinByUsername(
+      @NotNull FakePlayer bot, @NotNull String username) {
+    if (username.isBlank()) {
+      return CompletableFuture.completedFuture(false);
+    }
+    if (shouldPreserveNameTagSkin(bot)) {
+      return CompletableFuture.completedFuture(false);
+    }
+
+    Player onlineTarget = Bukkit.getPlayerExact(username);
+    if (onlineTarget != null) {
+      return applySkinFromPlayer(bot, onlineTarget);
+    }
+
+    if (plugin.getDatabaseManager() != null) {
+      me.bill.fakePlayerPlugin.database.DatabaseManager.SkinCacheEntry cached =
+          plugin.getDatabaseManager().getCachedSkin(username);
+      if (cached != null && cached.isValid()) {
+        SkinProfile skin = new SkinProfile(
+            cached.textureValue(), cached.textureSignature(), "db-cache:" + cached.source());
+        return runOnMainThread(() -> applySkinFromProfile(bot, skin));
+      }
+    }
+
+    SkinProfile memCached = getCachedSkinForBot(bot);
+    if (memCached == null || !memCached.isValid()) {
+      String[] fetchCached = SkinFetcher.getCached(username);
+      if (fetchCached != null && fetchCached[0] != null && !fetchCached[0].isBlank()) {
+        SkinProfile skin = new SkinProfile(fetchCached[0], fetchCached[1], "player:" + username);
+        return runOnMainThread(() -> applySkinFromProfile(bot, skin));
+      }
+    }
+
+    CompletableFuture<Boolean> future = new CompletableFuture<>();
+    String trimmedName = username.trim();
+    SkinFetcher.fetchAsync(
+        trimmedName,
+        (value, signature) -> {
+          if (value == null || value.isBlank()) {
+            future.complete(false);
+            return;
+          }
+          SkinProfile skin = new SkinProfile(value, signature, "player:" + trimmedName);
+          runOnMainThread(() -> applySkinFromProfile(bot, skin))
+              .whenComplete((applied, throwable) -> future.complete(Boolean.TRUE.equals(applied)));
+        });
+    return future;
+  }
+
   public @NotNull CompletableFuture<Boolean> applySkinByUrl(
       @NotNull FakePlayer bot, @NotNull String url) {
     if (url.isBlank()) {
@@ -1382,6 +1431,13 @@ public final class SkinManager {
           if (botPlayer == null || !botPlayer.isOnline()) return false;
           copyTexture(sourceProfile, botPlayer);
           bot.setResolvedSkin(getSkinForBot(bot));
+          refreshTabListSkin(bot);
+          if (plugin.getDatabaseManager() != null) {
+            SkinProfile skin = getSkinForBot(bot);
+            if (skin != null) {
+              plugin.getDatabaseManager().updateBotSkin(bot.getUuid().toString(), skin.getValue(), skin.getSignature());
+            }
+          }
           return true;
         });
   }
@@ -1400,6 +1456,11 @@ public final class SkinManager {
             if (botPlayer == null || !botPlayer.isOnline()) return false;
             copyTexture(sourceProfile, botPlayer);
             bot.setResolvedSkin(getSkinForBot(bot));
+            refreshTabListSkin(bot);
+            SkinProfile skin = getSkinForBot(bot);
+            if (skin != null && plugin.getDatabaseManager() != null) {
+              plugin.getDatabaseManager().updateBotSkin(bot.getUuid().toString(), skin.getValue(), skin.getSignature());
+            }
             return true;
           });
     }
@@ -1412,6 +1473,11 @@ public final class SkinManager {
             if (botPlayer == null || !botPlayer.isOnline()) return false;
             copyTexture(cached, botPlayer);
             bot.setResolvedSkin(getSkinForBot(bot));
+            refreshTabListSkin(bot);
+            SkinProfile skin = getSkinForBot(bot);
+            if (skin != null && plugin.getDatabaseManager() != null) {
+              plugin.getDatabaseManager().updateBotSkin(bot.getUuid().toString(), skin.getValue(), skin.getSignature());
+            }
             return true;
           });
     }
@@ -1454,6 +1520,11 @@ public final class SkinManager {
                     if (botPlayer == null || !botPlayer.isOnline()) return false;
                     copyTexture(sourceProfile, botPlayer);
                     bot.setResolvedSkin(getSkinForBot(bot));
+                    refreshTabListSkin(bot);
+                    SkinProfile skin = getSkinForBot(bot);
+                    if (skin != null && plugin.getDatabaseManager() != null) {
+                      plugin.getDatabaseManager().updateBotSkin(bot.getUuid().toString(), skin.getValue(), skin.getSignature());
+                    }
                     return true;
                   });
             });
@@ -1486,6 +1557,11 @@ public final class SkinManager {
 
       if (plugin.getDatabaseManager() != null) {
         plugin.getDatabaseManager().updateBotSkin(bot.getUuid().toString(), texture, signature);
+      }
+
+      FakePlayerManager mgr = plugin.getFakePlayerManager();
+      if (mgr != null) {
+        mgr.refreshSkinForAll(bot);
       }
       return true;
     } catch (Exception e) {
@@ -1520,6 +1596,15 @@ public final class SkinManager {
       profile.clearProperties();
       botPlayer.setPlayerProfile(profile);
       bot.setResolvedSkin(null);
+
+      if (plugin.getDatabaseManager() != null) {
+        plugin.getDatabaseManager().updateBotSkin(bot.getUuid().toString(), null, null);
+      }
+
+      FakePlayerManager mgr = plugin.getFakePlayerManager();
+      if (mgr != null) {
+        mgr.refreshSkinForAll(bot);
+      }
       return true;
     } catch (Exception e) {
       FppLogger.warn(
@@ -1612,6 +1697,13 @@ public final class SkinManager {
       NmsPlayerSpawner.forceAllSkinParts(to);
     } catch (Exception e) {
       FppLogger.debug("SkinManager: could not force skin parts: " + e.getMessage());
+    }
+  }
+
+  void refreshTabListSkin(@NotNull FakePlayer bot) {
+    FakePlayerManager mgr = plugin.getFakePlayerManager();
+    if (mgr != null) {
+      mgr.refreshSkinForAll(bot);
     }
   }
 

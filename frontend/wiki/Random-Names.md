@@ -1,6 +1,6 @@
 # 🔤 Random Name Generator
 
-> **Generate realistic Minecraft-style usernames on the fly — v1.6.6.7**
+> **Generate realistic Minecraft-style usernames on the fly — v1.6.6.8**
 
 When `bot-name.mode` is set to `random`, FPP uses an internal `RandomNameGenerator` to produce believable Minecraft usernames instead of picking from `bot-names.yml`.
 

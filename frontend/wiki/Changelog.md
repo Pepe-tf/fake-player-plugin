@@ -1,12 +1,58 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.6.7** · Released: 2026-04-26 · Config version: **67** · Database schema: **18**  
+> Latest version: **v1.6.6.8** · Released: 2026-04-29 · Config version: **67** · Database schema: **21**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
+> 📥 **Download:** [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [Hangar](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/)
 
 ---
 
-## v1.6.6.7 *(2026-04-26)*
+## v1.6.6.8 *(2026-04-29)*
+
+### Extension Config & Resource System
+- `FppExtension` interface now provides 6 convenience methods for extension data/config management:
+  - `getDataFolder()` — returns `plugins/FakePlayerPlugin/extensions/<ExtensionName>/`
+  - `getConfig()` — lazy-loads config from disk, merges JAR defaults as `setDefaults()`
+  - `saveDefaultConfig()` — extracts `config.yml` from JAR (tries root first, then `extension-resources/`); performs YamlFileSyncer-style key merge on subsequent calls
+  - `saveDefaultResources()` — extracts all files under `extension-resources/` in the JAR (never overwrites existing files)
+  - `saveResource(jarPath)` — on-demand extraction of a single JAR resource
+  - `reloadConfig()` — reloads config from disk with fresh JAR defaults
+- `FppApi` exposes 3 cross-extension methods: `getExtensionDataFolder(name)`, `saveDefaultExtensionConfig(name)`, `getExtensionConfig(name)`
+- `ExtensionLoader` now creates per-extension data folders automatically on load
+- `ReloadCommand` `/fpp reload extensions` now also calls `reloadExtensionConfigs()` to sync config keys after hot-reload
+
+### Per-Bot Settings GUI Overhaul
+- BotSettingGui now has **5 categories**: ⚙ General · 💬 Chat · 🗡 PvE · 🧭 Pathfinding · ⚠ Danger
+- **General tab** expanded: frozen · respawn-on-death *(new)* · head-AI · swim-AI · chunk-radius · pick-up-items · pick-up-xp · rename · share-control *(new — opens share selector GUI for owners/admins)*
+- **PvE tab** *(new, replaces PvP)*: smart-attack mode (cycle OFF → ON still → ON move) · mob type selector (visual paginated GUI with 90+ mob entries) · detect range (1–64 blocks, chat input) · target priority (nearest / lowest-health cycle)
+- **Pathfinding tab** *(new)*: follow-player toggle · parkour · break-blocks · place-blocks
+- **Danger tab**: reset-all-settings *(new, double-click confirm, op-only)* · delete bot (double-click confirm, op-only)
+
+### PvE Smart Attack Mode
+- Per-bot tri-state: `OFF` / `ON_NO_MOVE` (stationary targeting) / `ON_MOVE` (pursues targets via PathfindingService)
+- `PveSmartAttackMode` enum on `FakePlayer` — `pveEnabled` is now a convenience accessor mapping to `pveSmartAttackMode.isEnabled()`
+- Persisted in DB schema v21 (`pve_smart_attack_mode` column) and YAML
+- `/fpp attack <bot> --mob --move` now maps to `ON_MOVE` mode
+
+### Attack Hunt Mode (`--hunt`)
+- New `/fpp attack <bot|all> --hunt [<mob>] [--range <n>] [--priority <mode>]` — autonomous roaming mob hunt
+- Bot is NOT locked at a position; concurrent 1-tick combat + 20-tick scan tasks with PathfindingService navigation
+- Default hunt range 32 blocks (vs 8 for stationary `--mob`); supports optional mob type and priority filtering
+- Permission: `fpp.attack.hunt` (child of `fpp.op`)
+
+### New Commands
+- **`/fpp save`** — immediately checkpoint all active bot data to disk. Useful before planned restarts. Permission: `fpp.save`
+- **`/fpp setowner <bot> <player>`** — transfer ownership of a bot; clears all shared controllers; updates DB if enabled. Permission: `fpp.setowner`
+- **`/fpp bots [bot]`** (aliases `mybots`, `botmenu`) — open a paginated GUI of bots the player can administer; click any bot head to open its BotSettingGui. Permission: `fpp.settings`
+- **`/fpp skin <bot> <username|url|reset>`** — apply any Mojang skin, URL-based skin, or reset to default. Guards against NameTag conflicts. Permission: `fpp.skin`
+
+### Per-Bot Features
+- `respawnOnDeath` — per-bot toggle; when enabled, bot auto-respawns after death instead of being removed. Initialized from `death.respawn-on-death` config
+- `autoEatEnabled` / `autoPlaceBedEnabled` — per-bot overrides for automation defaults; initialized from `automation.auto-eat` / `automation.auto-place-bed`
+- `defaultWaterPathAvoidanceEnabled` — per-bot water-path-avoidance default (init: `true`)
+- `navAvoidWater` / `navAvoidLava` — per-bot pathfinding water/lava avoidance overrides
+- Mob type selector GUI — visual paginated 54-slot chest for toggling specific mob types per-bot (90+ entries across Hostile, Neutral, Boss, Passive, Undead categories)
+- Share control — new BotSettingGui General entry; opens share selector GUI so owners/admins can grant/revoke controller access to other players
 
 ### Extension / Addon API
 - New `FppExtension` interface — third-party developers can drop `.jar` files into `plugins/FakePlayerPlugin/extensions/` and FPP will auto-load them on startup
@@ -61,8 +107,13 @@
 - `pathfinding.follow-recalc-interval: 100` (new key)
 
 ### Permissions
-- New nodes: `fpp.find`, `fpp.sleep`, `fpp.stop`, `fpp.attack.hunt`, `fpp.mine.wesel`, `fpp.place.wesel`, `fpp.tph.all`
+- New nodes: `fpp.save`, `fpp.setowner`, `fpp.skin`, `fpp.attack.hunt`, `fpp.find`, `fpp.sleep`, `fpp.stop`, `fpp.mine.wesel`, `fpp.place.wesel`, `fpp.tph.all`
 - All nodes declared in `plugin.yml` for LuckPerms tab-completion
+
+### DB Schema v18 → v21
+- **v18→v19:** `fpp_active_bots` gains `nav_avoid_water BOOLEAN DEFAULT 0`, `nav_avoid_lava BOOLEAN DEFAULT 0`
+- **v19→v20:** `fpp_active_bots` gains `ping INT DEFAULT -1`
+- **v20→v21:** `fpp_active_bots` gains `pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'`, `respawn_on_death BOOLEAN DEFAULT 0`
 
 ### Technical
 - Database schema updates for bot groups and despawn snapshot persistence
@@ -70,6 +121,12 @@
 - `FindCommand` with async chunk snapshot scanning and block reservation system
 - `SleepCommand` with NMS sleep/wake and night-watch repeating task
 - `StopCommand` with dependency injection of other command instances for bulk cancellation
+
+---
+
+## v1.6.6.7 *(2026-04-26)*
+
+*Content merged into v1.6.6.8 release — see above.*
 
 ---
 

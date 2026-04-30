@@ -1,6 +1,6 @@
 # Extension & Addon Policy
 
-*Effective April 26, 2026 · Applies to Fake Player Plugin v1.6.6.7 and later*
+*Effective April 26, 2026 · Applies to Fake Player Plugin v1.6.6.8 and later*
 
 ---
 
@@ -25,7 +25,7 @@ Fake Player Plugin (FPP) provides a lightweight Extension / Addon API that allow
 
 ## 4. API Stability & Versioning
 
-- The Extension API follows the same semantic-versioning scheme as FPP (currently v1.6.6.7).
+- The Extension API follows the same semantic-versioning scheme as FPP (currently v1.6.6.8).
 - Breaking API changes will be documented in the [Changelog](/wiki/Changelog) and announced on Discord at least one minor release in advance.
 - Extensions compiled against an older API may continue to work, but compatibility is not guaranteed across major versions.
 

@@ -38,10 +38,15 @@ public final class Lang {
 
     InputStream jarStream = plugin.getResource("language/en.yml");
     if (jarStream != null) {
-      YamlConfiguration jarDefaults =
-          YamlConfiguration.loadConfiguration(
-              new InputStreamReader(jarStream, StandardCharsets.UTF_8));
-      disk.setDefaults(jarDefaults);
+      try {
+        YamlConfiguration jarDefaults =
+            YamlConfiguration.loadConfiguration(
+                new InputStreamReader(jarStream, StandardCharsets.UTF_8));
+        disk.setDefaults(jarDefaults);
+      } catch (Exception e) {
+        me.bill.fakePlayerPlugin.util.FppLogger.warn(
+            "Lang: failed to load JAR defaults for language/en.yml: " + e.getMessage());
+      }
     }
 
     cfg = disk;
@@ -49,6 +54,7 @@ public final class Lang {
   }
 
   public static String raw(String key, String... args) {
+    if (cfg == null) return "&c[FPP] Lang not loaded: " + key;
     String value = cfg.getString(key, "&c[FPP] Missing lang key: " + key);
 
     String prefix = cfg.getString("prefix", "&f[FPP] ");

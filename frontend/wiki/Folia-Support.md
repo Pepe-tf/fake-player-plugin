@@ -1,6 +1,6 @@
 # 🍃 Folia Support
 
-> **Folia regionised threading compatibility — v1.6.6.7**
+> **Folia regionised threading compatibility — v1.6.6.8**
 
 FPP is compatible with Folia's regionised threading model. This means you can run FPP on Folia-based servers (a fork of Paper that divides the world into independently threaded regions) without crashes or scheduler conflicts.
 
@@ -9,7 +9,7 @@ FPP is compatible with Folia's regionised threading model. This means you can ru
 ## ✅ Requirements
 
 - **Folia** 1.21.x or compatible fork
-- **FPP** 1.6.6.7+
+- **FPP** 1.6.6.8+
 - `folia-supported: true` is declared in `plugin.yml`
 
 ---
@@ -53,7 +53,7 @@ No extra config is required.
 ### "Scheduler mismatch" errors
 
 - Make sure you are on Folia 1.21.x or newer.
-- Do not use FPP builds older than 1.6.6.7 on Folia.
+- Do not use FPP builds older than 1.6.6.8 on Folia.
 
 ### Bots freeze in some regions
 

@@ -251,11 +251,15 @@ public class FakePlayerEntityListener implements Listener {
     } else {
 
       if (chunkLoader != null) chunkLoader.releaseForBot(fp);
+      String deathDespawnName = me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast.resolveDisplayName(fp);
+      final UUID deathDespawnUuid = fp.getUuid();
       if (event.getEntity() instanceof Player deadPlayer) {
+        manager.markDespawning(deadPlayer.getUniqueId(), deathDespawnName);
         FppScheduler.runSyncLater(
             plugin,
             () -> {
               me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
+              manager.clearDespawningNextTick(deathDespawnUuid);
             },
             20L);
       }
@@ -264,7 +268,12 @@ public class FakePlayerEntityListener implements Listener {
           () -> {
             for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
 
-            BotBroadcast.broadcastLeave(fp);
+            if (me.bill.fakePlayerPlugin.config.Config.leaveMessage()) {
+              var vc = plugin.getVelocityChannel();
+              if (vc != null) vc.broadcastLeaveToNetwork(deathDespawnName);
+            }
+            var vc2 = plugin.getVelocityChannel();
+            if (vc2 != null) vc2.broadcastBotDespawn(fp.getUuid());
             manager.removeByName(name);
           },
           20L);

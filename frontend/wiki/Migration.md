@@ -1,8 +1,8 @@
 # 🔧 Migration & Backups
 
-> **Current plugin line:** 1.6.6  
-> **Bundled config stamp:** 63  
-> **Current migration target:** 63
+> **Current plugin line:** 1.6.6.8  
+> **Bundled config stamp:** 67  
+> **Current migration target:** 67
 
 This page covers:
 - automatic config migration
@@ -201,6 +201,12 @@ The current config history important to modern installs is:
 | 58 | (no-op placeholder) |
 | 59 | Enforced `skin.mode=player`, `guaranteed-skin=true`, `logging.debug.skin=true` for existing installs |
 | 60 | Removed `skin.fallback-pool` and `skin.fallback-name` — hardcoded in SkinManager's 1000-player pool |
+| 61 | Added `server-list.count-bots`, `server-list.include-remote-bots` |
+| 62 | Added `pathfinding.max-fall` |
+| 63 | (no-op placeholder) |
+| 64 | Injected `body.drop-items-on-despawn: false` into existing installs (resource default `true`; migration v53→v54 originally added the key as `false` for existing configs — this step ensures consistent value) |
+| 65 | Added `chunk-loading.mass-disable-threshold: 100` |
+| 66 | Changed default `bot-name.mode` to `random`; added `pathfinding.follow-recalc-interval: 100` |
 
 ### Additional 1.6.x-era structural additions
 
@@ -217,8 +223,8 @@ Depending on when a user upgraded from, those sections may be added by migration
 
 One confusing but normal detail:
 
-- the shipped `config.yml` in resources is stamped at `60`
-- the runtime migrator targets `60`
+- the shipped `config.yml` in resources is stamped at `67`
+- the runtime migrator targets `67`
 
 These are currently in sync, but in general:
 - the bundled file reflects a stable packaged default

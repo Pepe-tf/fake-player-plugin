@@ -80,8 +80,19 @@ public class PlayerJoinListener implements Listener {
   public void onQuitEarly(PlayerQuitEvent event) {
 
     UUID uuid = event.getPlayer().getUniqueId();
-    if (manager.isDespawning(uuid)) {
+
+    if (manager.isRenaming(uuid)) {
       event.quitMessage(null);
+      return;
+    }
+
+    String despawnName = manager.getDespawningDisplayName(uuid);
+    if (despawnName != null) {
+      if (Config.leaveMessage()) {
+        event.quitMessage(BotBroadcast.leaveComponent(despawnName));
+      } else {
+        event.quitMessage(null);
+      }
       return;
     }
 
@@ -176,11 +187,14 @@ public class PlayerJoinListener implements Listener {
     if (fp == null) fp = manager.getByUuid(event.getPlayer().getUniqueId());
     if (fp != null) {
 
-      if (!Config.joinMessage()
-          || fp.isRespawning()
-          || manager.isBodyTransitioning(fp.getUuid())
-          || manager.isRenaming(fp.getUuid())) {
+      if (manager.isRenaming(fp.getUuid())) {
         event.joinMessage(null);
+      } else if (fp.isRespawning() || manager.isBodyTransitioning(fp.getUuid())) {
+        event.joinMessage(null);
+      } else if (!Config.joinMessage()) {
+        event.joinMessage(null);
+      } else {
+        event.joinMessage(BotBroadcast.joinComponent(fp));
       }
 
       return;
@@ -283,8 +297,18 @@ public class PlayerJoinListener implements Listener {
   public void onQuit(PlayerQuitEvent event) {
     java.util.UUID uuid = event.getPlayer().getUniqueId();
 
-    if (manager.isDespawning(uuid)) {
+    if (manager.isRenaming(uuid)) {
       event.quitMessage(null);
+      return;
+    }
+
+    String despawnName = manager.getDespawningDisplayName(uuid);
+    if (despawnName != null) {
+      if (Config.leaveMessage()) {
+        event.quitMessage(BotBroadcast.leaveComponent(despawnName));
+      } else {
+        event.quitMessage(null);
+      }
       return;
     }
 
