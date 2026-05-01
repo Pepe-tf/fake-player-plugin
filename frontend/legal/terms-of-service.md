@@ -1,14 +1,14 @@
 # Terms of Service
 
-**Effective Date:** April 3, 2026
-**Last Updated:** April 13, 2026
-**Version:** 3.0
+**Effective Date:** May 2, 2026
+**Last Updated:** May 2, 2026
+**Version:** 4.0
 
 ---
 
 > **Important:** Please read these Terms carefully before downloading, installing, or using Fake Player Plugin. By using the Plugin, you agree to be legally bound by these Terms in their entirety.
 
-> 🎉 **Fake Player Plugin is now Open Source** under the MIT License. The full source code is available at [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin).
+> **Fake Player Plugin is available under a custom license.** The source code is publicly accessible for viewing and study, but commercial use, resale, and redistribution are **prohibited** without explicit written permission from the Developer (**@Bill_Hub** on Discord). See the [Copyright & License Notice](/legal/copyright) for full details.
 
 ---
 
@@ -45,8 +45,9 @@ For the purposes of these Terms of Service, the following definitions apply:
 - **"Server"** means a Minecraft server instance on which the Plugin is installed and operated.
 - **"Player"** means any end-user who connects to a Minecraft server running the Plugin.
 - **"Bot"** or **"Fake Player"** means a simulated player entity created and managed by the Plugin.
-- **"Proprietary Software"** means software whose source code is not publicly available and whose use is governed by a restrictive license.
-- **"Open Source Software"** means software whose source code is publicly available under an open-source license (here, the MIT License), as hosted at https://github.com/Pepe-tf/fake-player-plugin.
+- **"Derivative Works"** means any modification, adaptation, or enhancement of the Plugin that is based on or incorporates any part of the Plugin.
+- **"Redistribution"** means the act of distributing, publishing, sharing, transmitting, or making available the Plugin (in whole or in part, original or modified) to any third party by any means.
+- **"Commercial Use"** means any use of the Plugin that is primarily intended for or directed toward commercial advantage or monetary compensation, including but not limited to resale, licensing for a fee, use in a commercial product or service, or use within a commercial organisation beyond internal server operations.
 - **"Plugin Data"** means configuration files, database files, backups, and any other data files generated or managed by the Plugin on your server.
 - **"Distribution Platform"** means any platform through which the Plugin is officially made available, including Modrinth, SpigotMC, Hangar (PaperMC), and BuiltByBit.
 - **"Network Mode"** means the plugin's `database.mode: NETWORK` configuration enabling multi-server synchronization via a shared MySQL database.
@@ -85,31 +86,58 @@ If you do not agree to these Terms, you must immediately stop downloading, insta
 
 ## 4. License Grant
 
-### 4.1 MIT Open Source License
+### 4.1 Custom License — Limited Permissions
 
-Fake Player Plugin is **open-source software** released under the **MIT License**. The full source code is publicly available at [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin). Subject to the MIT License terms, you are permitted to:
+Fake Player Plugin is distributed under a **custom license**. The source code is publicly available at [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin) for viewing and study. Subject to the terms of this license, you are permitted to:
 
-- Install and run the Plugin on Minecraft servers you own or operate
+- Install and run the Plugin on Minecraft servers you own or directly operate
 - Configure the Plugin using its provided configuration files, commands, and documented APIs
-- View, study, copy, and modify the Plugin's source code
-- Distribute original or modified versions of the Plugin, provided the MIT License copyright notice is included
-- Use the Plugin in commercial projects
+- View and study the Plugin's source code
+- Modify the Plugin's code **solely for your own private, non-commercial use** on servers you own or operate
 
-### 4.2 MIT License Text
+### 4.2 Prohibited Activities
 
-The full MIT License is reproduced in the [Copyright & License Notice](/legal/copyright) page and in the `LICENSE` file in the source repository.
+You are expressly **prohibited** from:
 
-### 4.3 Multi-Server Use
+- ❌ **Redistributing** the Plugin (original or modified) in any form — including sharing, repackaging, rehosting, or publishing on any platform
+- ❌ **Reselling** or **commercially using** the Plugin in any capacity — including embedding it in commercial products or services
+- ❌ Creating **derivative works for distribution** — whether open-source or proprietary
+- ❌ **Sublicensing** or transferring this license to any third party
+- ❌ Removing, altering, or obscuring any **copyright notices, attribution statements**, or license terms
 
-Your license permits installation across multiple Minecraft server instances that you own or directly operate, including your own proxy networks.
+### 4.3 Requesting Additional Permissions
 
-### 4.4 Restrictions
+Any permissions not explicitly granted above — including commercial use, redistribution, sublicensing, or derivative distribution — require **prior written permission** from the Developer. To request permission, contact:
 
-Even under the MIT License, you expressly agree **not** to:
+**Discord: @Bill_Hub** — [https://discord.gg/QSN7f67nkJ](https://discord.gg/QSN7f67nkJ)
 
-- Remove, alter, or obscure any copyright notices, proprietary legends, or attribution statements in the Plugin or its documentation
-- Claim authorship or ownership of the Plugin, in whole or in part, without attribution
-- Use the Plugin's name, branding, or logo to imply official endorsement without prior written permission from the Developer
+Requests will be reviewed on a case-by-case basis. Permission granted for one purpose does not extend to any other purpose.
+
+### 4.4 Retroactive Application
+
+This license applies to **all versions** of the Fake Player Plugin codebase, including but not limited to:
+- All past, current, and future releases, tags, and commits
+- All versions previously distributed under the MIT License or any other license
+- All forks, copies, or mirrors made prior to the effective date of this license
+- All derivative works created from any version of the codebase
+
+Continuing to use any version of the Plugin after the effective date constitutes acceptance of this license for all versions.
+
+### 4.5 Takedown Right
+
+The Developer (**@Bill_Hub**) reserves the sole and unconditional right to request the removal, takedown, or cessation of distribution of the Plugin (in whole or in part, original or modified) from any platform, repository, service, or distribution channel at any time and for any reason.
+
+Upon receiving a takedown request from the Developer, you must promptly:
+1. Remove all copies of the Plugin from public or shared repositories, websites, distribution platforms, and any other location accessible to third parties
+2. Cease all redistribution or commercial use of the Plugin
+
+### 4.6 Multi-Server Use
+
+Your license permits installation across multiple Minecraft server instances that you own or directly operate, including your own proxy networks, provided all usage remains non-commercial and in accordance with these Terms.
+
+### 4.7 Full License Text
+
+The complete license text is available in the [Copyright & License Notice](/legal/copyright) page and in the source repository.
 
 ---
 
@@ -117,7 +145,7 @@ Even under the MIT License, you expressly agree **not** to:
 
 ### 5.1 Ownership
 
-The Plugin, including all source code, compiled code, internal logic, documentation, visual assets, and associated materials, is the intellectual property of the Developer and is released under the MIT License. These Terms do not transfer any additional rights beyond those granted by the MIT License.
+The Plugin, including all source code, compiled code, internal logic, documentation, visual assets, and associated materials, is the intellectual property of the Developer and is released under the Fake Player Plugin Custom License. These Terms do not transfer any rights beyond those explicitly granted by the license. No title, ownership, or intellectual property rights in the Plugin are transferred to you.
 
 ### 5.2 Trademarks and Branding
 
@@ -196,6 +224,15 @@ You agree not to:
 - Use the Plugin's LuckPerms integration to assign unauthorized elevated permissions to bot entities on servers you do not own
 - Exploit the Plugin's NMS (Net Minecraft Server) access layer to bypass Paper server security measures
 - Use the Plugin's proxy messaging channels to inject unauthorized or malicious messages into a network you do not own or operate
+
+### 7.6 Redistribution and Commercial Misuse
+
+You agree not to:
+
+- Redistribute, share, republish, or rehost the Plugin (original or modified) in any form on any platform
+- Sell, resell, lease, license, or commercially exploit the Plugin or any derivative works
+- Bundle the Plugin with any commercial product or service without written permission from the Developer
+- Use the Plugin in any commercial context beyond running it on your own server(s) without written permission
 
 ---
 
@@ -345,6 +382,7 @@ You agree to indemnify, defend, and hold harmless the Developer from and against
 - Any content, configurations, or bot behaviors you create using the Plugin
 - Claims brought by your server's players relating to your use of the Plugin
 - Your failure to maintain adequate security of your server infrastructure
+- Your redistribution or commercial use of the Plugin in violation of this license
 
 ---
 
@@ -365,10 +403,15 @@ We may terminate your license to use the Plugin immediately and without prior no
 - Violate any provision of these Terms
 - Use the Plugin for illegal purposes
 - Engage in reverse engineering, decompilation, or circumvention of Plugin protections
-- Distribute the Plugin binary without authorization
+- Distribute the Plugin binary or source without authorization
+- Commercially exploit the Plugin without written permission
 - Abuse the Developer or community support channels
 
-### 14.3 Effect of Termination
+### 14.3 Takedown Right
+
+The Developer may, at any time and for any reason, request the removal, takedown, or cessation of distribution of the Plugin from any platform or service. Upon receipt of a takedown notice, you must promptly comply.
+
+### 14.4 Effect of Termination
 
 Upon termination of your license:
 
@@ -409,7 +452,7 @@ For users in the European Union, nothing in these Terms affects your statutory r
 
 ### 17.1 Entire Agreement
 
-These Terms, together with the Privacy Policy, constitute the entire agreement between you and the Developer with respect to the Plugin and supersede all prior agreements, representations, understandings, and communications, whether written or oral.
+These Terms, together with the Privacy Policy and the Copyright & License Notice, constitute the entire agreement between you and the Developer with respect to the Plugin and supersede all prior agreements, representations, understandings, and communications, whether written or oral.
 
 ### 17.2 Severability
 
@@ -445,6 +488,7 @@ Nothing in these Terms creates, or shall be construed to create, a partnership, 
 
 | Version | Date | Summary of Changes |
 |---------|------|--------------------|
+| 4.0 | May 2, 2026 | Custom license transition: replaced MIT License with custom license; removed commercial use, redistribution, sublicense, and derivative distribution permissions; added retroactive application to all past versions; added Developer takedown right; added prohibition on redistribution and commercial misuse |
 | 3.0 | April 13, 2026 | Open-source transition: updated license grant to MIT, added GitHub repository link, removed proprietary restrictions |
 | 2.0 | April 3, 2026 | Full rewrite: proprietary license (not open source), added definitions, indemnification, dispute resolution, IP section, data ownership, full tables |
 | 1.0 | April 3, 2026 | Initial terms of service |
@@ -466,11 +510,11 @@ We aim to respond to formal legal inquiries within **14 business days**.
 
 ---
 
-**By downloading, installing, or using Fake Player Plugin, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy.**
+**By downloading, installing, or using Fake Player Plugin, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service, the Privacy Policy, and the Copyright & License Notice.**
 
 ---
 
-*Fake Player Plugin - Developed by Bill_Hub (El_Pepes). Released under the MIT License.*
+*Fake Player Plugin - Developed by Bill_Hub (El_Pepes). Released under the Fake Player Plugin Custom License.*
 *Source code: https://github.com/Pepe-tf/fake-player-plugin*
 *Not affiliated with Mojang AB, Microsoft Corporation, or any Minecraft platform provider.*
-
+*For permission requests, contact @Bill_Hub on Discord.*
