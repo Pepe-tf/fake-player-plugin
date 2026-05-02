@@ -4,8 +4,8 @@ FPP is configured through `plugins/FakePlayerPlugin/config.yml`.
 
 Most changes apply after running `/fpp reload` — no full restart needed.
 
-> **Bundled config stamp:** `67`  
-> **Current migration target:** `67`  
+> **Bundled config stamp:** `70`  
+> **Current migration target:** `70`  
 > The bundled file in the jar and the runtime migrator target are now in sync.
 
 ---
@@ -45,7 +45,8 @@ Most changes apply after running `/fpp reload` — no full restart needed.
 | `server-list` | Server-list player count settings (`count-bots`, `include-remote-bots`) |
 | `performance` | Position packet culling |
 | `nametag-integration` | NameTag plugin soft-dependency settings |
-| `automation` | `auto-eat`, `auto-place-bed` — realistic bot survival defaults |
+| `automation` | `auto-eat`, `auto-place-bed`, `auto-milk`, `prevent-bad-omen` — realistic bot survival defaults |
+| `ping` | Tab-list ping simulation (enabled, latency range, spikes, join ramp) |
 | `attack-mob` | PvE auto-targeting defaults (`default-range`, `default-priority`, etc.) |
 | `debug` / `logging.debug.*` | Debug logging |
 | `update-checker` | Update notifications |
