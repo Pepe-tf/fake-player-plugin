@@ -578,49 +578,37 @@ Always download from the official sources:
 
 [SIZE=5][B]1.6.6.8[/B][/SIZE] [I](2026-05-02)[/I]
 
-[B]Bot Join/Leave Message Overhaul[/B]
-[LIST]
-[*]Bot join messages now use the custom [FONT=monospace]bot-join[/FONT] lang key from [FONT=monospace]en.yml[/FONT] — fully customizable with MiniMessage formatting
-[*]Bot leave messages now use the custom [FONT=monospace]bot-leave[/FONT] lang key and are sent explicitly after despawn/removal — no more missing leave messages
-[*]Death-despawn leave messages fire 20 ticks after death (after kill message and entity removal) for proper ordering
-[*]Vanilla quit messages are always nulled for bots — the only leave message is the custom broadcast
-[/LIST]
+[B]Bot Join/Leave Messages[/B] — Custom [FONT=monospace]bot-join[/FONT]/[FONT=monospace]bot-leave[/FONT] lang keys replace vanilla messages; fully customizable MiniMessage formatting. Vanilla quit messages always nulled for bots. Death-despawn leave fires after kill message for proper ordering.
 
-[B]Skin System Improvements[/B]
-[LIST]
-[*]Skin fetch retry count increased from 3 to 5 — bots try up to 5 different pool names before falling back to Steve/Alex
-[*]Null/invalid skin results handled gracefully with clear debug messaging
-[*]All skin retry/failure messages now use [FONT=monospace]Config.debugSkin()[/FONT] — silent by default, visible only with [FONT=monospace]logging.debug.skin: true[/FONT]
-[/LIST]
+[B]Skin System[/B] — Retry count 3→5; null/invalid results handled gracefully; all retry/failure logs converted to debug-level ([FONT=monospace]Config.debugSkin()[/FONT], silent by default).
 
-[B]Ping System[/B]
-[LIST]
-[*][FONT=monospace]ping.enabled[/FONT] default changed from [FONT=monospace]true[/FONT] to [FONT=monospace]false[/FONT] — ping simulation is now opt-in
-[/LIST]
+[B]Ping System[/B] — [FONT=monospace]ping.enabled[/FONT] default changed to [FONT=monospace]false[/FONT] (opt-in). Config v67→v70. DB schema v21→v22.
 
-[B]Help Menu[/B]
-[LIST]
-[*][FONT=monospace]HelpGui[/FONT] now includes [FONT=monospace]ping[/FONT] and [FONT=monospace]skin[/FONT] commands in the Bots category
-[/LIST]
+[B]Per-Bot Settings GUI[/B] — 5 categories: General (frozen, respawn-on-death, head-AI, swim-AI, chunk-radius, pick-up-items, pick-up-xp, rename, share-control), Chat, PvE (smart-attack OFF/ON still/ON move, mob type selector, range, priority), Pathfinding (follow-player, parkour, break/place blocks), Danger (reset-all, delete).
 
-[B]DB Schema[/B] v21 → v22 (new columns: [FONT=monospace]auto_milk_enabled[/FONT], [FONT=monospace]prevent_bad_omen[/FONT], [FONT=monospace]ping_user_set[/FONT])
-[B]Config[/B] v67 → v70 ([FONT=monospace]ping.enabled[/FONT] default changed to [FONT=monospace]false[/FONT])
+[B]PvE Smart Attack[/B] — Per-bot tri-state: OFF / ON_NO_MOVE / ON_MOVE (pursues via PathfindingService). [FONT=monospace]/fpp attack --mob --move[/FONT] maps to ON_MOVE.
 
-[B]Extension Config & Resource System[/B]
-[LIST]
-[*][FONT=monospace]FppExtension[/FONT] interface now provides 6 convenience methods for extension data/config management:
-[LIST]
-[*][FONT=monospace]getDataFolder()[/FONT] — returns [FONT=monospace]plugins/FakePlayerPlugin/extensions/<ExtensionName>/[/FONT]
-[*][FONT=monospace]getConfig()[/FONT] — lazy-loads config from disk, merges JAR defaults via [FONT=monospace]setDefaults()[/FONT]
-[*][FONT=monospace]saveDefaultConfig()[/FONT] — extracts [FONT=monospace]config.yml[/FONT] from JAR (tries root first, then [FONT=monospace]extension-resources/[/FONT]); performs YamlFileSyncer-style key merge on subsequent calls
-[*][FONT=monospace]saveDefaultResources()[/FONT] — extracts all files under [FONT=monospace]extension-resources/[/FONT] in the JAR (never overwrites existing files)
-[*][FONT=monospace]saveResource(jarPath)[/FONT] — on-demand extraction of a single JAR resource
-[*][FONT=monospace]reloadConfig()[/FONT] — reloads config from disk with fresh JAR defaults
-[/LIST]
-[*][FONT=monospace]FppApi[/FONT] exposes 3 cross-extension methods: [FONT=monospace]getExtensionDataFolder(name)[/FONT], [FONT=monospace]saveDefaultExtensionConfig(name)[/FONT], [FONT=monospace]getExtensionConfig(name)[/FONT]
-[*][FONT=monospace]ExtensionLoader[/FONT] creates per-extension data folders automatically on load
-[*][FONT=monospace]/fpp reload extensions[/FONT] now also calls [FONT=monospace]reloadExtensionConfigs()[/FONT] to sync config keys after hot-reload
-[/LIST]
+[B]Attack Hunt[/B] — [FONT=monospace]/fpp attack <bot|all> --hunt [<mob>] [--range] [--priority][/FONT] — roaming mob hunt (range 32, not position-locked). Perm: [FONT=monospace]fpp.attack.hunt[/FONT]
+
+[B]New Commands[/B] — [FONT=monospace]/fpp save[/FONT], [FONT=monospace]/fpp setowner[/FONT], [FONT=monospace]/fpp bots[/FONT], [FONT=monospace]/fpp skin[/FONT], [FONT=monospace]/fpp find[/FONT], [FONT=monospace]/fpp groups[/FONT], [FONT=monospace]/fpp sleep[/FONT], [FONT=monospace]/fpp stop[/FONT], [FONT=monospace]/fpp move --coords[/FONT], [FONT=monospace]/fpp move --roam[/FONT] (autonomous wandering)
+
+[B]Per-Bot Features[/B] — respawnOnDeath, autoEat, autoPlaceBed, navAvoidWater, navAvoidLava, share control, mob type selector GUI
+
+[B]Extension API[/B] — [FONT=monospace]FppExtension[/FONT] interface (drop-in JARs); [FONT=monospace]getDataFolder[/FONT], [FONT=monospace]getConfig[/FONT], [FONT=monospace]saveDefaultConfig[/FONT], etc.; 20+ API events
+
+[B]Random Names[/B] — [FONT=monospace]bot-name.mode: random[/FONT] (default) generates realistic usernames; no more [FONT=monospace]Bot1234[/FONT]
+
+[B]WorldEdit[/B] — [FONT=monospace]--wesel[/FONT] flag for [FONT=monospace]/fpp mine[/FONT] and [FONT=monospace]/fpp place[/FONT]; soft-depend
+
+[B]Automation[/B] — [FONT=monospace]auto-eat: true[/FONT], [FONT=monospace]auto-place-bed: true[/FONT] per-bot defaults
+
+[B]Pathfinding[/B] — Door/gate/trapdoor handling; ladder/vine/scaffolding climbing; knockback fix for 1.21.9+; organic walk wobble; sprint-jump on airborne→ground transition
+
+[B]Folia[/B] — [FONT=monospace]folia-supported: true[/FONT] declared
+
+[B]Config[/B] 65→70 · [B]DB Schema[/B] 18→22 · [B]New Perms[/B] [FONT=monospace]fpp.save[/FONT], [FONT=monospace]fpp.setowner[/FONT], [FONT=monospace]fpp.skin[/FONT], [FONT=monospace]fpp.attack.hunt[/FONT], [FONT=monospace]fpp.find[/FONT], [FONT=monospace]fpp.sleep[/FONT], [FONT=monospace]fpp.stop[/FONT], [FONT=monospace]fpp.mine.wesel[/FONT], [FONT=monospace]fpp.place.wesel[/FONT], [FONT=monospace]fpp.tph.all[/FONT]
+
+Full changelog: [URL='https://fpp.wtf']fpp.wtf[/URL]
 
 [HR][/HR]
 

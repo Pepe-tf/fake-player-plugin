@@ -381,74 +381,37 @@ Identical feature set for BungeeCord/Waterfall networks.
 
 ### v1.6.6.8 *(2026-05-02)*
 
-**Bot Join/Leave Message Overhaul**
-- Bot join messages now use the custom `bot-join` lang key from `en.yml` — fully customizable with MiniMessage formatting
-- Bot leave messages now use the custom `bot-leave` lang key and are sent explicitly after despawn/removal — no more missing leave messages
-- Death-despawn leave messages fire 20 ticks after death (after kill message and entity removal) for proper ordering
-- Vanilla quit messages are always nulled for bots — the only leave message is the custom broadcast
+**Bot Join/Leave Messages** — Custom `bot-join`/`bot-leave` lang keys replace vanilla messages; fully customizable MiniMessage formatting. Vanilla quit messages always nulled for bots. Death-despawn leave fires after kill message for proper ordering.
 
-**Skin System Improvements**
-- Skin fetch retry count increased from 3 to 5 — bots try up to 5 different pool names before falling back to Steve/Alex
-- Null/invalid skin results handled gracefully with clear debug messaging
-- All skin retry/failure messages now use `Config.debugSkin()` — silent by default, visible only with `logging.debug.skin: true`
+**Skin System** — Retry count 3→5; null/invalid results handled gracefully; all retry/failure logs converted to debug-level (`Config.debugSkin()`, silent by default).
 
-**Ping System**
-- `ping.enabled` default changed from `true` to `false` — ping simulation is now opt-in
+**Ping System** — `ping.enabled` default changed to `false` (opt-in). Config v67→v70. DB schema v21→v22.
 
-**Help Menu**
-- `HelpGui` now includes `ping` and `skin` commands in the Bots category
+**Per-Bot Settings GUI** — 5 categories: General (frozen, respawn-on-death, head-AI, swim-AI, chunk-radius, pick-up-items, pick-up-xp, rename, share-control), Chat, PvE (smart-attack OFF/ON still/ON move, mob type selector, range, priority), Pathfinding (follow-player, parkour, break/place blocks), Danger (reset-all, delete).
 
-**DB Schema** v21 → v22 (new columns: `auto_milk_enabled`, `prevent_bad_omen`, `ping_user_set`)
-**Config** v67 → v70 (`ping.enabled` default changed to `false`)
+**PvE Smart Attack** — Per-bot tri-state: OFF / ON_NO_MOVE / ON_MOVE (pursues via PathfindingService). `/fpp attack --mob --move` maps to ON_MOVE.
 
-**Extension Config & Resource System**
-- `FppExtension` interface now provides 6 convenience methods for extension data/config management:
-  - `getDataFolder()` — returns `plugins/FakePlayerPlugin/extensions/<ExtensionName>/`
-  - `getConfig()` — lazy-loads config from disk, merges JAR defaults via `setDefaults()`
-  - `saveDefaultConfig()` — extracts `config.yml` from JAR (tries root first, then `extension-resources/`); performs YamlFileSyncer-style key merge on subsequent calls
-  - `saveDefaultResources()` — extracts all files under `extension-resources/` in the JAR (never overwrites existing files)
-  - `saveResource(jarPath)` — on-demand extraction of a single JAR resource
-  - `reloadConfig()` — reloads config from disk with fresh JAR defaults
-- `FppApi` exposes 3 cross-extension methods: `getExtensionDataFolder(name)`, `saveDefaultExtensionConfig(name)`, `getExtensionConfig(name)`
-- `ExtensionLoader` creates per-extension data folders automatically on load
-- `/fpp reload extensions` now also calls `reloadExtensionConfigs()` to sync config keys after hot-reload
+**Attack Hunt** — `/fpp attack <bot|all> --hunt [<mob>] [--range] [--priority]` — roaming mob hunt (range 32, not position-locked). Perm: `fpp.attack.hunt`
 
-**Per-Bot Settings GUI Overhaul**
-- BotSettingGui now has **5 categories**: ⚙ General · 💬 Chat · 🗡 PvE · 🧭 Pathfinding · ⚠ Danger
-- **General tab** expanded: frozen · respawn-on-death *(new)* · head-AI · swim-AI · chunk-radius · pick-up-items · pick-up-xp · rename · share-control *(new)*
-- **PvE tab** *(new, replaces PvP)*: smart-attack mode (cycle OFF → ON still → ON move) · mob type selector (visual paginated GUI) · detect range · target priority (nearest / lowest-health)
-- **Pathfinding tab** *(new)*: follow-player toggle · parkour · break-blocks · place-blocks
-- **Danger tab**: reset-all-settings *(new)* · delete bot — both require double-click confirmation
+**New Commands** — `/fpp save`, `/fpp setowner`, `/fpp bots`, `/fpp skin`, `/fpp find`, `/fpp groups`, `/fpp sleep`, `/fpp stop`, `/fpp move --coords`, `/fpp move --roam` (autonomous wandering)
 
-**PvE Smart Attack Mode**
-- Per-bot tri-state: `OFF` / `ON_NO_MOVE` (stationary targeting) / `ON_MOVE` (pursues targets via PathfindingService)
-- `PveSmartAttackMode` enum on `FakePlayer` — `pveEnabled` is now a convenience accessor mapping to `pveSmartAttackMode.isEnabled()`
-- Persisted in DB schema v21 (`pve_smart_attack_mode` column) and YAML
-- `/fpp attack <bot> --mob --move` now maps to `ON_MOVE` mode
+**Per-Bot Features** — respawnOnDeath, autoEat, autoPlaceBed, navAvoidWater, navAvoidLava, share control, mob type selector GUI
 
-**Attack Hunt Mode (`--hunt`)**
-- New `/fpp attack <bot|all> --hunt [<mob>] [--range <n>] [--priority <mode>]` — autonomous roaming mob hunt
-- Bot is NOT locked at a position; concurrent combat + 20-tick scan tasks with PathfindingService navigation
-- Default hunt range 32 blocks (vs 8 for stationary `--mob`)
-- Permission: `fpp.attack.hunt` (child of `fpp.op`)
+**Extension API** — `FppExtension` interface (drop-in JARs); `getDataFolder`, `getConfig`, `saveDefaultConfig`, etc.; 20+ API events
 
-**New Commands**
-- **`/fpp save`** — immediately checkpoint all active bot data to disk. Useful before planned restarts. Permission: `fpp.save`
-- **`/fpp setowner <bot> <player>`** — transfer ownership of a bot; clears all shared controllers; updates DB if enabled. Permission: `fpp.setowner`
-- **`/fpp bots [bot]`** (aliases `mybots`, `botmenu`) — open a paginated GUI of bots you can administer; click any bot to open its BotSettingGui. Permission: `fpp.settings`
-- **`/fpp skin <bot> <username|url|reset>`** — apply any Mojang skin, URL-based skin, or reset to default. Guards against NameTag conflicts. Permission: `fpp.skin`
+**Random Names** — `bot-name.mode: random` (default) generates realistic usernames; no more `Bot1234`
 
-**Per-Bot Features**
-- `respawnOnDeath` — per-bot toggle; when enabled, bot auto-respawns after death instead of being removed. Initialized from `death.respawn-on-death` config
-- `autoEatEnabled` / `autoPlaceBedEnabled` — per-bot overrides for automation defaults; initialized from `automation.auto-eat` / `automation.auto-place-bed`
-- `defaultWaterPathAvoidanceEnabled` — per-bot water-path-avoidance default (init: `true`)
-- `navAvoidWater` / `navAvoidLava` — per-bot pathfinding water/lava avoidance overrides
-- Mob type selector GUI — visual paginated 54-slot chest for toggling specific mob types per-bot
+**WorldEdit** — `--wesel` flag for `/fpp mine` and `/fpp place`; soft-depend
 
-**DB Schema v18 → v21**
-- v18→v19: `nav_avoid_water BOOLEAN DEFAULT 0`, `nav_avoid_lava BOOLEAN DEFAULT 0`
-- v19→v20: `ping INT DEFAULT -1`
-- v20→v21: `pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'`, `respawn_on_death BOOLEAN DEFAULT 0`
+**Automation** — `auto-eat: true`, `auto-place-bed: true` per-bot defaults
+
+**Pathfinding** — Door/gate/trapdoor handling; ladder/vine/scaffolding climbing; knockback fix for 1.21.9+; organic walk wobble; sprint-jump on airborne→ground transition
+
+**Folia** — `folia-supported: true` declared
+
+**Config** 65→70 · **DB Schema** 18→22 · **New Perms** `fpp.save`, `fpp.setowner`, `fpp.skin`, `fpp.attack.hunt`, `fpp.find`, `fpp.sleep`, `fpp.stop`, `fpp.mine.wesel`, `fpp.place.wesel`, `fpp.tph.all`
+
+Full changelog: [frontend/wiki/Changelog.md](frontend/wiki/Changelog.md)
 
 ---
 

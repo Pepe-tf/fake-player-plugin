@@ -10,145 +10,83 @@
 ## v1.6.6.8 *(2026-05-02)*
 
 ### Bot Join/Leave Message Overhaul
-- Bot join messages now use the custom `bot-join` lang key from `en.yml` instead of the vanilla "joined the game" format — fully customizable with MiniMessage formatting
-- Bot leave messages now use the custom `bot-leave` lang key and are sent explicitly after despawn/removal, ensuring they always appear
-- Both `PlayerJoinEvent` LOWEST and MONITOR handlers set custom join messages for bots (or null for rename/respawn/config-disabled cases)
-- Both `PlayerQuitEvent` LOWEST and MONITOR handlers null the vanilla quit message for all bots — the only leave message comes from the custom `BotBroadcast.broadcastLeaveByDisplayName()` call
-- Death-despawn leave messages now fire 20 ticks after death (after the death message and entity removal) instead of immediately on the death tick — proper message ordering: kill message → leave message
+- Bot join/leave messages now use custom `bot-join`/`bot-leave` lang keys from `en.yml` instead of vanilla "joined/left the game" — fully customizable with MiniMessage formatting
+- Vanilla quit messages are always nulled for bots; leave messages are broadcast explicitly via `BotBroadcast.broadcastLeaveByDisplayName()` — no more missing leave messages
+- Death-despawn leave messages fire 20 ticks after death (after kill message + entity removal) for proper ordering: kill message → leave message
 
 ### Skin System Improvements
-- Skin fetch retry count increased from 3 to 5 (`MAX_FALLBACK_ATTEMPTS`) — bots now try up to 5 different pool names before falling back to default Steve/Alex
-- `SkinRepository.getAnyValidSkin()` retries with different random names on failure, deduplicating attempts via a `tried` set
-- `SkinManager.tryFallback()` now handles null/invalid skin results gracefully — sets `fp.setResolvedSkin(null)` with a clear debug message when all attempts fail
-- All skin retry/failure messages converted from `FppLogger.warn` to `Config.debugSkin()` — silent by default, only visible when `logging.debug.skin: true`
+- Skin fetch retry count increased from 3→5 (`MAX_FALLBACK_ATTEMPTS`) — bots try up to 5 pool names before falling back to Steve/Alex
+- `SkinRepository.getAnyValidSkin()` retries with different random names on failure; `SkinManager.tryFallback()` handles null/invalid results gracefully
+- All skin retry/failure messages converted to `Config.debugSkin()` — silent by default, visible only with `logging.debug.skin: true`
 
 ### Ping System
-- `ping.enabled` default changed from `true` to `false` — ping simulation is now opt-in (config migration v69→v70)
-- Existing configs with `ping.enabled` explicitly set are unaffected
+- `ping.enabled` default changed from `true` to `false` — ping simulation is now opt-in (existing configs unaffected; migration v69→v70)
 
 ### Help Menu
-- `HelpGui` now includes `ping` (REPEATER icon) and `skin` (PLAYER_HEAD icon) commands in the Bots category
-
-### DB Schema v21 → v22
-- `fpp_active_bots` gains `auto_milk_enabled BOOLEAN DEFAULT 1`, `prevent_bad_omen BOOLEAN DEFAULT 1`, `ping_user_set BOOLEAN DEFAULT 0`
-
-### Config v67 → v70
-- v67→v68: ping latency-effect config keys added
-- v68→v69: ping spike-chance/spike-min/spike-max/join-ramp-ticks added
-- v69→v70: `ping.enabled` default changed to `false`
+- `HelpGui` now includes `ping` (REPEATER) and `skin` (PLAYER_HEAD) commands in the Bots category
 
 ### Extension Config & Resource System
-- `FppExtension` interface now provides 6 convenience methods for extension data/config management:
-  - `getDataFolder()` — returns `plugins/FakePlayerPlugin/extensions/<ExtensionName>/`
-  - `getConfig()` — lazy-loads config from disk, merges JAR defaults as `setDefaults()`
-  - `saveDefaultConfig()` — extracts `config.yml` from JAR (tries root first, then `extension-resources/`); performs YamlFileSyncer-style key merge on subsequent calls
-  - `saveDefaultResources()` — extracts all files under `extension-resources/` in the JAR (never overwrites existing files)
-  - `saveResource(jarPath)` — on-demand extraction of a single JAR resource
-  - `reloadConfig()` — reloads config from disk with fresh JAR defaults
-- `FppApi` exposes 3 cross-extension methods: `getExtensionDataFolder(name)`, `saveDefaultExtensionConfig(name)`, `getExtensionConfig(name)`
-- `ExtensionLoader` now creates per-extension data folders automatically on load
-- `ReloadCommand` `/fpp reload extensions` now also calls `reloadExtensionConfigs()` to sync config keys after hot-reload
+- `FppExtension` now provides 6 convenience methods: `getDataFolder()`, `getConfig()`, `saveDefaultConfig()`, `saveDefaultResources()`, `saveResource()`, `reloadConfig()`
+- `FppApi` exposes 3 cross-extension methods: `getExtensionDataFolder()`, `saveDefaultExtensionConfig()`, `getExtensionConfig()`
+- `ExtensionLoader` creates per-extension data folders automatically; `/fpp reload extensions` now syncs config keys
 
 ### Per-Bot Settings GUI Overhaul
-- BotSettingGui now has **5 categories**: ⚙ General · 💬 Chat · 🗡 PvE · 🧭 Pathfinding · ⚠ Danger
-- **General tab** expanded: frozen · respawn-on-death *(new)* · head-AI · swim-AI · chunk-radius · pick-up-items · pick-up-xp · rename · share-control *(new — opens share selector GUI for owners/admins)*
-- **PvE tab** *(new, replaces PvP)*: smart-attack mode (cycle OFF → ON still → ON move) · mob type selector (visual paginated GUI with 90+ mob entries) · detect range (1–64 blocks, chat input) · target priority (nearest / lowest-health cycle)
-- **Pathfinding tab** *(new)*: follow-player toggle · parkour · break-blocks · place-blocks
-- **Danger tab**: reset-all-settings *(new, double-click confirm, op-only)* · delete bot (double-click confirm, op-only)
+- BotSettingGui now has 5 categories: ⚙ General · 💬 Chat · 🗡 PvE · 🧭 Pathfinding · ⚠ Danger
+- General: frozen, respawn-on-death *(new)*, head-AI, swim-AI, chunk-radius, pick-up-items, pick-up-xp, rename, share-control *(new)*
+- PvE *(new, replaces PvP)*: smart-attack mode (OFF/ON still/ON move), mob type selector (90+ entries), detect range, target priority
+- Pathfinding *(new)*: follow-player, parkour, break-blocks, place-blocks
+- Danger: reset-all-settings *(new)*, delete bot — both double-click confirm
 
 ### PvE Smart Attack Mode
-- Per-bot tri-state: `OFF` / `ON_NO_MOVE` (stationary targeting) / `ON_MOVE` (pursues targets via PathfindingService)
-- `PveSmartAttackMode` enum on `FakePlayer` — `pveEnabled` is now a convenience accessor mapping to `pveSmartAttackMode.isEnabled()`
-- Persisted in DB schema v21 (`pve_smart_attack_mode` column) and YAML
-- `/fpp attack <bot> --mob --move` now maps to `ON_MOVE` mode
+- Per-bot tri-state: `OFF` / `ON_NO_MOVE` (stationary) / `ON_MOVE` (pursues via PathfindingService); persisted in DB v21
+- `/fpp attack <bot> --mob --move` maps to `ON_MOVE`; `pveEnabled` is now a convenience accessor
 
-### Attack Hunt Mode (`--hunt`)
-- New `/fpp attack <bot|all> --hunt [<mob>] [--range <n>] [--priority <mode>]` — autonomous roaming mob hunt
-- Bot is NOT locked at a position; concurrent 1-tick combat + 20-tick scan tasks with PathfindingService navigation
-- Default hunt range 32 blocks (vs 8 for stationary `--mob`); supports optional mob type and priority filtering
-- Permission: `fpp.attack.hunt` (child of `fpp.op`)
+### Attack Hunt Mode
+- New `/fpp attack <bot|all> --hunt [<mob>] [--range <n>] [--priority <mode>]` — autonomous roaming mob hunt (range 32, not locked); Permission: `fpp.attack.hunt`
 
 ### New Commands
-- **`/fpp save`** — immediately checkpoint all active bot data to disk. Useful before planned restarts. Permission: `fpp.save`
-- **`/fpp setowner <bot> <player>`** — transfer ownership of a bot; clears all shared controllers; updates DB if enabled. Permission: `fpp.setowner`
-- **`/fpp bots [bot]`** (aliases `mybots`, `botmenu`) — open a paginated GUI of bots the player can administer; click any bot head to open its BotSettingGui. Permission: `fpp.settings`
-- **`/fpp skin <bot> <username|url|reset>`** — apply any Mojang skin, URL-based skin, or reset to default. Guards against NameTag conflicts. Permission: `fpp.skin`
+- `/fpp save` — checkpoint all bot data to disk (Perm: `fpp.save`)
+- `/fpp setowner <bot> <player>` — transfer bot ownership (Perm: `fpp.setowner`)
+- `/fpp bots [bot]` — paginated GUI of manageable bots (aliases: `mybots`, `botmenu`; Perm: `fpp.settings`)
+- `/fpp skin <bot> <username|url|reset>` — apply Mojang/URL skin or reset (Perm: `fpp.skin`)
+- `/fpp find <bot> <block> [--radius] [--count]` — scan + mine nearby blocks (Perm: `fpp.find`)
+- `/fpp groups [gui|list|create|delete|add|remove]` — personal bot groups (Perm: `fpp.groups`)
+- `/fpp sleep <bot|all> <x y z> <radius>` — auto-sleep at night (Perm: `fpp.sleep`)
+- `/fpp stop [<bot>|all]` — cancel all active tasks (Perm: `fpp.stop`)
+- `/fpp move <bot> --coords <x> <y> <z>` — navigate to coordinates with `~` offsets
+- `/fpp move <bot> --roam [x,y,z] [radius]` — autonomous random wandering (persists across restarts)
 
 ### Per-Bot Features
-- `respawnOnDeath` — per-bot toggle; when enabled, bot auto-respawns after death instead of being removed. Initialized from `death.respawn-on-death` config
-- `autoEatEnabled` / `autoPlaceBedEnabled` — per-bot overrides for automation defaults; initialized from `automation.auto-eat` / `automation.auto-place-bed`
-- `defaultWaterPathAvoidanceEnabled` — per-bot water-path-avoidance default (init: `true`)
-- `navAvoidWater` / `navAvoidLava` — per-bot pathfinding water/lava avoidance overrides
-- Mob type selector GUI — visual paginated 54-slot chest for toggling specific mob types per-bot (90+ entries across Hostile, Neutral, Boss, Passive, Undead categories)
-- Share control — new BotSettingGui General entry; opens share selector GUI so owners/admins can grant/revoke controller access to other players
+- `respawnOnDeath` — auto-respawn on death; `autoEatEnabled` / `autoPlaceBedEnabled` — per-bot automation overrides
+- `navAvoidWater` / `navAvoidLava` — per-bot pathfinding avoidance; `defaultWaterPathAvoidanceEnabled` (init: `true`)
+- Mob type selector GUI — 54-slot paginated chest for toggling specific mob types per-bot
+- Share control — grant/revoke controller access to other players from BotSettingGui
 
 ### Extension / Addon API
-- New `FppExtension` interface — third-party developers can drop `.jar` files into `plugins/FakePlayerPlugin/extensions/` and FPP will auto-load them on startup
-- `ExtensionLoader` scans extension jars for `FppExtension` implementations, instantiates them, and registers them as addons sorted by priority
-- Full addon lifecycle: `onEnable(FppApi)` / `onDisable()` with access to commands, events, tick handlers, settings GUI tabs, metadata, navigation API, and service registry
-- 20+ API event classes for bot interactions (spawn, despawn, move, mine, place, attack, follow, chat, etc.)
-- See `EXTENSIONS.md` in the repository for the complete addon developer guide
+- `FppExtension` interface — drop `.jar` files into `extensions/`; auto-loaded, sorted by priority; lifecycle: `onEnable(FppApi)` / `onDisable()`
+- 20+ API event classes; full access to commands, tick handlers, settings GUI tabs, navigation, service registry
 
 ### Random Name Generator
-- New `bot-name.mode: random` (default) — generates realistic Minecraft-style usernames on the fly when the name pool is empty or when `mode: random` is set
-- `bot-name.mode: pool` — legacy behaviour, picks from `bot-names.yml`
-- No more `Bot1234` fallback names; every auto-generated name looks like a real player
-
-### New Commands
-- **`/fpp find <bot> <block> [--radius <n>] [--count <n>]`** — bot scans nearby chunks for the target block type, reserves matching locations, and mines them one by one. Async chunk snapshot scanning with progressive mining and raytrace visibility check. Permission: `fpp.find`
-- **`/fpp groups [gui|list|create <name>|delete <name>|add <group> <bot>|remove <group> <bot>]`** — personal bot groups with GUI management. Group bots together for bulk commands. Permission: `fpp.groups`
-- **`/fpp sleep <bot|all> <x y z> <radius>`** — registers a sleep-origin; bot auto-walks to the nearest free bed within radius at night and sleeps. `/fpp sleep <bot|all> --stop` clears the origin. NMS sleep/wake with temporary bed placement. Permission: `fpp.sleep`
-- **`/fpp stop [<bot>|all]`** — instantly cancels all active tasks for a bot (move, mine, place, use, attack, follow, find, sleep). Permission: `fpp.stop`
-- **`/fpp move <bot> --coords <x> <y> <z>`** — navigate a bot to exact world coordinates; supports `~` relative offsets. Permission: `fpp.move`
-- **`/fpp attack <bot> --mob --move`** — PvE mob-targeting mode now supports pursuit; bot chases the target when out of melee range and stops to attack when in reach. Permission: `fpp.attack`
+- `bot-name.mode: random` (new default) — generates realistic Minecraft-style usernames on the fly; no more `Bot1234`
 
 ### WorldEdit Integration
-- New `--wesel` flag for `/fpp mine` and `/fpp place` — uses the player's current WorldEdit selection as the work area instead of manual `--pos1`/`--pos2`
-- Soft-dependency: `WorldEdit` added to `plugin.yml` softdepend list
-- Permissions: `fpp.mine.wesel`, `fpp.place.wesel`
+- `--wesel` flag for `/fpp mine` and `/fpp place` — uses current WorldEdit selection; Permissions: `fpp.mine.wesel`, `fpp.place.wesel`
 
 ### Automation Defaults
-- New `automation` config section:
-  - `auto-eat: true` — bots eat food from inventory when hunger prevents sprinting
-  - `auto-place-bed: true` — bots may place a bed from inventory for auto-sleep, then break it after waking
-- Values are copied to newly spawned/restored bots; existing bots keep per-bot overrides
+- New `automation` section: `auto-eat: true`, `auto-place-bed: true` — copied to new/restored bots; existing bots keep per-bot values
 
 ### Pathfinding & Knockback Fixes
-- Door handling — bots now correctly open and pass through wooden doors, fence gates, and trapdoors during pathfinding
-- Ladder and vine climbing — ASCEND/DESCEND moves now support ladders, vines, and scaffolding
-- Knockback fix double-check — resolved residual knockback issues on 1.21.9+ with tiered strategy verification
-- Organic walk wobble — subtle sine-wave yaw drift (±5°) on straight WALK segments for more human-like movement
-- Sprint-jump naturalness — jump fires on first airborne→ground transition instead of fixed 6-tick timer
+- Door/gate/trapdoor handling; ladder/vine/scaffolding climbing; knockback fix for 1.21.9+; organic walk wobble (±5°); sprint-jump on airborne→ground transition
 
 ### Folia Support
-- `folia-supported: true` declared in `plugin.yml`
-- Compatible with Folia's regionised threading model
-
-### Proxy & Communication
-- Enhanced proxy communication with error handling and pending bot despawn management
-- `fpp.tph.all` permission — teleports all accessible bots to the sender at once
+- `folia-supported: true` in `plugin.yml`; compatible with Folia's regionised threading model
 
 ### Configuration
-- Config version: 65 → 67
-- `chunk-loading.mass-disable-threshold: 100` — auto-releases chunk tickets when bot count exceeds this threshold to prevent mass-bot lag
-- `bot-name.mode: random` (new default)
-- `pathfinding.follow-recalc-interval: 100` (new key)
+- Config version: 65 → 70 (v65→v67: mass-disable-threshold, bot-name.mode, follow-recalc-interval; v67→v70: ping latency-effect, spike, enabled-default changes)
+- DB Schema: v18 → v22 (v18→v19: nav_avoid_water/lava; v19→v20: ping; v20→v21: pve_smart_attack_mode, respawn_on_death; v21→v22: auto_milk_enabled, prevent_bad_omen, ping_user_set)
 
 ### Permissions
 - New nodes: `fpp.save`, `fpp.setowner`, `fpp.skin`, `fpp.attack.hunt`, `fpp.find`, `fpp.sleep`, `fpp.stop`, `fpp.mine.wesel`, `fpp.place.wesel`, `fpp.tph.all`
-- All nodes declared in `plugin.yml` for LuckPerms tab-completion
-
-### DB Schema v18 → v21
-- **v18→v19:** `fpp_active_bots` gains `nav_avoid_water BOOLEAN DEFAULT 0`, `nav_avoid_lava BOOLEAN DEFAULT 0`
-- **v19→v20:** `fpp_active_bots` gains `ping INT DEFAULT -1`
-- **v20→v21:** `fpp_active_bots` gains `pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'`, `respawn_on_death BOOLEAN DEFAULT 0`
-
-### Technical
-- Database schema updates for bot groups and despawn snapshot persistence
-- `BotGroupCommand`, `BotGroupStore` for group management
-- `FindCommand` with async chunk snapshot scanning and block reservation system
-- `SleepCommand` with NMS sleep/wake and night-watch repeating task
-- `StopCommand` with dependency injection of other command instances for bulk cancellation
 
 ---
 
