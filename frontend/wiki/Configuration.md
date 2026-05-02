@@ -372,11 +372,46 @@ New key:
 automation:
   auto-eat: true        # Bots eat food from inventory when hunger prevents sprinting
   auto-place-bed: true  # Bots may place a bed from inventory for auto-sleep, then break it after waking
+  auto-milk: true       # Bots automatically remove harmful potion effects (poison, wither, slowness, etc.)
+  prevent-bad-omen: true # Prevent Bad Omen, Raid Omen, and Trial Omen effects
 ```
 
 Defaults copied to newly spawned/restored bots. Existing bots keep per-bot values.
 
-> **Per-bot overrides:** each `FakePlayer` stores its own `autoEatEnabled` and `autoPlaceBedEnabled` flag, initialized from these global defaults at spawn. Both are editable at runtime via `BotSettingGui` (General tab) and persist across restarts.
+> **Per-bot overrides:** each `FakePlayer` stores its own `autoEatEnabled`, `autoPlaceBedEnabled`, `autoMilkEnabled`, and `preventBadOmen` flags, initialized from these global defaults at spawn. All are editable at runtime via `BotSettingGui` (General tab) and persist across restarts.
+
+> **Note:** `auto-milk` and `prevent-bad-omen` config keys exist and the per-bot toggles in `BotSettingGui` are functional, but the runtime tick logic (`BotEffectHandler.tickEffects()`) is not yet wired up — these settings currently have **no live effect** on bot behavior.
+
+---
+
+## `ping`
+
+```yaml
+ping:
+  enabled: false
+  min: 50
+  max: 200
+  spike-chance: 0.05
+  spike-min: 200
+  spike-max: 500
+  latency-effect: true
+  join-ramp-ticks: 60
+```
+
+Simulates realistic tab-list ping values for bots.
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `enabled` | `false` | Master switch — bots show `No Connection` when disabled |
+| `min` | `50` | Minimum simulated ping (ms) |
+| `max` | `200` | Maximum simulated ping (ms) |
+| `spike-chance` | `0.05` | Chance per interval that a ping spike occurs |
+| `spike-min` | `200` | Minimum spike ping value |
+| `spike-max` | `500` | Maximum spike ping value |
+| `latency-effect` | `true` | Simulate realistic latency variation over time |
+| `join-ramp-ticks` | `60` | Ticks over which ping ramps up from 0 after bot join |
+
+Per-bot overrides are available via `/fpp ping <bot> --ping <ms>` or `--random`. Per-bot `basePing` values persist across restarts.
 
 ---
 
@@ -437,7 +472,6 @@ pathfinding:
   break-blocks: false
   place-blocks: false
   place-material: DIRT
-  sprint-jump: false
   arrival-distance: 1.2
   patrol-arrival-distance: 1.5
   waypoint-arrival-distance: 0.65
@@ -468,7 +502,6 @@ Feature flags:
 - `break-blocks`
 - `place-blocks`
 - `place-material`
-- `sprint-jump` — when `true`, bots attempt a sprinting jump on every ASCEND step during pathfinding (default `false`); per-bot override available via `FakePlayer.navSprintJump`
 
 Tuning:
 - `arrival-distance`, `patrol-arrival-distance`, `waypoint-arrival-distance`

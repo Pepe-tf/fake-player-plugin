@@ -11,7 +11,7 @@
 |---------|------------|-------------|
 | `/fpp help [page]` | *(everyone)* | Interactive help GUI (console gets text fallback) |
 | `/fpp spawn [amount] [--name <name>] [--notp]` | `fpp.spawn.user` / `fpp.spawn` | Spawn fake player(s) |
-| `/fpp despawn <name\|all\|random [n]>` | `fpp.delete` | Remove bots |
+| `/fpp despawn <name\|all\|--all\|--random [n]\|--num <num>>` | `fpp.delete` | Remove bots (single, all, random, or N oldest) |
 | `/fpp list` | `fpp.list` | List local and remote bots |
 | `/fpp info` | `fpp.info` / `fpp.info.user` | Query bot sessions and ownership |
 | `/fpp inventory <bot>` | `fpp.inventory` | Open bot inventory GUI |
@@ -42,7 +42,7 @@
 | `/fpp sleep <bot|all> <x y z> <radius>` | `fpp.sleep` | Set a sleep-origin so the bot auto-sleeps at night near that location |
 | `/fpp sleep <bot|all> --stop` | `fpp.sleep` | Clear the bot's sleep-origin |
 | `/fpp stop [<bot>|all]` | `fpp.stop` | Cancel all active tasks for a bot (move, mine, place, use, attack, follow, find, sleep) |
-| `/fpp find <bot> <block> [--radius <n>] [--count <n>]` | `fpp.find` | Bot scans nearby chunks for target blocks and mines them progressively |
+| `/fpp find <bot> <block> [--radius <n>] [--count <n>] [--prefer-visible]` | `fpp.find` | Bot scans nearby chunks for target blocks and mines them progressively |
 | `/fpp groups [gui|list|create|delete|add|remove]` | `fpp.groups` | Personal bot groups with GUI management |
 | `/fpp chat ...` | `fpp.chat` | Control fake chat globally or per-bot |
 | `/fpp freeze ...` | `fpp.freeze` | Freeze or unfreeze bots |
@@ -133,6 +133,9 @@ Spawn one or more bots.
 
 ```text
 /fpp despawn <name|all|random [n]>
+/fpp despawn --all
+/fpp despawn --random [num]
+/fpp despawn --num <num>
 ```
 
 Aliases: `delete`, `remove`
@@ -143,9 +146,12 @@ Remove one bot, all bots, or a random subset.
 /fpp despawn Steve
 /fpp despawn all
 /fpp despawn random 3
+/fpp despawn --all
+/fpp despawn --random 5
+/fpp despawn --num 2
 ```
 
-> ⚠️ **Startup safety guard:** `despawn all`, `despawn --random <n>`, and `despawn --num <n>` are **blocked** while bot persistence restoration is in progress at startup (the ~2–3 second restore window). A message is shown to the sender when this occurs. Single-bot despawn (`/fpp despawn <name>`) is unaffected.
+> ⚠️ **Startup safety guard:** `despawn --all`, `despawn --random <n>`, and `despawn --num <n>` are **blocked** while bot persistence restoration is in progress at startup (the ~2–3 second restore window). A message is shown to the sender when this occurs. Single-bot despawn (`/fpp despawn <name>`) is unaffected.
 
 Permission: `fpp.delete`
 
@@ -248,10 +254,13 @@ Stops the bot's active navigation, roam, or patrol without deleting the route.
 **Move types used by pathfinding**
 - `WALK`
 - `ASCEND`
+- `CLIMB`
 - `DESCEND`
 - `PARKOUR`
 - `BREAK`
 - `PLACE`
+- `PILLAR`
+- `SWIM`
 
 **Important behavior**
 - target-follow recalculates when target moves beyond `pathfinding.follow-recalc-distance`
@@ -858,7 +867,9 @@ Permission: `fpp.stop`
 ### 🔍 `/fpp find`
 
 ```text
-/fpp find <bot> <block> [--radius <n>] [--count <n>]
+/fpp find <bot> <block> [--radius <n>] [--count <n>] [--prefer-visible]
+/fpp find <bot> --stop
+/fpp find --stop
 ```
 
 Bot scans nearby chunks for the target block type and mines matching blocks one by one.
@@ -866,8 +877,10 @@ Bot scans nearby chunks for the target block type and mines matching blocks one 
 - Async chunk snapshot scanning for performance
 - Block reservation system prevents multiple bots from targeting the same block
 - Progressive mining with raytrace visibility check
-- `--radius` limits the search radius (default: 32)
+- `--radius` limits the search radius (default: 32, max: 128)
 - `--count` limits how many blocks to mine (default: unlimited)
+- `--prefer-visible` uses ray-tracing to prioritise blocks the bot can directly see
+- `--stop` cancels the find task for one bot or all bots
 
 Permission: `fpp.find`
 

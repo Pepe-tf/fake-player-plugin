@@ -42,6 +42,9 @@
 - 👥 **Bot groups** - Personal bot groups with GUI management for bulk commands
 - 🧱 **WorldEdit integration** - `--wesel` flag for mine/place uses your WorldEdit selection
 - 🤖 **Automation** - `auto-eat` and `auto-place-bed` defaults for realistic bot survival behaviour
+- 🥛 **Auto-milk & Bad Omen prevention** - Per-bot toggles for harmful effect removal and Bad Omen/Raid Omen/Trial Omen prevention (config keys exist; runtime effect pending)
+- 📶 **Ping simulation** - Simulated tab-list ping per bot with `/fpp ping`; configurable latency, spikes, and join ramp
+- 🛏️ **Sleep command** - `/fpp sleep` for automatic night-time bed finding and sleeping
 - 🍃 **Folia support** - Compatible with Folia's regionised threading model
 
 ---
@@ -140,7 +143,7 @@
 - **Whitelist Support** - Protect VIP players
 
 ### ⚙️ **Configuration**
-- **67 Config Versions** — Automatic migration system with backup before every change- **Hot Reload** - Change settings without restart via `/fpp reload`
+- **67 Config Versions** (now v70) — Automatic migration system with backup before every change- **Hot Reload** - Change settings without restart via `/fpp reload`
 - **Backup System** - Automatic timestamped backups before any migration
 - **In-Game Settings GUI** - Toggle booleans and tune numbers without touching files
 
@@ -175,8 +178,8 @@
 - New `FppExtension` methods: `getDataFolder()`, `getConfig()`, `saveDefaultConfig()`, `saveDefaultResources()`, `reloadConfig()`
 - `FppApi` cross-extension helpers: `getExtensionDataFolder(name)`, `saveDefaultExtensionConfig(name)`, `getExtensionConfig(name)`
 
-### 💾 **DB Schema v21**
-- New columns: `pve_smart_attack_mode`, `respawn_on_death`
+### 💾 **DB Schema v22**
+- New columns: `pve_smart_attack_mode`, `respawn_on_death`, `auto_milk_enabled`, `prevent_bad_omen`, `ping`, `ping_user_set`
 - See [📋 Changelog](Changelog) for full v1.6.6.8 release notes.
 
 ---
