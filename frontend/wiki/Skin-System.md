@@ -219,6 +219,35 @@ Falls back to `fpp_skin_cache` lookup and then a fresh Mojang API call if the pe
 
 ---
 
+## `/fpp skin` Command (v1.6.6.8+)
+
+Apply or reset a bot's skin at runtime.
+
+```text
+/fpp skin <bot> <username|url|reset>
+```
+
+| Argument | Description |
+|----------|-------------|
+| `<bot>` | Target bot name |
+| `<username>` | Apply the Mojang skin belonging to this Minecraft username |
+| `<url>` | Apply a skin from a URL (e.g. MineSkin, Crafatar, or any direct texture URL) |
+| `reset` | Remove the overriding skin and revert to the default skin strategy |
+
+**Guards:**
+- When the [NameTag](https://lode.gg) plugin is installed and `nametag-integration.block-nick-conflicts` is `true`, FPP warns if the requested skin name clashes with an existing NameTag nick
+- Invalid URLs or unreachable hosts log a warning and leave the bot's skin unchanged
+
+**Permission:** `fpp.skin`
+
+```text
+/fpp skin TraderBot Notch        # Apply Notch's skin
+/fpp skin TraderBot https://...  # Apply a URL-based skin
+/fpp skin TraderBot reset        # Revert to default
+```
+
+---
+
 ## Recommended Mode by Use Case
 
 | Scenario | Recommended mode |

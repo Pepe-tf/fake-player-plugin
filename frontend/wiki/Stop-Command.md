@@ -1,6 +1,6 @@
 # 🛑 Stop Command
 
-> **Cancel all active bot tasks instantly — v1.6.6.7**
+> **Cancel all active bot tasks instantly — v1.6.6.8**
 
 `/fpp stop` immediately halts every running task on one or all bots. Use it to regain control when bots are stuck, pathfinding incorrectly, or when you want to reset their state quickly.
 
@@ -21,12 +21,14 @@
 
 Running `/fpp stop` cancels the following task types:
 
-- `/fpp move` navigation and waypoint patrols
+- `/fpp move` navigation, waypoint patrols, and roam mode
 - `/fpp mine` and area mining
 - `/fpp place` block placement
 - `/fpp use` repeated-use tasks
 - `/fpp attack` PvE attack mode
 - `/fpp follow` follow-target mode
+- `/fpp find` block-finding and progressive mining
+- `/fpp sleep` night auto-sleep
 
 The bot remains spawned and stands still after its task is cleared.
 

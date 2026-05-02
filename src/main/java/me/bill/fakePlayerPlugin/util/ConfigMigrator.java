@@ -7,7 +7,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 public final class ConfigMigrator {
 
-  public static final int CURRENT_VERSION = 67;
+  public static final int CURRENT_VERSION = 70;
 
   private static boolean rawDebug = false;
 
@@ -128,6 +128,9 @@ public final class ConfigMigrator {
     if (stored < 64) anyChange |= v63to64(cfg);
     if (stored < 65) anyChange |= v64to65(cfg);
     if (stored < 67) anyChange |= v66to67(cfg);
+    if (stored < 68) anyChange |= v67to68(cfg);
+    if (stored < 69) anyChange |= v68to69(cfg);
+    if (stored < 70) anyChange |= v69to70(cfg);
 
     fillDefaults(plugin, cfg);
 
@@ -292,7 +295,7 @@ public final class ConfigMigrator {
 
     if (!cfg.contains("fake-chat")) {
       cfg.set("fake-chat.enabled", false);
-      cfg.set("fake-chat.require-player-online", true);
+      cfg.set("fake-chat.require-player-online", false);
       cfg.set("fake-chat.chance", 0.75);
       cfg.set("fake-chat.interval.min", 5);
       cfg.set("fake-chat.interval.max", 10);
@@ -1287,6 +1290,26 @@ public final class ConfigMigrator {
   private static boolean v66to67(YamlConfiguration cfg) {
     log("v66→v67", "housekeeping stamp — bot-name.mode default changed to random");
     return false;
+  }
+
+  private static boolean v67to68(YamlConfiguration cfg) {
+    log("v67→v68", "added ping.latency-effect");
+    return setIfMissing(cfg, "ping.latency-effect", true);
+  }
+
+  private static boolean v68to69(YamlConfiguration cfg) {
+    log("v68→v69", "added ping spike and join-ramp config");
+    boolean changed = false;
+    changed |= setIfMissing(cfg, "ping.spike-chance", 0.04);
+    changed |= setIfMissing(cfg, "ping.spike-min", 200);
+    changed |= setIfMissing(cfg, "ping.spike-max", 600);
+    changed |= setIfMissing(cfg, "ping.join-ramp-ticks", 60);
+    return changed;
+  }
+
+  private static boolean v69to70(YamlConfiguration cfg) {
+    log("v69→v70", "ping.enabled default changed to false — preserving existing value if set");
+    return setIfMissing(cfg, "ping.enabled", false);
   }
 
   private static boolean setIfMissing(YamlConfiguration cfg, String path, Object value) {

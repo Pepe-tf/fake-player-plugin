@@ -29,8 +29,10 @@ public final class StorageInteractionHelper {
       return;
     }
 
-    manager.lockForAction(fp.getUuid(), faceLoc);
-    FppScheduler.teleportAsync(bot, faceLoc);
+    Location actualLoc = bot.getLocation().clone();
+    actualLoc.setYaw(faceLoc.getYaw());
+    actualLoc.setPitch(faceLoc.getPitch());
+    manager.lockForAction(fp.getUuid(), actualLoc);
     bot.setRotation(faceLoc.getYaw(), faceLoc.getPitch());
     NmsPlayerSpawner.setHeadYaw(bot, faceLoc.getYaw());
     NmsPlayerSpawner.setMovementForward(bot, 0f);

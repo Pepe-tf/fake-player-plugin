@@ -10,6 +10,7 @@ import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.BotType;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
+import me.bill.fakePlayerPlugin.fakeplayer.SkinProfile;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -241,6 +242,16 @@ public final class BotRenameHelper {
           snap.applyState(newFp);
           newFp.setSpawnedBy(snap.spawnerName(), snap.spawnerUuid());
 
+          if (snap.resolvedSkin() != null
+              && snap.resolvedSkin().isValid()
+              && plugin.getSkinManager() != null
+              && newFp.getPlayer() != null) {
+            plugin.getSkinManager().applySkinFromProfile(newFp, snap.resolvedSkin());
+          }
+          if (snap.ping() >= 0) {
+            manager.applyPing(newFp, snap.ping());
+          }
+
           if (newFp.getPlayer() != null) {
             snap.applyInventoryAndXp(newFp.getPlayer());
           }
@@ -366,6 +377,7 @@ public final class BotRenameHelper {
     private final float xpProgress;
     private final int totalXp;
     private final boolean chatEnabled;
+    private final boolean respawnOnDeath;
     private final String chatTier;
     private final boolean frozen;
     private final boolean headAiEnabled;
@@ -375,6 +387,9 @@ public final class BotRenameHelper {
     private final String spawnerName;
     private final UUID spawnerUuid;
     private final String aiPersonality;
+    private final SkinProfile resolvedSkin;
+    private final int ping;
+    private final boolean pingUserSet;
 
     private BotSnapshot(
         ItemStack[] mainContents,
@@ -384,6 +399,7 @@ public final class BotRenameHelper {
         float xpProgress,
         int totalXp,
         boolean chatEnabled,
+        boolean respawnOnDeath,
         String chatTier,
         boolean frozen,
         boolean headAiEnabled,
@@ -392,7 +408,10 @@ public final class BotRenameHelper {
         String lpGroup,
         String spawnerName,
         UUID spawnerUuid,
-        String aiPersonality) {
+        String aiPersonality,
+        SkinProfile resolvedSkin,
+        int ping,
+        boolean pingUserSet) {
       this.mainContents = mainContents;
       this.armorContents = armorContents;
       this.extraContents = extraContents;
@@ -400,6 +419,7 @@ public final class BotRenameHelper {
       this.xpProgress = xpProgress;
       this.totalXp = totalXp;
       this.chatEnabled = chatEnabled;
+      this.respawnOnDeath = respawnOnDeath;
       this.chatTier = chatTier;
       this.frozen = frozen;
       this.headAiEnabled = headAiEnabled;
@@ -409,6 +429,9 @@ public final class BotRenameHelper {
       this.spawnerName = spawnerName;
       this.spawnerUuid = spawnerUuid;
       this.aiPersonality = aiPersonality;
+      this.resolvedSkin = resolvedSkin;
+      this.ping = ping;
+      this.pingUserSet = pingUserSet;
     }
 
     static BotSnapshot from(@NotNull FakePlayer fp) {
@@ -436,6 +459,7 @@ public final class BotRenameHelper {
           prog,
           tot,
           fp.isChatEnabled(),
+          fp.isRespawnOnDeath(),
           fp.getChatTier(),
           fp.isFrozen(),
           fp.isHeadAiEnabled(),
@@ -444,7 +468,10 @@ public final class BotRenameHelper {
           lpg,
           fp.getSpawnedBy(),
           fp.getSpawnedByUuid(),
-          fp.getAiPersonality());
+          fp.getAiPersonality(),
+          fp.getResolvedSkin(),
+          fp.getPing(),
+          fp.hasCustomPing());
     }
 
     String lpGroup() {
@@ -457,6 +484,14 @@ public final class BotRenameHelper {
 
     UUID spawnerUuid() {
       return spawnerUuid;
+    }
+
+    SkinProfile resolvedSkin() {
+      return resolvedSkin;
+    }
+
+    int ping() {
+      return ping;
     }
 
     void applyInventoryAndXp(@NotNull Player entity) {
@@ -477,10 +512,19 @@ public final class BotRenameHelper {
 
     void applyState(@NotNull FakePlayer fp) {
       fp.setChatEnabled(chatEnabled);
+      fp.setRespawnOnDeath(respawnOnDeath);
       fp.setHeadAiEnabled(headAiEnabled);
       fp.setPickUpItemsEnabled(pickUpItemsEnabled);
       fp.setPickUpXpEnabled(pickUpXpEnabled);
       fp.setAiPersonality(aiPersonality);
+      if (resolvedSkin != null && resolvedSkin.isValid()) {
+        fp.setResolvedSkin(resolvedSkin);
+      }
+      if (pingUserSet) {
+        fp.setUserPing(ping);
+      } else {
+        fp.setPing(ping);
+      }
       if (chatTier != null) {
         fp.setChatTier(chatTier);
       }

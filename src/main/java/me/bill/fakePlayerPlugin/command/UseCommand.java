@@ -3,7 +3,6 @@ package me.bill.fakePlayerPlugin.command;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
-import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner;
@@ -32,14 +31,15 @@ import org.bukkit.entity.Player;
 
 public final class UseCommand implements FppCommand {
 
+  private static final double USE_ACTION_ARRIVAL_DISTANCE = 0.35;
+  private static final int INSTANT_USE_COOLDOWN = 4;
+
   private final FakePlayerPlugin plugin;
   private final FakePlayerManager manager;
   private final PathfindingService pathfinding;
 
   private final Map<UUID, Integer> useTasks = new ConcurrentHashMap<>();
-
   private final Map<UUID, Location> activeUseLocations = new ConcurrentHashMap<>();
-
   private final Map<UUID, Boolean> activeUseOnceFlags = new ConcurrentHashMap<>();
 
   public UseCommand(
@@ -121,15 +121,13 @@ public final class UseCommand implements FppCommand {
     cancelAll(fp.getUuid());
 
     double xzDist = PathfindingService.xzDist(bot.getLocation(), dest);
-    if (xzDist <= Config.pathfindingArrivalDistance()) {
-
+    if (xzDist <= USE_ACTION_ARRIVAL_DISTANCE) {
       lockAndStartUsing(fp, once, dest);
       sender.sendMessage(
           once
               ? Lang.get("use-started-once", "name", fp.getDisplayName())
               : Lang.get("use-started", "name", fp.getDisplayName()));
     } else {
-
       startNavigation(fp, once, dest);
       sender.sendMessage(Lang.get("use-walking", "name", fp.getDisplayName()));
     }
@@ -165,13 +163,15 @@ public final class UseCommand implements FppCommand {
     return List.of();
   }
 
+  // ── Navigation ──
+
   private void startNavigation(FakePlayer fp, boolean once, Location dest) {
     pathfinding.navigate(
         fp,
         new PathfindingService.NavigationRequest(
             PathfindingService.Owner.USE,
             () -> dest,
-            Config.pathfindingArrivalDistance(),
+            USE_ACTION_ARRIVAL_DISTANCE,
             0.0,
             Integer.MAX_VALUE,
             () -> lockAndStartUsing(fp, once, dest),
@@ -179,132 +179,142 @@ public final class UseCommand implements FppCommand {
             null));
   }
 
+  // ── Lock + Use Loop ──
+
   private void lockAndStartUsing(FakePlayer fp, boolean once, Location lockLoc) {
     FppApiImpl.fireTaskEvent(fp, "use", me.bill.fakePlayerPlugin.api.event.FppBotTaskEvent.Action.START);
     UUID uuid = fp.getUuid();
     Player bot = fp.getPlayer();
     if (bot == null) return;
 
-    FppScheduler.teleportAsync(bot, lockLoc);
+    bot.setRotation(lockLoc.getYaw(), lockLoc.getPitch());
+    NmsPlayerSpawner.setHeadYaw(bot, lockLoc.getYaw());
+    NmsPlayerSpawner.setMovementForward(bot, 0f);
+    bot.setSprinting(false);
 
-    manager.lockForAction(uuid, lockLoc);
+    Location actualLoc = bot.getLocation().clone();
+    actualLoc.setYaw(lockLoc.getYaw());
+    actualLoc.setPitch(lockLoc.getPitch());
+    manager.lockForAction(uuid, actualLoc);
 
-    activeUseLocations.put(uuid, lockLoc.clone());
+    activeUseLocations.put(uuid, actualLoc.clone());
     activeUseOnceFlags.put(uuid, once);
 
-    final int[] freeze = {0};
+    final int[] cooldown = {0};
 
     int taskId =
         FppScheduler.runSyncRepeatingWithId(
             plugin,
             () -> {
-                  Player b = fp.getPlayer();
-                  if (b == null || !b.isOnline()) {
-                    stopUsing(uuid);
-                    return;
-                  }
+              Player b = fp.getPlayer();
+              if (b == null || !b.isOnline()) {
+                stopUsing(uuid);
+                return;
+              }
 
-                  if (freeze[0] > 0) {
-                    freeze[0]--;
-                    return;
-                  }
+              ServerPlayer nms = ((CraftPlayer) b).getHandle();
+              nms.resetLastActionTime();
 
-                  ServerPlayer nms = ((CraftPlayer) b).getHandle();
+              if (plugin.getInventoryCommand().isInventoryOpen(uuid)) {
+                if (nms.isUsingItem()) {
+                  ((CraftPlayer) b).getHandle().releaseUsingItem();
+                }
+                return;
+              }
 
-                  if (nms.isUsingItem()) {
-                    if (once) stopUsing(uuid);
-                    return;
-                  }
+              if (nms.isUsingItem()) {
+                if (once) stopUsing(uuid);
+                return;
+              }
 
-                  HitResult hit = rayTrace(nms);
-                  if (hit == null || hit.getType() == HitResult.Type.MISS) return;
+              if (cooldown[0] > 0) {
+                cooldown[0]--;
+                return;
+              }
 
-                  boolean acted = false;
+              HitResult hit = rayTrace(nms);
 
-                  for (InteractionHand hand : InteractionHand.values()) {
+              boolean acted = false;
+              boolean startedHolding = false;
 
-                    if (hit.getType() == HitResult.Type.BLOCK) {
-                      BlockHitResult blockHit = (BlockHitResult) hit;
-                      var pos = blockHit.getBlockPos();
-                      Direction side = blockHit.getDirection();
+              for (InteractionHand hand : InteractionHand.values()) {
+                if (acted) break;
 
-                      if (pos.getY() < nms.level().getMaxY() - (side == Direction.UP ? 1 : 0)
-                          && nms.level().mayInteract(nms, pos)) {
-                        nms.resetLastActionTime();
-                        var result =
-                            nms.gameMode.useItemOn(
-                                nms, nms.level(), nms.getItemInHand(hand), hand, blockHit);
-                        if (result.consumesAction()) {
-                          nms.swing(hand);
-                          freeze[0] = 3;
-                          acted = true;
-                          break;
-                        }
-                      }
+                if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
+                  BlockHitResult blockHit = (BlockHitResult) hit;
+                  var pos = blockHit.getBlockPos();
+                  Direction side = blockHit.getDirection();
 
-                    } else if (hit.getType() == HitResult.Type.ENTITY) {
-                      EntityHitResult entityHit = (EntityHitResult) hit;
-                      var entity = entityHit.getEntity();
-
-                      boolean handWasEmpty = nms.getItemInHand(hand).isEmpty();
-                      boolean itemFrameEmpty =
-                          (entity instanceof ItemFrame ife) && ife.getItem().isEmpty();
-                      Vec3 relPos =
-                          entityHit
-                              .getLocation()
-                              .subtract(entity.getX(), entity.getY(), entity.getZ());
-
-                      nms.resetLastActionTime();
-
-                      var bukkitEntity = entity.getBukkitEntity();
-                      var equipSlot =
-                          hand == InteractionHand.MAIN_HAND
-                              ? org.bukkit.inventory.EquipmentSlot.HAND
-                              : org.bukkit.inventory.EquipmentSlot.OFF_HAND;
-                      var interactEvent =
-                          new FppBotInteractEvent(new FppBotImpl(fp), bukkitEntity, equipSlot);
-                      Bukkit.getPluginManager().callEvent(interactEvent);
-                      if (interactEvent.isCancelled()) {
-                        acted = true;
-                        break;
-                      }
-
-                      if (entity.interactAt(nms, relPos, hand).consumesAction()) {
-                        freeze[0] = 3;
-                        acted = true;
-                        break;
-                      }
-                      if (nms.interactOn(entity, hand).consumesAction()
-                          && !(handWasEmpty && itemFrameEmpty)) {
-                        freeze[0] = 3;
-                        acted = true;
-                        break;
-                      }
-                    }
-
-                    if (nms.gameMode
-                        .useItem(nms, nms.level(), nms.getItemInHand(hand), hand)
-                        .consumesAction()) {
-                      nms.resetLastActionTime();
-                      freeze[0] = 3;
+                  if (pos.getY() < nms.level().getMaxY() - (side == Direction.UP ? 1 : 0)
+                      && nms.level().mayInteract(nms, pos)) {
+                    Object result = NmsPlayerSpawner.useItemOn(nms, hand, blockHit);
+                    if (NmsPlayerSpawner.consumesAction(result)) {
+                      nms.swing(hand);
                       acted = true;
                       break;
                     }
                   }
 
-                  if (once && acted) stopUsing(uuid);
-                },
+                } else if (hit != null && hit.getType() == HitResult.Type.ENTITY) {
+                  EntityHitResult entityHit = (EntityHitResult) hit;
+                  var entity = entityHit.getEntity();
+
+                  boolean handWasEmpty = nms.getItemInHand(hand).isEmpty();
+                  boolean itemFrameEmpty =
+                      (entity instanceof ItemFrame ife) && ife.getItem().isEmpty();
+
+                  var bukkitEntity = entity.getBukkitEntity();
+                  var equipSlot =
+                      hand == InteractionHand.MAIN_HAND
+                          ? org.bukkit.inventory.EquipmentSlot.HAND
+                          : org.bukkit.inventory.EquipmentSlot.OFF_HAND;
+                  var interactEvent =
+                      new FppBotInteractEvent(new FppBotImpl(fp), bukkitEntity, equipSlot);
+                  Bukkit.getPluginManager().callEvent(interactEvent);
+                  if (interactEvent.isCancelled()) {
+                    acted = true;
+                    break;
+                  }
+
+                  if (NmsPlayerSpawner.interactOnEntity(nms, entity, hand)
+                      && !(handWasEmpty && itemFrameEmpty)) {
+                    nms.swing(hand);
+                    acted = true;
+                    break;
+                  }
+                }
+
+                Object useResult = NmsPlayerSpawner.useItem(nms, hand);
+                if (NmsPlayerSpawner.consumesAction(useResult)) {
+                  if (nms.isUsingItem()) {
+                    startedHolding = true;
+                  }
+                  acted = true;
+                  break;
+                }
+              }
+
+              if (acted) {
+                if (startedHolding) {
+                  // holding-use item (food, shield, bow, etc.) — stays active
+                } else {
+                  cooldown[0] = INSTANT_USE_COOLDOWN;
+                }
+              }
+
+              if (once && acted) stopUsing(uuid);
+            },
             0L,
             1L);
 
     useTasks.put(uuid, taskId);
   }
 
+  // ── Stop / Cancel ──
+
   private void cancelAll(UUID botUuid) {
     pathfinding.cancel(botUuid);
-
     stopUsing(botUuid);
-
     FakePlayer fp = manager.getByUuid(botUuid);
     if (fp != null) {
       Player bot = fp.getPlayer();
@@ -323,9 +333,7 @@ public final class UseCommand implements FppCommand {
     }
     Integer taskId = useTasks.remove(botUuid);
     if (taskId != null) FppScheduler.cancelTask(taskId);
-
     manager.unlockAction(botUuid);
-
     activeUseLocations.remove(botUuid);
     activeUseOnceFlags.remove(botUuid);
     if (fp != null) {
@@ -338,6 +346,8 @@ public final class UseCommand implements FppCommand {
     pathfinding.cancelAll(PathfindingService.Owner.USE);
     new HashSet<>(useTasks.keySet()).forEach(this::cancelAll);
   }
+
+  // ── Public API ──
 
   public boolean isNavigating(UUID botUuid) {
     return pathfinding.isNavigating(botUuid);
@@ -371,12 +381,14 @@ public final class UseCommand implements FppCommand {
     Player bot = fp.getPlayer();
     if (bot == null || !bot.isOnline()) return;
     cancelAll(fp.getUuid());
-    if (PathfindingService.xzDist(bot.getLocation(), loc) <= Config.pathfindingArrivalDistance()) {
+    if (PathfindingService.xzDist(bot.getLocation(), loc) <= USE_ACTION_ARRIVAL_DISTANCE) {
       lockAndStartUsing(fp, once, loc);
     } else {
       startNavigation(fp, once, loc);
     }
   }
+
+  // ── Ray Trace ──
 
   @SuppressWarnings("resource")
   private static HitResult rayTrace(ServerPlayer player) {

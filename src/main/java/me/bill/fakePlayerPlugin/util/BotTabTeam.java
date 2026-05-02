@@ -127,6 +127,36 @@ public final class BotTabTeam {
             + ".");
   }
 
+  public void syncIncremental(Collection<FakePlayer> activeBots) {
+    Set<String> desiredEntries = new HashSet<>();
+    for (FakePlayer fp : activeBots) {
+      desiredEntries.add(fp.getPacketProfileName());
+    }
+    botEntries.clear();
+    botEntries.addAll(desiredEntries);
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      ensureTeamExists(p);
+      Team team = p.getScoreboard().getTeam(TEAM_NAME);
+      if (team == null) continue;
+      for (String existing : new ArrayList<>(team.getEntries())) {
+        if (!desiredEntries.contains(existing)) {
+          team.removeEntry(existing);
+        }
+      }
+      for (String entry : desiredEntries) {
+        if (!team.hasEntry(entry)) {
+          team.addEntry(entry);
+        }
+      }
+    }
+    FppLogger.debug(
+        "[BotTabTeam] Synced incrementally with "
+            + activeBots.size()
+            + " bot(s) on "
+            + Bukkit.getOnlinePlayers().size()
+            + " scoreboard(s)");
+  }
+
   public void clearAll() {
     botEntries.clear();
     for (Player p : Bukkit.getOnlinePlayers()) {

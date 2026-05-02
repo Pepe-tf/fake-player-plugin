@@ -17,6 +17,10 @@ public final class FakePlayerBody {
   private FakePlayerBody() {}
 
   public static Player spawn(FakePlayer fp, Location loc) {
+    return spawn(fp, loc, -1);
+  }
+
+  public static Player spawn(FakePlayer fp, Location loc, int initialPing) {
     if (loc == null || loc.getWorld() == null) return null;
     try {
 
@@ -28,7 +32,8 @@ public final class FakePlayerBody {
               loc.getWorld(),
               loc.getX(),
               loc.getY(),
-              loc.getZ());
+              loc.getZ(),
+              initialPing);
 
       if (player == null) {
         FppLogger.warn("FakePlayerBody.spawn: NmsPlayerSpawner returned null for " + fp.getName());
@@ -49,6 +54,10 @@ public final class FakePlayerBody {
    * thread, then invokes the callback with the resulting Bukkit Player (or null on failure).
    */
   public static void spawnAsync(FakePlayer fp, Location loc, java.util.function.Consumer<Player> callback) {
+    spawnAsync(fp, loc, -1, callback);
+  }
+
+  public static void spawnAsync(FakePlayer fp, Location loc, int initialPing, java.util.function.Consumer<Player> callback) {
     if (loc == null || loc.getWorld() == null) {
       callback.accept(null);
       return;
@@ -61,6 +70,7 @@ public final class FakePlayerBody {
         loc.getX(),
         loc.getY(),
         loc.getZ(),
+        initialPing,
         player -> {
           if (player == null) {
             FppLogger.warn(

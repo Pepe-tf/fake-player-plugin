@@ -25,22 +25,24 @@
       "Bash(npm install *)",
       "Bash(node index.js)",
       "Bash(echo \"Server PID: $!\")",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"test-server-1\",\"player_count\":12,\"bot_count\":5,\"version\":\"1.6.6.7\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"test-server-1\",\"player_count\":12,\"bot_count\":5,\"version\":\"1.6.6.8\"}')",
       "Bash(curl -s http://localhost:3000/api/online-stats)",
       "Bash(kill %1)",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-a\",\"player_count\":10,\"bot_count\":3,\"version\":\"1.6.6.7\"}')",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-b\",\"player_count\":25,\"bot_count\":8,\"version\":\"1.6.6.7\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-a\",\"player_count\":10,\"bot_count\":3,\"version\":\"1.6.6.8\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-b\",\"player_count\":25,\"bot_count\":8,\"version\":\"1.6.6.8\"}')",
       "Bash(xargs sed *)",
       "Bash(echo \"PID: $!\")",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"srv-1\",\"player_count\":8,\"bot_count\":3,\"version\":\"1.6.6.7\"}')",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"srv-1\",\"player_count\":5,\"bot_count\":3,\"version\":\"1.6.6.7\"}')",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-a\",\"player_count\":1,\"bot_count\":0,\"version\":\"1.6.6.7\"}')",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-b\",\"player_count\":2,\"bot_count\":20,\"version\":\"1.6.6.7\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"srv-1\",\"player_count\":8,\"bot_count\":3,\"version\":\"1.6.6.8\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"srv-1\",\"player_count\":5,\"bot_count\":3,\"version\":\"1.6.6.8\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-a\",\"player_count\":1,\"bot_count\":0,\"version\":\"1.6.6.8\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"server-b\",\"player_count\":2,\"bot_count\":20,\"version\":\"1.6.6.8\"}')",
       "Bash(curl -s http://localhost:3000/api/online-stats echo \"\" echo \"=== Re-fetch \\(should be identical, no stale cache\\) ===\" curl -s http://localhost:3000/api/online-stats)",
       "Bash(curl -s http://localhost:3000/api/online-stats echo \"\" kill %1)",
       "Bash(netstat -tlnp)",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"default@127.0.0.1:25565\",\"player_count\":1,\"bot_count\":0,\"version\":\"1.6.6.7\"}')",
-      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"default@127.0.0.1:25566\",\"player_count\":2,\"bot_count\":20,\"version\":\"1.6.6.7\"}')"
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"default@127.0.0.1:25565\",\"player_count\":1,\"bot_count\":0,\"version\":\"1.6.6.8\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/heartbeat -H \"Content-Type: application/json\" -d '{\"server_id\":\"default@127.0.0.1:25566\",\"player_count\":2,\"bot_count\":20,\"version\":\"1.6.6.8\"}')",
+      "Bash(grep -oP '\\\\`[A-Za-z]+Command\\\\`')",
+      "Bash(grep -oP '\\\\`[A-Za-z]+\\\\.java\\\\`' /home/admin/IdeaProjects/fake-player-plugin/AGENTS.md)"
     ]
   }
 }

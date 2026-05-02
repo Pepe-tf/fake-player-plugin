@@ -1,7 +1,7 @@
 # 🎮 Fake Player Plugin - Wiki
 
 > **The Ultimate Bot Spoofing Plugin for Paper 1.21+**  
-> **Version:** 1.6.6.7 · **Platform:** Paper / Folia 1.21.x (up to 1.21.11) · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
+> **Version:** 1.6.6.8 · **Platform:** Paper / Folia 1.21.x (up to 1.21.11) · **Author:** Bill_Hub · **License:** [MIT (Open Source)](https://github.com/Pepe-tf/fake-player-plugin)
 
 ---
 
@@ -140,98 +140,56 @@
 - **Whitelist Support** - Protect VIP players
 
 ### ⚙️ **Configuration**
-- **63 Config Versions** — Automatic migration system with backup before every change- **Hot Reload** - Change settings without restart via `/fpp reload`
+- **67 Config Versions** — Automatic migration system with backup before every change- **Hot Reload** - Change settings without restart via `/fpp reload`
 - **Backup System** - Automatic timestamped backups before any migration
 - **In-Game Settings GUI** - Toggle booleans and tune numbers without touching files
 
 ---
 
-## 🆕 What's New in v1.6.6.2
+## 🆕 What's New in v1.6.6.8
 
-### 🔖 **Version Bump**
-- Plugin version updated to 1.6.6.2 for tracking purposes
+### ⚔️ **PvE Smart Attack Mode**
+- New tri-state per-bot setting replacing the simple `pveEnabled` boolean: **OFF** / **ON_NO_MOVE** / **ON_MOVE**
+- `ON_MOVE` enables pursuit — the bot chases targets via `PathfindingService` when out of melee range
+- `pveEnabled` is now a convenience accessor mapping to the smart attack mode
+- New hunt mode (`--hunt`) for roaming mob hunting across the world
+- Permission: `fpp.attack.hunt`
 
-See [📋 Changelog](Changelog) for full v1.6.6.2 release notes.
+### 🆕 **New Commands**
+- `/fpp save` — triggers an immediate persistence checkpoint for all active bots (`fpp.save`)
+- `/fpp setowner <bot> <player>` — transfers bot ownership and clears shared controllers (`fpp.setowner`)
+- `/fpp bots [bot]` (aliases `mybots`, `botmenu`) — paginated GUI of your bots, click to open `BotSettingGui` (`fpp.settings`)
+- `/fpp skin <bot> <username|url|reset>` — apply a skin from a Minecraft username, URL, or reset to default (`fpp.skin`)
 
----
+### 🔄 **Per-Bot Overrides**
+- `respawn-on-death` — individual bot respawn toggle (initialized from `death.respawn-on-death`, editable in `BotSettingGui`)
+- `auto-eat` / `auto-place-bed` — per-bot automation overrides (initialized from global `automation.*` defaults, editable in `BotSettingGui`)
 
-## 🆕 What's New in v1.6.6.1
+### 🔧 **BotSettingGui Overhaul**
+- New **PvE** tab with smart attack mode, range, priority, and mob-type filter
+- New **Pathfinding** tab with parkour, break-blocks, place-blocks, sprint-jump toggles
+- **Share control** — grant/revoke other players as bot controllers
 
-### 🚀 **FPP BungeeCord Companion (`fpp-bungee.jar`)**
-- New standalone **BungeeCord/Waterfall proxy plugin** — drop `fpp-bungee.jar` into your proxy `plugins/` folder, no config needed
-- Inflates server-list player count to include FPP bots; merges bot names into the hover sample list
-- Listens for `BOT_SPAWN`, `BOT_DESPAWN`, `SERVER_OFFLINE` messages from FPP backends; maintains a live bot registry
-- Prints an anti-scam warning on every startup (FPP is free and open-source)
-- Compatible with BungeeCord and Waterfall; source in `bungee-companion/`
+### 📦 **Extension Config & Resources**
+- Extensions can now provide `extension-resources/` in their JAR for auto-extraction
+- New `FppExtension` methods: `getDataFolder()`, `getConfig()`, `saveDefaultConfig()`, `saveDefaultResources()`, `reloadConfig()`
+- `FppApi` cross-extension helpers: `getExtensionDataFolder(name)`, `saveDefaultExtensionConfig(name)`, `getExtensionConfig(name)`
 
-### 🐛 **Bug Fixes**
-- **Bot join/leave message color fix** — `BotBroadcast` now parses display names with full MiniMessage + legacy `&`/`§` color support; color tags no longer render as raw text
-- **`Attribute.MAX_HEALTH` compatibility** — resolved `NoSuchFieldError` on Paper/Purpur 1.21.1 and older via new `AttributeCompat` utility
-
-See [📋 Changelog](Changelog) for full v1.6.6.1 release notes.
-
----
-
-## 🆕 What's New in v1.6.6
-
-### 🎯 **Follow-Target Automation (`/fpp follow`)**
-- New `/fpp follow <bot|all> <player> [--stop]` — bot continuously follows an online player with path recalculation
-- FOLLOW task persisted in `fpp_bot_tasks` — bot resumes following after restart
-- Permission: `fpp.follow`
-
-### ⚔️ **Per-Bot PvE Settings (now fully live)**
-- `BotSettingGui` PvP tab has live-editable per-bot PvE controls: `pveEnabled`, `pveRange`, `pvePriority`, `pveMobTypes`
-- Settings persisted via DB schema v15→v16
-
-### 🎨 **Skin Persistence Across Restarts**
-- Resolved skins saved to `fpp_active_bots` (DB v16→v17); bots reload their skin on restart without a Mojang API call
-
-### 🌐 **Server-List Config Keys**
-- `server-list.count-bots` (default `true`) and `server-list.include-remote-bots` (default `false`)
-
-### 🧭 **`pathfinding.max-fall`**
-- A* pathfinder now has a configurable max safe fall distance (default `3` blocks)
-
-### 💾 **DB Schema v15 → v16 → v17 · Config v60 → v63**
-
-See [📋 Changelog](Changelog) for full v1.6.6 release notes and the complete version history.
+### 💾 **DB Schema v21**
+- New columns: `pve_smart_attack_mode`, `respawn_on_death`
+- See [📋 Changelog](Changelog) for full v1.6.6.8 release notes.
 
 ---
 
-## 🆕 What was New in v1.6.5.1
+## 🆕 Older Versions (v1.6.5 – v1.6.6.6)
 
-### ⚙️ **BotSettingGui Now Publicly Available**
-- Per-bot settings GUI (shift+right-click any bot) is now available to **all users with `fpp.settings` permission** — no longer dev-only
-- Grant `fpp.settings` via LuckPerms to allow non-op players to manage per-bot settings
+Highlights from recent releases:
+- **v1.6.6.6:** Folia scheduling guard, water-path stability, spawn grace-period protection
+- **v1.6.6.2:** BungeeCord companion plugin, `AttributeCompat` fix
+- **v1.6.6:** `/fpp follow`, skin persistence, server-list config, `pathfinding.max-fall`, DB schema v17
+- **v1.6.5:** `/fpp ping`, `/fpp attack`, permission restructure, skin mode rename, `FlagParser`
 
-See [📋 Changelog](Changelog) for full v1.6.5.1 release notes and the complete version history.
-
----
-
-## 🆕 What was New in v1.6.5
-
-### 📡 **Tab-List Ping Simulation**
-- New `/fpp ping [<bot>] [--ping <ms>|--random] [--count <n>]` — set the visible tab-list latency for one or all bots
-- 4 granular permissions: `fpp.ping` (view), `fpp.ping.set` (set), `fpp.ping.random` (random), `fpp.ping.bulk` (bulk)
-
-### ⚔ **PvE Attack Automation**
-- New `/fpp attack <bot> [--stop]` — bot walks to sender and continuously attacks nearby entities
-- Respects 1.9+ attack cooldown and item-specific cooldowns dynamically
-- Permission: `fpp.attack`
-
-### 🔐 **Permission System Restructure**
-- `fpp.admin` as preferred alias for `fpp.op`; `fpp.despawn` as preferred alias for `fpp.delete`
-- Granular sub-nodes for chat, move, mine, place, use, rank, inventory, and ping commands
-- New `fpp.command` (visibility), `fpp.plugininfo`, `fpp.spawn.multiple`, `fpp.notify`
-
-### 🎨 **Skin Mode Rename**
-- `skin.mode` values: `auto` → `player`, `custom` → `random`, `off` → `none` (legacy aliases still accepted)
-
-### 🔧 **FlagParser & UpdateChecker**
-- Reusable command flag parser with deprecation aliases, duplicate/conflict detection
-- Beta build detection: `latestKnownVersion` and `isRunningBeta` fields
-
-See [📋 Changelog](Changelog) for full v1.6.5 release notes and the complete version history.
+See [📋 Changelog](Changelog) for the complete version history.
 
 ---
 

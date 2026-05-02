@@ -1,6 +1,6 @@
 # 👥 Bot Groups
 
-> **Personal bot groups with GUI management — v1.6.6.7**
+> **Personal bot groups with GUI management — v1.6.6.8**
 
 Bot groups let players organize their bots into named collections. Once a group is created, you can issue bulk commands to every bot in the group at once.
 

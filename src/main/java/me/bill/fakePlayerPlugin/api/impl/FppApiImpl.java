@@ -1,5 +1,6 @@
 package me.bill.fakePlayerPlugin.api.impl;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -482,6 +483,26 @@ public final class FppApiImpl implements FppApi {
   @Override
   public boolean hasService(@NotNull Class<?> serviceClass) {
     return services.containsKey(serviceClass);
+  }
+
+  // ── Extension config & resources ────────────────────────────────────────────
+
+  @Override
+  public @Nullable File getExtensionDataFolder(@NotNull String extensionName) {
+    var loader = plugin.getExtensionLoader();
+    return loader != null ? loader.getExtensionDataFolder(extensionName) : null;
+  }
+
+  @Override
+  public void saveDefaultExtensionConfig(@NotNull String extensionName) {
+    var loader = plugin.getExtensionLoader();
+    if (loader != null) loader.saveDefaultExtensionConfig(extensionName);
+  }
+
+  @Override
+  public @Nullable org.bukkit.configuration.file.YamlConfiguration getExtensionConfig(@NotNull String extensionName) {
+    var loader = plugin.getExtensionLoader();
+    return loader != null ? loader.getExtensionConfig(extensionName) : null;
   }
 
   /** Called by FakePlayerPlugin#onDisable to shut down all registered addons. */

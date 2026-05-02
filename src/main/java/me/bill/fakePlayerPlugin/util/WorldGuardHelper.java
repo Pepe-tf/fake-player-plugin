@@ -28,8 +28,25 @@ public final class WorldGuardHelper {
 
   public static Location findSafeLocation(World world) {
     if (world == null) return null;
-    Location spawn = world.getSpawnLocation().clone().add(0.5, 0, 0.5);
-    if (isPvpAllowed(spawn)) return spawn;
+    Location spawn = world.getSpawnLocation();
+
+    for (int yOffset = 0; yOffset <= 10; yOffset++) {
+      Location check = spawn.clone().add(0.5, yOffset, 0.5);
+      if (isPvpAllowed(check)) return check;
+    }
+
+    for (int radius = 5; radius <= 50; radius += 5) {
+      for (int x = -radius; x <= radius; x += 5) {
+        for (int z = -radius; z <= radius; z += 5) {
+          Location check = spawn.clone().add(x + 0.5, 0, z + 0.5);
+          if (!isPvpAllowed(check)) continue;
+          int y = world.getHighestBlockYAt(check) + 1;
+          check.setY(y);
+          if (isPvpAllowed(check)) return check;
+        }
+      }
+    }
+
     return null;
   }
 }

@@ -39,6 +39,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.jetbrains.annotations.NotNull;
 import me.bill.fakePlayerPlugin.api.event.FppBotDespawnEvent;
 import me.bill.fakePlayerPlugin.api.event.FppBotSettingChangeEvent;
@@ -712,6 +713,12 @@ public final class BotSettingGui implements Listener {
         fireSettingChange(bot, "frozen", old, bot.isFrozen());
         yield bot.isFrozen();
       }
+      case "respawn_on_death" -> {
+        boolean old = bot.isRespawnOnDeath();
+        bot.setRespawnOnDeath(!old);
+        fireSettingChange(bot, "respawn_on_death", old, bot.isRespawnOnDeath());
+        yield bot.isRespawnOnDeath();
+      }
       case "head_ai_enabled" -> {
         boolean old = bot.isHeadAiEnabled();
         bot.setHeadAiEnabled(!old);
@@ -745,6 +752,18 @@ public final class BotSettingGui implements Listener {
         bot.setChatEnabled(!old);
         fireSettingChange(bot, "chat_enabled", old, bot.isChatEnabled());
         yield bot.isChatEnabled();
+      }
+      case "auto_milk" -> {
+        boolean old = bot.isAutoMilkEnabled();
+        bot.setAutoMilkEnabled(!old);
+        fireSettingChange(bot, "auto_milk", old, bot.isAutoMilkEnabled());
+        yield bot.isAutoMilkEnabled();
+      }
+      case "prevent_bad_omen" -> {
+        boolean old = bot.isPreventBadOmen();
+        bot.setPreventBadOmen(!old);
+        fireSettingChange(bot, "prevent_bad_omen", old, bot.isPreventBadOmen());
+        yield bot.isPreventBadOmen();
       }
       case "nav_parkour" -> {
         boolean old = bot.isNavParkour();
@@ -1208,6 +1227,7 @@ public final class BotSettingGui implements Listener {
     int slot = 0;
     for (Player candidate : Bukkit.getOnlinePlayers()) {
       if (slot >= 45) break;
+      if (manager.getByUuid(candidate.getUniqueId()) != null) continue;
       if (candidate.getUniqueId().equals(bot.getSpawnedByUuid())) continue;
       if (candidate.getUniqueId().equals(player.getUniqueId())) continue;
       inv.setItem(slot++, buildSharePlayerItem(candidate, bot.hasSharedController(candidate.getUniqueId())));
@@ -1228,21 +1248,24 @@ public final class BotSettingGui implements Listener {
 
   private ItemStack buildSharePlayerItem(Player player, boolean shared) {
     ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-    ItemMeta meta = item.getItemMeta();
-    if (shared) {
-      meta.addEnchant(Enchantment.UNBREAKING, 1, true);
-      meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+    SkullMeta meta = (SkullMeta) item.getItemMeta();
+    if (meta != null) {
+      meta.setPlayerProfile(player.getPlayerProfile());
+      if (shared) {
+        meta.addEnchant(Enchantment.UNBREAKING, 1, true);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+      }
+      meta.displayName(
+          Component.text(player.getName())
+              .color(shared ? SELECTED_GREEN : ACCENT)
+              .decoration(TextDecoration.ITALIC, false));
+      meta.lore(
+          List.of(
+              Component.text(shared ? "✔ ᴄᴀɴ ᴄᴏɴᴛʀᴏʟ ᴛʜɪꜱ ʙᴏᴛ" : "✘ ɴᴏ ᴄᴏɴᴛʀᴏʟ ᴀᴄᴄᴇꜱꜱ")
+                  .color(shared ? SELECTED_GREEN : GRAY),
+              Component.text("ᴄʟɪᴄᴋ ᴛᴏ ᴛᴏɢɢʟᴇ").color(YELLOW)));
+      item.setItemMeta(meta);
     }
-    meta.displayName(
-        Component.text(player.getName())
-            .color(shared ? SELECTED_GREEN : ACCENT)
-            .decoration(TextDecoration.ITALIC, false));
-    meta.lore(
-        List.of(
-            Component.text(shared ? "✔ ᴄᴀɴ ᴄᴏɴᴛʀᴏʟ ᴛʜɪꜱ ʙᴏᴛ" : "✘ ɴᴏ ᴄᴏɴᴛʀᴏʟ ᴀᴄᴄᴇꜱꜱ")
-                .color(shared ? SELECTED_GREEN : GRAY),
-            Component.text("ᴄʟɪᴄᴋ ᴛᴏ ᴛᴏɢɢʟᴇ").color(YELLOW)));
-    item.setItemMeta(meta);
     return item;
   }
 
@@ -1412,6 +1435,7 @@ public final class BotSettingGui implements Listener {
     fireSettingChange(bot, "reset", null, null);
 
     bot.setFrozen(false);
+    bot.setRespawnOnDeath(Config.respawnOnDeath());
     bot.setHeadAiEnabled(true);
     bot.setSwimAiEnabled(Config.swimAiEnabled());
     bot.setChunkLoadRadius(-1);
@@ -1421,7 +1445,7 @@ public final class BotSettingGui implements Listener {
     bot.setChatEnabled(true);
     bot.setChatTier(null);
     bot.setAiPersonality(null);
-    bot.setPing(-1);
+    manager.applyPing(bot, -1);
 
     bot.setPveEnabled(false);
     var attackCmd = plugin.getAttackCommand();
@@ -1667,11 +1691,14 @@ public final class BotSettingGui implements Listener {
   private String valueString(BotEntry entry, FakePlayer bot) {
     return switch (entry.id()) {
       case "frozen" -> bot.isFrozen() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+      case "respawn_on_death" -> bot.isRespawnOnDeath() ? "✔ ʀᴇꜱᴘᴀᴡɴ" : "✘ ᴅᴇꜱᴘᴀᴡɴ";
       case "head_ai_enabled" -> bot.isHeadAiEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "swim_ai_enabled" -> bot.isSwimAiEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pickup_items" -> bot.isPickUpItemsEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pickup_xp" -> bot.isPickUpXpEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "chat_enabled" -> bot.isChatEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+      case "auto_milk" -> bot.isAutoMilkEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+      case "prevent_bad_omen" -> bot.isPreventBadOmen() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "chat_tier" -> bot.getChatTier() != null ? bot.getChatTier() : "ʀᴀɴᴅᴏᴍ";
       case "ai_personality" -> bot.getAiPersonality() != null ? bot.getAiPersonality() : "ᴅᴇꜰᴀᴜʟᴛ";
       case "nav_parkour" -> bot.isNavParkour() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
@@ -1714,11 +1741,14 @@ public final class BotSettingGui implements Listener {
   private boolean getBoolValue(String id, FakePlayer bot) {
     return switch (id) {
       case "frozen" -> bot.isFrozen();
+      case "respawn_on_death" -> bot.isRespawnOnDeath();
       case "head_ai_enabled" -> bot.isHeadAiEnabled();
       case "swim_ai_enabled" -> bot.isSwimAiEnabled();
       case "pickup_items" -> bot.isPickUpItemsEnabled();
       case "pickup_xp" -> bot.isPickUpXpEnabled();
       case "chat_enabled" -> bot.isChatEnabled();
+      case "auto_milk" -> bot.isAutoMilkEnabled();
+      case "prevent_bad_omen" -> bot.isPreventBadOmen();
       case "nav_parkour" -> bot.isNavParkour();
       case "nav_break_blocks" -> bot.isNavBreakBlocks();
       case "nav_place_blocks" -> bot.isNavPlaceBlocks();
@@ -1735,6 +1765,8 @@ public final class BotSettingGui implements Listener {
   private Material dynamicIcon(BotEntry entry, FakePlayer bot) {
     return switch (entry.id()) {
       case "frozen" -> bot.isFrozen() ? Material.BLUE_ICE : Material.PACKED_ICE;
+      case "respawn_on_death" ->
+          bot.isRespawnOnDeath() ? Material.TOTEM_OF_UNDYING : Material.SKELETON_SKULL;
       case "head_ai_enabled" ->
           bot.isHeadAiEnabled() ? Material.PLAYER_HEAD : Material.SKELETON_SKULL;
       case "swim_ai_enabled" -> bot.isSwimAiEnabled() ? Material.WATER_BUCKET : Material.BUCKET;
@@ -1742,6 +1774,9 @@ public final class BotSettingGui implements Listener {
       case "pickup_xp" ->
           bot.isPickUpXpEnabled() ? Material.EXPERIENCE_BOTTLE : Material.GLASS_BOTTLE;
       case "chat_enabled" -> bot.isChatEnabled() ? Material.WRITABLE_BOOK : Material.BOOK;
+      case "auto_milk" -> bot.isAutoMilkEnabled() ? Material.MILK_BUCKET : Material.BUCKET;
+      case "prevent_bad_omen" ->
+          bot.isPreventBadOmen() ? Material.OMINOUS_BOTTLE : Material.GLASS_BOTTLE;
       case "nav_parkour" -> bot.isNavParkour() ? Material.SLIME_BALL : Material.RABBIT_FOOT;
       case "nav_break_blocks" ->
           bot.isNavBreakBlocks() ? Material.DIAMOND_PICKAXE : Material.IRON_PICKAXE;
@@ -1968,6 +2003,13 @@ public final class BotSettingGui implements Listener {
                 Material.PACKED_ICE,
                 false),
             BotEntry.toggle(
+                "respawn_on_death",
+                "ʀᴇꜱᴘᴀᴡɴ ᴏɴ ᴅᴇᴀᴛʜ",
+                "ᴛʜɪꜱ ʙᴏᴛ ʀᴇꜱᴘᴀᴡɴꜱ ᴀꜰᴛᴇʀ ᴅᴇᴀᴛʜ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
+                    + "ᴅɪꜱᴀʙʟᴇᴅ = ᴅᴇᴀᴛʜ ᴅᴇꜱᴘᴀᴡɴꜱ ᴛʜᴇ ʙᴏᴛ.",
+                Material.TOTEM_OF_UNDYING,
+                false),
+            BotEntry.toggle(
                 "head_ai_enabled",
                 "ʜᴇᴀᴅ ᴀɪ (ʟᴏᴏᴋ ᴀᴛ ᴘʟᴀʏᴇʀ)",
                 "ʙᴏᴛ ꜱᴍᴏᴏᴛʜʟʏ ʀᴏᴛᴀᴛᴇꜱ ᴛʏᴘᴇ ᴘʟᴀʏᴇʀꜱ ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ.\n"
@@ -2007,6 +2049,25 @@ public final class BotSettingGui implements Listener {
                 "ᴛʜɪꜱ ʙᴏᴛ ᴄᴏʟʟᴇᴄᴛꜱ ᴇxᴘᴇʀɪᴇɴᴄᴇ ᴏʀʙꜱ\n"
                     + "ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ. /ꜰᴘᴘ xᴘ ᴄᴏᴏʟᴅᴏᴡɴ ꜱᴛɪʟʟ ᴀᴘᴘʟɪᴇꜱ.",
                 Material.EXPERIENCE_BOTTLE,
+                false),
+            BotEntry.toggle(
+                "auto_milk",
+                "ᴀᴜᴛᴏ ᴍɪʟᴋ",
+                "ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴄᴜʀᴇ ʜᴀʀᴍꜰᴜʟ ᴇꜰꜰᴇᴄᴛꜱ\n"
+                    + "(ᴘᴏɪꜱᴏɴ, ᴡɪᴛʜᴇʀ, ꜱʟᴏᴡɴᴇꜱꜱ, ᴇᴛᴄ.)\n"
+                    + "ɢʟᴏʙᴀʟ: "
+                    + (Config.autoMilkEnabled() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
+                Material.MILK_BUCKET,
+                false),
+            BotEntry.toggle(
+                "prevent_bad_omen",
+                "ʙʟᴏᴄᴋ ʙᴀᴅ ᴏᴍᴇɴ",
+                "ᴘʀᴇᴠᴇɴᴛ ʙᴀᴅ ᴏᴍᴇɴ, ʀᴀɪᴅ ᴏᴍᴇɴ\n"
+                    + "ᴀɴᴅ ᴛʀɪᴀʟ ᴏᴍᴇɴ ᴇꜰꜰᴇᴄᴛꜱ.\n"
+                    + "ᴘʀᴇᴠᴇɴᴛꜱ ʙᴏᴛꜱ ꜰʀᴏᴍ ᴛʀɪɢɢᴇʀɪɴɢ ʀᴀɪᴅꜱ.\n"
+                    + "ɢʟᴏʙᴀʟ: "
+                    + (Config.preventBadOmen() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
+                Material.OMINOUS_BOTTLE,
                 false),
             BotEntry.action(
                 "rename",

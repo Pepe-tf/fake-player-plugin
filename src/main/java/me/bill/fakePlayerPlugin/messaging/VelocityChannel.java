@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
-import me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast;
 import me.bill.fakePlayerPlugin.fakeplayer.BotChatAI;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerBody;
@@ -181,7 +180,8 @@ public final class VelocityChannel implements PluginMessageListener {
         fp.getDisplayName(),
         fp.getPacketProfileName(),
         skinValue,
-        skinSignature);
+        skinSignature,
+        String.valueOf(fp.getEffectivePing()));
 
     if (Config.isNetworkMode()) {
       sendPluginMessage(
@@ -193,7 +193,8 @@ public final class VelocityChannel implements PluginMessageListener {
           fp.getDisplayName(),
           fp.getPacketProfileName(),
           skinValue,
-          skinSignature);
+          skinSignature,
+          String.valueOf(fp.getEffectivePing()));
       Config.debugNetwork(
           "[VelocityChannel] BOT_SPAWN BungeeCord Forward sent for '" + fp.getName() + "'.");
     }
@@ -399,6 +400,13 @@ public final class VelocityChannel implements PluginMessageListener {
     String packetName = in.readUTF();
     String skinValue = in.readUTF();
     String skinSignature = in.readUTF();
+    int ping;
+    try {
+      String pingStr = in.readUTF();
+      ping = Integer.parseInt(pingStr);
+    } catch (java.io.EOFException | NumberFormatException e) {
+      ping = 0;
+    }
 
     if (isDuplicate(msgId, originServer)) {
       Config.debugNetwork("[VelocityChannel] BOT_SPAWN echo suppressed: " + name);
@@ -412,7 +420,7 @@ public final class VelocityChannel implements PluginMessageListener {
 
     RemoteBotEntry entry =
         new RemoteBotEntry(
-            originServer, uuid, name, displayName, safePacketName, skinValue, skinSignature);
+            originServer, uuid, name, displayName, safePacketName, skinValue, skinSignature, ping);
 
     RemoteBotCache cache = plugin.getRemoteBotCache();
     if (cache != null) cache.add(entry);
@@ -420,7 +428,7 @@ public final class VelocityChannel implements PluginMessageListener {
     if (Config.tabListEnabled()) {
       for (Player online : Bukkit.getOnlinePlayers()) {
         PacketHelper.sendTabListAddRaw(
-            online, uuid, safePacketName, displayName, skinValue, skinSignature);
+            online, uuid, safePacketName, displayName, skinValue, skinSignature, ping);
       }
     }
   }
@@ -475,7 +483,7 @@ public final class VelocityChannel implements PluginMessageListener {
 
   private void handleJoin(DataInputStream in) throws IOException {
     String msgId = in.readUTF();
-    String displayName = in.readUTF();
+    in.readUTF(); // display name (unused; join/leave formatting is event-driven locally)
     String originServer = in.readUTF();
 
     if (isDuplicate(msgId, originServer)) {
@@ -483,13 +491,11 @@ public final class VelocityChannel implements PluginMessageListener {
       return;
     }
     trackIncoming(msgId);
-    if (!Config.joinMessage()) return;
-    BotBroadcast.broadcastJoinByDisplayName(displayName);
   }
 
   private void handleLeave(DataInputStream in) throws IOException {
     String msgId = in.readUTF();
-    String displayName = in.readUTF();
+    in.readUTF(); // display name (unused; join/leave formatting is event-driven locally)
     String originServer = in.readUTF();
 
     if (isDuplicate(msgId, originServer)) {
@@ -497,8 +503,6 @@ public final class VelocityChannel implements PluginMessageListener {
       return;
     }
     trackIncoming(msgId);
-    if (!Config.leaveMessage()) return;
-    BotBroadcast.broadcastLeaveByDisplayName(displayName);
   }
 
   private void handleBotUpdate(DataInputStream in) throws IOException {
@@ -536,12 +540,13 @@ public final class VelocityChannel implements PluginMessageListener {
             newDisplayName,
             existing.packetProfileName(),
             existing.skinValue(),
-            existing.skinSignature());
+            existing.skinSignature(),
+            existing.ping());
     cache.add(updated);
 
     if (Config.tabListEnabled()) {
       for (Player online : Bukkit.getOnlinePlayers()) {
-        PacketHelper.sendTabListDisplayNameUpdate(online, uuid, newDisplayName);
+        PacketHelper.sendTabListDisplayNameUpdate(online, uuid, newDisplayName, existing.ping());
       }
     }
   }

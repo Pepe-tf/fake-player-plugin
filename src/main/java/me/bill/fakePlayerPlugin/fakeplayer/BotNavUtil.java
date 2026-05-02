@@ -78,14 +78,10 @@ public final class BotNavUtil {
       Vec3 hitVec = new Vec3(block.getX() + 0.5, block.getY() + 0.5, block.getZ() + 0.5);
       BlockHitResult hit = new BlockHitResult(hitVec, Direction.UP, pos, false);
       nms.resetLastActionTime();
-      var result =
-          nms.gameMode.useItemOn(
-              nms,
-              nms.level(),
-              nms.getItemInHand(InteractionHand.MAIN_HAND),
-              InteractionHand.MAIN_HAND,
-              hit);
-      if (result.consumesAction()) nms.swing(InteractionHand.MAIN_HAND);
+      var result = NmsPlayerSpawner.useItemOn(nms, InteractionHand.MAIN_HAND, hit);
+      if (NmsPlayerSpawner.consumesAction(result)) {
+        nms.swing(InteractionHand.MAIN_HAND);
+      }
     } catch (Throwable ignored) {
     }
   }

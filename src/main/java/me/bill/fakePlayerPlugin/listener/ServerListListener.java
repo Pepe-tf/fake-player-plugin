@@ -1,6 +1,9 @@
 package me.bill.fakePlayerPlugin.listener;
 
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.Properties;
 import java.lang.reflect.Method;
 import java.util.*;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
@@ -16,6 +19,7 @@ import org.bukkit.event.Listener;
 public class ServerListListener implements Listener {
 
   private static final int MAX_SAMPLE = 12;
+  private static volatile Boolean serverPropertiesHideOnlinePlayers = null;
 
   private final FakePlayerPlugin plugin;
   private final FakePlayerManager manager;
@@ -27,9 +31,15 @@ public class ServerListListener implements Listener {
 
   @EventHandler(priority = EventPriority.HIGHEST)
   public void onPing(PaperServerListPingEvent event) {
-    boolean hidePlayers = shouldKeepPlayersHidden(event);
+    boolean hidePlayers = shouldKeepPlayersHidden(event) || isServerPropertiesHideOnlinePlayers();
 
     List<FakePlayer> localBots = new ArrayList<>(manager.getActivePlayers());
+
+    if (hidePlayers) {
+      List<PaperServerListPingEvent.ListedPlayerInfo> listed = event.getListedPlayers();
+      listed.clear();
+      return;
+    }
 
     if (Config.serverListCountBots()) {
       int realPlayers = Math.max(0, Bukkit.getOnlinePlayers().size() - localBots.size());
@@ -48,12 +58,6 @@ public class ServerListListener implements Listener {
 
       int realPlayers = Math.max(0, Bukkit.getOnlinePlayers().size() - localBots.size());
       event.setNumPlayers(realPlayers);
-    }
-
-    if (hidePlayers) {
-      List<PaperServerListPingEvent.ListedPlayerInfo> listed = event.getListedPlayers();
-      listed.clear();
-      return;
     }
 
     List<PaperServerListPingEvent.ListedPlayerInfo> freshSample = new ArrayList<>();
@@ -134,5 +138,44 @@ public class ServerListListener implements Listener {
       }
     }
     return event.getNumPlayers() < 0;
+  }
+
+  private static boolean isServerPropertiesHideOnlinePlayers() {
+    Boolean cached = serverPropertiesHideOnlinePlayers;
+    if (cached != null) return cached;
+
+    synchronized (ServerListListener.class) {
+      if (serverPropertiesHideOnlinePlayers != null) return serverPropertiesHideOnlinePlayers;
+
+      boolean hidden = false;
+      for (File file : candidateServerProperties()) {
+        if (file == null || !file.isFile()) continue;
+        try (FileInputStream in = new FileInputStream(file)) {
+          Properties props = new Properties();
+          props.load(in);
+          hidden = Boolean.parseBoolean(props.getProperty("hide-online-players", "false"));
+          if (hidden) break;
+        } catch (Exception ignored) {
+        }
+      }
+
+      serverPropertiesHideOnlinePlayers = hidden;
+      return hidden;
+    }
+  }
+
+  private static List<File> candidateServerProperties() {
+    List<File> files = new ArrayList<>();
+    files.add(new File("server.properties"));
+    try {
+      File worldContainer = Bukkit.getWorldContainer();
+      if (worldContainer != null) {
+        files.add(new File(worldContainer, "server.properties"));
+        File parent = worldContainer.getParentFile();
+        if (parent != null) files.add(new File(parent, "server.properties"));
+      }
+    } catch (Throwable ignored) {
+    }
+    return files;
   }
 }

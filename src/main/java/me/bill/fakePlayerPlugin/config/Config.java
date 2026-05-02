@@ -113,6 +113,46 @@ public final class Config {
     return cfg.getBoolean("tab-list.enabled", true);
   }
 
+  public static boolean pingEnabled() {
+    return cfg.getBoolean("ping.enabled", false);
+  }
+
+  public static int pingMin() {
+    return cfg.getInt("ping.min", 20);
+  }
+
+  public static int pingMax() {
+    return cfg.getInt("ping.max", 200);
+  }
+
+  public static int pingVariability() {
+    return cfg.getInt("ping.variability", 8);
+  }
+
+  public static int pingUpdateInterval() {
+    return cfg.getInt("ping.update-interval", 40);
+  }
+
+  public static boolean pingLatencyEffect() {
+    return cfg.getBoolean("ping.latency-effect", true);
+  }
+
+  public static double pingSpikeChance() {
+    return cfg.getDouble("ping.spike-chance", 0.04);
+  }
+
+  public static int pingSpikeMin() {
+    return cfg.getInt("ping.spike-min", 200);
+  }
+
+  public static int pingSpikeMax() {
+    return cfg.getInt("ping.spike-max", 600);
+  }
+
+  public static int pingJoinRampTicks() {
+    return cfg.getInt("ping.join-ramp-ticks", 60);
+  }
+
   public static boolean serverListCountBots() {
     return cfg.getBoolean("server-list.count-bots", true);
   }
@@ -222,6 +262,14 @@ public final class Config {
 
   public static boolean autoPlaceBedEnabled() {
     return cfg.getBoolean("automation.auto-place-bed", true);
+  }
+
+  public static boolean autoMilkEnabled() {
+    return cfg.getBoolean("automation.auto-milk", true);
+  }
+
+  public static boolean preventBadOmen() {
+    return cfg.getBoolean("automation.prevent-bad-omen", true);
   }
 
   public static boolean dropItemsOnDespawn() {

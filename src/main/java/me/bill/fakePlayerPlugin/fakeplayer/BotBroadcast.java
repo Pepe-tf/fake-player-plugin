@@ -35,7 +35,7 @@ public final class BotBroadcast {
     return MiniMessage.miniMessage().deserialize(converted, nameResolver);
   }
 
-  private static String resolveDisplayName(FakePlayer fp) {
+  public static String resolveDisplayName(FakePlayer fp) {
     me.bill.fakePlayerPlugin.FakePlayerPlugin plugin =
         me.bill.fakePlayerPlugin.FakePlayerPlugin.getInstance();
     if (plugin != null && plugin.isNameTagAvailable()) {

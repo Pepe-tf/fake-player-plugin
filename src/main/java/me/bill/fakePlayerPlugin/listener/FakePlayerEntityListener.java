@@ -185,7 +185,7 @@ public class FakePlayerEntityListener implements Listener {
     fp.setPlayer(null);
     manager.removeFromEntityIndex(event.getEntity().getEntityId());
 
-    if (Config.respawnOnDeath()) {
+    if (fp.isRespawnOnDeath()) {
 
       int delay = Math.max(1, Config.respawnDelay());
       if (chunkLoader != null) chunkLoader.releaseForBot(fp);
@@ -251,19 +251,30 @@ public class FakePlayerEntityListener implements Listener {
     } else {
 
       if (chunkLoader != null) chunkLoader.releaseForBot(fp);
+      String deathDespawnName = me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast.resolveDisplayName(fp);
+      final UUID deathDespawnUuid = fp.getUuid();
       if (event.getEntity() instanceof Player deadPlayer) {
-        FppScheduler.runSyncLater(
-            plugin,
-            () -> {
-              me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
-            },
-            20L);
+        manager.markDespawning(deadPlayer.getUniqueId(), deathDespawnName);
       }
       FppScheduler.runSyncLater(
           plugin,
           () -> {
+            if (event.getEntity() instanceof Player deadPlayer) {
+              me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
+              manager.clearDespawningNextTick(deathDespawnUuid);
+            }
+
+            if (me.bill.fakePlayerPlugin.config.Config.leaveMessage()) {
+              me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast
+                  .broadcastLeaveByDisplayName(deathDespawnName);
+              var vc = plugin.getVelocityChannel();
+              if (vc != null) vc.broadcastLeaveToNetwork(deathDespawnName);
+            }
+
             for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
 
+            var vc2 = plugin.getVelocityChannel();
+            if (vc2 != null) vc2.broadcastBotDespawn(fp.getUuid());
             manager.removeByName(name);
           },
           20L);

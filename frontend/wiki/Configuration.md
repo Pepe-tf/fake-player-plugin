@@ -340,6 +340,8 @@ death:
 | `respawn-delay` | Ticks before respawn |
 | `suppress-drops` | Prevent death drops |
 
+> **Per-bot override:** each `FakePlayer` stores its own `respawnOnDeath` flag, initialized from the global `respawn-on-death` default at spawn. Editable at runtime via `BotSettingGui` (Danger tab) and persisted across restarts.
+
 ---
 
 ## `chunk-loading`
@@ -372,6 +374,8 @@ automation:
 ```
 
 Defaults copied to newly spawned/restored bots. Existing bots keep per-bot values.
+
+> **Per-bot overrides:** each `FakePlayer` stores its own `autoEatEnabled` and `autoPlaceBedEnabled` flag, initialized from these global defaults at spawn. Both are editable at runtime via `BotSettingGui` (General tab) and persist across restarts.
 
 ---
 
@@ -432,6 +436,7 @@ pathfinding:
   break-blocks: false
   place-blocks: false
   place-material: DIRT
+  sprint-jump: false
   arrival-distance: 1.2
   patrol-arrival-distance: 1.5
   waypoint-arrival-distance: 0.65
@@ -462,6 +467,7 @@ Feature flags:
 - `break-blocks`
 - `place-blocks`
 - `place-material`
+- `sprint-jump` — when `true`, bots attempt a sprinting jump on every ASCEND step during pathfinding (default `false`); per-bot override available via `FakePlayer.navSprintJump`
 
 Tuning:
 - `arrival-distance`, `patrol-arrival-distance`, `waypoint-arrival-distance`
@@ -486,6 +492,8 @@ attack-mob:
 ```
 
 Controls the `/fpp attack --mob` stationary PvE mode defaults. All values can be overridden per-bot via `BotSettingGui` or `/fpp attack --mob --range <n> --priority <mode>`.
+
+> **PvE Smart Attack Mode:** each bot has a `pveSmartAttackMode` tri-state (`OFF` / `ON_NO_MOVE` / `ON_MOVE`) replacing the simple boolean. `ON_MOVE` enables pursuit (bot chases targets when out of melee range via `PathfindingService`). The `pveEnabled` accessor is a convenience that maps to `pveSmartAttackMode.isEnabled()`. Editable in `BotSettingGui` PvE tab.
 
 | Key | Default | Description |
 |-----|---------|-------------|

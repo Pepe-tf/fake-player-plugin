@@ -10,6 +10,7 @@ import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
+import me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner;
 import me.bill.fakePlayerPlugin.fakeplayer.PathfindingService;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
@@ -514,8 +515,8 @@ public final class SleepCommand implements FppCommand {
     try {
       ServerPlayer nms = ((CraftPlayer) bot).getHandle();
       BlockPos pos = new BlockPos(bedLoc.getBlockX(), bedLoc.getBlockY(), bedLoc.getBlockZ());
-      var result = nms.startSleepInBed(pos, /* force= */ true);
-      slept = result.right().isPresent(); // Right = success (Unit)
+      NmsPlayerSpawner.startSleepInBed(nms, pos, true);
+      slept = nms.isSleeping();
     } catch (Exception e) {
       Config.debugChat("[Sleep] NMS startSleepInBed failed for " + fp.getName() + ": " + e.getMessage());
     }

@@ -30,6 +30,12 @@ FakePlayer
 ├── inventory / armor / offhand / XP
 ├── bodyless or physical body state
 ├── optional ServerPlayer body
+├── per-bot overrides
+│   ├── respawn-on-death
+│   ├── auto-eat
+│   ├── auto-place-bed
+│   ├── nav avoid water / lava
+│   └── share control
 └── behavior systems
     ├── head AI
     ├── swim AI
@@ -37,7 +43,7 @@ FakePlayer
     ├── fake chat
     ├── AI conversations
     ├── follow-target AI
-    ├── PvE auto-attack AI
+    ├── PvE smart attack AI
     ├── swap / peak-hours scheduling
     └── shared pathfinding + actions
 ```
@@ -96,15 +102,15 @@ bot-interaction:
 
 ## Per-Bot Settings GUI (`BotSettingGui`)
 
-This is different from the global `/fpp settings` GUI.
+This is different from the global `/fpp settings` GUI. Opened by **shift + right-clicking** a bot entity.
 
 ### Categories
 
-- ⚙ **General** — freeze toggle, head-AI toggle, swim-AI toggle, chunk-load-radius, pick-up-items toggle, pick-up-xp toggle, rename action
-- 💬 **Chat** — chat enabled/disabled, tier, AI personality
-- ⚔ **PvP** — Live per-bot PvE settings: `pveEnabled` toggle, `pveRange` (scan radius), `pvePriority` (`nearest` / `lowest-health`), `pveMobTypes` (comma-separated entity-type whitelist — empty = all hostile mobs); coming-soon overrides for PvP combat modes
-- 📋 **Cmds** — set / clear stored RC command
-- ⚠ **Danger** — delete bot
+1. ⚙ **General** — frozen toggle, respawn-on-death toggle, head-AI toggle, swim-AI toggle, chunk-load-radius (numeric prompt), pick-up-items toggle, pick-up-xp toggle, rename action, share-control (grant/revoke controller access to other players)
+2. 💬 **Chat** — chat enabled/disabled, tier, AI personality
+3. 🗡 **PvE** — smart-attack mode (cycles OFF → ON_NO_MOVE → ON_MOVE), mob type selector (visual GUI), detect range (numeric prompt), target priority (`nearest` / `lowest-health`)
+4. 🧭 **Pathfinding** — follow-player toggle, parkour, break-blocks, place-blocks, avoid-water, avoid-lava
+5. ⚠ **Danger** — reset-all-settings (double-click confirm, op-only), delete bot (double-click confirm, op-only)
 
 It is designed for quick per-bot tuning without command spam.
 
@@ -225,6 +231,10 @@ Behavior:
 - they can optionally respawn after a delay
 - item/XP death drops can be suppressed
 
+#### Per-bot respawn-on-death
+
+Each bot has its own `respawnOnDeath` flag (initialized from `death.respawn-on-death`). When enabled, the bot auto-respawns after death instead of being removed from the world. Toggle it in `BotSettingGui` General tab or programmatically via `fp.setRespawnOnDeath(boolean)`.
+
 WorldGuard integration can also prevent player-sourced damage in no-PvP regions.
 
 ---
@@ -248,6 +258,53 @@ Important behavior:
 
 ---
 
+## PvE Smart Attack Mode
+
+Each bot has a tri-state `PveSmartAttackMode` setting that controls automatic hostile-mob targeting:
+
+| Mode | Behavior |
+|---|---|
+| `OFF` | No auto-attacking |
+| `ON_NO_MOVE` | Stationary auto-targeting — bot scans for mobs within range and attacks them, but does not move |
+| `ON_MOVE` | Pursues mob targets via `PathfindingService` — bot navigates to out-of-range targets and attacks on arrival |
+
+The legacy boolean `pveEnabled` is a convenience accessor that maps to `pveSmartAttackMode.isEnabled()`.
+
+Configurable per-bot via `BotSettingGui` PvE tab (cycles through the three states).
+
+Additional per-bot PvE fields:
+- `pveRange` — detect/scan radius (default from `attack-mob.default-range`)
+- `pvePriority` — `nearest` or `lowest-health` (default from `attack-mob.default-priority`)
+- `pveMobTypes` — filtered entity type set; empty = all hostile mobs
+
+---
+
+## Per-Bot Automation
+
+### Auto-eat
+
+Each bot has an `autoEatEnabled` toggle (initialized from `automation.auto-eat`). When enabled, bots automatically eat food from their inventory when hunger prevents sprinting.
+
+### Auto-place-bed
+
+Each bot has an `autoPlaceBedEnabled` toggle (initialized from `automation.auto-place-bed`). When enabled, bots may place a bed from inventory for auto-sleep and break it after waking.
+
+### Nav avoid water / lava
+
+Per-bot pathfinding overrides:
+- `navAvoidWater` — when `true`, the bot's pathfinding avoids water paths (default `false`)
+- `navAvoidLava` — when `true`, the bot's pathfinding avoids lava paths (default `false`)
+
+These are separate from the global `defaultWaterPathAvoidanceEnabled` and can be toggled per-bot in `BotSettingGui` Pathfinding tab.
+
+---
+
+## Share Control
+
+Owners and admins can grant or revoke controller access to other players for a specific bot. This is accessible via the **share-control** entry in `BotSettingGui` General tab. Controllers can perform limited operations on the bot (move, inventory, etc.) without being the full owner.
+
+---
+
 ## Shared Pathfinding and Action Engine
 
 Navigation is now centralized through **`PathfindingService`**.
@@ -267,6 +324,19 @@ Used by:
 - `PARKOUR`
 - `BREAK`
 - `PLACE`
+- `PILLAR`
+- `SWIM`
+- `CLIMB`
+
+### Path options (per-bot overrides)
+
+These flags are read from each bot's per-bot settings at path time:
+
+- `parkour` — allow parkour jumps (default from `pathfinding.parkour`)
+- `breakBlocks` — allow breaking blocks in the path (default from `pathfinding.break-blocks`)
+- `placeBlocks` — allow placing blocks in the path (default from `pathfinding.place-blocks`)
+- `avoidWater` — avoid water (per-bot `navAvoidWater`)
+- `avoidLava` — avoid lava (per-bot `navAvoidLava`)
 
 ### Shared helpers
 

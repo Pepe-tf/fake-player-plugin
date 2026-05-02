@@ -1,6 +1,6 @@
 # 📦 Extensions
 
-> **Addon API for third-party developers — v1.6.6.7**
+> **Addon API for third-party developers — v1.6.6.8**
 
 FPP provides a lightweight extension API that lets other plugins hook into the bot system without modifying FPP itself. Drop compiled `.jar` files into `plugins/FakePlayerPlugin/extensions/` and they are loaded automatically on startup.
 
@@ -12,10 +12,12 @@ The `ExtensionLoader` scans `plugins/FakePlayerPlugin/extensions/` for `.jar` fi
 
 ### Loading order
 
-1. JAR files are discovered alphabetically.
-2. Each JAR is inspected for a `META-INF/services/` provider declaration.
-3. Valid extensions are instantiated and passed a reference to the running `FakePlayerPlugin` instance.
-4. The extension can then register listeners, commands, or interact with the bot registry.
+1. JAR files are discovered in `plugins/FakePlayerPlugin/extensions/`.
+2. Each JAR is inspected for classes implementing `FppExtension` via direct JAR scanning (no `META-INF/services` required).
+3. Valid extensions are sorted by `getPriority()` (lower = earlier), then alphabetically by `getName()`.
+4. Dependencies (`getDependencies` / `getSoftDependencies`) are resolved before `onEnable` is called.
+5. Each extension receives a `FppApi` reference in `onEnable(FppApi)`.
+6. The extension can then register commands, tick handlers, settings tabs, or interact with the bot registry.
 
 ### Directory layout
 
@@ -37,38 +39,89 @@ The entry point every extension must implement:
 ```java
 public interface FppExtension {
 
-    /** Called once when the extension is loaded. */
-    void onLoad(FakePlayerPlugin plugin);
+    String getName();
 
-    /** Called during full plugin reload. */
-    default void onReload(FakePlayerPlugin plugin) {}
+    String getVersion();
 
-    /** Called when the extension is disabled (server stop or reload). */
-    default void onDisable(FakePlayerPlugin plugin) {}
+    default String getDescription() { return ""; }
+
+    default List<String> getAuthors() { return List.of(); }
+
+    default List<String> getDependencies() { return List.of(); }
+
+    default List<String> getSoftDependencies() { return List.of(); }
+
+    default int getPriority() { return 100; }
+
+    void onEnable(FppApi api);
+
+    default void onDisable() {}
 }
 ```
 
-### Service Provider Declaration
+| Method | Default | Description |
+|--------|---------|-------------|
+| `getName()` | — | **Required.** Unique extension name |
+| `getVersion()` | — | **Required.** Extension version string |
+| `getDescription()` | `""` | Short description |
+| `getAuthors()` | empty | List of author names |
+| `getDependencies()` | empty | Extension names that **must** be loaded first |
+| `getSoftDependencies()` | empty | Extension names that should be loaded first if present |
+| `getPriority()` | `100` | Load order — **lower = earlier**. Extensions are sorted by priority, then name |
+| `onEnable(FppApi)` | — | **Required.** Called after all dependencies are resolved |
+| `onDisable()` | no-op | Called during server stop or `/fpp reload extensions` |
 
-Create `META-INF/services/me.billhub.fakeplayer.api.FppExtension` inside your JAR:
+### Config & Resource Methods
+
+Extensions can ship their own config and resource files. The `FppExtension` base provides:
+
+| Method | Description |
+|--------|-------------|
+| `getDataFolder()` | Returns the extension's private data directory (`plugins/FakePlayerPlugin/extensions/<name>/`) |
+| `getConfig()` | Loads and returns the extension's `config.yml` from its data folder |
+| `saveDefaultConfig()` | Copies the bundled `extension-config.yml` from the JAR to the data folder (does not overwrite) |
+| `saveDefaultResources()` | Extracts all files under `extension-resources/` in the JAR to the data folder (does not overwrite existing) |
+| `saveResource(jarPath)` | Extracts a specific file from the JAR into the data folder |
+| `reloadConfig()` | Reloads the extension config from disk |
+
+### FppApi Cross-Extension Methods
+
+Access another extension's config or data from your own extension:
+
+| Method | Description |
+|--------|-------------|
+| `getExtensionDataFolder(name)` | Get another extension's data directory |
+| `saveDefaultExtensionConfig(name)` | Extract another extension's default config (useful for compatibility) |
+| `getExtensionConfig(name)` | Load another extension's config file as a `YamlConfiguration` |
+
+### Extension JAR Layout
 
 ```text
-com.example.MyExtension
+my-extension.jar
+├── com/example/MyExtension.class
+├── extension-config.yml          # Default config (extracted by saveDefaultConfig)
+├── extension-resources/          # All files here auto-extracted by saveDefaultResources
+│   ├── data.json
+│   └── templates/
+│       └── welcome.txt
+└── META-INF/services/
+    └── me.bill.fakePlayerPlugin.extension.FppExtension
 ```
-
-Each line is a fully-qualified class name implementing `FppExtension`.
 
 ---
 
 ## 📚 What Extensions Can Do
 
-Because the extension receives the live `FakePlayerPlugin` instance, it can:
+Because the extension receives the live `FppApi` reference, it can:
 
-- Access the active bot registry (`BotManager`)
+- Access the active bot registry (`FppApi.getBots()`, `getBot(name)`, etc.)
 - Register custom Bukkit event listeners
-- Start / stop bot tasks programmatically
-- Hook into the bot lifecycle (spawn, despawn, death)
+- Register FPP addon commands (`api.registerCommand(...)`)
+- Register bot tick handlers (`api.registerTickHandler(...)`)
+- Register settings tabs (`api.registerSettingsTab(...)`, `api.registerBotSettingsTab(...)`)
+- Hook into the bot lifecycle via FPP events (`FppBotSpawnEvent`, `FppBotDespawnEvent`, etc.)
 - Read and react to configuration values
+- Use per-extension config and resource files
 
 ### Common use cases
 
@@ -103,14 +156,27 @@ dependencies {
 ```java
 package com.example;
 
-import me.billhub.fakeplayer.FakePlayerPlugin;
-import me.billhub.fakeplayer.api.FppExtension;
+import me.bill.fakePlayerPlugin.api.FppApi;
+import me.bill.fakePlayerPlugin.extension.FppExtension;
 
 public class MyExtension implements FppExtension {
 
     @Override
-    public void onLoad(FakePlayerPlugin plugin) {
-        plugin.getLogger().info("MyExtension loaded!");
+    public String getName() { return "MyExtension"; }
+
+    @Override
+    public String getVersion() { return "1.0.0"; }
+
+    @Override
+    public void onEnable(FppApi api) {
+        api.getPlugin().getLogger().info("MyExtension loaded!");
+        saveDefaultConfig();
+        saveDefaultResources();
+    }
+
+    @Override
+    public void onDisable() {
+        api.getPlugin().getLogger().info("MyExtension disabled!");
     }
 }
 ```
@@ -119,11 +185,11 @@ public class MyExtension implements FppExtension {
 
 ## 🔄 Reloading
 
-Extensions are fully reloaded when `/fpp reload` runs:
+Extensions are fully reloaded when `/fpp reload extensions` runs:
 
 1. All existing extensions receive `onDisable()`.
 2. JARs are re-scanned.
-3. Valid extensions are re-instantiated and receive `onLoad()`.
+3. Valid extensions are sorted by priority then name, and receive `onEnable(FppApi)`.
 
 ---
 

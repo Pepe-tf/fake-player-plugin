@@ -19,6 +19,8 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
 
 public class BotCollisionListener implements Listener {
@@ -55,6 +57,16 @@ public class BotCollisionListener implements Listener {
     if (attacker instanceof Player && !isPvpEnabled(target.getLocation())) {
       Config.debugNms(
           "[KB-DEBUG] BotCollision: SKIP - player PVP blocked for bot=" + target.getName());
+      return;
+    }
+
+    if (event.getDamager() instanceof Player attackerPlayer
+        && !canCollide(attackerPlayer, target)) {
+      Config.debugNms(
+          "[KB-DEBUG] BotCollision: SKIP - player collision blocked for bot="
+              + target.getName()
+              + " attacker="
+              + attackerPlayer.getName());
       return;
     }
 
@@ -203,6 +215,7 @@ public class BotCollisionListener implements Listener {
       if (body == null || !body.isValid()) continue;
 
       if (!body.getWorld().equals(player.getWorld())) continue;
+      if (!canCollide(player, body)) continue;
 
       Location bLoc = body.getLocation();
       double dy = pLoc.getY() - bLoc.getY();
@@ -244,6 +257,7 @@ public class BotCollisionListener implements Listener {
         Player bodyB = bots[j].getPlayer();
         if (bodyB == null || !bodyB.isValid()) continue;
         if (!bodyA.getWorld().equals(bodyB.getWorld())) continue;
+        if (!canCollide(bodyA, bodyB)) continue;
 
         Location locB = bodyB.getLocation();
         double dy = locA.getY() - locB.getY();
@@ -307,6 +321,32 @@ public class BotCollisionListener implements Listener {
     vel.setY(newY);
     vel.setZ(newZ);
     body.setVelocity(vel);
+  }
+
+  private boolean canCollide(Player source, Entity other) {
+    if (source == null || other == null) return false;
+    if (!source.isCollidable()) return false;
+    if (other instanceof Player otherPlayer && !otherPlayer.isCollidable()) return false;
+
+    Scoreboard board = source.getScoreboard();
+    if (board == null) return true;
+
+    Team sourceTeam = board.getEntryTeam(source.getName());
+    if (sourceTeam == null) return true;
+
+    Team otherTeam = board.getEntryTeam(other.getName());
+    Team.OptionStatus rule = sourceTeam.getOption(Team.Option.COLLISION_RULE);
+    if (rule == null) return true;
+
+    if (rule == Team.OptionStatus.NEVER) return false;
+    if (rule == Team.OptionStatus.ALWAYS) return true;
+    if (rule == Team.OptionStatus.FOR_OWN_TEAM) {
+      return otherTeam != null && sourceTeam.equals(otherTeam);
+    }
+    if (rule == Team.OptionStatus.FOR_OTHER_TEAMS) {
+      return otherTeam == null || !sourceTeam.equals(otherTeam);
+    }
+    return true;
   }
 
   private static Vector scaleHorizontal(Vector input, double multiplier) {

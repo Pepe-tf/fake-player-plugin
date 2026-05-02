@@ -1,6 +1,6 @@
 # ?? Permissions
 
-> **Complete permission reference - v1.6.6.7**  
+> **Complete permission reference - v1.6.6.8**  
 > FPP uses **`fpp.op`** (alias **`fpp.admin`**) for admins and **`fpp.use`** for user-tier access.  
 > All nodes are declared in `plugin.yml` so they appear in LuckPerms tab-completion.
 
@@ -91,6 +91,9 @@ Current nodes are:
 | `fpp.sleep` | `/fpp sleep` | Set bot sleep-origin for night auto-sleep |
 | `fpp.stop` | `/fpp stop` | Cancel all active tasks for one or all bots |
 | `fpp.groups` | `/fpp groups` | Personal bot groups with GUI management |
+| `fpp.save` | `/fpp save` | Immediately save all bot data to disk |
+| `fpp.setowner` | `/fpp setowner` | Transfer bot ownership to another player |
+| `fpp.skin` | `/fpp skin` | Apply or reset per-bot skins |
 
 ### Network / proxy
 
@@ -211,13 +214,15 @@ Most commands now have granular sub-nodes for fine-grained control:
 
 - **Chat:** `fpp.chat.global`, `fpp.chat.tier`, `fpp.chat.mute`, `fpp.chat.say`
 - **Move:** `fpp.move.to`, `fpp.move.waypoint`, `fpp.move.stop`
-- **Mine:** `fpp.mine.start`, `fpp.mine.once`, `fpp.mine.stop`, `fpp.mine.area`
-- **Place:** `fpp.place.start`, `fpp.place.once`, `fpp.place.stop`
+- **Mine:** `fpp.mine.start`, `fpp.mine.once`, `fpp.mine.stop`, `fpp.mine.area`, `fpp.mine.wesel`
+- **Place:** `fpp.place.start`, `fpp.place.once`, `fpp.place.stop`, `fpp.place.wesel`
 - **Use:** `fpp.useitem.start`, `fpp.useitem.once`, `fpp.useitem.stop`
 - **Rank:** `fpp.rank.set`, `fpp.rank.clear`, `fpp.rank.bulk`
 - **Inventory:** `fpp.inventory.cmd`, `fpp.inventory.rightclick`
 - **Ping:** `fpp.ping.set`, `fpp.ping.random`, `fpp.ping.bulk`
 - **Spawn:** `fpp.spawn.multiple`, `fpp.spawn.mass`, `fpp.spawn.name`, `fpp.spawn.coords`
+
+- **Attack:** `fpp.attack.hunt` — roaming mob hunt mode
 
 The parent node (e.g. `fpp.mine`) grants all its sub-nodes automatically.
 
@@ -238,7 +243,8 @@ fpp.useitem
 ### `/fpp settings` vs per-bot settings GUI
 
 - `/fpp settings` uses `fpp.settings`
-- Shift+right-clicking a bot entity also uses `fpp.settings` � grant this to non-op players to allow per-bot tuning without full admin access
+- `/fpp bots` (bot select GUI) also uses `fpp.settings` — same permission as the in-game settings GUI
+- Shift+right-clicking a bot entity also uses `fpp.settings` — grant this to non-op players to allow per-bot tuning without full admin access
 - shift-right-click bot settings are controlled by interaction config and normal bot interaction access, not a separate public permission node
 
 ---

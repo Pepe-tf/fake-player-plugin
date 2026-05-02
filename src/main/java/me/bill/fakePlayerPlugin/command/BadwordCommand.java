@@ -11,6 +11,7 @@ import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.BotType;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
+import me.bill.fakePlayerPlugin.fakeplayer.SkinProfile;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.BadwordFilter;
@@ -377,6 +378,21 @@ public class BadwordCommand implements FppCommand {
 
           task.snapshot().applyChatAndState(newFp);
 
+          if (task.snapshot().resolvedSkin() != null
+              && task.snapshot().resolvedSkin().isValid()
+              && plugin.getSkinManager() != null
+              && newFp.getPlayer() != null) {
+            plugin.getSkinManager().applySkinFromProfile(newFp, task.snapshot().resolvedSkin());
+          }
+          if (task.snapshot().ping() >= 0 || task.snapshot().pingUserSet()) {
+            if (task.snapshot().pingUserSet()) {
+              manager.applyPing(newFp, task.snapshot().ping());
+            } else if (task.snapshot().ping() >= 0) {
+              newFp.setBasePing(task.snapshot().ping());
+              newFp.setPing(task.snapshot().ping());
+            }
+          }
+
           if (task.snapshot().aiPersonality() != null) {
             me.bill.fakePlayerPlugin.database.DatabaseManager dbm = plugin.getDatabaseManager();
             if (dbm != null)
@@ -559,6 +575,11 @@ public class BadwordCommand implements FppCommand {
 
     private final String aiPersonality;
 
+    private final SkinProfile resolvedSkin;
+
+    private final int ping;
+    private final boolean pingUserSet;
+
     private BotSnapshot(
         ItemStack[] main,
         ItemStack[] armor,
@@ -570,7 +591,10 @@ public class BadwordCommand implements FppCommand {
         String chatTier,
         boolean frozen,
         String lpGroup,
-        String aiPersonality) {
+        String aiPersonality,
+        SkinProfile resolvedSkin,
+        int ping,
+        boolean pingUserSet) {
       this.mainContents = main;
       this.armorContents = armor;
       this.extraContents = extra;
@@ -582,6 +606,9 @@ public class BadwordCommand implements FppCommand {
       this.frozen = frozen;
       this.lpGroup = lpGroup;
       this.aiPersonality = aiPersonality;
+      this.resolvedSkin = resolvedSkin;
+      this.ping = ping;
+      this.pingUserSet = pingUserSet;
     }
 
     static BotSnapshot from(FakePlayer fp) {
@@ -613,7 +640,10 @@ public class BadwordCommand implements FppCommand {
           fp.getChatTier(),
           fp.isFrozen(),
           lpg,
-          fp.getAiPersonality());
+          fp.getAiPersonality(),
+          fp.getResolvedSkin(),
+          fp.getPing(),
+          fp.hasCustomPing());
     }
 
     String lpGroup() {
@@ -622,6 +652,18 @@ public class BadwordCommand implements FppCommand {
 
     String aiPersonality() {
       return aiPersonality;
+    }
+
+    SkinProfile resolvedSkin() {
+      return resolvedSkin;
+    }
+
+    int ping() {
+      return ping;
+    }
+
+    boolean pingUserSet() {
+      return pingUserSet;
     }
 
     void applyInventoryAndXp(Player entity) {
@@ -641,6 +683,15 @@ public class BadwordCommand implements FppCommand {
       if (frozen) fp.setFrozen(true);
 
       if (aiPersonality != null) fp.setAiPersonality(aiPersonality);
+      if (resolvedSkin != null && resolvedSkin.isValid()) {
+        fp.setResolvedSkin(resolvedSkin);
+      }
+      if (pingUserSet) {
+        fp.setUserPing(ping);
+      } else if (ping >= 0) {
+        fp.setBasePing(ping);
+        fp.setPing(ping);
+      }
     }
 
     private static ItemStack[] cloneItems(ItemStack[] items) {

@@ -14,6 +14,7 @@ import me.bill.fakePlayerPlugin.gui.BotSettingGui;
 import me.bill.fakePlayerPlugin.gui.SettingGui;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.listener.BotCollisionListener;
+import me.bill.fakePlayerPlugin.listener.BotLoginOverrideListener;
 import me.bill.fakePlayerPlugin.listener.FakePlayerEntityListener;
 import me.bill.fakePlayerPlugin.listener.FakePlayerKickListener;
 import me.bill.fakePlayerPlugin.listener.PlayerJoinListener;
@@ -232,7 +233,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
                   : row.botName();
           remoteBotCache.add(
               new me.bill.fakePlayerPlugin.fakeplayer.RemoteBotEntry(
-                  row.serverId(), uuid, row.botName(), display, row.botName(), "", ""));
+                  row.serverId(), uuid, row.botName(), display, row.botName(), "", "", -1));
         } catch (Exception ignored) {
         }
       }
@@ -290,6 +291,8 @@ public final class FakePlayerPlugin extends JavaPlugin {
     commandManager.register(new FreezeCommand(fakePlayerManager));
     commandManager.register(new LpInfoCommand(this, fakePlayerManager));
     commandManager.register(new RankCommand(this, fakePlayerManager));
+    commandManager.register(new me.bill.fakePlayerPlugin.command.PingCommand(this, fakePlayerManager));
+    commandManager.register(new me.bill.fakePlayerPlugin.command.SkinCommand(this, fakePlayerManager));
     commandManager.register(new AlertCommand(this));
     commandManager.register(new SyncCommand(this));
     commandManager.register(new SwapCommand(this, fakePlayerManager));
@@ -422,6 +425,9 @@ public final class FakePlayerPlugin extends JavaPlugin {
         .getPluginManager()
         .registerEvents(
             new me.bill.fakePlayerPlugin.listener.BotSpawnProtectionListener(this), this);
+    getServer()
+        .getPluginManager()
+        .registerEvents(new BotLoginOverrideListener(this, fakePlayerManager), this);
     getServer()
         .getPluginManager()
         .registerEvents(

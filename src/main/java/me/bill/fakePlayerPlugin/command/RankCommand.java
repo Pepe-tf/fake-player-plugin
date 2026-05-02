@@ -101,6 +101,7 @@ public final class RankCommand implements FppCommand {
         .thenRun(
             () -> {
               fp.setLuckpermsGroup(groupName);
+              manager.persistBotSettings(fp);
               FppScheduler.runSyncLater(
                   plugin,
                   () -> {

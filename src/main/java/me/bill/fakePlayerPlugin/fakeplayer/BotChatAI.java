@@ -25,6 +25,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -413,17 +414,37 @@ public final class BotChatAI implements Listener {
   private void sendMessageForced(FakePlayer bot, String message, boolean allowBurst) {
     if (manager.getByUuid(bot.getUuid()) == null) return;
 
-    Player playerEntity = bot.getPlayer();
-    if (playerEntity != null && playerEntity.isOnline() && !bot.isBodyless()) {
-      dispatchChat(playerEntity, message);
-    } else {
-      broadcastFormatted(bot.getDisplayName(), message);
+    int latencyDelayTicks = 0;
+    if (Config.pingLatencyEffect() && Config.pingEnabled()) {
+      int pingMs = bot.getEffectivePing();
+      if (pingMs > 0) {
+        latencyDelayTicks = Math.max(1, pingMs / 50);
+      }
     }
-    Config.debugChat(bot.getName() + " said: " + message);
 
-    var vc = plugin.getVelocityChannel();
-    if (vc != null) {
-      vc.sendChatToNetwork(bot.getName(), bot.getDisplayName(), message, "", "");
+    if (latencyDelayTicks > 0) {
+      String prefix = "";
+      String suffix = "";
+      if (plugin.isLuckPermsAvailable()) {
+        prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(bot.getUuid());
+        suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(bot.getUuid());
+      }
+      final UUID botUuid = bot.getUuid();
+      final String fPrefix = prefix;
+      final String fSuffix = suffix;
+      FppScheduler.runSyncLater(plugin, () -> {
+        FakePlayer fp = manager.getByUuid(botUuid);
+        if (fp == null) return;
+        doSendMessage(fp, message, fPrefix, fSuffix);
+      }, latencyDelayTicks);
+    } else {
+      String prefix = "";
+      String suffix = "";
+      if (plugin.isLuckPermsAvailable()) {
+        prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(bot.getUuid());
+        suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(bot.getUuid());
+      }
+      doSendMessage(bot, message, prefix, suffix);
     }
 
     if (allowBurst) {
@@ -431,6 +452,26 @@ public final class BotChatAI implements Listener {
       if (burstChance > 0 && ThreadLocalRandom.current().nextDouble() < burstChance) {
         scheduleBurst(bot);
       }
+    }
+  }
+
+  private void doSendMessage(FakePlayer bot, String message, String prefix, String suffix) {
+    if (manager.getByUuid(bot.getUuid()) == null) return;
+
+    boolean sentViaPlayerChat = false;
+    Player playerEntity = bot.getPlayer();
+    if (playerEntity != null && !bot.isBodyless()) {
+      dispatchChat(playerEntity, message);
+      sentViaPlayerChat = true;
+    }
+    if (!sentViaPlayerChat) {
+      broadcastFormatted(bot.getDisplayName(), message);
+    }
+    Config.debugChat(bot.getName() + " said: " + message);
+
+    var vc = plugin.getVelocityChannel();
+    if (vc != null) {
+      vc.sendChatToNetwork(bot.getName(), bot.getDisplayName(), message, prefix, suffix);
     }
   }
 
@@ -1220,7 +1261,38 @@ public final class BotChatAI implements Listener {
         }
       }
     }
-    player.chat(rawMessage);
+    try {
+      player.chat(rawMessage);
+    } catch (Throwable chatError) {
+      Config.debugChat(
+          "dispatchChat fallback for "
+              + player.getName()
+              + " ("
+              + chatError.getClass().getSimpleName()
+              + ": "
+              + chatError.getMessage()
+              + ")");
+      dispatchLegacyChat(player, rawMessage);
+    }
+  }
+
+  @SuppressWarnings("deprecation")
+  private static void dispatchLegacyChat(Player player, String rawMessage) {
+    Component message = Component.text(rawMessage);
+    Component displayName = player.displayName();
+    java.util.Set<Audience> viewers = new java.util.HashSet<>(Bukkit.getOnlinePlayers());
+    viewers.add(Bukkit.getConsoleSender());
+    net.kyori.adventure.chat.SignedMessage signed =
+        net.kyori.adventure.chat.SignedMessage.system(rawMessage, message);
+    ChatRenderer renderer =
+        ChatRenderer.viewerUnaware(
+            (src, dn, msg) -> Component.empty().append(dn).append(Component.text(": ")).append(msg));
+    AsyncChatEvent event = new AsyncChatEvent(false, player, viewers, renderer, message, message, signed);
+    Bukkit.getPluginManager().callEvent(event);
+    if (event.isCancelled()) return;
+    for (Audience viewer : event.viewers()) {
+      viewer.sendMessage(event.renderer().render(player, displayName, event.message(), viewer));
+    }
   }
 
   public static void broadcastRemote(
@@ -1231,7 +1303,14 @@ public final class BotChatAI implements Listener {
     }
     isRemoteBroadcast.set(true);
     try {
-      broadcastFormatted(botDisplayName, message);
+      String decoratedName = (botDisplayName != null) ? botDisplayName : botName;
+      if ((prefix != null && !prefix.isBlank()) || (suffix != null && !suffix.isBlank())) {
+        decoratedName =
+            (prefix != null ? prefix : "")
+                + decoratedName
+                + (suffix != null ? suffix : "");
+      }
+      broadcastFormatted(decoratedName, message);
       Config.debugChat("Broadcast remote message from bot '" + botName + "'.");
     } finally {
       isRemoteBroadcast.remove();

@@ -154,6 +154,8 @@ public final class Perm {
 
   public static final String RANK_BULK = "fpp.rank.bulk";
 
+  public static final String SKIN = "fpp.skin";
+
   public static final String LP_INFO = "fpp.lpinfo";
 
   public static final String PERSONALITY = "fpp.personality";

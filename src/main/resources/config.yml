@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Internal — managed automatically. Do NOT edit.
-config-version: 67
+config-version: 70
 language: en
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -77,6 +77,27 @@ skin:
 # false = bots are hidden from the tab list (still counted in server player count)
 tab-list:
   enabled: true
+
+# ── Ping Simulation ─────────────────────────────────────────────────────────
+# Makes bots appear as real players with realistic latency in the tab list.
+# Each bot gets a random base ping within the range and a small periodic
+# jitter (±variability) that fluctuates every update-interval ticks, just
+# like a real player's connection.  The NMS latency field and the tab-list
+# ping bars are both updated, so server-side APIs (e.g. player.getPing())
+# also return the simulated value.
+ping:
+  enabled: false            # Give every bot a realistic simulated ping.
+  min: 20                   # Lowest possible base ping (ms).
+  max: 200                  # Highest possible base ping (ms).
+  variability: 8            # ±random jitter added each cycle (ms).
+  update-interval: 40       # Ticks between ping fluctuation updates (40 = 2 s).
+  latency-effect: true      # Delay bot chat messages by their simulated ping
+                           # to mimic real network lag. Bots with higher ping
+                           # wait longer before sending messages.
+  spike-chance: 0.04        # Chance per tick-cycle of a random ping spike (0–1).
+  spike-min: 200            # Minimum spike value (ms) added on top of base.
+  spike-max: 600            # Maximum spike value (ms) added on top of base.
+  join-ramp-ticks: 60       # Ticks after spawn to ramp ping from 1→base (0=off).
 
 # ── Server List (MOTD ping) ────────────────────────────────────────────────────
 # Controls how bots affect the player count shown in the server list / MOTD.
@@ -185,8 +206,10 @@ chunk-loading:
 # ── Automation Defaults ───────────────────────────────────────────────────────
 # Defaults copied to newly spawned/restored bots. Existing bots keep per-bot values.
 automation:
-  auto-eat: true        # Bots eat food from inventory when hunger prevents sprinting.
-  auto-place-bed: true  # Bots may place a bed from inventory for auto-sleep, then break it after waking.
+  auto-eat: true            # Bots eat food from inventory when hunger prevents sprinting.
+  auto-place-bed: true      # Bots may place a bed from inventory for auto-sleep, then break it after waking.
+  auto-milk: true           # Bots automatically drink milk to cure harmful potion effects (poison, wither, etc.).
+  prevent-bad-omen: true    # Prevent Bad Omen, Raid Omen, and Trial Omen effects (avoids triggering raids).
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -263,7 +286,7 @@ pathfinding:
 # ═════════════════════════════════════════════════════════════════════════════
 fake-chat:
   enabled: false
-  require-player-online: true  # Only chat when at least one real player is online
+  require-player-online: true   # Only chat when at least one real player is online
   chance: 0.75                 # Probability (0.0–1.0) a message fires each interval
   interval:
     min: 5    # Minimum seconds between a bot's messages

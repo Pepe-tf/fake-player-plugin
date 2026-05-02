@@ -67,6 +67,8 @@ public class FakePlayerManager {
 
   private int headAiTickCounter = 0;
 
+  private volatile long visualSyncTickCounter = 0L;
+
   private final Set<UUID> bodyTransitionBots = new HashSet<>();
 
   private final Map<UUID, Integer> navJumpHolding = new ConcurrentHashMap<>();
@@ -76,7 +78,6 @@ public class FakePlayerManager {
   private final Set<UUID> navLockedBots = ConcurrentHashMap.newKeySet();
 
   private final ConcurrentHashMap<UUID, String> despawningBotIds = new ConcurrentHashMap<>();
-  private final Set<UUID> despawnLeaveBroadcastedIds = ConcurrentHashMap.newKeySet();
 
   private final Set<UUID> renamingBotIds = ConcurrentHashMap.newKeySet();
 
@@ -210,7 +211,7 @@ public class FakePlayerManager {
                 fp.clearTabListDirty();
                 for (Player p : online) {
                   PacketHelper.sendTabListDisplayNameUpdate(p, fp);
-                  if (fp.hasCustomPing()) {
+                  if (fp.hasCustomPing() || fp.isPingSimulated()) {
                     PacketHelper.sendTabListLatencyUpdate(p, fp);
                   }
                 }
@@ -218,6 +219,54 @@ public class FakePlayerManager {
             },
         20L,
         20L);
+
+    final int pingInterval = Math.max(20, Config.pingUpdateInterval());
+    FppScheduler.runSyncRepeating(
+        plugin,
+        () -> {
+          if (!Config.pingEnabled()) return;
+          if (activePlayers.isEmpty()) return;
+          List<Player> online = cachedOnlinePlayers;
+          if (online == null || online.isEmpty()) online = new ArrayList<>(Bukkit.getOnlinePlayers());
+          int variability = Config.pingVariability();
+          double spikeChance = Config.pingSpikeChance();
+          int spikeMin = Config.pingSpikeMin();
+          int spikeMax = Config.pingSpikeMax();
+          long currentMs = System.currentTimeMillis();
+          int rampTicks = Config.pingJoinRampTicks();
+          int rampMs = rampTicks * 50;
+          ThreadLocalRandom rng = ThreadLocalRandom.current();
+          for (FakePlayer fp : activePlayers.values()) {
+            if (fp.hasCustomPing()) continue;
+            if (!fp.isPingSimulated()) continue;
+            int base = fp.getBasePing();
+            if (base < 0) continue;
+            int jitter = variability > 0 ? rng.nextInt(-variability, variability + 1) : 0;
+            int newPing = base + jitter;
+            if (spikeChance > 0 && rng.nextDouble() < spikeChance) {
+              int spike = spikeMin + rng.nextInt(Math.max(1, spikeMax - spikeMin + 1));
+              newPing += spike;
+            }
+            if (rampMs > 0 && fp.getSpawnTick() > 0) {
+              long elapsed = currentMs - fp.getSpawnTick();
+              if (elapsed < rampMs) {
+                double progress = (double) elapsed / rampMs;
+                newPing = Math.max(1, (int) (newPing * progress));
+              }
+            }
+            newPing = Math.max(1, Math.min(9999, newPing));
+            fp.setPing(newPing);
+            Player bot = fp.getPlayer();
+            if (bot != null && bot.isOnline()) {
+              NmsPlayerSpawner.setPing(bot, newPing);
+            }
+            for (Player p : online) {
+              PacketHelper.sendTabListLatencyUpdate(p, fp);
+            }
+          }
+        },
+        pingInterval,
+        pingInterval);
 
     FppScheduler.runSyncRepeating(
         plugin,
@@ -242,6 +291,7 @@ public class FakePlayerManager {
 
               final double psd = Config.positionSyncDistance();
               final double posSyncDistSq = psd > 0 ? psd * psd : -1;
+              visualSyncTickCounter++;
 
               final int onlineCount = online.size();
               final double[] playerX = new double[onlineCount];
@@ -260,6 +310,7 @@ public class FakePlayerManager {
                 Player bot = fp.getPlayer();
 
                 if (bot == null || !bot.isValid() || !bot.isOnline() || bot.isDead()) continue;
+                boolean sendVisualSyncThisTick = shouldSendLaggedVisualUpdate(fp);
                 Location before = bot.getLocation();
 
                 if (!fp.isFrozen()) {
@@ -373,16 +424,18 @@ public class FakePlayerManager {
                         || Math.abs(rot[1] - prevPitch) > 0.01f) {
                       bot.setRotation(rot[0], rot[1]);
                       NmsPlayerSpawner.setHeadYaw(bot, rot[0]);
-                      for (int pi2 = 0; pi2 < onlineCount; pi2++) {
-                        Player p = online.get(pi2);
-                        if (p.getUniqueId().equals(fp.getUuid())) continue;
-                        if (playerWorld[pi2] != before.getWorld()) continue;
-                        if (posSyncDistSq > 0) {
-                          double ddx = playerX[pi2] - before.getX();
-                          double ddz = playerZ[pi2] - before.getZ();
-                          if (ddx * ddx + ddz * ddz > posSyncDistSq) continue;
+                      if (sendVisualSyncThisTick) {
+                        for (int pi2 = 0; pi2 < onlineCount; pi2++) {
+                          Player p = online.get(pi2);
+                          if (p.getUniqueId().equals(fp.getUuid())) continue;
+                          if (playerWorld[pi2] != before.getWorld()) continue;
+                          if (posSyncDistSq > 0) {
+                            double ddx = playerX[pi2] - before.getX();
+                            double ddz = playerZ[pi2] - before.getZ();
+                            if (ddx * ddx + ddz * ddz > posSyncDistSq) continue;
+                          }
+                          PacketHelper.sendRotation(p, fp, rot[0], rot[1], rot[0]);
                         }
-                        PacketHelper.sendRotation(p, fp, rot[0], rot[1], rot[0]);
                       }
                     }
                   }
@@ -401,16 +454,18 @@ public class FakePlayerManager {
                     float lp = miningLock.getPitch();
                     bot.setRotation(ly, lp);
                     NmsPlayerSpawner.setHeadYaw(bot, ly);
-                    for (int pi2 = 0; pi2 < onlineCount; pi2++) {
-                      Player p = online.get(pi2);
-                      if (p.getUniqueId().equals(fp.getUuid())) continue;
-                      if (playerWorld[pi2] != miningLock.getWorld()) continue;
-                      if (posSyncDistSq > 0) {
-                        double ddx = playerX[pi2] - miningLock.getX();
-                        double ddz = playerZ[pi2] - miningLock.getZ();
-                        if (ddx * ddx + ddz * ddz > posSyncDistSq) continue;
+                    if (sendVisualSyncThisTick) {
+                      for (int pi2 = 0; pi2 < onlineCount; pi2++) {
+                        Player p = online.get(pi2);
+                        if (p.getUniqueId().equals(fp.getUuid())) continue;
+                        if (playerWorld[pi2] != miningLock.getWorld()) continue;
+                        if (posSyncDistSq > 0) {
+                          double ddx = playerX[pi2] - miningLock.getX();
+                          double ddz = playerZ[pi2] - miningLock.getZ();
+                          if (ddx * ddx + ddz * ddz > posSyncDistSq) continue;
+                        }
+                        PacketHelper.sendRotation(p, fp, ly, lp, ly);
                       }
-                      PacketHelper.sendRotation(p, fp, ly, lp, ly);
                     }
 
                     bot.setVelocity(ZERO_VELOCITY);
@@ -432,7 +487,8 @@ public class FakePlayerManager {
                     before.getWorld() == after.getWorld()
                         && (dxM * dxM + dyM * dyM + dzM * dzM) > 1e-8;
                 double vx = vel2.getX(), vy = vel2.getY(), vz2 = vel2.getZ();
-                if (moved || (vx * vx + vy * vy + vz2 * vz2) > 1e-6) {
+                if (sendVisualSyncThisTick
+                    && (moved || (vx * vx + vy * vy + vz2 * vz2) > 1e-6)) {
                   if (onlineCount > 0) {
                     for (int pi2 = 0; pi2 < onlineCount; pi2++) {
                       Player p = online.get(pi2);
@@ -557,8 +613,12 @@ public class FakePlayerManager {
     return despawningBotIds.get(uuid);
   }
 
-  public boolean hasBroadcastedDespawnLeave(UUID uuid) {
-    return despawnLeaveBroadcastedIds.contains(uuid);
+  public void markDespawning(UUID uuid, String displayName) {
+    despawningBotIds.put(uuid, displayName);
+  }
+
+  public void clearDespawningNextTick(UUID uuid) {
+    FppScheduler.runSyncLater(plugin, () -> despawningBotIds.remove(uuid), 1L);
   }
 
   public void markRenaming(UUID uuid) {
@@ -597,7 +657,43 @@ public class FakePlayerManager {
           + sl.getBlockY()
           + ","
           + sl.getBlockZ();
-    return "unknown";
+      return "unknown";
+  }
+
+  public Location getLastKnownLocation(String botName) {
+    if (botName == null || botName.isBlank()) return null;
+
+    FakePlayer active = getByName(botName);
+    if (active != null) {
+      Location live = active.getLiveLocation();
+      return live != null ? live.clone() : null;
+    }
+
+    if (db == null) return null;
+
+    UUID uuid = resolveUuid(botName);
+    if (uuid == null) return null;
+
+    List<BotRecord> sessions = db.getSessionsByUuid(uuid);
+    if (sessions.isEmpty()) return null;
+
+    BotRecord session = sessions.get(0);
+    String worldName =
+        session.getLastWorld() != null && !session.getLastWorld().isBlank()
+            ? session.getLastWorld()
+            : session.getWorldName();
+    if (worldName == null || worldName.isBlank()) return null;
+
+    World world = Bukkit.getWorld(worldName);
+    if (world == null) return null;
+
+    return new Location(
+        world,
+        session.getLastX(),
+        session.getLastY(),
+        session.getLastZ(),
+        session.getLastYaw(),
+        session.getLastPitch());
   }
 
   public int spawn(Location location, int count, Player spawner) {
@@ -648,6 +744,7 @@ public class FakePlayerManager {
       fp.setDisplayName(userDisplay);
       fp.setSpawnLocation(location);
       fp.setSpawnedBy(spawnerName, spawnerUuid);
+      fp.setSpawnTick(System.currentTimeMillis());
       activePlayers.put(uuid, fp);
       nameIndex.put(ubn.internalName().toLowerCase(), fp);
       batch.add(fp);
@@ -765,6 +862,7 @@ public class FakePlayerManager {
       fp.setDisplayName(displayName);
       fp.setSpawnLocation(location);
       fp.setSpawnedBy(spawnerName, spawnerUuid);
+      fp.setSpawnTick(System.currentTimeMillis());
       activePlayers.put(uuid, fp);
       nameIndex.put(name.toLowerCase(), fp);
       batch.add(fp);
@@ -911,6 +1009,21 @@ public class FakePlayerManager {
     }
   }
 
+  private int computeInitialPing(FakePlayer fp) {
+    if (fp.hasCustomPing()) {
+      return Math.max(0, fp.getPing());
+    }
+    if (Config.pingEnabled()) {
+      int min = Config.pingMin();
+      int max = Config.pingMax();
+      int base = min + ThreadLocalRandom.current().nextInt(Math.max(1, max - min + 1));
+      fp.setBasePing(base);
+      fp.setPing(base);
+      return base;
+    }
+    return -1;
+  }
+
   private void spawnBodyAndFinish(FakePlayer fp, Location spawnLoc) {
 
     FakePlayerBody.resolveAndFinish(
@@ -944,6 +1057,8 @@ public class FakePlayerManager {
             }
           }
 
+          int initialPing = computeInitialPing(fp);
+
           if (!fp.isBodyless() && Config.spawnBody()) {
             if (NmsPlayerSpawner.isFolia() && fp.getPlayer() == null) {
               // On Folia, dispatch placement to the destination chunk's region thread
@@ -951,6 +1066,7 @@ public class FakePlayerManager {
               FakePlayerBody.spawnAsync(
                   fp,
                   spawnLoc,
+                  initialPing,
                   asyncBody -> {
                     if (asyncBody == null) {
                       FppScheduler.runSync(
@@ -979,49 +1095,26 @@ public class FakePlayerManager {
               return;
             }
             Player body =
-                fp.getPlayer() != null ? fp.getPlayer() : FakePlayerBody.spawn(fp, spawnLoc);
+                fp.getPlayer() != null ? fp.getPlayer() : FakePlayerBody.spawn(fp, spawnLoc, initialPing);
             if (body != null) {
               fp.setPhysicsEntity(body);
               entityIdIndex.put(body.getEntityId(), fp);
               fp.setPacketProfileName(fp.getName());
+              // Ping was already set on the NMS ServerPlayer before placeNewPlayer,
+              // but update it again here in case the pre-spawn set didn't take effect.
+              me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.setPing(body, fp.getEffectivePing());
 
               if (plugin.isWorldGuardAvailable()
                   && !me.bill.fakePlayerPlugin.util.WorldGuardHelper.isPvpAllowed(spawnLoc)) {
-                org.bukkit.Location wgSafeLoc =
-                    me.bill.fakePlayerPlugin.util.WorldGuardHelper.findSafeLocation(
-                        spawnLoc.getWorld());
-                if (wgSafeLoc != null) {
-                  final Player safeBody = body;
-                  final org.bukkit.Location safeTarget = wgSafeLoc;
-                  // Use 25L so this fires after the BotSpawnProtectionListener's
-                  // 20-tick protection window (which is used for custom-world spawns).
-                  FppScheduler.runSyncLater(
-                      plugin,
-                      () -> {
-                        if (!activePlayers.containsKey(fp.getUuid())) return;
-                        if (!safeBody.isOnline()) return;
-                        FppScheduler.teleportAsync(safeBody, safeTarget);
-                        fp.setSpawnLocation(safeTarget);
-                        Config.debug(
-                            "WorldGuard: teleported bot '"
-                                + fp.getName()
-                                + "' out of no-pvp region"
-                                + " to world spawn "
-                                + safeTarget.getBlockX()
-                                + ","
-                                + safeTarget.getBlockY()
-                                + ","
-                                + safeTarget.getBlockZ());
-                      },
-                      25L);
-                } else {
-                  me.bill.fakePlayerPlugin.util.FppLogger.warn(
-                      "WorldGuard: bot '"
-                          + fp.getName()
-                          + "' spawned in a no-pvp region but world spawn"
-                          + " is also in a no-pvp region - cannot find a"
-                          + " safe location.");
-                }
+                Config.debug(
+                    "WorldGuard: bot '"
+                        + fp.getName()
+                        + "' spawned in a no-pvp region at "
+                        + spawnLoc.getBlockX()
+                        + ","
+                        + spawnLoc.getBlockY()
+                        + ","
+                        + spawnLoc.getBlockZ());
               }
 
               final Player savedBody = body;
@@ -1142,41 +1235,40 @@ public class FakePlayerManager {
 
             if (isNmsPlayer) {
               for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
-              for (Player p : online) PacketHelper.sendTabListDisplayNameUpdate(p, fp);
+              if (fp.hasCustomPing() || fp.isPingSimulated()) {
+                for (Player p : online) PacketHelper.sendTabListLatencyUpdate(p, fp);
+              }
             } else {
 
               for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
-              for (Player p : online) PacketHelper.sendTabListDisplayNameUpdate(p, fp);
+              if (fp.hasCustomPing() || fp.isPingSimulated()) {
+                for (Player p : online) PacketHelper.sendTabListLatencyUpdate(p, fp);
+              }
             }
 
-            FppScheduler.runSyncLater(
-                plugin,
-                () -> {
-                  if (!activePlayers.containsKey(fp.getUuid())) return;
-                  boolean nms = fp.getPlayer() != null;
-                  Config.debug("Re-sending tab-list (3t) for '" + fp.getName() + "' nms=" + nms);
-                  for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListAdd(p, fp);
-                  for (Player p : Bukkit.getOnlinePlayers())
-                    PacketHelper.sendTabListDisplayNameUpdate(p, fp);
-                },
-                3L);
+             FppScheduler.runSyncLater(
+                 plugin,
+                 () -> {
+                   if (!activePlayers.containsKey(fp.getUuid())) return;
+                   boolean nms = fp.getPlayer() != null;
+                   Config.debug("Re-sending tab-list display-name (3t) for '" + fp.getName() + "' nms=" + nms);
+                   for (Player p : Bukkit.getOnlinePlayers())
+                     PacketHelper.sendTabListDisplayNameUpdate(p, fp);
+                  },
+                  3L);
 
-            FppScheduler.runSyncLater(
-                plugin,
-                () -> {
-                  if (!activePlayers.containsKey(fp.getUuid())) return;
-                  boolean nms = fp.getPlayer() != null;
-                  Config.debug("Re-sending tab-list (20t) for '" + fp.getName() + "' nms=" + nms);
-                  for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListAdd(p, fp);
-                  for (Player p : Bukkit.getOnlinePlayers())
-                    PacketHelper.sendTabListDisplayNameUpdate(p, fp);
+             FppScheduler.runSyncLater(
+                 plugin,
+                 () -> {
+                   if (!activePlayers.containsKey(fp.getUuid())) return;
+                   Config.debug("Finalising tab-list for '" + fp.getName() + "'");
 
-                  if (botTabTeam != null) botTabTeam.addBot(fp);
+                   if (botTabTeam != null) botTabTeam.addBot(fp);
 
-                  var vc = plugin.getVelocityChannel();
-                  if (vc != null) vc.broadcastBotSpawn(fp);
-                },
-                20L);
+                   var vc = plugin.getVelocityChannel();
+                   if (vc != null) vc.broadcastBotSpawn(fp);
+                 },
+                 20L);
           } else {
             Config.debug("Tab-list disabled - unlisting '" + fp.getName() + "'");
 
@@ -1196,19 +1288,6 @@ public class FakePlayerManager {
                 },
                 3L);
           }
-
-          FppScheduler.runSyncLater(
-              plugin,
-              () -> {
-                if (!activePlayers.containsKey(fp.getUuid())) return;
-                if (fp.isBodyless()) {
-                  BotBroadcast.broadcastJoin(fp);
-                }
-
-                var vc = plugin.getVelocityChannel();
-                if (vc != null) vc.broadcastJoinToNetwork(fp);
-              },
-              2L);
 
           if (persistence != null && Config.persistOnRestart()) {
             persistence.saveAsync(activePlayers.values());
@@ -1258,6 +1337,7 @@ public class FakePlayerManager {
                                   () -> {
                                     if (!activePlayers.containsKey(botUuid)) return;
                                     refreshLpDisplayName(fp);
+                                    persistBotSettings(fp);
 
                                     if (botSwapAI != null) {
                                       botSwapAI.schedule(fp);
@@ -1374,6 +1454,7 @@ public class FakePlayerManager {
     fp.setSpawnLocation(location);
     fp.setSpawnedBy(effectiveSpawner, spawnedByUuid);
     usedNames.add(name);
+    fp.setSpawnTick(System.currentTimeMillis());
     activePlayers.put(uuid, fp);
     nameIndex.put(name.toLowerCase(), fp);
 
@@ -1495,22 +1576,24 @@ public class FakePlayerManager {
       final FakePlayer target = fp;
       Runnable doVisualRemove =
           () -> {
-            // Drop items if configured (same logic as single-bot despawn).
             if (Config.dropItemsOnDespawn()) {
               dropBotContents(target);
             }
 
             String despawnName = resolveDespawnDisplayName(target);
             boolean broadcastLeave = Config.leaveMessage() && !renamingBotIds.contains(target.getUuid());
-            despawningBotIds.put(target.getUuid(), despawnName);
+
             if (broadcastLeave) {
-              despawnLeaveBroadcastedIds.add(target.getUuid());
               BotBroadcast.broadcastLeaveByDisplayName(despawnName);
+              var vc3 = plugin.getVelocityChannel();
+              if (vc3 != null) vc3.broadcastLeaveToNetwork(despawnName);
             }
+
+            despawningBotIds.put(target.getUuid(), despawnName);
             try {
               FakePlayerBody.removeAll(target);
             } finally {
-              clearDespawnTrackingNextTick(target.getUuid());
+              clearDespawningNextTick(target.getUuid());
             }
             if (chunkLoader != null) chunkLoader.releaseForBot(target);
 
@@ -1519,10 +1602,6 @@ public class FakePlayerManager {
             List<Player> snapshot = new ArrayList<>(Bukkit.getOnlinePlayers());
             for (Player online : snapshot) PacketHelper.sendTabListRemove(online, target);
 
-            if (broadcastLeave) {
-              var vc = plugin.getVelocityChannel();
-              if (vc != null) vc.broadcastLeaveToNetwork(despawnName);
-            }
             if (db != null) db.recordRemoval(target.getUuid(), "DELETED");
 
             var vc2 = plugin.getVelocityChannel();
@@ -1770,6 +1849,20 @@ public class FakePlayerManager {
   }
 
   public boolean delete(String name) {
+    return deleteInternal(name, 1L, false, false, null);
+  }
+
+  public boolean deleteForLoginHandoff(
+      String name, @org.jetbrains.annotations.Nullable Runnable onComplete) {
+    return deleteInternal(name, 0L, true, true, onComplete);
+  }
+
+  private boolean deleteInternal(
+      String name,
+      long leaveDelay,
+      boolean fastVisualRemove,
+      boolean suppressLeaveBroadcast,
+      @org.jetbrains.annotations.Nullable Runnable onComplete) {
     FakePlayer fp = getByName(name);
     if (fp == null) return false;
 
@@ -1844,71 +1937,84 @@ public class FakePlayerManager {
     var sleepCmd = plugin.getSleepCommand();
     if (sleepCmd != null) sleepCmd.cleanupBot(target.getUuid());
 
-    long leaveDelay = 1L;
-
     Runnable doVisualRemove =
         () -> {
-          // Snapshot was already taken synchronously at the start of delete()
-          // so we only need to drop items here if configured.
-          if (Config.dropItemsOnDespawn()) {
-            dropBotContents(target);
-          }
-
-          String despawnName = resolveDespawnDisplayName(target);
-          boolean broadcastLeave = Config.leaveMessage() && !renamingBotIds.contains(target.getUuid());
-          despawningBotIds.put(target.getUuid(), despawnName);
-          if (broadcastLeave) {
-            despawnLeaveBroadcastedIds.add(target.getUuid());
-            BotBroadcast.broadcastLeaveByDisplayName(despawnName);
-          }
           try {
+            if (Config.dropItemsOnDespawn()) {
+              dropBotContents(target);
+            }
 
-            FakePlayerBody.removeAll(target);
+            String despawnName = resolveDespawnDisplayName(target);
+            boolean broadcastLeave =
+                Config.leaveMessage()
+                    && !renamingBotIds.contains(target.getUuid())
+                    && !suppressLeaveBroadcast;
+
+            if (broadcastLeave) {
+              BotBroadcast.broadcastLeaveByDisplayName(despawnName);
+              var vc3 = plugin.getVelocityChannel();
+              if (vc3 != null) vc3.broadcastLeaveToNetwork(despawnName);
+            }
+
+            despawningBotIds.put(target.getUuid(), despawnName);
+            try {
+              if (fastVisualRemove) FakePlayerBody.removeAllFast(target);
+              else FakePlayerBody.removeAll(target);
+            } finally {
+              clearDespawningNextTick(target.getUuid());
+            }
+            if (chunkLoader != null) chunkLoader.releaseForBot(target);
+
+            if (botTabTeam != null) botTabTeam.removeBot(target);
+
+            List<Player> snapshot = new ArrayList<>(Bukkit.getOnlinePlayers());
+            for (Player online : snapshot) PacketHelper.sendTabListRemove(online, target);
+
+            if (db != null) db.recordRemoval(target.getUuid(), "DELETED");
+
+            if (plugin.isLuckPermsAvailable()) {
+              me.bill
+                  .fakePlayerPlugin
+                  .util
+                  .LuckPermsHelper
+                  .setPlayerGroup(target.getUuid(), "default")
+                  .thenRun(() -> Config.debug("Cleaned up LP data for bot: " + botName))
+                  .exceptionally(
+                      throwable -> {
+                        me.bill.fakePlayerPlugin.util.FppLogger.warn(
+                            "Failed to cleanup LP data for bot "
+                                + botName
+                                + ": "
+                                + throwable.getMessage());
+                        return null;
+                      });
+            }
+
+            var vc2 = plugin.getVelocityChannel();
+            if (vc2 != null) vc2.broadcastBotDespawn(target.getUuid());
+            Config.debug("Deleted fake player: " + botName);
+            if (persistence != null && Config.persistOnRestart()) {
+              persistence.saveAsync(activePlayers.values());
+            }
           } finally {
-            clearDespawnTrackingNextTick(target.getUuid());
-          }
-          if (chunkLoader != null) chunkLoader.releaseForBot(target);
-
-          if (botTabTeam != null) botTabTeam.removeBot(target);
-
-          List<Player> snapshot = new ArrayList<>(Bukkit.getOnlinePlayers());
-          for (Player online : snapshot) PacketHelper.sendTabListRemove(online, target);
-
-          if (broadcastLeave) {
-            var vc = plugin.getVelocityChannel();
-            if (vc != null) vc.broadcastLeaveToNetwork(despawnName);
-          }
-          if (db != null) db.recordRemoval(target.getUuid(), "DELETED");
-
-          if (plugin.isLuckPermsAvailable()) {
-            me.bill
-                .fakePlayerPlugin
-                .util
-                .LuckPermsHelper
-                .setPlayerGroup(target.getUuid(), "default")
-                .thenRun(() -> Config.debug("Cleaned up LP data for bot: " + botName))
-                .exceptionally(
-                    throwable -> {
-                      me.bill.fakePlayerPlugin.util.FppLogger.warn(
-                          "Failed to cleanup LP data for bot "
-                              + botName
-                              + ": "
-                              + throwable.getMessage());
-                      return null;
-                    });
-          }
-
-          var vc2 = plugin.getVelocityChannel();
-          if (vc2 != null) vc2.broadcastBotDespawn(target.getUuid());
-          Config.debug("Deleted fake player: " + botName);
-          if (persistence != null && Config.persistOnRestart()) {
-            persistence.saveAsync(activePlayers.values());
+            if (onComplete != null) {
+              try {
+                onComplete.run();
+              } catch (Throwable ignored) {
+              }
+            }
           }
         };
 
     Player body = target.getPlayer();
-    if (body != null) FppScheduler.runAtEntityLaterWithId(plugin, body, doVisualRemove, leaveDelay);
-    else FppScheduler.runSyncLater(plugin, doVisualRemove, leaveDelay);
+    if (leaveDelay <= 0L) {
+      if (body != null) FppScheduler.runAtEntity(plugin, body, doVisualRemove);
+      else FppScheduler.runSync(plugin, doVisualRemove);
+    } else if (body != null) {
+      FppScheduler.runAtEntityLaterWithId(plugin, body, doVisualRemove, leaveDelay);
+    } else {
+      FppScheduler.runSyncLater(plugin, doVisualRemove, leaveDelay);
+    }
 
     return true;
   }
@@ -1936,6 +2042,7 @@ public class FakePlayerManager {
     List<Player> snapshot = fastShutdown ? List.of() : new ArrayList<>(Bukkit.getOnlinePlayers());
 
     for (FakePlayer fp : toRemove) {
+      markRenaming(fp.getUuid());
 
       if (fastShutdown) FakePlayerBody.removeAllFast(fp);
       else FakePlayerBody.removeAll(fp);
@@ -1946,6 +2053,7 @@ public class FakePlayerManager {
         for (Player online : snapshot) PacketHelper.sendTabListRemove(online, fp);
       }
 
+      unmarkRenaming(fp.getUuid());
       Config.debug("Shutdown removed bot: " + fp.getName());
     }
 
@@ -2018,7 +2126,7 @@ public class FakePlayerManager {
                 fp,
                 loc,
                 () -> {
-                  Player newBody = FakePlayerBody.spawn(fp, loc);
+                   Player newBody = FakePlayerBody.spawn(fp, loc, fp.getEffectivePing());
                   if (newBody != null) {
                     fp.setPhysicsEntity(newBody);
                     entityIdIndex.put(newBody.getEntityId(), fp);
@@ -2026,8 +2134,7 @@ public class FakePlayerManager {
 
                     if (Config.tabListEnabled()) {
                       for (Player p : online) {
-                        PacketHelper.sendTabListRemove(p, fp);
-                        PacketHelper.sendTabListAdd(p, fp);
+                        PacketHelper.sendTabListRefreshEntry(p, fp);
                       }
                     }
 
@@ -2072,7 +2179,7 @@ public class FakePlayerManager {
             }
 
             if (Config.tabListEnabled()) {
-              for (Player p : online) PacketHelper.sendTabListAdd(p, fp);
+              for (Player p : online) PacketHelper.sendTabListRefreshEntry(p, fp);
             }
             FppLogger.info("BodyConfig: body hidden for '" + fp.getName() + "', now tab-list only");
           });
@@ -2110,19 +2217,8 @@ public class FakePlayerManager {
     }
     for (FakePlayer fp : activePlayers.values()) {
 
-      boolean isNmsPlayer = fp.getPlayer() != null;
-
-      if (isNmsPlayer) {
-
-        PacketHelper.sendTabListDisplayNameUpdate(player, fp);
-      } else {
-
-        PacketHelper.sendTabListAdd(player, fp);
-      }
-
-      if (fp.hasCustomPing()) {
-        PacketHelper.sendTabListLatencyUpdate(player, fp);
-      }
+      PacketHelper.sendTabListAdd(player, fp);
+      PacketHelper.sendTabListLatencyUpdate(player, fp);
     }
   }
 
@@ -2135,10 +2231,8 @@ public class FakePlayerManager {
     for (FakePlayer fp : activePlayers.values()) {
       Player bot = fp.getPlayer();
       if (bot != null) {
-
         boolean nmsOk = NmsPlayerSpawner.setListed(bot, listed);
         if (!nmsOk) {
-
           for (Player p : online) {
             PacketHelper.sendTabListUpdateListed(p, fp, listed);
           }
@@ -2147,17 +2241,14 @@ public class FakePlayerManager {
     }
 
     if (listed) {
-
       for (FakePlayer fp : activePlayers.values()) {
         for (Player p : online) {
-          PacketHelper.sendTabListRemove(p, fp);
-          PacketHelper.sendTabListAdd(p, fp);
+          PacketHelper.sendTabListRefreshEntry(p, fp);
         }
       }
-      if (botTabTeam != null) botTabTeam.rebuild(activePlayers.values());
-      Config.debug("applyTabListConfig: re-added " + activePlayers.size() + " bots to tab list.");
+      if (botTabTeam != null) botTabTeam.syncIncremental(activePlayers.values());
+      Config.debug("applyTabListConfig: refreshed " + activePlayers.size() + " bots in tab list.");
     } else {
-
       for (FakePlayer fp : activePlayers.values()) {
         for (Player p : online) {
           PacketHelper.sendTabListUpdateListed(p, fp, false);
@@ -2208,19 +2299,19 @@ public class FakePlayerManager {
           fp,
           loc,
           () -> {
-            Player newBody = FakePlayerBody.spawn(fp, loc);
+             Player newBody = FakePlayerBody.spawn(fp, loc, fp.getEffectivePing());
             if (newBody == null) return;
 
             fp.setPhysicsEntity(newBody);
             entityIdIndex.put(newBody.getEntityId(), fp);
 
-            final FakePlayer target = fp;
-            FppScheduler.runSyncLater(
-                plugin,
-                () -> {
-                  for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListAdd(p, target);
-                },
-                2L);
+             final FakePlayer target = fp;
+             FppScheduler.runSyncLater(
+                 plugin,
+                 () -> {
+                   for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRefreshEntry(p, target);
+                 },
+                 2L);
           });
     }
   }
@@ -2341,8 +2432,7 @@ public class FakePlayerManager {
 
     if (Config.tabListEnabled() && bot.getPlayer() != null) {
       for (Player p : Bukkit.getOnlinePlayers()) {
-        PacketHelper.sendTabListRemove(p, bot);
-        PacketHelper.sendTabListAdd(p, bot);
+        PacketHelper.sendTabListDisplayNameUpdate(p, bot);
       }
     }
   }
@@ -2493,6 +2583,8 @@ public class FakePlayerManager {
     }
     fp.setDisplayName(display);
 
+    fp.clearTabListDirty();
+
     Player body = fp.getPlayer();
     if (body != null && body.isValid()) {
       try {
@@ -2544,6 +2636,39 @@ public class FakePlayerManager {
     refreshLpDisplayName(fp);
   }
 
+  public void refreshSkinForAll(FakePlayer fp) {
+    if (!activePlayers.containsKey(fp.getUuid())) return;
+    Player body = fp.getPlayer();
+    if (body == null || !body.isValid()) return;
+    boolean tabVisible = Config.tabListEnabled();
+
+    fp.clearCachedTabListGameProfile();
+
+    List<Player> online = new ArrayList<>(Bukkit.getOnlinePlayers());
+    for (Player p : online) {
+      PacketHelper.despawnFakePlayer(p, fp);
+    }
+
+    FppScheduler.runSyncLater(
+        plugin,
+        () -> {
+          Player b = fp.getPlayer();
+          if (b == null || !b.isValid() || !b.isOnline()) return;
+          Location loc = b.getLocation();
+          for (Player p : new ArrayList<>(Bukkit.getOnlinePlayers()) ) {
+            if (tabVisible) {
+              PacketHelper.sendTabListRefreshEntry(p, fp);
+            } else {
+              PacketHelper.sendTabListUpdateListed(p, fp, false);
+            }
+            PacketHelper.spawnFakePlayer(p, fp, loc);
+            PacketHelper.sendRotation(p, fp, loc.getYaw(), loc.getPitch(), loc.getYaw());
+            PacketHelper.sendPositionSync(p, b, loc);
+          }
+        },
+        1L);
+  }
+
   private static final java.util.regex.Pattern PLACEHOLDER_PATTERN =
       java.util.regex.Pattern.compile("\\{[a-zA-Z_][a-zA-Z0-9_]*\\}");
 
@@ -2571,39 +2696,46 @@ public class FakePlayerManager {
   }
 
   public void applyPing(FakePlayer fp, int pingMs) {
-    fp.setPing(pingMs);
-    me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.setPing(fp.getPlayer(), pingMs);
-    if (Config.tabListEnabled()) {
-      for (Player p : cachedOnlinePlayers) {
-        PacketHelper.sendTabListLatencyUpdate(p, fp);
+    if (fp == null) return;
+    if (pingMs >= 0) {
+      fp.setUserPing(pingMs);
+      fp.setBasePing(-1);
+    } else {
+      fp.setUserPing(-1);
+      if (Config.pingEnabled()) {
+        int min = Config.pingMin();
+        int max = Config.pingMax();
+        int base = min + ThreadLocalRandom.current().nextInt(Math.max(1, max - min + 1));
+        fp.setBasePing(base);
+        fp.setPing(base);
+      } else {
+        fp.setPing(-1);
       }
     }
+    me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.setPing(
+        fp.getPlayer(), fp.getEffectivePing());
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      PacketHelper.sendTabListLatencyUpdate(p, fp);
+    }
+  }
+
+  private boolean shouldSendLaggedVisualUpdate(FakePlayer fp) {
+    int cadence = visualSyncCadenceTicks(fp);
+    if (cadence <= 1) return true;
+    long tick = visualSyncTickCounter;
+    int offset = Math.floorMod(fp.getUuid().hashCode(), cadence);
+    return Math.floorMod(tick, cadence) == offset;
+  }
+
+  private int visualSyncCadenceTicks(FakePlayer fp) {
+    int eff = fp.getEffectivePing();
+    if (eff <= 0) return 1;
+    if (eff <= 100) return 1;
+    return Math.min(10, (eff + 99) / 100);
   }
 
   private String resolveDespawnDisplayName(FakePlayer fp) {
-    if (plugin.isNameTagAvailable()) {
-      try {
-        String freshNick = me.bill.fakePlayerPlugin.util.NameTagHelper.getNick(fp.getUuid());
-        if (freshNick != null && !freshNick.isEmpty()) {
-          return freshNick;
-        }
-      } catch (Throwable ignored) {
-      }
-    }
-    if (fp.getNameTagNick() != null && !fp.getNameTagNick().isEmpty()) {
-      return fp.getNameTagNick();
-    }
-    return fp.getDisplayName();
-  }
-
-  private void clearDespawnTrackingNextTick(UUID uuid) {
-    FppScheduler.runSyncLater(
-        plugin,
-        () -> {
-          despawningBotIds.remove(uuid);
-          despawnLeaveBroadcastedIds.remove(uuid);
-        },
-        1L);
+    return BotBroadcast.resolveDisplayName(fp);
   }
 
   private String pickRandomSkinName() {
@@ -2623,7 +2755,7 @@ public class FakePlayerManager {
 
   private UUID resolveUuid(String botName) {
     if (identityCache != null) return identityCache.lookupOrCreate(botName);
-    return UUID.randomUUID();
+    return BotIdentityCache.deterministicBotUuid(botName);
   }
 
   private String generateName() {
@@ -2771,6 +2903,10 @@ public class FakePlayerManager {
         fp.getPveRange(),
         fp.getPvePriority(),
         fp.getPveMobType(),
-        fp.getPveSmartAttackMode().name());
+        fp.getPveSmartAttackMode().name(),
+        fp.isAutoMilkEnabled(),
+        fp.isPreventBadOmen(),
+        fp.isRespawnOnDeath(),
+        fp.hasCustomPing());
   }
 }

@@ -29,7 +29,7 @@ public class SpawnCommand implements FppCommand {
 
   @Override
   public String getUsage() {
-    return "[amount] [world [x y z]] [--name <name>] [--random-name]";
+    return "[amount] [world [x y z]] [--name <name>] [--random-name] [--notp]";
   }
 
   @Override
@@ -64,6 +64,7 @@ public class SpawnCommand implements FppCommand {
     boolean hasCoords = false;
     boolean isConsole = !(sender instanceof Player);
     boolean forceRandomName = false;
+    boolean spawnAtLastLocation = false;
 
     List<String> positional = new ArrayList<>();
     for (int i = 0; i < args.length; i++) {
@@ -76,6 +77,8 @@ public class SpawnCommand implements FppCommand {
         }
       } else if (args[i].equalsIgnoreCase("--random-name")) {
         forceRandomName = true;
+      } else if (args[i].equalsIgnoreCase("--notp")) {
+        spawnAtLastLocation = true;
       } else {
         positional.add(args[i]);
       }
@@ -318,6 +321,13 @@ public class SpawnCommand implements FppCommand {
       return true;
     }
 
+    if (spawnAtLastLocation && customName != null) {
+      Location lastKnown = manager.getLastKnownLocation(customName);
+      if (lastKnown != null && lastKnown.getWorld() != null) {
+        location = lastKnown;
+      }
+    }
+
     int result = manager.spawn(location, count, spawner, customName, bypassMax, botType, forceRandomName);
 
     switch (result) {
@@ -374,6 +384,9 @@ public class SpawnCommand implements FppCommand {
       if (a.equalsIgnoreCase("--random-name")) {
         continue;
       }
+      if (a.equalsIgnoreCase("--notp")) {
+        continue;
+      }
       positional.add(a);
     }
 
@@ -408,6 +421,7 @@ public class SpawnCommand implements FppCommand {
             .forEach(suggestions::add);
         if ("--name".startsWith(typed)) suggestions.add("--name");
         if ("--random-name".startsWith(typed)) suggestions.add("--random-name");
+        if ("--notp".startsWith(typed)) suggestions.add("--notp");
       }
       return suggestions;
     }

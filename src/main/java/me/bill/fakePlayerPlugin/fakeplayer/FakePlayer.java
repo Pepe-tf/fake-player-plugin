@@ -52,6 +52,7 @@ public final class FakePlayer {
   private boolean alive = true;
 
   private boolean respawning = false;
+  private boolean respawnOnDeath = Config.respawnOnDeath();
 
   private int tabRefreshCount = 0;
 
@@ -142,10 +143,18 @@ public final class FakePlayer {
   private final Set<UUID> sharedControllers = ConcurrentHashMap.newKeySet();
   private boolean autoEatEnabled = Config.autoEatEnabled();
   private boolean autoPlaceBedEnabled = Config.autoPlaceBedEnabled();
+  private boolean autoMilkEnabled = Config.autoMilkEnabled();
+  private boolean preventBadOmen = Config.preventBadOmen();
 
   private volatile String nameTagNick = null;
 
   private int ping = -1;
+
+  private int basePing = -1;
+
+  private boolean pingUserSet = false;
+
+  private long spawnTimeMs = 0;
 
   private volatile boolean tabListDirty = true;
 
@@ -286,6 +295,10 @@ public final class FakePlayer {
     this.cachedTabListGameProfile = profile;
   }
 
+  public void clearCachedTabListGameProfile() {
+    this.cachedTabListGameProfile = null;
+  }
+
   public int getLastChunkX() {
     return lastChunkX;
   }
@@ -352,6 +365,14 @@ public final class FakePlayer {
 
   public void setRespawning(boolean v) {
     this.respawning = v;
+  }
+
+  public boolean isRespawnOnDeath() {
+    return respawnOnDeath;
+  }
+
+  public void setRespawnOnDeath(boolean v) {
+    this.respawnOnDeath = v;
   }
 
   public boolean isChatEnabled() {
@@ -512,8 +533,45 @@ public final class FakePlayer {
     }
   }
 
+  public int getBasePing() {
+    return basePing;
+  }
+
+  public void setBasePing(int basePing) {
+    this.basePing = basePing;
+  }
+
   public boolean hasCustomPing() {
-    return ping >= 0;
+    return pingUserSet;
+  }
+
+  public boolean isPingSimulated() {
+    return !pingUserSet && basePing >= 0;
+  }
+
+  public int getEffectivePing() {
+    if (ping >= 0) return ping;
+    if (basePing >= 0) return basePing;
+    return 0;
+  }
+
+  public void setUserPing(int pingMs) {
+    if (pingMs < 0) {
+      this.pingUserSet = false;
+      this.ping = -1;
+    } else {
+      this.pingUserSet = true;
+      setPing(pingMs);
+    }
+    this.tabListDirty = true;
+  }
+
+  public long getSpawnTick() {
+    return spawnTimeMs;
+  }
+
+  public void setSpawnTick(long ms) {
+    this.spawnTimeMs = ms;
   }
 
   public boolean isTabListDirty() {
@@ -708,6 +766,22 @@ public final class FakePlayer {
 
   public void setAutoPlaceBedEnabled(boolean autoPlaceBedEnabled) {
     this.autoPlaceBedEnabled = autoPlaceBedEnabled;
+  }
+
+  public boolean isAutoMilkEnabled() {
+    return autoMilkEnabled;
+  }
+
+  public void setAutoMilkEnabled(boolean autoMilkEnabled) {
+    this.autoMilkEnabled = autoMilkEnabled;
+  }
+
+  public boolean isPreventBadOmen() {
+    return preventBadOmen;
+  }
+
+  public void setPreventBadOmen(boolean preventBadOmen) {
+    this.preventBadOmen = preventBadOmen;
   }
 
   // ── Sleep system accessors ────────────────────────────────────────────────
