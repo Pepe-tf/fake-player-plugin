@@ -38,6 +38,16 @@ public class PlayerJoinListener implements Listener {
     if (fp == null) fp = manager.getByUuid(event.getPlayer().getUniqueId());
     if (fp == null) return;
 
+    if (manager.isRenaming(fp.getUuid())) {
+      event.joinMessage(null);
+    } else if (fp.isRespawning() || manager.isBodyTransitioning(fp.getUuid())) {
+      event.joinMessage(null);
+    } else if (!Config.joinMessage()) {
+      event.joinMessage(null);
+    } else {
+      event.joinMessage(BotBroadcast.joinComponent(fp));
+    }
+
     if (event.getPlayer().getFirstPlayed() != 0L) {
       forceHasPlayedBefore(event.getPlayer());
     }
@@ -88,23 +98,15 @@ public class PlayerJoinListener implements Listener {
 
     String despawnName = manager.getDespawningDisplayName(uuid);
     if (despawnName != null) {
-      if (Config.leaveMessage()) {
-        event.quitMessage(BotBroadcast.leaveComponent(despawnName));
-      } else {
-        event.quitMessage(null);
-      }
+      event.quitMessage(null);
       return;
     }
 
-    if (manager.getCount() == 0) return;
-
     FakePlayer fp = manager.getByName(event.getPlayer().getName());
-    if (fp == null) fp = manager.getByUuid(event.getPlayer().getUniqueId());
+    if (fp == null) fp = manager.getByUuid(uuid);
     if (fp == null) return;
 
-    if (fp.isRespawning() || manager.isBodyTransitioning(fp.getUuid()) || !fp.isAlive()) {
-      event.quitMessage(null);
-    }
+    event.quitMessage(null);
   }
 
   private static void forceHasPlayedBefore(Player player) {
@@ -283,7 +285,8 @@ public class PlayerJoinListener implements Listener {
                       entry.packetProfileName(),
                       entry.displayName(),
                       entry.skinValue(),
-                      entry.skinSignature());
+                      entry.skinSignature(),
+                      entry.ping());
                 }
               }
             } catch (Throwable ignored) {
@@ -304,27 +307,14 @@ public class PlayerJoinListener implements Listener {
 
     String despawnName = manager.getDespawningDisplayName(uuid);
     if (despawnName != null) {
-      if (Config.leaveMessage()) {
-        event.quitMessage(BotBroadcast.leaveComponent(despawnName));
-      } else {
-        event.quitMessage(null);
-      }
+      event.quitMessage(null);
       return;
     }
-
-    if (manager.getCount() == 0) return;
 
     FakePlayer fp = manager.getByName(event.getPlayer().getName());
     if (fp == null) fp = manager.getByUuid(uuid);
     if (fp != null) {
-      if (fp.isRespawning() || manager.isBodyTransitioning(fp.getUuid()) || !fp.isAlive()) {
-        event.quitMessage(null);
-      } else if (!Config.leaveMessage()) {
-        event.quitMessage(null);
-      } else {
-        event.quitMessage(BotBroadcast.leaveComponent(BotBroadcast.resolveDisplayName(fp)));
-      }
-
+      event.quitMessage(null);
       return;
     }
 

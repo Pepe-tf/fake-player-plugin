@@ -1,6 +1,6 @@
 # Extension & Addon Policy
 
-*Effective April 26, 2026 · Applies to Fake Player Plugin v1.6.6.8 and later*
+*Effective May 2, 2026 · Applies to Fake Player Plugin v1.6.6.8 and later*
 
 ---
 
@@ -31,7 +31,7 @@ Fake Player Plugin (FPP) provides a lightweight Extension / Addon API that allow
 
 ## 5. Liability & Warranty Disclaimer
 
-Extensions are third-party software. The FPP developer (**Bill_Hub**) disclaims all liability for crashes, data loss, security incidents, or performance degradation caused by extensions. This policy is provided "AS IS" without warranty of any kind, just like the underlying MIT-licensed plugin.
+Extensions are third-party software. The FPP developer (**Bill_Hub**) disclaims all liability for crashes, data loss, security incidents, or performance degradation caused by extensions. This policy is provided "AS IS" without warranty of any kind, just like the underlying plugin licensed under the Fake Player Plugin Custom License.
 
 ## 6. Prohibited Uses
 

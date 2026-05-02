@@ -11,7 +11,7 @@ import me.bill.fakePlayerPlugin.util.FppLogger;
 
 public class DatabaseManager {
 
-  private static final int SCHEMA_VERSION = 21;
+  private static final int SCHEMA_VERSION = 22;
 
   public static int getCurrentSchemaVersion() {
     return SCHEMA_VERSION;
@@ -89,7 +89,6 @@ public class DatabaseManager {
           + "  server_id       VARCHAR(64)  NOT NULL DEFAULT 'default',"
           + "  frozen          BOOLEAN DEFAULT 0,"
           + "  chat_enabled    BOOLEAN DEFAULT 1,"
-          + "  respawn_on_death BOOLEAN DEFAULT 0,"
           + "  chat_tier       VARCHAR(16)  DEFAULT NULL,"
           + "  right_click_cmd VARCHAR(256) DEFAULT NULL,"
           + "  ai_personality  VARCHAR(64)  DEFAULT NULL,"
@@ -98,19 +97,23 @@ public class DatabaseManager {
           + "  head_ai_enabled BOOLEAN DEFAULT 1,"
           + "  nav_parkour     BOOLEAN DEFAULT 0,"
           + "  nav_break_blocks BOOLEAN DEFAULT 0,"
-           + "  nav_place_blocks BOOLEAN DEFAULT 0,"
-           + "  nav_avoid_water BOOLEAN DEFAULT 0,"
-           + "  nav_avoid_lava  BOOLEAN DEFAULT 0,"
-           + "  swim_ai_enabled  BOOLEAN DEFAULT 1,"
-           + "  chunk_load_radius INT     DEFAULT -1,"
-           + "  ping            INT      DEFAULT -1,"
-           + "  pve_enabled      BOOLEAN DEFAULT 0,"
+          + "  nav_place_blocks BOOLEAN DEFAULT 0,"
+          + "  nav_avoid_water BOOLEAN DEFAULT 0,"
+          + "  nav_avoid_lava  BOOLEAN DEFAULT 0,"
+          + "  swim_ai_enabled  BOOLEAN DEFAULT 1,"
+          + "  chunk_load_radius INT     DEFAULT -1,"
+          + "  ping            INT      DEFAULT -1,"
+          + "  pve_enabled      BOOLEAN DEFAULT 0,"
           + "  pve_range        DOUBLE  DEFAULT 16.0,"
           + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
           + "  pve_mob_type     VARCHAR(64) DEFAULT NULL,"
           + "  pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF',"
           + "  skin_texture     TEXT    DEFAULT NULL,"
-          + "  skin_signature   TEXT    DEFAULT NULL"
+          + "  skin_signature   TEXT    DEFAULT NULL,"
+          + "  auto_milk_enabled BOOLEAN DEFAULT 1,"
+          + "  prevent_bad_omen  BOOLEAN DEFAULT 1,"
+          + "  respawn_on_death   BOOLEAN DEFAULT 0,"
+          + "  ping_user_set      BOOLEAN DEFAULT 0"
           + ")";
 
   private static final String CREATE_ACTIVE_MYSQL =
@@ -131,7 +134,6 @@ public class DatabaseManager {
           + "  server_id       VARCHAR(64)  NOT NULL DEFAULT 'default',"
           + "  frozen          BOOLEAN DEFAULT 0,"
           + "  chat_enabled    BOOLEAN DEFAULT 1,"
-          + "  respawn_on_death BOOLEAN DEFAULT 0,"
           + "  chat_tier       VARCHAR(16)  DEFAULT NULL,"
           + "  right_click_cmd VARCHAR(256) DEFAULT NULL,"
           + "  ai_personality  VARCHAR(64)  DEFAULT NULL,"
@@ -150,12 +152,16 @@ public class DatabaseManager {
           + "  pve_range        DOUBLE  DEFAULT 16.0,"
           + "  pve_priority     VARCHAR(16) DEFAULT NULL,"
           + "  pve_mob_type     VARCHAR(64) DEFAULT NULL,"
-          + "  pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF',"
-          + "  skin_texture     TEXT    DEFAULT NULL,"
-          + "  skin_signature   TEXT    DEFAULT NULL"
-          + ")";
+           + "  pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF',"
+           + "  skin_texture     TEXT    DEFAULT NULL,"
+           + "  skin_signature   TEXT    DEFAULT NULL,"
+            + "  auto_milk_enabled BOOLEAN DEFAULT 1,"
+            + "  prevent_bad_omen  BOOLEAN DEFAULT 1,"
+            + "  respawn_on_death   BOOLEAN DEFAULT 0,"
+            + "  ping_user_set      BOOLEAN DEFAULT 0"
+            + ")";
 
-  private static final String CREATE_SLEEPING_SQLITE =
+   private static final String CREATE_SLEEPING_SQLITE =
       "CREATE TABLE IF NOT EXISTS fpp_sleeping_bots ("
           + "  sleep_order INTEGER NOT NULL,"
           + "  bot_name    VARCHAR(16)  NOT NULL,"
@@ -400,7 +406,12 @@ public class DatabaseManager {
       "ALTER TABLE fpp_active_bots ADD COLUMN pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'"
     },
     {
+      "ALTER TABLE fpp_active_bots ADD COLUMN auto_milk_enabled BOOLEAN DEFAULT 1",
+      "ALTER TABLE fpp_active_bots ADD COLUMN prevent_bad_omen BOOLEAN DEFAULT 1",
       "ALTER TABLE fpp_active_bots ADD COLUMN respawn_on_death BOOLEAN DEFAULT 0"
+    },
+    {
+      "ALTER TABLE fpp_active_bots ADD COLUMN ping_user_set BOOLEAN DEFAULT 0"
     }
   };
 
@@ -586,7 +597,6 @@ public class DatabaseManager {
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN server_id         VARCHAR(64)  NOT NULL DEFAULT 'default'");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN frozen            BOOLEAN DEFAULT 0");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN chat_enabled      BOOLEAN DEFAULT 1");
-    execSilent("ALTER TABLE fpp_active_bots ADD COLUMN respawn_on_death  BOOLEAN DEFAULT 0");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN chat_tier         VARCHAR(16) DEFAULT NULL");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN right_click_cmd   VARCHAR(256) DEFAULT NULL");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN ai_personality    VARCHAR(64) DEFAULT NULL");
@@ -608,6 +618,10 @@ public class DatabaseManager {
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN pve_priority     VARCHAR(16) DEFAULT NULL");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN pve_mob_type     VARCHAR(64) DEFAULT NULL");
     execSilent("ALTER TABLE fpp_active_bots ADD COLUMN pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'");
+    execSilent("ALTER TABLE fpp_active_bots ADD COLUMN auto_milk_enabled  BOOLEAN DEFAULT 1");
+    execSilent("ALTER TABLE fpp_active_bots ADD COLUMN prevent_bad_omen   BOOLEAN DEFAULT 1");
+    execSilent("ALTER TABLE fpp_active_bots ADD COLUMN respawn_on_death    BOOLEAN DEFAULT 0");
+    execSilent("ALTER TABLE fpp_active_bots ADD COLUMN ping_user_set       BOOLEAN DEFAULT 0");
     execSilent("CREATE INDEX IF NOT EXISTS idx_sessions_bot_name    ON fpp_bot_sessions(bot_name)");
     execSilent("CREATE INDEX IF NOT EXISTS idx_sessions_spawned_by  ON fpp_bot_sessions(spawned_by)");
     execSilent("CREATE INDEX IF NOT EXISTS idx_sessions_removed_at  ON fpp_bot_sessions(removed_at)");
@@ -910,7 +924,6 @@ public class DatabaseManager {
               null,
               false,
               true,
-              Config.respawnOnDeath(),
               null,
               null,
               null,
@@ -1093,11 +1106,6 @@ public class DatabaseManager {
       chatEnabled = rs.getBoolean("chat_enabled");
     } catch (SQLException ignored) {
     }
-    boolean respawnOnDeath = Config.respawnOnDeath();
-    try {
-      respawnOnDeath = rs.getBoolean("respawn_on_death");
-    } catch (SQLException ignored) {
-    }
     String chatTier = null;
     try {
       chatTier = rs.getString("chat_tier");
@@ -1189,6 +1197,26 @@ public class DatabaseManager {
       skinSignature = rs.getString("skin_signature");
     } catch (SQLException ignored) {
     }
+    boolean autoMilkEnabled = Config.autoMilkEnabled();
+    try {
+      autoMilkEnabled = rs.getBoolean("auto_milk_enabled");
+    } catch (SQLException ignored) {
+    }
+    boolean preventBadOmen = Config.preventBadOmen();
+    try {
+      preventBadOmen = rs.getBoolean("prevent_bad_omen");
+    } catch (SQLException ignored) {
+    }
+    boolean respawnOnDeath = Config.respawnOnDeath();
+    try {
+      respawnOnDeath = rs.getBoolean("respawn_on_death");
+    } catch (SQLException ignored) {
+    }
+    boolean pingUserSet = false;
+    try {
+      pingUserSet = rs.getBoolean("ping_user_set");
+    } catch (SQLException ignored) {
+    }
     return new ActiveBotRow(
         rs.getString("bot_uuid"),
         rs.getString("bot_name"),
@@ -1208,7 +1236,6 @@ public class DatabaseManager {
         pickUpXp,
         frozen,
         chatEnabled,
-        respawnOnDeath,
         chatTier,
         rightClickCmd,
         headAiEnabled,
@@ -1226,7 +1253,11 @@ public class DatabaseManager {
         pveMobType,
         pveSmartAttackMode,
         skinTexture,
-        skinSignature);
+        skinSignature,
+        autoMilkEnabled,
+        preventBadOmen,
+        respawnOnDeath,
+        pingUserSet);
   }
 
   public List<BotRecord> getActiveSessions() {
@@ -1474,7 +1505,6 @@ public class DatabaseManager {
       String luckpermsGroup,
       boolean frozen,
       boolean chatEnabled,
-      boolean respawnOnDeath,
       String chatTier,
       String rightClickCmd,
       String aiPersonality,
@@ -1491,15 +1521,14 @@ public class DatabaseManager {
             ? "INSERT INTO"
                   + " fpp_active_bots(bot_uuid,bot_name,bot_display,spawned_by,spawned_by_uuid,"
                   + "world_name,pos_x,pos_y,pos_z,pos_yaw,pos_pitch,updated_at,luckperms_group,server_id,"
-                  + "frozen,chat_enabled,respawn_on_death,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
-                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY"
+                  + "frozen,chat_enabled,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
+                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY"
                   + " UPDATE bot_name=VALUES(bot_name),bot_display=VALUES(bot_display),"
                   + "spawned_by=VALUES(spawned_by),spawned_by_uuid=VALUES(spawned_by_uuid),"
                   + "world_name=VALUES(world_name),pos_x=VALUES(pos_x),pos_y=VALUES(pos_y),"
                   + "pos_z=VALUES(pos_z),pos_yaw=VALUES(pos_yaw),pos_pitch=VALUES(pos_pitch),"
                   + "updated_at=VALUES(updated_at),luckperms_group=VALUES(luckperms_group),"
                   + "server_id=VALUES(server_id),frozen=VALUES(frozen),chat_enabled=VALUES(chat_enabled),"
-                  + "respawn_on_death=VALUES(respawn_on_death),"
                   + "chat_tier=VALUES(chat_tier),right_click_cmd=VALUES(right_click_cmd),"
                   + "ai_personality=VALUES(ai_personality),"
                   + "pickup_items=VALUES(pickup_items),pickup_xp=VALUES(pickup_xp),"
@@ -1508,8 +1537,8 @@ public class DatabaseManager {
             : "INSERT OR REPLACE INTO"
                   + " fpp_active_bots(bot_uuid,bot_name,bot_display,spawned_by,spawned_by_uuid,"
                   + "world_name,pos_x,pos_y,pos_z,pos_yaw,pos_pitch,updated_at,luckperms_group,server_id,"
-                  + "frozen,chat_enabled,respawn_on_death,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
-                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                  + "frozen,chat_enabled,chat_tier,right_click_cmd,ai_personality,pickup_items,pickup_xp,head_ai_enabled,nav_parkour,nav_break_blocks,nav_place_blocks)"
+                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
       ps.setString(1, uuid);
       ps.setString(2, name);
@@ -1528,19 +1557,18 @@ public class DatabaseManager {
       ps.setString(14, serverId);
       ps.setBoolean(15, frozen);
       ps.setBoolean(16, chatEnabled);
-      ps.setBoolean(17, respawnOnDeath);
-      if (chatTier != null) ps.setString(18, chatTier);
+      if (chatTier != null) ps.setString(17, chatTier);
+      else ps.setNull(17, java.sql.Types.VARCHAR);
+      if (rightClickCmd != null) ps.setString(18, rightClickCmd);
       else ps.setNull(18, java.sql.Types.VARCHAR);
-      if (rightClickCmd != null) ps.setString(19, rightClickCmd);
+      if (aiPersonality != null) ps.setString(19, aiPersonality);
       else ps.setNull(19, java.sql.Types.VARCHAR);
-      if (aiPersonality != null) ps.setString(20, aiPersonality);
-      else ps.setNull(20, java.sql.Types.VARCHAR);
-      ps.setBoolean(21, pickUpItems);
-      ps.setBoolean(22, pickUpXp);
-      ps.setBoolean(23, headAiEnabled);
-      ps.setBoolean(24, navParkour);
-      ps.setBoolean(25, navBreakBlocks);
-      ps.setBoolean(26, navPlaceBlocks);
+      ps.setBoolean(20, pickUpItems);
+      ps.setBoolean(21, pickUpXp);
+      ps.setBoolean(22, headAiEnabled);
+      ps.setBoolean(23, navParkour);
+      ps.setBoolean(24, navBreakBlocks);
+      ps.setBoolean(25, navPlaceBlocks);
       ps.executeUpdate();
     } catch (SQLException e) {
       FppLogger.error("DB upsertActiveBot: " + e.getMessage());
@@ -1715,22 +1743,6 @@ public class DatabaseManager {
     return null;
   }
 
-  public List<BotIdentityRow> getBotIdentityRows() {
-    List<BotIdentityRow> list = new ArrayList<>();
-    if (!isAlive()) return list;
-    try (PreparedStatement ps =
-            connection.prepareStatement(
-                "SELECT bot_name, server_id, bot_uuid FROM fpp_bot_identities");
-        ResultSet rs = ps.executeQuery()) {
-      while (rs.next()) {
-        list.add(new BotIdentityRow(rs.getString("bot_name"), rs.getString("server_id"), rs.getString("bot_uuid")));
-      }
-    } catch (SQLException e) {
-      FppLogger.error("DB getBotIdentityRows: " + e.getMessage());
-    }
-    return list;
-  }
-
   public void registerBotUuid(String botName, UUID uuid, String serverId) {
     final String sid = serverId;
     final long now = Instant.now().toEpochMilli();
@@ -1759,74 +1771,38 @@ public class DatabaseManager {
         });
   }
 
-  public synchronized boolean migrateBotUuid(
-      String botName, String serverId, UUID oldUuid, UUID newUuid) {
-    if (!isAlive() || oldUuid == null || newUuid == null || oldUuid.equals(newUuid)) return false;
+  public record BotIdentityRow(String botName, String serverId, String botUuid, String createdAt) {}
 
-    String oldUuidStr = oldUuid.toString();
-    String newUuidStr = newUuid.toString();
-    boolean previousAutoCommit;
-    try {
-      previousAutoCommit = connection.getAutoCommit();
+  public List<BotIdentityRow> getBotIdentityRows() {
+    List<BotIdentityRow> rows = new ArrayList<>();
+    if (!isAlive()) return rows;
+    try (PreparedStatement ps =
+        connection.prepareStatement("SELECT bot_name, server_id, bot_uuid, created_at FROM fpp_bot_identities")) {
+      ResultSet rs = ps.executeQuery();
+      while (rs.next()) {
+        rows.add(new BotIdentityRow(
+            rs.getString("bot_name"),
+            rs.getString("server_id"),
+            rs.getString("bot_uuid"),
+            rs.getString("created_at")));
+      }
+    } catch (SQLException e) {
+      FppLogger.error("DB getBotIdentityRows: " + e.getMessage());
+    }
+    return rows;
+  }
+
+  public boolean migrateBotUuid(String botName, String serverId, UUID oldUuid, UUID newUuid) {
+    try (PreparedStatement ps =
+        connection.prepareStatement("UPDATE fpp_bot_identities SET bot_uuid=? WHERE bot_name=? AND server_id=? AND bot_uuid=?")) {
+      ps.setString(1, newUuid.toString());
+      ps.setString(2, botName);
+      ps.setString(3, serverId);
+      ps.setString(4, oldUuid.toString());
+      return ps.executeUpdate() > 0;
     } catch (SQLException e) {
       FppLogger.error("DB migrateBotUuid(" + botName + "): " + e.getMessage());
       return false;
-    }
-
-    try {
-      connection.setAutoCommit(false);
-
-      int sessionRows = updateBotUuidTable("UPDATE fpp_bot_sessions SET bot_uuid=? WHERE bot_uuid=?", newUuidStr, oldUuidStr);
-      int activeRows = updateBotUuidTable("UPDATE fpp_active_bots SET bot_uuid=? WHERE bot_uuid=?", newUuidStr, oldUuidStr);
-      int taskRows = updateBotUuidTable("UPDATE fpp_bot_tasks SET bot_uuid=? WHERE bot_uuid=?", newUuidStr, oldUuidStr);
-      int identityRows =
-          updateBotUuidTable(
-              "UPDATE fpp_bot_identities SET bot_uuid=? WHERE bot_name=? AND server_id=?",
-              newUuidStr,
-              botName,
-              serverId);
-
-      connection.commit();
-      Config.debugDatabase(
-          "Bot UUID migration: '"
-              + botName
-              + "' "
-              + oldUuid
-              + " -> "
-              + newUuid
-              + " (identities="
-              + identityRows
-              + ", sessions="
-              + sessionRows
-              + ", active="
-              + activeRows
-              + ", tasks="
-              + taskRows
-              + ")");
-      return identityRows > 0 || sessionRows > 0 || activeRows > 0 || taskRows > 0;
-    } catch (SQLException e) {
-      try {
-        connection.rollback();
-      } catch (SQLException ignored) {
-      }
-      FppLogger.error(
-          "DB migrateBotUuid(" + botName + ", " + oldUuid + " -> " + newUuid + "): "
-              + e.getMessage());
-      return false;
-    } finally {
-      try {
-        connection.setAutoCommit(previousAutoCommit);
-      } catch (SQLException ignored) {
-      }
-    }
-  }
-
-  private int updateBotUuidTable(String sql, String... params) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
-      for (int i = 0; i < params.length; i++) {
-        ps.setString(i + 1, params[i]);
-      }
-      return ps.executeUpdate();
     }
   }
 
@@ -2198,12 +2174,13 @@ public class DatabaseManager {
       String pvePriority,
       String pveMobType,
       String pveSmartAttackMode,
+      boolean autoMilkEnabled,
+      boolean preventBadOmen,
       boolean respawnOnDeath,
-      String luckpermsGroup) {
+      boolean pingUserSet) {
     if (!isAlive()) return;
     final String tier = chatTier, rcc = rightClickCmd, pers = aiPersonality;
     final String pvePri = pvePriority, pveMob = pveMobType, pveMode = pveSmartAttackMode;
-    final String lpGroup = luckpermsGroup;
     enqueue(
         () -> {
           if (!isAlive()) return;
@@ -2211,8 +2188,8 @@ public class DatabaseManager {
               "UPDATE fpp_active_bots SET frozen=?,chat_enabled=?,chat_tier=?,right_click_cmd=?,"
                   + "ai_personality=?,pickup_items=?,pickup_xp=?,head_ai_enabled=?,"
                   + "nav_parkour=?,nav_break_blocks=?,nav_place_blocks=?,nav_avoid_water=?,nav_avoid_lava=?,swim_ai_enabled=?,chunk_load_radius=?,"
-                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?,pve_smart_attack_mode=?,respawn_on_death=?,"
-                  + "luckperms_group=? WHERE bot_uuid=?";
+                  + "ping=?,pve_enabled=?,pve_range=?,pve_priority=?,pve_mob_type=?,pve_smart_attack_mode=?,"
+                  + "auto_milk_enabled=?,prevent_bad_omen=?,respawn_on_death=?,ping_user_set=? WHERE bot_uuid=?";
           try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setBoolean(1, frozen);
             ps.setBoolean(2, chatEnabled);
@@ -2241,10 +2218,11 @@ public class DatabaseManager {
             else ps.setNull(20, java.sql.Types.VARCHAR);
             if (pveMode != null) ps.setString(21, pveMode);
             else ps.setString(21, "OFF");
-            ps.setBoolean(22, respawnOnDeath);
-            if (lpGroup != null) ps.setString(23, lpGroup);
-            else ps.setNull(23, java.sql.Types.VARCHAR);
-            ps.setString(24, uuid);
+            ps.setBoolean(22, autoMilkEnabled);
+            ps.setBoolean(23, preventBadOmen);
+            ps.setBoolean(24, respawnOnDeath);
+            ps.setBoolean(25, pingUserSet);
+            ps.setString(26, uuid);
             ps.executeUpdate();
           } catch (SQLException e) {
             FppLogger.error("DB updateBotAllSettings: " + e.getMessage());
@@ -2514,8 +2492,6 @@ public class DatabaseManager {
   private record PendingLocation(
       String world, double x, double y, double z, float yaw, float pitch) {}
 
-  public record BotIdentityRow(String botName, String serverId, String botUuid) {}
-
   public record ActiveBotRow(
       String botUuid,
       String botName,
@@ -2535,7 +2511,6 @@ public class DatabaseManager {
       boolean pickUpXp,
       boolean frozen,
       boolean chatEnabled,
-      boolean respawnOnDeath,
       String chatTier,
       String rightClickCmd,
       boolean headAiEnabled,
@@ -2553,7 +2528,11 @@ public class DatabaseManager {
       String pveMobType,
       String pveSmartAttackMode,
       String skinTexture,
-      String skinSignature) {}
+      String skinSignature,
+      boolean autoMilkEnabled,
+      boolean preventBadOmen,
+      boolean respawnOnDeath,
+      boolean pingUserSet) {}
 
   public record SleepingBotRow(
       int sleepOrder,

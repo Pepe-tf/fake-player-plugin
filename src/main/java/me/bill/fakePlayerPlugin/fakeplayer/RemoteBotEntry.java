@@ -9,7 +9,8 @@ public record RemoteBotEntry(
     String displayName,
     String packetProfileName,
     String skinValue,
-    String skinSignature) {
+    String skinSignature,
+    int ping) {
 
   public boolean hasSkin() {
     return skinValue != null && !skinValue.isBlank();

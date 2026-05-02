@@ -134,7 +134,7 @@ public final class FppBotImpl implements FppBot {
     return ent != null && ent.isSprinting();
   }
 
-  @Override public int getPing() { return fp.getPing(); }
+  @Override public int getPing() { return fp.getEffectivePing(); }
 
   // ── Health ──────────────────────────────────────────────────────────────────
   @Override public double getHealth() {
@@ -345,13 +345,15 @@ public final class FppBotImpl implements FppBot {
     try {
       var attr = ent.getAttribute(org.bukkit.attribute.Attribute.BLOCK_INTERACTION_RANGE);
       if (attr != null) base = attr.getValue();
-    } catch (Exception ignored) {}
+    } catch (Throwable ignored) {}
     return base;
   }
   @Override public void performRespawn() {
     Player ent = fp.getPhysicsEntity();
     if (ent != null && ent.isDead()) {
-      ent.spigot().respawn();
+      try {
+        ent.spigot().respawn();
+      } catch (Throwable ignored) {}
     }
   }
 

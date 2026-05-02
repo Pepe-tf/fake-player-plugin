@@ -1,8 +1,8 @@
 # Privacy Policy
 
 **Effective Date:** April 3, 2026
-**Last Updated:** April 13, 2026
-**Version:** 2.1
+**Last Updated:** May 2, 2026
+**Version:** 2.2
 
 ---
 
@@ -52,7 +52,7 @@ For the purposes of this Privacy Policy, the following terms have the meanings s
 
 ## 2. Who We Are
 
-Fake Player Plugin ("FPP") is developed and maintained by **Bill_Hub** (also known as El_Pepes). The Plugin is **open-source software** released under the MIT License, available at [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin).
+Fake Player Plugin ("FPP") is developed and maintained by **Bill_Hub** (also known as El_Pepes). The Plugin is available under a **custom license** that permits personal, non-commercial use but prohibits redistribution and commercial use without written permission. Source code is available at [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin).
 
 **Contact:**
 
@@ -339,6 +339,7 @@ Your continued use of the Plugin after the effective date constitutes acceptance
 
 | Version | Date | Summary of Changes |
 |---------|------|--------------------|
+| 2.2 | May 2, 2026 | Updated license reference from MIT to custom license |
 | 2.1 | April 13, 2026 | Updated to reflect open-source status; added GitHub repository link |
 | 2.0 | April 3, 2026 | Full rewrite: definitions, GDPR legal basis table, CCPA section, data retention table, third-party service details, cookies section, international transfers |
 | 1.0 | April 3, 2026 | Initial privacy policy |
@@ -359,7 +360,7 @@ We aim to provide a substantive response to all privacy inquiries within **30 da
 
 *This Privacy Policy is effective as of April 3, 2026 and applies to Fake Player Plugin v1.5.8 and all subsequent versions.*
 
-*Fake Player Plugin - Developed by Bill_Hub (El_Pepes). Released under the MIT License — https://github.com/Pepe-tf/fake-player-plugin*
+*Fake Player Plugin - Developed by Bill_Hub (El_Pepes). Released under the Fake Player Plugin Custom License — https://github.com/Pepe-tf/fake-player-plugin*
 *Not affiliated with Mojang AB, Microsoft Corporation, or any Minecraft platform provider.*
 
 ## Introduction

@@ -432,6 +432,8 @@ public final class HelpGui implements Listener {
           "mybots",
           "botmenu",
           "setowner",
+          "ping",
+          "skin",
           "groups",
           "group",
           "botgroups" ->
@@ -496,6 +498,8 @@ public final class HelpGui implements Listener {
       case "bots", "mybots", "botmenu" -> Material.PLAYER_HEAD;
       case "groups", "group", "botgroups" -> Material.CHEST;
       case "setowner" -> Material.NAME_TAG;
+      case "ping" -> Material.REPEATER;
+      case "skin" -> Material.PLAYER_HEAD;
       default -> Material.PAPER;
     };
   }

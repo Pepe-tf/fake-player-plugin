@@ -12,6 +12,12 @@ import me.bill.fakePlayerPlugin.FakePlayerPlugin;
 import me.bill.fakePlayerPlugin.fakeplayer.network.FakeConnection;
 import me.bill.fakePlayerPlugin.fakeplayer.network.FakeServerGamePacketListenerImpl;
 import me.bill.fakePlayerPlugin.util.FppLogger;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.BlockHitResult;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.plugin.Plugin;
@@ -369,11 +375,16 @@ public final class NmsPlayerSpawner {
 
   public static Player spawnFakePlayer(
       UUID uuid, String name, World world, double x, double y, double z) {
-    return spawnFakePlayer(uuid, name, null, world, x, y, z);
+    return spawnFakePlayer(uuid, name, null, world, x, y, z, -1);
   }
 
   public static Player spawnFakePlayer(
       UUID uuid, String name, SkinProfile skin, World world, double x, double y, double z) {
+    return spawnFakePlayer(uuid, name, skin, world, x, y, z, -1);
+  }
+
+  public static Player spawnFakePlayer(
+      UUID uuid, String name, SkinProfile skin, World world, double x, double y, double z, int initialPing) {
     if (!isAvailable()) {
       FppLogger.warn("NmsPlayerSpawner not available - cannot spawn " + name);
       return null;
@@ -403,6 +414,10 @@ public final class NmsPlayerSpawner {
 
       if (setPosMethod != null) setPosMethod.invoke(serverPlayer, x, y, z);
       initPreviousPosition(serverPlayer, x, y, z);
+
+      if (initialPing >= 0) {
+        setPingNms(serverPlayer, initialPing);
+      }
 
       Object conn = createFakeConnection();
       if (conn == null) {
@@ -941,6 +956,14 @@ public final class NmsPlayerSpawner {
     try {
       Object nmsPlayer = craftBukkitGetHandle(bot);
       if (nmsPlayer == null) return;
+      setPingNms(nmsPlayer, pingMs);
+    } catch (Exception e) {
+      me.bill.fakePlayerPlugin.config.Config.debugNms("setPing failed: " + e.getMessage());
+    }
+  }
+
+  private static void setPingNms(Object nmsPlayer, int pingMs) {
+    try {
       Field latencyField = findFieldByType(nmsPlayer.getClass(), int.class, "latency");
       if (latencyField != null) {
         latencyField.setAccessible(true);
@@ -1417,13 +1440,26 @@ public final class NmsPlayerSpawner {
       double y,
       double z,
       java.util.function.Consumer<Player> callback) {
+    spawnFakePlayerAsync(uuid, name, skin, world, x, y, z, -1, callback);
+  }
+
+  public static void spawnFakePlayerAsync(
+      UUID uuid,
+      String name,
+      SkinProfile skin,
+      World world,
+      double x,
+      double y,
+      double z,
+      int initialPing,
+      java.util.function.Consumer<Player> callback) {
     if (!isAvailable()) {
       FppLogger.warn("NmsPlayerSpawner not available - cannot spawn " + name);
       callback.accept(null);
       return;
     }
     if (!isFolia()) {
-      callback.accept(spawnFakePlayer(uuid, name, skin, world, x, y, z));
+      callback.accept(spawnFakePlayer(uuid, name, skin, world, x, y, z, initialPing));
       return;
     }
 
@@ -1451,6 +1487,10 @@ public final class NmsPlayerSpawner {
 
       if (setPosMethod != null) setPosMethod.invoke(serverPlayer, x, y, z);
       initPreviousPosition(serverPlayer, x, y, z);
+
+      if (initialPing >= 0) {
+        setPingNms(serverPlayer, initialPing);
+      }
 
       Object conn = createFakeConnection();
       if (conn == null) {
@@ -1665,5 +1705,363 @@ public final class NmsPlayerSpawner {
       cur = cur.getSuperclass();
     }
     return fields;
+  }
+
+  // ── Version-safe NMS helpers (Paper 26.1.x / MC 1.21.2+ compatibility) ──
+  // Each helper tries the direct NMS call first (fast path, zero overhead after
+  // first success). On NoSuchMethodError it falls back to ClassLoader-based
+  // reflection that works regardless of method renames or signature changes.
+
+  // ── useItemOn ──
+
+  private static volatile int useItemOnProbeState; // 0=untried, 1=direct-works, 2=need-reflection
+  private static volatile Method useItemOnDirect5;
+  private static volatile Method useItemOnDirect3;
+  private static volatile Method useItemOnReflect;
+
+  public static Object useItemOn(ServerPlayer nms, InteractionHand hand, BlockHitResult blockHit) {
+    if (useItemOnProbeState == 0) {
+      try {
+        var r = nms.gameMode.useItemOn(nms, nms.level(), nms.getItemInHand(hand), hand, blockHit);
+        useItemOnProbeState = 1;
+        return r;
+      } catch (NoSuchMethodError e) {
+        useItemOnProbeState = 2;
+      }
+    } else if (useItemOnProbeState == 1) {
+      return nms.gameMode.useItemOn(nms, nms.level(), nms.getItemInHand(hand), hand, blockHit);
+    }
+    // reflection path
+    if (useItemOnReflect == null) {
+      synchronized (NmsPlayerSpawner.class) {
+        if (useItemOnReflect == null) {
+          Class<?> gmClass = nms.gameMode.getClass();
+          ClassLoader cl = gmClass.getClassLoader();
+          try {
+            Class<?> itemStackClass = cl.loadClass("net.minecraft.world.item.ItemStack");
+            Class<?> handClass = cl.loadClass("net.minecraft.world.InteractionHand");
+            Class<?> hitClass = cl.loadClass("net.minecraft.world.phys.BlockHitResult");
+            Class<?> playerClass = cl.loadClass("net.minecraft.server.level.ServerPlayer");
+            Class<?> levelClass = cl.loadClass("net.minecraft.server.level.ServerLevel");
+            // try 5-arg (MC < 1.21.2)
+            for (Method m : gmClass.getMethods()) {
+              if (m.getParameterCount() == 5
+                  && m.getParameterTypes()[0] == playerClass
+                  && m.getParameterTypes()[2] == itemStackClass
+                  && m.getParameterTypes()[3] == handClass
+                  && m.getParameterTypes()[4] == hitClass) {
+                m.setAccessible(true);
+                useItemOnReflect = m;
+                break;
+              }
+            }
+            // try 3-arg (MC 1.21.2+)
+            if (useItemOnReflect == null) {
+              for (Method m : gmClass.getMethods()) {
+                if (m.getParameterCount() == 3
+                    && m.getParameterTypes()[0] == itemStackClass
+                    && m.getParameterTypes()[1] == handClass
+                    && m.getParameterTypes()[2] == hitClass) {
+                  m.setAccessible(true);
+                  useItemOnReflect = m;
+                  break;
+                }
+              }
+            }
+          } catch (ClassNotFoundException ignored) {}
+        }
+      }
+    }
+    if (useItemOnReflect != null) {
+      try {
+        Object itemStack = nms.getItemInHand(hand);
+        if (useItemOnReflect.getParameterCount() == 5) {
+          return useItemOnReflect.invoke(nms.gameMode, nms, nms.level(), itemStack, hand, blockHit);
+        } else {
+          return useItemOnReflect.invoke(nms.gameMode, itemStack, hand, blockHit);
+        }
+      } catch (Exception ignored) {}
+    }
+    return null;
+  }
+
+  // ── useItem ──
+
+  private static volatile int useItemProbeState;
+  private static volatile Method useItemReflect;
+
+  public static Object useItem(ServerPlayer nms, InteractionHand hand) {
+    if (useItemProbeState == 0) {
+      try {
+        var r = nms.gameMode.useItem(nms, nms.level(), nms.getItemInHand(hand), hand);
+        useItemProbeState = 1;
+        return r;
+      } catch (NoSuchMethodError e) {
+        useItemProbeState = 2;
+      }
+    } else if (useItemProbeState == 1) {
+      return nms.gameMode.useItem(nms, nms.level(), nms.getItemInHand(hand), hand);
+    }
+    if (useItemReflect == null) {
+      synchronized (NmsPlayerSpawner.class) {
+        if (useItemReflect == null) {
+          Class<?> gmClass = nms.gameMode.getClass();
+          ClassLoader cl = gmClass.getClassLoader();
+          try {
+            Class<?> itemStackClass = cl.loadClass("net.minecraft.world.item.ItemStack");
+            Class<?> handClass = cl.loadClass("net.minecraft.world.InteractionHand");
+            Class<?> playerClass = cl.loadClass("net.minecraft.server.level.ServerPlayer");
+            Class<?> levelClass = cl.loadClass("net.minecraft.server.level.ServerLevel");
+            // try 4-arg (MC < 1.21.2)
+            for (Method m : gmClass.getMethods()) {
+              if (m.getParameterCount() == 4
+                  && m.getParameterTypes()[0] == playerClass
+                  && m.getParameterTypes()[1] == levelClass
+                  && m.getParameterTypes()[2] == itemStackClass
+                  && m.getParameterTypes()[3] == handClass) {
+                m.setAccessible(true);
+                useItemReflect = m;
+                break;
+              }
+            }
+            // try 2-arg (MC 1.21.2+)
+            if (useItemReflect == null) {
+              for (Method m : gmClass.getMethods()) {
+                if (m.getParameterCount() == 2
+                    && m.getParameterTypes()[0] == itemStackClass
+                    && m.getParameterTypes()[1] == handClass) {
+                  m.setAccessible(true);
+                  useItemReflect = m;
+                  break;
+                }
+              }
+            }
+          } catch (ClassNotFoundException ignored) {}
+        }
+      }
+    }
+    if (useItemReflect != null) {
+      try {
+        Object itemStack = nms.getItemInHand(hand);
+        if (useItemReflect.getParameterCount() == 4) {
+          return useItemReflect.invoke(nms.gameMode, nms, nms.level(), itemStack, hand);
+        } else {
+          return useItemReflect.invoke(nms.gameMode, itemStack, hand);
+        }
+      } catch (Exception ignored) {}
+    }
+    return null;
+  }
+
+  // ── handleBlockBreakAction ──
+
+  private static volatile int breakActionProbeState;
+  private static volatile Method breakActionReflect;
+
+  public static void handleBlockBreakAction(ServerPlayer nms, net.minecraft.core.BlockPos pos,
+      net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action action,
+      Direction direction, int maxY, int sequence) {
+    if (breakActionProbeState == 0) {
+      try {
+        nms.gameMode.handleBlockBreakAction(pos, action, direction, maxY, sequence);
+        breakActionProbeState = 1;
+        return;
+      } catch (NoSuchMethodError e) {
+        breakActionProbeState = 2;
+      }
+    } else if (breakActionProbeState == 1) {
+      nms.gameMode.handleBlockBreakAction(pos, action, direction, maxY, sequence);
+      return;
+    }
+    if (breakActionReflect == null) {
+      synchronized (NmsPlayerSpawner.class) {
+        if (breakActionReflect == null) {
+          Class<?> gmClass = nms.gameMode.getClass();
+          ClassLoader cl = gmClass.getClassLoader();
+          try {
+            Class<?> bpClass = cl.loadClass("net.minecraft.core.BlockPos");
+            Class<?> actionClass = cl.loadClass("net.minecraft.network.protocol.game.ServerboundPlayerActionPacket$Action");
+            // try 5-arg, then 3-arg, then scan by param count
+            for (Method m : gmClass.getMethods()) {
+              if (m.getParameterCount() == 5
+                  && m.getParameterTypes()[0] == bpClass
+                  && m.getParameterTypes()[1] == actionClass) {
+                m.setAccessible(true);
+                breakActionReflect = m;
+                break;
+              }
+            }
+            if (breakActionReflect == null) {
+              for (Method m : gmClass.getMethods()) {
+                if (m.getParameterCount() == 3
+                    && m.getParameterTypes()[0] == bpClass
+                    && m.getParameterTypes()[1] == actionClass) {
+                  m.setAccessible(true);
+                  breakActionReflect = m;
+                  break;
+                }
+              }
+            }
+          } catch (ClassNotFoundException ignored) {}
+        }
+      }
+    }
+    if (breakActionReflect != null) {
+      try {
+        if (breakActionReflect.getParameterCount() == 5) {
+          breakActionReflect.invoke(nms.gameMode, pos, action, direction, maxY, sequence);
+        } else {
+          breakActionReflect.invoke(nms.gameMode, pos, action, sequence);
+        }
+      } catch (Exception ignored) {}
+    }
+  }
+
+  // ── destroyBlockProgress ──
+
+  private static volatile int destroyProgressProbeState;
+  private static volatile Method destroyProgressReflect;
+
+  public static void destroyBlockProgress(ServerPlayer nms, int breakerId,
+      net.minecraft.core.BlockPos pos, int progress) {
+    if (destroyProgressProbeState == 0) {
+      try {
+        nms.level().destroyBlockProgress(breakerId, pos, progress);
+        destroyProgressProbeState = 1;
+        return;
+      } catch (NoSuchMethodError e) {
+        destroyProgressProbeState = 2;
+      }
+    } else if (destroyProgressProbeState == 1) {
+      nms.level().destroyBlockProgress(breakerId, pos, progress);
+      return;
+    }
+    if (destroyProgressReflect == null) {
+      synchronized (NmsPlayerSpawner.class) {
+        if (destroyProgressReflect == null) {
+          Class<?> levelClass = nms.level().getClass();
+          ClassLoader cl = levelClass.getClassLoader();
+          try {
+            Class<?> bpClass = cl.loadClass("net.minecraft.core.BlockPos");
+            Class<?> entityClass = cl.loadClass("net.minecraft.world.entity.Entity");
+            // try 3-arg (int, BlockPos, int)
+            for (Method m : levelClass.getMethods()) {
+              if (m.getParameterCount() == 3
+                  && m.getParameterTypes()[1] == bpClass
+                  && m.getParameterTypes()[0] == int.class) {
+                m.setAccessible(true);
+                destroyProgressReflect = m;
+                break;
+              }
+            }
+            // try 3-arg (Entity, BlockPos, int) — MC 1.21.2+
+            if (destroyProgressReflect == null) {
+              for (Method m : levelClass.getMethods()) {
+                if (m.getParameterCount() == 3
+                    && m.getParameterTypes()[0] == entityClass
+                    && m.getParameterTypes()[1] == bpClass) {
+                  m.setAccessible(true);
+                  destroyProgressReflect = m;
+                  break;
+                }
+              }
+            }
+          } catch (ClassNotFoundException ignored) {}
+        }
+      }
+    }
+    if (destroyProgressReflect != null) {
+      try {
+        Object firstArg = destroyProgressReflect.getParameterTypes()[0] == int.class
+            ? breakerId : nms;
+        destroyProgressReflect.invoke(nms.level(), firstArg, pos, progress);
+      } catch (Exception ignored) {}
+    }
+  }
+
+  // ── startSleepInBed ──
+
+  private static volatile int sleepProbeState;
+  private static volatile Method sleepReflect;
+
+  public static void startSleepInBed(
+      ServerPlayer nms, net.minecraft.core.BlockPos pos, boolean force) {
+    if (sleepProbeState == 0) {
+      try {
+        nms.startSleepInBed(pos, force);
+        sleepProbeState = 1;
+        return;
+      } catch (NoSuchMethodError e) {
+        sleepProbeState = 2;
+      }
+    } else if (sleepProbeState == 1) {
+      nms.startSleepInBed(pos, force);
+      return;
+    }
+    if (sleepReflect == null) {
+      synchronized (NmsPlayerSpawner.class) {
+        if (sleepReflect == null) {
+          ClassLoader cl = nms.getClass().getClassLoader();
+          try {
+            Class<?> bpClass = cl.loadClass("net.minecraft.core.BlockPos");
+            // walk class hierarchy for startSleepInBed(BlockPos, ...) or startSleepInBed(BlockPos)
+            Class<?> cur = nms.getClass();
+            while (cur != null && cur != Object.class) {
+              for (Method m : cur.getDeclaredMethods()) {
+                if (m.getName().equals("startSleepInBed") && m.getParameterCount() >= 1
+                    && m.getParameterTypes()[0] == bpClass) {
+                  m.setAccessible(true);
+                  sleepReflect = m;
+                  break;
+                }
+              }
+              if (sleepReflect != null) break;
+              cur = cur.getSuperclass();
+            }
+          } catch (ClassNotFoundException ignored) {}
+        }
+      }
+    }
+    if (sleepReflect != null) {
+      try {
+        if (sleepReflect.getParameterCount() >= 2) {
+          sleepReflect.invoke(nms, pos, force);
+        } else {
+          sleepReflect.invoke(nms, pos);
+        }
+      } catch (Exception ignored) {}
+    }
+  }
+
+  // ── interactOn ──
+
+  private static volatile int interactOnProbeState;
+
+  public static boolean interactOnEntity(ServerPlayer nms, net.minecraft.world.entity.Entity entity, InteractionHand hand) {
+    if (interactOnProbeState == 0) {
+      try {
+        var result = nms.interactOn(entity, hand);
+        interactOnProbeState = 1;
+        return result != null && result.consumesAction();
+      } catch (NoSuchMethodError e) {
+        interactOnProbeState = 2;
+      }
+    } else if (interactOnProbeState == 1) {
+      var result = nms.interactOn(entity, hand);
+      return result != null && result.consumesAction();
+    }
+    return false;
+  }
+
+  // ── consumesAction helper ──
+
+  public static boolean consumesAction(Object result) {
+    if (result == null) return false;
+    try {
+      Method m = result.getClass().getMethod("consumesAction");
+      return (boolean) m.invoke(result);
+    } catch (Exception e) {
+      return false;
+    }
   }
 }

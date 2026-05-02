@@ -753,6 +753,18 @@ public final class BotSettingGui implements Listener {
         fireSettingChange(bot, "chat_enabled", old, bot.isChatEnabled());
         yield bot.isChatEnabled();
       }
+      case "auto_milk" -> {
+        boolean old = bot.isAutoMilkEnabled();
+        bot.setAutoMilkEnabled(!old);
+        fireSettingChange(bot, "auto_milk", old, bot.isAutoMilkEnabled());
+        yield bot.isAutoMilkEnabled();
+      }
+      case "prevent_bad_omen" -> {
+        boolean old = bot.isPreventBadOmen();
+        bot.setPreventBadOmen(!old);
+        fireSettingChange(bot, "prevent_bad_omen", old, bot.isPreventBadOmen());
+        yield bot.isPreventBadOmen();
+      }
       case "nav_parkour" -> {
         boolean old = bot.isNavParkour();
         bot.setNavParkour(!old);
@@ -1685,6 +1697,8 @@ public final class BotSettingGui implements Listener {
       case "pickup_items" -> bot.isPickUpItemsEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "pickup_xp" -> bot.isPickUpXpEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "chat_enabled" -> bot.isChatEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+      case "auto_milk" -> bot.isAutoMilkEnabled() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
+      case "prevent_bad_omen" -> bot.isPreventBadOmen() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
       case "chat_tier" -> bot.getChatTier() != null ? bot.getChatTier() : "ʀᴀɴᴅᴏᴍ";
       case "ai_personality" -> bot.getAiPersonality() != null ? bot.getAiPersonality() : "ᴅᴇꜰᴀᴜʟᴛ";
       case "nav_parkour" -> bot.isNavParkour() ? "✔ ᴇɴᴀʙʟᴇᴅ" : "✘ ᴅɪꜱᴀʙʟᴇᴅ";
@@ -1733,6 +1747,8 @@ public final class BotSettingGui implements Listener {
       case "pickup_items" -> bot.isPickUpItemsEnabled();
       case "pickup_xp" -> bot.isPickUpXpEnabled();
       case "chat_enabled" -> bot.isChatEnabled();
+      case "auto_milk" -> bot.isAutoMilkEnabled();
+      case "prevent_bad_omen" -> bot.isPreventBadOmen();
       case "nav_parkour" -> bot.isNavParkour();
       case "nav_break_blocks" -> bot.isNavBreakBlocks();
       case "nav_place_blocks" -> bot.isNavPlaceBlocks();
@@ -1758,6 +1774,9 @@ public final class BotSettingGui implements Listener {
       case "pickup_xp" ->
           bot.isPickUpXpEnabled() ? Material.EXPERIENCE_BOTTLE : Material.GLASS_BOTTLE;
       case "chat_enabled" -> bot.isChatEnabled() ? Material.WRITABLE_BOOK : Material.BOOK;
+      case "auto_milk" -> bot.isAutoMilkEnabled() ? Material.MILK_BUCKET : Material.BUCKET;
+      case "prevent_bad_omen" ->
+          bot.isPreventBadOmen() ? Material.OMINOUS_BOTTLE : Material.GLASS_BOTTLE;
       case "nav_parkour" -> bot.isNavParkour() ? Material.SLIME_BALL : Material.RABBIT_FOOT;
       case "nav_break_blocks" ->
           bot.isNavBreakBlocks() ? Material.DIAMOND_PICKAXE : Material.IRON_PICKAXE;
@@ -2030,6 +2049,25 @@ public final class BotSettingGui implements Listener {
                 "ᴛʜɪꜱ ʙᴏᴛ ᴄᴏʟʟᴇᴄᴛꜱ ᴇxᴘᴇʀɪᴇɴᴄᴇ ᴏʀʙꜱ\n"
                     + "ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ. /ꜰᴘᴘ xᴘ ᴄᴏᴏʟᴅᴏᴡɴ ꜱᴛɪʟʟ ᴀᴘᴘʟɪᴇꜱ.",
                 Material.EXPERIENCE_BOTTLE,
+                false),
+            BotEntry.toggle(
+                "auto_milk",
+                "ᴀᴜᴛᴏ ᴍɪʟᴋ",
+                "ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴄᴜʀᴇ ʜᴀʀᴍꜰᴜʟ ᴇꜰꜰᴇᴄᴛꜱ\n"
+                    + "(ᴘᴏɪꜱᴏɴ, ᴡɪᴛʜᴇʀ, ꜱʟᴏᴡɴᴇꜱꜱ, ᴇᴛᴄ.)\n"
+                    + "ɢʟᴏʙᴀʟ: "
+                    + (Config.autoMilkEnabled() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
+                Material.MILK_BUCKET,
+                false),
+            BotEntry.toggle(
+                "prevent_bad_omen",
+                "ʙʟᴏᴄᴋ ʙᴀᴅ ᴏᴍᴇɴ",
+                "ᴘʀᴇᴠᴇɴᴛ ʙᴀᴅ ᴏᴍᴇɴ, ʀᴀɪᴅ ᴏᴍᴇɴ\n"
+                    + "ᴀɴᴅ ᴛʀɪᴀʟ ᴏᴍᴇɴ ᴇꜰꜰᴇᴄᴛꜱ.\n"
+                    + "ᴘʀᴇᴠᴇɴᴛꜱ ʙᴏᴛꜱ ꜰʀᴏᴍ ᴛʀɪɢɢᴇʀɪɴɢ ʀᴀɪᴅꜱ.\n"
+                    + "ɢʟᴏʙᴀʟ: "
+                    + (Config.preventBadOmen() ? "ᴇɴᴀʙʟᴇᴅ" : "ᴅɪꜱᴀʙʟᴇᴅ"),
+                Material.OMINOUS_BOTTLE,
                 false),
             BotEntry.action(
                 "rename",

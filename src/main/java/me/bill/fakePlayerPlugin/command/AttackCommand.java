@@ -716,7 +716,7 @@ public final class AttackCommand implements FppCommand {
     org.bukkit.Bukkit.getPluginManager().callEvent(atkEvt);
     if (atkEvt.isCancelled()) return;
 
-    nms.attack(nmsEntity);
+    NmsPlayerSpawner.performAttack(b, bukkit, 1.0);
 
     state.cooldownTicks = getWeaponCooldown(weapon);
 
@@ -812,7 +812,7 @@ public final class AttackCommand implements FppCommand {
         new FppBotImpl(fp), currentTarget, 1.0);
     org.bukkit.Bukkit.getPluginManager().callEvent(atkEvt2);
     if (atkEvt2.isCancelled()) return;
-    nms.attack(nmsTarget);
+    NmsPlayerSpawner.performAttack(b, currentTarget, 1.0);
 
     ItemStack mainHand = b.getInventory().getItemInMainHand();
     Material weapon =
@@ -1000,6 +1000,39 @@ public final class AttackCommand implements FppCommand {
     return state != null && state.mobMode;
   }
 
+  public boolean isHuntMode(UUID botUuid) {
+    AttackState state = attackStates.get(botUuid);
+    return state != null && state.huntMode;
+  }
+
+  public String getAttackMode(UUID botUuid) {
+    AttackState state = attackStates.get(botUuid);
+    if (state == null) return null;
+    if (state.huntMode) return "hunt";
+    if (state.mobMode) return "mob";
+    return "classic";
+  }
+
+  public double getAttackRange(UUID botUuid) {
+    AttackState state = attackStates.get(botUuid);
+    return state != null ? state.range : Config.attackMobDefaultRange();
+  }
+
+  public String getAttackPriority(UUID botUuid) {
+    AttackState state = attackStates.get(botUuid);
+    return state != null ? state.priority : Config.attackMobDefaultPriority();
+  }
+
+  public Set<EntityType> getAttackFilterTypes(UUID botUuid) {
+    AttackState state = attackStates.get(botUuid);
+    return state != null ? Collections.unmodifiableSet(state.filterTypes) : Collections.emptySet();
+  }
+
+  public FakePlayer.PveSmartAttackMode getAttackSmartMode(UUID botUuid) {
+    AttackState state = attackStates.get(botUuid);
+    return state != null ? state.smartAttackMode : FakePlayer.PveSmartAttackMode.OFF;
+  }
+
   public void resumeAttacking(FakePlayer fp) {
     UUID uuid = fp.getUuid();
     Location attackLoc = getActiveAttackLocation(uuid);
@@ -1019,6 +1052,45 @@ public final class AttackCommand implements FppCommand {
     } else {
       startNavigation(fp, once, loc);
     }
+  }
+
+  public void resumeMobAttacking(
+      FakePlayer fp,
+      double range,
+      String priority,
+      Set<EntityType> filterTypes,
+      FakePlayer.PveSmartAttackMode smartMode,
+      Location loc) {
+    if (fp == null || loc == null) return;
+    Player bot = fp.getPlayer();
+    if (bot == null || !bot.isOnline()) return;
+    cancelAll(fp.getUuid());
+    MobFlags flags = new MobFlags(range, priority, filterTypes, smartMode, false);
+    if (PathfindingService.xzDist(bot.getLocation(), loc) <= Config.pathfindingArrivalDistance()) {
+      startMobMode(fp, flags, loc);
+    } else {
+      navigateThenMob(fp, flags, loc);
+    }
+  }
+
+  public void resumeHuntAttacking(
+      FakePlayer fp,
+      double range,
+      String priority,
+      Set<EntityType> filterTypes,
+      Location loc) {
+    if (fp == null || loc == null) return;
+    Player bot = fp.getPlayer();
+    if (bot == null || !bot.isOnline()) return;
+    cancelAll(fp.getUuid());
+    MobFlags flags =
+        new MobFlags(
+            range,
+            priority,
+            filterTypes,
+            FakePlayer.PveSmartAttackMode.ON_MOVE,
+            true);
+    startHuntMode(fp, flags, loc);
   }
 
   @SuppressWarnings("resource")

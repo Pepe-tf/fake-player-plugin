@@ -576,7 +576,35 @@ Always download from the official sources:
 
 [SIZE=6][B]📖 Changelog[/B][/SIZE]
 
-[SIZE=5][B]v1.6.6.8[/B][/SIZE] [I](2026-04-29)[/I]
+[SIZE=5][B]v1.6.6.8[/B][/SIZE] [I](2026-05-02)[/I]
+
+[B]Bot Join/Leave Message Overhaul[/B]
+[LIST]
+[*]Bot join messages now use the custom [FONT=monospace]bot-join[/FONT] lang key from [FONT=monospace]en.yml[/FONT] — fully customizable with MiniMessage formatting
+[*]Bot leave messages now use the custom [FONT=monospace]bot-leave[/FONT] lang key and are sent explicitly after despawn/removal — no more missing leave messages
+[*]Death-despawn leave messages fire 20 ticks after death (after kill message and entity removal) for proper ordering
+[*]Vanilla quit messages are always nulled for bots — the only leave message is the custom broadcast
+[/LIST]
+
+[B]Skin System Improvements[/B]
+[LIST]
+[*]Skin fetch retry count increased from 3 to 5 — bots try up to 5 different pool names before falling back to Steve/Alex
+[*]Null/invalid skin results handled gracefully with clear debug messaging
+[*]All skin retry/failure messages now use [FONT=monospace]Config.debugSkin()[/FONT] — silent by default, visible only with [FONT=monospace]logging.debug.skin: true[/FONT]
+[/LIST]
+
+[B]Ping System[/B]
+[LIST]
+[*][FONT=monospace]ping.enabled[/FONT] default changed from [FONT=monospace]true[/FONT] to [FONT=monospace]false[/FONT] — ping simulation is now opt-in
+[/LIST]
+
+[B]Help Menu[/B]
+[LIST]
+[*][FONT=monospace]HelpGui[/FONT] now includes [FONT=monospace]ping[/FONT] and [FONT=monospace]skin[/FONT] commands in the Bots category
+[/LIST]
+
+[B]DB Schema[/B] v21 → v22 (new columns: [FONT=monospace]auto_milk_enabled[/FONT], [FONT=monospace]prevent_bad_omen[/FONT], [FONT=monospace]ping_user_set[/FONT])
+[B]Config[/B] v67 → v70 ([FONT=monospace]ping.enabled[/FONT] default changed to [FONT=monospace]false[/FONT])
 
 [B]Extension Config & Resource System[/B]
 [LIST]

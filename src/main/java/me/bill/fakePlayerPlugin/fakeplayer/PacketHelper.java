@@ -61,6 +61,8 @@ public final class PacketHelper {
 
   private static volatile Object cachedUpdateListedActions = null;
 
+  private static volatile Object cachedUpdateDisplayLatencyListedActions = null;
+
   private static volatile Constructor<?> cachedEntryCtorWinner = null;
 
   private static volatile Class<?>[] cachedEntryCtorParamTypes = null;
@@ -295,7 +297,7 @@ public final class PacketHelper {
         fp.setCachedNmsDisplay(displayName, dispStr);
       }
 
-      int latency = fp.hasCustomPing() ? fp.getPing() : 0;
+      int latency = fp.getEffectivePing();
       Object entry = buildEntryWithLatency(fp.getUuid(), profile, displayName, latency);
       Object actions = buildActionSet();
 
@@ -479,7 +481,8 @@ public final class PacketHelper {
       String packetProfileName,
       String displayName,
       String skinValue,
-      String skinSignature) {
+      String skinSignature,
+      int pingMs) {
     if (!ensureReady()) return;
     try {
       Object nms = getHandle(receiver);
@@ -505,7 +508,7 @@ public final class PacketHelper {
       Component adventureComponent = MiniMessage.miniMessage().deserialize(displayName);
       Object nmsDisplayName = adventureToNms(adventureComponent);
 
-      Object entry = buildEntry(uuid, profile, nmsDisplayName);
+      Object entry = buildEntryWithLatency(uuid, profile, nmsDisplayName, pingMs);
       Object actions = buildActionSet();
 
       sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, buildSecondArg(entry)));
@@ -558,7 +561,8 @@ public final class PacketHelper {
         fp.setCachedNmsDisplay(displayName, dispStr);
       }
 
-      Object entry = buildEntry(fp.getUuid(), profile, displayName);
+      int latency = fp.getEffectivePing();
+      Object entry = buildEntryWithLatency(fp.getUuid(), profile, displayName, latency);
 
       if (cachedUpdateDisplayNameActions == null) {
         Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
@@ -574,7 +578,7 @@ public final class PacketHelper {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   public static void sendTabListDisplayNameUpdate(
-      Player receiver, UUID uuid, String rawDisplayName) {
+      Player receiver, UUID uuid, String rawDisplayName, int pingMs) {
     if (!ensureReady()) return;
     try {
       Object nms = getHandle(receiver);
@@ -587,7 +591,7 @@ public final class PacketHelper {
       Component adventureComponent = MiniMessage.miniMessage().deserialize(rawDisplayName);
       Object displayName = adventureToNms(adventureComponent);
 
-      Object entry = buildEntry(uuid, profile, displayName);
+      Object entry = buildEntryWithLatency(uuid, profile, displayName, pingMs);
 
       if (cachedUpdateDisplayNameActions == null) {
         Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
@@ -624,7 +628,7 @@ public final class PacketHelper {
         fp.setCachedNmsDisplay(displayName, fp.getDisplayName());
       }
 
-      int latency = fp.hasCustomPing() ? fp.getPing() : 0;
+      int latency = fp.getEffectivePing();
       Object entry = buildEntryWithLatency(fp.getUuid(), profile, displayName, latency);
 
       if (cachedUpdateLatencyActions == null) {
@@ -660,7 +664,7 @@ public final class PacketHelper {
         fp.setCachedNmsDisplay(displayName, fp.getDisplayName());
       }
 
-      int latency = fp.hasCustomPing() ? fp.getPing() : 0;
+      int latency = fp.getEffectivePing();
       Object entry = buildEntryWithListedFlag(fp.getUuid(), profile, displayName, latency, listed);
 
       if (cachedUpdateListedActions == null) {
@@ -674,6 +678,48 @@ public final class PacketHelper {
           "Tab LISTED(" + listed + ") → " + receiver.getName() + " for " + fp.getName());
     } catch (Exception e) {
       Config.debugPackets("sendTabListUpdateListed failed: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public static void sendTabListRefreshEntry(Player receiver, FakePlayer fp) {
+    if (!ensureReady()) return;
+    try {
+      Object nms = getHandle(receiver);
+      if (nms == null) return;
+
+      Object profile = buildProfileWithSkin(fp);
+      if (profile == null) return;
+
+      String dispStr = fp.getDisplayName();
+      if (dispStr == null || dispStr.isBlank()) dispStr = fp.getName();
+      Object displayName = fp.getCachedNmsDisplayComponent();
+      if (displayName == null || !dispStr.equals(fp.getCachedNmsDisplaySource())) {
+        Component adv = MiniMessage.miniMessage().deserialize(dispStr);
+        displayName = adventureToNms(adv);
+        if (displayName == null) displayName = componentLiteral(dispStr);
+        if (displayName == null) return;
+        fp.setCachedNmsDisplay(displayName, dispStr);
+      }
+
+      int latency = fp.getEffectivePing();
+      boolean listed = Config.tabListEnabled();
+      Object entry = buildEntryWithListedFlag(fp.getUuid(), profile, displayName, latency, listed);
+
+      if (cachedUpdateDisplayLatencyListedActions == null) {
+        Class<? extends Enum> e = rawEnum(playerInfoUpdateActionClass);
+        cachedUpdateDisplayLatencyListedActions =
+            EnumSet.of(
+                Enum.valueOf(e, "UPDATE_DISPLAY_NAME"),
+                Enum.valueOf(e, "UPDATE_LISTED"),
+                Enum.valueOf(e, "UPDATE_LATENCY"));
+      }
+      Object actions = cachedUpdateDisplayLatencyListedActions;
+
+      sendPacket(nms, playerInfoUpdateCtor.newInstance(actions, buildSecondArg(entry)));
+      Config.debugPackets("Tab REFRESH → " + receiver.getName() + " for " + fp.getName());
+    } catch (Exception e) {
+      Config.debugPackets("sendTabListRefreshEntry failed: " + describeException(e));
     }
   }
 

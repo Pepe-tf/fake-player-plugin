@@ -614,7 +614,7 @@ public final class FindCommand implements FppCommand {
 
     if (bot.getGameMode() == GameMode.CREATIVE) {
       if (fireBlockBreakHook(fp, targetPos)) {
-        nms.gameMode.handleBlockBreakAction(
+        NmsPlayerSpawner.handleBlockBreakAction(nms,
             targetPos,
             ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
             side,
@@ -630,7 +630,7 @@ public final class FindCommand implements FppCommand {
     if (state.currentPos == null || !state.currentPos.equals(targetPos)) {
       if (state.currentPos != null) {
         if (fireBlockBreakHook(fp, state.currentPos)) {
-          nms.gameMode.handleBlockBreakAction(
+          NmsPlayerSpawner.handleBlockBreakAction(nms,
               state.currentPos,
               ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
               side,
@@ -639,7 +639,7 @@ public final class FindCommand implements FppCommand {
         }
       }
       if (fireBlockBreakHook(fp, targetPos)) {
-        nms.gameMode.handleBlockBreakAction(
+        NmsPlayerSpawner.handleBlockBreakAction(nms,
             targetPos,
             ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
             side,
@@ -663,19 +663,19 @@ public final class FindCommand implements FppCommand {
       state.progress += speed;
       if (state.progress >= 1.0f) {
         if (fireBlockBreakHook(fp, targetPos)) {
-          nms.gameMode.handleBlockBreakAction(
-              targetPos,
-              ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
-              side,
-              nms.level().getMaxY(),
-              -1);
+        NmsPlayerSpawner.handleBlockBreakAction(nms,
+            targetPos,
+            ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
+            side,
+            nms.level().getMaxY(),
+            -1);
         }
         nms.swing(InteractionHand.MAIN_HAND);
         state.done = true;
         state.postMinePause = POST_MINE_PAUSE_TICKS;
         return;
       }
-      nms.level().destroyBlockProgress(-1, targetPos, (int) (state.progress * 10));
+      NmsPlayerSpawner.destroyBlockProgress(nms, -1, targetPos, (int) (state.progress * 10));
     }
 
     nms.swing(InteractionHand.MAIN_HAND);

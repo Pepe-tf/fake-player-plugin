@@ -233,7 +233,7 @@ public final class FakePlayerPlugin extends JavaPlugin {
                   : row.botName();
           remoteBotCache.add(
               new me.bill.fakePlayerPlugin.fakeplayer.RemoteBotEntry(
-                  row.serverId(), uuid, row.botName(), display, row.botName(), "", ""));
+                  row.serverId(), uuid, row.botName(), display, row.botName(), "", "", -1));
         } catch (Exception ignored) {
         }
       }

@@ -255,23 +255,24 @@ public class FakePlayerEntityListener implements Listener {
       final UUID deathDespawnUuid = fp.getUuid();
       if (event.getEntity() instanceof Player deadPlayer) {
         manager.markDespawning(deadPlayer.getUniqueId(), deathDespawnName);
-        FppScheduler.runSyncLater(
-            plugin,
-            () -> {
-              me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
-              manager.clearDespawningNextTick(deathDespawnUuid);
-            },
-            20L);
       }
       FppScheduler.runSyncLater(
           plugin,
           () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
+            if (event.getEntity() instanceof Player deadPlayer) {
+              me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner.removeFakePlayer(deadPlayer);
+              manager.clearDespawningNextTick(deathDespawnUuid);
+            }
 
             if (me.bill.fakePlayerPlugin.config.Config.leaveMessage()) {
+              me.bill.fakePlayerPlugin.fakeplayer.BotBroadcast
+                  .broadcastLeaveByDisplayName(deathDespawnName);
               var vc = plugin.getVelocityChannel();
               if (vc != null) vc.broadcastLeaveToNetwork(deathDespawnName);
             }
+
+            for (Player p : Bukkit.getOnlinePlayers()) PacketHelper.sendTabListRemove(p, fp);
+
             var vc2 = plugin.getVelocityChannel();
             if (vc2 != null) vc2.broadcastBotDespawn(fp.getUuid());
             manager.removeByName(name);

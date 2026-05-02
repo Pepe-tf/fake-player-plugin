@@ -1,13 +1,41 @@
 # 📋 Changelog
 
 > **Full version history for Fake Player Plugin**  
-> Latest version: **v1.6.6.8** · Released: 2026-04-29 · Config version: **67** · Database schema: **21**  
+> Latest version: **v1.6.6.8** · Released: 2026-05-02 · Config version: **70** · Database schema: **22**  
 > 🎉 **Now Open Source** — [https://github.com/Pepe-tf/fake-player-plugin](https://github.com/Pepe-tf/fake-player-plugin)
 > 📥 **Download:** [Modrinth](https://modrinth.com/plugin/fake-player-plugin-(fpp)) · [SpigotMC](https://www.spigotmc.org/resources/fake-player-plugin-fpp.133572/) · [Hangar](https://hangar.papermc.io/Pepe-tf/FakePlayerPlugin) · [BuiltByBit](https://builtbybit.com/resources/fake-player-plugin.98704/)
 
 ---
 
-## v1.6.6.8 *(2026-04-29)*
+## v1.6.6.8 *(2026-05-02)*
+
+### Bot Join/Leave Message Overhaul
+- Bot join messages now use the custom `bot-join` lang key from `en.yml` instead of the vanilla "joined the game" format — fully customizable with MiniMessage formatting
+- Bot leave messages now use the custom `bot-leave` lang key and are sent explicitly after despawn/removal, ensuring they always appear
+- Both `PlayerJoinEvent` LOWEST and MONITOR handlers set custom join messages for bots (or null for rename/respawn/config-disabled cases)
+- Both `PlayerQuitEvent` LOWEST and MONITOR handlers null the vanilla quit message for all bots — the only leave message comes from the custom `BotBroadcast.broadcastLeaveByDisplayName()` call
+- Death-despawn leave messages now fire 20 ticks after death (after the death message and entity removal) instead of immediately on the death tick — proper message ordering: kill message → leave message
+
+### Skin System Improvements
+- Skin fetch retry count increased from 3 to 5 (`MAX_FALLBACK_ATTEMPTS`) — bots now try up to 5 different pool names before falling back to default Steve/Alex
+- `SkinRepository.getAnyValidSkin()` retries with different random names on failure, deduplicating attempts via a `tried` set
+- `SkinManager.tryFallback()` now handles null/invalid skin results gracefully — sets `fp.setResolvedSkin(null)` with a clear debug message when all attempts fail
+- All skin retry/failure messages converted from `FppLogger.warn` to `Config.debugSkin()` — silent by default, only visible when `logging.debug.skin: true`
+
+### Ping System
+- `ping.enabled` default changed from `true` to `false` — ping simulation is now opt-in (config migration v69→v70)
+- Existing configs with `ping.enabled` explicitly set are unaffected
+
+### Help Menu
+- `HelpGui` now includes `ping` (REPEATER icon) and `skin` (PLAYER_HEAD icon) commands in the Bots category
+
+### DB Schema v21 → v22
+- `fpp_active_bots` gains `auto_milk_enabled BOOLEAN DEFAULT 1`, `prevent_bad_omen BOOLEAN DEFAULT 1`, `ping_user_set BOOLEAN DEFAULT 0`
+
+### Config v67 → v70
+- v67→v68: ping latency-effect config keys added
+- v68→v69: ping spike-chance/spike-min/spike-max/join-ramp-ticks added
+- v69→v70: `ping.enabled` default changed to `false`
 
 ### Extension Config & Resource System
 - `FppExtension` interface now provides 6 convenience methods for extension data/config management:

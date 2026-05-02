@@ -414,12 +414,49 @@ public final class BotChatAI implements Listener {
   private void sendMessageForced(FakePlayer bot, String message, boolean allowBurst) {
     if (manager.getByUuid(bot.getUuid()) == null) return;
 
-    String prefix = "";
-    String suffix = "";
-    if (plugin.isLuckPermsAvailable()) {
-      prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(bot.getUuid());
-      suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(bot.getUuid());
+    int latencyDelayTicks = 0;
+    if (Config.pingLatencyEffect() && Config.pingEnabled()) {
+      int pingMs = bot.getEffectivePing();
+      if (pingMs > 0) {
+        latencyDelayTicks = Math.max(1, pingMs / 50);
+      }
     }
+
+    if (latencyDelayTicks > 0) {
+      String prefix = "";
+      String suffix = "";
+      if (plugin.isLuckPermsAvailable()) {
+        prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(bot.getUuid());
+        suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(bot.getUuid());
+      }
+      final UUID botUuid = bot.getUuid();
+      final String fPrefix = prefix;
+      final String fSuffix = suffix;
+      FppScheduler.runSyncLater(plugin, () -> {
+        FakePlayer fp = manager.getByUuid(botUuid);
+        if (fp == null) return;
+        doSendMessage(fp, message, fPrefix, fSuffix);
+      }, latencyDelayTicks);
+    } else {
+      String prefix = "";
+      String suffix = "";
+      if (plugin.isLuckPermsAvailable()) {
+        prefix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedPrefix(bot.getUuid());
+        suffix = me.bill.fakePlayerPlugin.util.LuckPermsHelper.getResolvedSuffix(bot.getUuid());
+      }
+      doSendMessage(bot, message, prefix, suffix);
+    }
+
+    if (allowBurst) {
+      double burstChance = Config.fakeChatBurstChance();
+      if (burstChance > 0 && ThreadLocalRandom.current().nextDouble() < burstChance) {
+        scheduleBurst(bot);
+      }
+    }
+  }
+
+  private void doSendMessage(FakePlayer bot, String message, String prefix, String suffix) {
+    if (manager.getByUuid(bot.getUuid()) == null) return;
 
     boolean sentViaPlayerChat = false;
     Player playerEntity = bot.getPlayer();
@@ -435,13 +472,6 @@ public final class BotChatAI implements Listener {
     var vc = plugin.getVelocityChannel();
     if (vc != null) {
       vc.sendChatToNetwork(bot.getName(), bot.getDisplayName(), message, prefix, suffix);
-    }
-
-    if (allowBurst) {
-      double burstChance = Config.fakeChatBurstChance();
-      if (burstChance > 0 && ThreadLocalRandom.current().nextDouble() < burstChance) {
-        scheduleBurst(bot);
-      }
     }
   }
 

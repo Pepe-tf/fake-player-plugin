@@ -202,6 +202,10 @@ public class InventoryCommand implements FppCommand, Listener {
             botPlayer.getLocation(), Sound.BLOCK_CHEST_OPEN, SoundCategory.BLOCKS, 0.5f, 1.0f);
   }
 
+  public boolean isInventoryOpen(UUID botUuid) {
+    return botLocks.containsKey(botUuid);
+  }
+
   private static final String SC_BOOTS = "\u0299\u1D0F\u1D0F\u1D1B\uA731";
 
   private static final String SC_LEGGINGS = "\u029F\u1D07\u0262\u0262\u026A\u0274\u0262\uA731";
@@ -341,7 +345,7 @@ public class InventoryCommand implements FppCommand, Listener {
       int botSlot = GUI_TO_BOT[guiSlot];
       if (botSlot < 0) continue;
       ItemStack item = gui.getItem(guiSlot);
-      botInv.setItem(botSlot, (item == null || item.getType() == Material.AIR) ? null : item);
+      botInv.setItem(botSlot, (item == null || item.getType() == Material.AIR) ? null : item.clone());
     }
   }
 

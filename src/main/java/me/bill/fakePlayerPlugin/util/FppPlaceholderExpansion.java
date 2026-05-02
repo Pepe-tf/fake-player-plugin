@@ -89,6 +89,26 @@ public final class FppPlaceholderExpansion extends PlaceholderExpansion {
       case "pushable" -> Config.bodyPushable() ? "on" : "off";
       case "damageable" -> Config.bodyDamageable() ? "on" : "off";
       case "tab" -> Config.tabListEnabled() ? "on" : "off";
+      case "ping" -> Config.pingEnabled() ? "on" : "off";
+      case "ping_all" -> {
+        if (player == null || !player.isOnline()) yield "-1";
+        Player onlinePlayer = player.getPlayer();
+        FakePlayer fp = manager.getByName(onlinePlayer.getName());
+        if (fp != null) yield String.valueOf(fp.getEffectivePing());
+        yield String.valueOf(onlinePlayer.getPing());
+      }
+      case "avg_ping" -> {
+        if (localBots == 0) yield "0";
+        int total = 0;
+        for (FakePlayer fp : manager.getActivePlayers()) {
+          total += fp.getEffectivePing();
+        }
+        yield String.valueOf(total / localBots);
+      }
+      case "player_ping" -> {
+        if (player == null || !player.isOnline()) yield "-1";
+        yield String.valueOf(player.getPlayer().getPing());
+      }
       case "max_health" -> String.valueOf(Config.maxHealth());
       case "version" -> plugin.getPluginMeta().getVersion();
 
@@ -113,6 +133,20 @@ public final class FppPlaceholderExpansion extends PlaceholderExpansion {
         List<FakePlayer> owned = manager.getBotsOwnedBy(player.getUniqueId());
         yield owned.stream().map(FakePlayer::getDisplayName).collect(Collectors.joining(", "));
       }
+      case "user_ping" -> {
+        if (player == null) yield "0";
+        List<FakePlayer> ownedBots = manager.getBotsOwnedBy(player.getUniqueId());
+        if (ownedBots.isEmpty()) yield "0";
+        yield String.valueOf(ownedBots.get(0).getEffectivePing());
+      }
+      case "user_ping_avg" -> {
+        if (player == null) yield "0";
+        List<FakePlayer> userBots = manager.getBotsOwnedBy(player.getUniqueId());
+        if (userBots.isEmpty()) yield "0";
+        int sum = 0;
+        for (FakePlayer fp : userBots) sum += fp.getEffectivePing();
+        yield String.valueOf(sum / userBots.size());
+      }
 
       default -> {
         if (params.startsWith("count_")) {
@@ -126,6 +160,12 @@ public final class FppPlaceholderExpansion extends PlaceholderExpansion {
         if (params.startsWith("total_")) {
           String w = params.substring(6);
           yield String.valueOf(countBotsInWorld(w) + countRealInWorld(w));
+        }
+        if (params.startsWith("ping_")) {
+          String botName = params.substring(5);
+          FakePlayer fp = manager.getByName(botName);
+          if (fp != null) yield String.valueOf(fp.getEffectivePing());
+          yield null;
         }
         yield null;
       }

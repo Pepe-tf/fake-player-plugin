@@ -11,6 +11,7 @@ import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
 import me.bill.fakePlayerPlugin.fakeplayer.NmsPlayerSpawner;
+import me.bill.fakePlayerPlugin.fakeplayer.PacketHelper;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import me.bill.fakePlayerPlugin.util.FppScheduler;
 import net.kyori.adventure.text.Component;
@@ -958,6 +959,31 @@ public final class SettingGui implements Listener {
       return;
     }
 
+    if (configKey.startsWith("ping.")) {
+      if (fpm != null) {
+        boolean enabled = plugin.getConfig().getBoolean("ping.enabled", true);
+        for (FakePlayer fp : fpm.getActivePlayers()) {
+          if (!enabled) {
+            NmsPlayerSpawner.setPing(fp.getPlayer(), 0);
+            fp.setUserPing(-1);
+            fp.setBasePing(-1);
+          } else if (!fp.hasCustomPing()) {
+            int min = Config.pingMin();
+            int max = Config.pingMax();
+            int base = min + java.util.concurrent.ThreadLocalRandom.current()
+                .nextInt(Math.max(1, max - min + 1));
+            fp.setBasePing(base);
+            fp.setPing(base);
+            NmsPlayerSpawner.setPing(fp.getPlayer(), base);
+          }
+          for (Player p : Bukkit.getOnlinePlayers()) {
+            PacketHelper.sendTabListLatencyUpdate(p, fp);
+          }
+        }
+      }
+      return;
+    }
+
     if (configKey.equals("skin.guaranteed-skin")) {
       boolean enabled = plugin.getConfig().getBoolean("skin.guaranteed-skin", false);
       if (fpm != null) {
@@ -1123,6 +1149,23 @@ public final class SettingGui implements Listener {
                 "ᴛᴀʙ-ʟɪꜱᴛ ᴠɪꜱɪʙɪʟɪᴛʏ",
                 "ᴅɪꜱᴘʟᴀʏ ʙᴏᴛꜱ ᴀꜱ ᴇɴᴛʀɪᴇꜱ\nɪɴ ᴛʜᴇ ᴘʟᴀʏᴇʀ ᴛᴀʙ ʟɪꜱᴛ.",
                 Material.NAME_TAG),
+            SettingEntry.toggle(
+                "ping.enabled",
+                "ᴘɪɴɢ ꜱɪᴍᴜʟᴀᴛɪᴏɴ",
+                "ɢɪᴠᴇ ʙᴏᴛꜱ ʀᴇᴀʟɪꜱᴛɪᴄ ʟᴀᴛᴇɴᴄʏ\nɪɴ ᴛʜᴇ ᴛᴀʙ ʟɪꜱᴛ. ᴇᴀᴄʜ ʙᴏᴛ ɢᴇᴛꜱ\nᴀ ʀᴀɴᴅᴏᴍ ʙᴀꜱᴇ ᴘɪɴɢ ᴡɪᴛʜ\nᴘᴇʀɪᴏᴅɪᴄ ᴊɪᴛᴛᴇʀ.",
+                Material.REPEATER),
+            SettingEntry.cycleInt(
+                "ping.min",
+                "ᴘɪɴɢ ᴍɪɴ (ᴍꜱ)",
+                "ʟᴏᴡᴇꜱᴛ ʙᴀꜱᴇ ᴘɪɴɢ ꜰᴏʀ\nᴛʜᴇ ʀᴀɴᴅᴏᴍ ʀᴀɴɢᴇ.",
+                Material.REPEATER,
+                new int[] {10, 20, 40, 60, 80, 100}),
+            SettingEntry.cycleInt(
+                "ping.max",
+                "ᴘɪɴɢ ᴍᴀx (ᴍꜱ)",
+                "ʜɪɢʜᴇꜱᴛ ʙᴀꜱᴇ ᴘɪɴɢ ꜰᴏʀ\nᴛʜᴇ ʀᴀɴᴅᴏᴍ ʀᴀɴɢᴇ.",
+                Material.REPEATER,
+                new int[] {100, 150, 200, 300, 500}),
             SettingEntry.toggle(
                 "server-list.count-bots",
                 "ꜱᴇʀᴠᴇʀ-ʟɪꜱᴛ ᴄᴏᴜɴᴛ",

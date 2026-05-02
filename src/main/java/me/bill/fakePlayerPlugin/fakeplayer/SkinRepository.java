@@ -349,11 +349,30 @@ public final class SkinRepository {
       return;
     }
 
+    tryAnyValidSkinFromPool(callback, 0, 3, new java.util.HashSet<>());
+  }
+
+  private void tryAnyValidSkinFromPool(
+      Consumer<SkinProfile> callback, int attempt, int maxAttempts, java.util.Set<String> tried) {
+    if (attempt >= maxAttempts) {
+      Config.debugSkin("SkinRepository: all guaranteed-skin pool attempts failed — bot will use default skin.");
+      callback.accept(null);
+      return;
+    }
     String randomName = SkinManager.pickRandomPoolName();
+    if (randomName == null || tried.contains(randomName.toLowerCase(java.util.Locale.ROOT))) {
+      tryAnyValidSkinFromPool(callback, attempt + 1, maxAttempts, tried);
+      return;
+    }
+    tried.add(randomName.toLowerCase(java.util.Locale.ROOT));
     FppLogger.debug(
         "SkinRepository: guaranteed-skin → on-demand fetch from built-in pool for '"
             + randomName
-            + "'.");
+            + "' (attempt "
+            + (attempt + 1)
+            + "/"
+            + maxAttempts
+            + ").");
     SkinFetcher.fetchAsync(
         randomName,
         (value, sig) -> {
@@ -362,11 +381,15 @@ public final class SkinRepository {
             FppLogger.debug("SkinRepository: built-in pool skin '" + randomName + "' fetched.");
             callback.accept(p);
           } else {
-            FppLogger.warn(
+            Config.debugSkin(
                 "SkinRepository: built-in pool fetch failed for '"
                     + randomName
-                    + "' - bot will use the default skin.");
-            callback.accept(null);
+                    + "' (attempt "
+                    + (attempt + 1)
+                    + "/"
+                    + maxAttempts
+                    + ") — retrying.");
+            tryAnyValidSkinFromPool(callback, attempt + 1, maxAttempts, tried);
           }
         });
   }

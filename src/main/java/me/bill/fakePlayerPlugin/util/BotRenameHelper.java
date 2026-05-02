@@ -389,6 +389,7 @@ public final class BotRenameHelper {
     private final String aiPersonality;
     private final SkinProfile resolvedSkin;
     private final int ping;
+    private final boolean pingUserSet;
 
     private BotSnapshot(
         ItemStack[] mainContents,
@@ -409,7 +410,8 @@ public final class BotRenameHelper {
         UUID spawnerUuid,
         String aiPersonality,
         SkinProfile resolvedSkin,
-        int ping) {
+        int ping,
+        boolean pingUserSet) {
       this.mainContents = mainContents;
       this.armorContents = armorContents;
       this.extraContents = extraContents;
@@ -429,6 +431,7 @@ public final class BotRenameHelper {
       this.aiPersonality = aiPersonality;
       this.resolvedSkin = resolvedSkin;
       this.ping = ping;
+      this.pingUserSet = pingUserSet;
     }
 
     static BotSnapshot from(@NotNull FakePlayer fp) {
@@ -467,7 +470,8 @@ public final class BotRenameHelper {
           fp.getSpawnedByUuid(),
           fp.getAiPersonality(),
           fp.getResolvedSkin(),
-          fp.getPing());
+          fp.getPing(),
+          fp.hasCustomPing());
     }
 
     String lpGroup() {
@@ -516,7 +520,11 @@ public final class BotRenameHelper {
       if (resolvedSkin != null && resolvedSkin.isValid()) {
         fp.setResolvedSkin(resolvedSkin);
       }
-      fp.setPing(ping);
+      if (pingUserSet) {
+        fp.setUserPing(ping);
+      } else {
+        fp.setPing(ping);
+      }
       if (chatTier != null) {
         fp.setChatTier(chatTier);
       }

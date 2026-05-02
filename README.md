@@ -379,7 +379,27 @@ Identical feature set for BungeeCord/Waterfall networks.
 
 ## Changelog
 
-### v1.6.6.8 *(2026-04-29)*
+### v1.6.6.8 *(2026-05-02)*
+
+**Bot Join/Leave Message Overhaul**
+- Bot join messages now use the custom `bot-join` lang key from `en.yml` — fully customizable with MiniMessage formatting
+- Bot leave messages now use the custom `bot-leave` lang key and are sent explicitly after despawn/removal — no more missing leave messages
+- Death-despawn leave messages fire 20 ticks after death (after kill message and entity removal) for proper ordering
+- Vanilla quit messages are always nulled for bots — the only leave message is the custom broadcast
+
+**Skin System Improvements**
+- Skin fetch retry count increased from 3 to 5 — bots try up to 5 different pool names before falling back to Steve/Alex
+- Null/invalid skin results handled gracefully with clear debug messaging
+- All skin retry/failure messages now use `Config.debugSkin()` — silent by default, visible only with `logging.debug.skin: true`
+
+**Ping System**
+- `ping.enabled` default changed from `true` to `false` — ping simulation is now opt-in
+
+**Help Menu**
+- `HelpGui` now includes `ping` and `skin` commands in the Bots category
+
+**DB Schema** v21 → v22 (new columns: `auto_milk_enabled`, `prevent_bad_omen`, `ping_user_set`)
+**Config** v67 → v70 (`ping.enabled` default changed to `false`)
 
 **Extension Config & Resource System**
 - `FppExtension` interface now provides 6 convenience methods for extension data/config management:

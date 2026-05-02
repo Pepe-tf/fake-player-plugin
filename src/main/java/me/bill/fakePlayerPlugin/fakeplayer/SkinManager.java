@@ -1026,7 +1026,7 @@ public final class SkinManager {
           "zyephy",
           "F_PP");
 
-  private static final int MAX_FALLBACK_ATTEMPTS = 3;
+  private static final int MAX_FALLBACK_ATTEMPTS = 5;
 
   public static @NotNull String pickRandomPoolName() {
     return DEFAULT_FALLBACK_ACCOUNT_POOL.get(
@@ -1273,9 +1273,18 @@ public final class SkinManager {
       SkinRepository.get()
           .getAnyValidSkin(
               skin -> {
-                fp.setResolvedSkin(skin);
-                persistSkinToDb(fp, skin);
-                deliver(callback, skin);
+                if (skin != null && skin.isValid()) {
+                  fp.setResolvedSkin(skin);
+                  persistSkinToDb(fp, skin);
+                  deliver(callback, skin);
+                } else {
+                  Config.debugSkin(
+                      "SkinManager: guaranteed-skin fallback failed for bot '"
+                          + fp.getName()
+                          + "' — using default skin (Steve/Alex).");
+                  fp.setResolvedSkin(null);
+                  deliver(callback, null);
+                }
               });
       return;
     }
@@ -1285,9 +1294,18 @@ public final class SkinManager {
         .resolve(
             pick,
             skin -> {
-              fp.setResolvedSkin(skin);
-              persistSkinToDb(fp, skin);
-              deliver(callback, skin);
+              if (skin != null && skin.isValid()) {
+                fp.setResolvedSkin(skin);
+                persistSkinToDb(fp, skin);
+                deliver(callback, skin);
+              } else {
+                Config.debugSkin(
+                    "SkinManager: all skin attempts failed for bot '"
+                        + fp.getName()
+                        + "' — using default skin (Steve/Alex).");
+                fp.setResolvedSkin(null);
+                deliver(callback, null);
+              }
             });
   }
 
@@ -1492,7 +1510,7 @@ public final class SkinManager {
                 }
                 return ProfileCompleteResult.FAILED;
               } catch (Exception e) {
-                FppLogger.warn(
+                Config.debugSkin(
                     "SkinManager: failed to fetch online profile from Mojang"
                         + " for "
                         + Optional.ofNullable(from.getName()).orElse(from.getUniqueId().toString())
@@ -1505,7 +1523,7 @@ public final class SkinManager {
             result -> {
               if (result != ProfileCompleteResult.SUCCESS) {
                 if (result == ProfileCompleteResult.FAILED) {
-                  FppLogger.warn(
+                  Config.debugSkin(
                       "SkinManager: failed to fetch online skin for "
                           + Optional.ofNullable(from.getName())
                               .orElse(from.getUniqueId().toString())

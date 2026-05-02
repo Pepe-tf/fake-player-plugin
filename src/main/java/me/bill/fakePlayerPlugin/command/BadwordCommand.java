@@ -384,8 +384,13 @@ public class BadwordCommand implements FppCommand {
               && newFp.getPlayer() != null) {
             plugin.getSkinManager().applySkinFromProfile(newFp, task.snapshot().resolvedSkin());
           }
-          if (task.snapshot().ping() >= 0) {
-            manager.applyPing(newFp, task.snapshot().ping());
+          if (task.snapshot().ping() >= 0 || task.snapshot().pingUserSet()) {
+            if (task.snapshot().pingUserSet()) {
+              manager.applyPing(newFp, task.snapshot().ping());
+            } else if (task.snapshot().ping() >= 0) {
+              newFp.setBasePing(task.snapshot().ping());
+              newFp.setPing(task.snapshot().ping());
+            }
           }
 
           if (task.snapshot().aiPersonality() != null) {
@@ -573,6 +578,7 @@ public class BadwordCommand implements FppCommand {
     private final SkinProfile resolvedSkin;
 
     private final int ping;
+    private final boolean pingUserSet;
 
     private BotSnapshot(
         ItemStack[] main,
@@ -587,7 +593,8 @@ public class BadwordCommand implements FppCommand {
         String lpGroup,
         String aiPersonality,
         SkinProfile resolvedSkin,
-        int ping) {
+        int ping,
+        boolean pingUserSet) {
       this.mainContents = main;
       this.armorContents = armor;
       this.extraContents = extra;
@@ -601,6 +608,7 @@ public class BadwordCommand implements FppCommand {
       this.aiPersonality = aiPersonality;
       this.resolvedSkin = resolvedSkin;
       this.ping = ping;
+      this.pingUserSet = pingUserSet;
     }
 
     static BotSnapshot from(FakePlayer fp) {
@@ -634,7 +642,8 @@ public class BadwordCommand implements FppCommand {
           lpg,
           fp.getAiPersonality(),
           fp.getResolvedSkin(),
-          fp.getPing());
+          fp.getPing(),
+          fp.hasCustomPing());
     }
 
     String lpGroup() {
@@ -651,6 +660,10 @@ public class BadwordCommand implements FppCommand {
 
     int ping() {
       return ping;
+    }
+
+    boolean pingUserSet() {
+      return pingUserSet;
     }
 
     void applyInventoryAndXp(Player entity) {
@@ -673,7 +686,12 @@ public class BadwordCommand implements FppCommand {
       if (resolvedSkin != null && resolvedSkin.isValid()) {
         fp.setResolvedSkin(resolvedSkin);
       }
-      fp.setPing(ping);
+      if (pingUserSet) {
+        fp.setUserPing(ping);
+      } else if (ping >= 0) {
+        fp.setBasePing(ping);
+        fp.setPing(ping);
+      }
     }
 
     private static ItemStack[] cloneItems(ItemStack[] items) {

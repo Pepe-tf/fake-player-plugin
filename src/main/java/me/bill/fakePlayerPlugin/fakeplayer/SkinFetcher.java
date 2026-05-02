@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
+import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.util.FppLogger;
 
 public final class SkinFetcher {
@@ -152,7 +153,7 @@ public final class SkinFetcher {
         }
       }
     } catch (Exception e) {
-      FppLogger.warn("SkinFetcher URL error for '" + url + "': " + e.getMessage());
+      Config.debugSkin("SkinFetcher URL error for '" + url + "': " + e.getMessage());
     }
 
     String[] result = {value, signature};
@@ -237,8 +238,7 @@ public final class SkinFetcher {
         logRateLimited("mineskin.eu", playerName);
       } catch (SkipSkinFetchException ignored) {
       } catch (Exception e) {
-        FppLogger.warn(
-            "SkinFetcher: mineskin.eu error for '" + playerName + "': " + e.getMessage());
+        Config.debugSkin("SkinFetcher: mineskin.eu error for '" + playerName + "': " + e.getMessage());
       }
     }
 
@@ -252,7 +252,7 @@ public final class SkinFetcher {
         try {
           cb.accept(value, signature);
         } catch (Exception e) {
-          FppLogger.warn("SkinFetcher callback error for '" + playerName + "': " + e.getMessage());
+          Config.debugSkin("SkinFetcher callback error for '" + playerName + "': " + e.getMessage());
         }
       }
     }
@@ -280,7 +280,7 @@ public final class SkinFetcher {
       return;
     }
     lastRateLimitLogMs = now;
-    FppLogger.warn(
+    Config.debugSkin(
         "SkinFetcher: "
             + source
             + " rate-limited while fetching '"

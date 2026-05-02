@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 import me.bill.fakePlayerPlugin.FakePlayerPlugin;
+import me.bill.fakePlayerPlugin.config.Config;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayer;
 import me.bill.fakePlayerPlugin.fakeplayer.FakePlayerManager;
-import me.bill.fakePlayerPlugin.fakeplayer.PacketHelper;
 import me.bill.fakePlayerPlugin.lang.Lang;
 import me.bill.fakePlayerPlugin.permission.Perm;
 import org.bukkit.Bukkit;
@@ -172,21 +172,20 @@ public class PingCommand implements FppCommand {
         sender.sendMessage(Lang.get("no-permission"));
         return true;
       }
-      fp.setPing(pingValue);
-      broadcastPingUpdate(fp);
+      manager.applyPing(fp, pingValue);
       sender.sendMessage(Lang.get("ping-set", "name", fp.getDisplayName(), "ping", String.valueOf(pingValue)));
     } else if (random) {
       if (!Perm.has(sender, Perm.PING_RANDOM)) {
         sender.sendMessage(Lang.get("no-permission"));
         return true;
       }
-      int val = 20 + RANDOM.nextInt(180);
-      fp.setPing(val);
-      broadcastPingUpdate(fp);
+      int min = Config.pingMin();
+      int max = Config.pingMax();
+      int val = min + RANDOM.nextInt(Math.max(1, max - min + 1));
+      manager.applyPing(fp, val);
       sender.sendMessage(Lang.get("ping-set", "name", fp.getDisplayName(), "ping", String.valueOf(val)));
     } else if (reset) {
-      fp.setPing(-1);
-      broadcastPingUpdate(fp);
+      manager.applyPing(fp, -1);
       sender.sendMessage(Lang.get("ping-reset", "name", fp.getDisplayName()));
     } else {
       sendCurrentPing(sender, fp);
@@ -212,8 +211,7 @@ public class PingCommand implements FppCommand {
       }
       for (int i = 0; i < target; i++) {
         FakePlayer fp = bots.get(i);
-        fp.setPing(pingValue);
-        broadcastPingUpdate(fp);
+        manager.applyPing(fp, pingValue);
         manager.persistBotSettings(fp);
       }
       sender.sendMessage(Lang.get("ping-set-multiple", "count", String.valueOf(target), "ping", String.valueOf(pingValue)));
@@ -222,19 +220,19 @@ public class PingCommand implements FppCommand {
         sender.sendMessage(Lang.get("no-permission"));
         return true;
       }
+      int min = Config.pingMin();
+      int max = Config.pingMax();
       for (int i = 0; i < target; i++) {
         FakePlayer fp = bots.get(i);
-        int val = 20 + RANDOM.nextInt(180);
-        fp.setPing(val);
-        broadcastPingUpdate(fp);
+        int val = min + RANDOM.nextInt(Math.max(1, max - min + 1));
+        manager.applyPing(fp, val);
         manager.persistBotSettings(fp);
       }
       sender.sendMessage(Lang.get("ping-random-multiple", "count", String.valueOf(target)));
     } else if (reset) {
       for (int i = 0; i < target; i++) {
         FakePlayer fp = bots.get(i);
-        fp.setPing(-1);
-        broadcastPingUpdate(fp);
+        manager.applyPing(fp, -1);
         manager.persistBotSettings(fp);
       }
       sender.sendMessage(Lang.get("ping-reset-multiple", "count", String.valueOf(target)));
@@ -247,43 +245,29 @@ public class PingCommand implements FppCommand {
   }
 
   private void sendCurrentPing(CommandSender sender, FakePlayer fp) {
+    int displayPing = fp.getEffectivePing();
     if (fp.hasCustomPing()) {
-      sender.sendMessage(Lang.get("ping-show-spoofed", "name", fp.getDisplayName(), "ping", String.valueOf(fp.getPing())));
+      sender.sendMessage(Lang.get("ping-show-spoofed", "name", fp.getDisplayName(), "ping", String.valueOf(displayPing)));
     } else {
-      int displayPing = 0;
-      Player botPlayer = fp.getPlayer();
-      if (botPlayer != null && botPlayer.isOnline()) {
-        displayPing = botPlayer.getPing();
-      }
       sender.sendMessage(Lang.get("ping-show-default", "name", fp.getDisplayName(), "ping", String.valueOf(displayPing)));
     }
   }
 
   private void applyPingOption(CommandSender sender, FakePlayer fp, Integer pingValue, boolean random, boolean reset) {
     if (pingValue != null) {
-      fp.setPing(pingValue);
-      broadcastPingUpdate(fp);
+      manager.applyPing(fp, pingValue);
       sender.sendMessage(Lang.get("ping-set", "name", fp.getDisplayName(), "ping", String.valueOf(pingValue)));
     } else if (random) {
-      int val = 20 + RANDOM.nextInt(180);
-      fp.setPing(val);
-      broadcastPingUpdate(fp);
+      int min = Config.pingMin();
+      int max = Config.pingMax();
+      int val = min + RANDOM.nextInt(Math.max(1, max - min + 1));
+      manager.applyPing(fp, val);
       sender.sendMessage(Lang.get("ping-set", "name", fp.getDisplayName(), "ping", String.valueOf(val)));
     } else if (reset) {
-      fp.setPing(-1);
-      broadcastPingUpdate(fp);
+      manager.applyPing(fp, -1);
       sender.sendMessage(Lang.get("ping-reset", "name", fp.getDisplayName()));
     }
     manager.persistBotSettings(fp);
-  }
-
-  private void broadcastPingUpdate(FakePlayer fp) {
-    for (Player online : Bukkit.getOnlinePlayers()) {
-      try {
-        PacketHelper.sendTabListLatencyUpdate(online, fp);
-      } catch (Throwable ignored) {
-      }
-    }
   }
 
   @Override

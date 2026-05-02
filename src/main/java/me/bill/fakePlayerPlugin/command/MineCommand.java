@@ -553,9 +553,9 @@ public final class MineCommand implements FppCommand {
           Player bot = fp.getPlayer();
           if (bot != null && bot.isOnline()) {
             ServerPlayer nms = ((CraftPlayer) bot).getHandle();
-            nms.level().destroyBlockProgress(-1, state.currentPos, -1);
+            NmsPlayerSpawner.destroyBlockProgress(nms, -1, state.currentPos, -1);
             if (fireBlockBreakHook(fp, state.currentPos)) {
-              nms.gameMode.handleBlockBreakAction(
+              NmsPlayerSpawner.handleBlockBreakAction(nms,
                   state.currentPos,
                   ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
                   Direction.DOWN,
@@ -939,7 +939,7 @@ public final class MineCommand implements FppCommand {
     Direction side = Direction.DOWN;
     if (bot.getGameMode() == GameMode.CREATIVE) {
       if (fireBlockBreakHook(fp, targetPos)) {
-        nms.gameMode.handleBlockBreakAction(
+        NmsPlayerSpawner.handleBlockBreakAction(nms,
             targetPos,
             ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
             side,
@@ -959,17 +959,17 @@ public final class MineCommand implements FppCommand {
     if (state.currentPos == null || !state.currentPos.equals(targetPos)) {
       if (state.currentPos != null) {
         if (fireBlockBreakHook(fp, state.currentPos)) {
-          nms.gameMode.handleBlockBreakAction(
-              state.currentPos,
-              ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
-              side,
-              nms.level().getMaxY(),
-              -1);
+        NmsPlayerSpawner.handleBlockBreakAction(nms,
+            state.currentPos,
+            ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
+            Direction.DOWN,
+            nms.level().getMaxY(),
+            -1);
         }
       }
 
       if (fireBlockBreakHook(fp, targetPos)) {
-        nms.gameMode.handleBlockBreakAction(
+        NmsPlayerSpawner.handleBlockBreakAction(nms,
             targetPos,
             ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
             side,
@@ -997,7 +997,7 @@ public final class MineCommand implements FppCommand {
       state.progress += speed;
       if (state.progress >= 1.0F) {
         if (fireBlockBreakHook(fp, targetPos)) {
-          nms.gameMode.handleBlockBreakAction(
+          NmsPlayerSpawner.handleBlockBreakAction(nms,
               targetPos,
               ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
               side,
@@ -1005,6 +1005,7 @@ public final class MineCommand implements FppCommand {
               -1);
         }
         nms.swing(InteractionHand.MAIN_HAND);
+        NmsPlayerSpawner.destroyBlockProgress(nms, -1, targetPos, -1);
         if (state.once || state.stopAfterForcedTarget) {
           beginPickupWait(fp, state, targetPos);
         } else {
@@ -1014,7 +1015,7 @@ public final class MineCommand implements FppCommand {
         }
         return;
       }
-      nms.level().destroyBlockProgress(-1, targetPos, (int) (state.progress * 10));
+      NmsPlayerSpawner.destroyBlockProgress(nms, -1, targetPos, (int) (state.progress * 10));
     }
 
     nms.swing(InteractionHand.MAIN_HAND);
@@ -1023,9 +1024,9 @@ public final class MineCommand implements FppCommand {
 
   private void abortMining(FakePlayer fp, ServerPlayer nms, MiningState state) {
     if (state.currentPos == null) return;
-    nms.level().destroyBlockProgress(-1, state.currentPos, -1);
+    NmsPlayerSpawner.destroyBlockProgress(nms, -1, state.currentPos, -1);
     if (fp != null && fireBlockBreakHook(fp, state.currentPos)) {
-      nms.gameMode.handleBlockBreakAction(
+      NmsPlayerSpawner.handleBlockBreakAction(nms,
           state.currentPos,
           ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
           Direction.DOWN,
@@ -1297,14 +1298,8 @@ public final class MineCommand implements FppCommand {
       Vec3 hitVec = new Vec3(block.getX() + 0.5, block.getY() + 0.5, block.getZ() + 0.5);
       BlockHitResult hit = new BlockHitResult(hitVec, Direction.UP, pos, false);
       nms.resetLastActionTime();
-      var result =
-          nms.gameMode.useItemOn(
-              nms,
-              nms.level(),
-              nms.getItemInHand(InteractionHand.MAIN_HAND),
-              InteractionHand.MAIN_HAND,
-              hit);
-      if (result.consumesAction()) {
+      var result = NmsPlayerSpawner.useItemOn(nms, InteractionHand.MAIN_HAND, hit);
+      if (NmsPlayerSpawner.consumesAction(result)) {
         nms.swing(InteractionHand.MAIN_HAND);
       }
     } catch (Throwable ignored) {

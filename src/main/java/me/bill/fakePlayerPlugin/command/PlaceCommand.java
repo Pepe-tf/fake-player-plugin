@@ -536,15 +536,11 @@ public final class PlaceCommand implements FppCommand {
               faceBlockPos.getZ() + 0.5 + faceDir.getStepZ() * 0.5);
       BlockHitResult hit = new BlockHitResult(hitVec, faceDir, faceBlockPos, false);
       nms.resetLastActionTime();
-      var result =
-          nms.gameMode.useItemOn(
-              nms,
-              nms.level(),
-              nms.getItemInHand(InteractionHand.MAIN_HAND),
-              InteractionHand.MAIN_HAND,
-              hit);
+      var result = NmsPlayerSpawner.useItemOn(nms, InteractionHand.MAIN_HAND, hit);
 
-      if (result.consumesAction()) nms.swing(InteractionHand.MAIN_HAND);
+      if (NmsPlayerSpawner.consumesAction(result)) {
+        nms.swing(InteractionHand.MAIN_HAND);
+      }
     } catch (Throwable ignored) {
     }
   }
