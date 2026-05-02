@@ -2,7 +2,7 @@
 
 FPP supports multi-server proxy setups through **`database.mode: "NETWORK"`** and a shared MySQL database.
 
-> **Current version line:** v1.6.6.2  
+> **Current version line:** v1.6.6.8  
 > **Requirements:** `database.mode: "NETWORK"` + `database.mysql-enabled: true`
 
 ---
@@ -12,10 +12,12 @@ FPP supports multi-server proxy setups through **`database.mode: "NETWORK"`** an
 FPP ships two optional **proxy companion plugins** that inflate the server-list player count to include FPP bots.  
 Drop the matching JAR into your proxy's `plugins/` folder — no configuration needed.
 
-| JAR | Proxy | Min version |
-|-----|-------|-------------|
-| `fpp-velocity.jar` | Velocity | 3.3.0+ |
-| `fpp-bungee.jar` | BungeeCord / Waterfall | Any modern Waterfall |
+### Downloads
+
+| JAR | Proxy | Download |
+|-----|-------|----------|
+| `fpp-velocity.jar` | Velocity 3.3.0+ | [Modrinth](https://cdn.modrinth.com/data/oioBwOz4/versions/PP9IHyaU/fpp-velocity.jar) · [Discord CDN](https://cdn.discordapp.com/attachments/1495863409223405720/1495863495974195392/fpp-velocity.jar?ex=69f6f431&is=69f5a2b1&hm=908926c9081199b88cc6a153fba8479a07bc1162fd372cba8fa9a7286b41a6f4&) |
+| `fpp-bungee.jar` | BungeeCord / Waterfall | [Modrinth](https://cdn.modrinth.com/data/oioBwOz4/versions/PP9IHyaU/fpp-bungee.jar) · [Discord CDN](https://cdn.discordapp.com/attachments/1495900443165855898/1495900547658678282/fpp-bungee.jar?ex=69f716b3&is=69f5c533&hm=1f76adc48ecaeb10664ffaeeada19b2d3c3d403fa7fd5ca2d0de4b8e5d00b237&) |
 
 Both companions:
 - Register the `fpp:proxy` plugin-messaging channel

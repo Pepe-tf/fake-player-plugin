@@ -1,4 +1,4 @@
-# 🤖 Bot Behaviour
+# Bot Behaviour
 
 > **How FPP bots behave in the world, in chat, and across restarts**
 
@@ -34,8 +34,13 @@ FakePlayer
 │   ├── respawn-on-death
 │   ├── auto-eat
 │   ├── auto-place-bed
+│   ├── auto-milk
+│   ├── prevent-bad-omen
 │   ├── nav avoid water / lava
+│   ├── default water path avoidance
+│   ├── simulated ping
 │   └── share control
+├── metadata map (addon key-value storage)
 └── behavior systems
     ├── head AI
     ├── swim AI
@@ -106,11 +111,11 @@ This is different from the global `/fpp settings` GUI. Opened by **shift + right
 
 ### Categories
 
-1. ⚙ **General** — frozen toggle, respawn-on-death toggle, head-AI toggle, swim-AI toggle, chunk-load-radius (numeric prompt), pick-up-items toggle, pick-up-xp toggle, rename action, share-control (grant/revoke controller access to other players)
-2. 💬 **Chat** — chat enabled/disabled, tier, AI personality
-3. 🗡 **PvE** — smart-attack mode (cycles OFF → ON_NO_MOVE → ON_MOVE), mob type selector (visual GUI), detect range (numeric prompt), target priority (`nearest` / `lowest-health`)
-4. 🧭 **Pathfinding** — follow-player toggle, parkour, break-blocks, place-blocks, avoid-water, avoid-lava
-5. ⚠ **Danger** — reset-all-settings (double-click confirm, op-only), delete bot (double-click confirm, op-only)
+1. Gear **General** — frozen toggle, respawn-on-death toggle, head-AI toggle, swim-AI toggle, chunk-load-radius (numeric prompt), pick-up-items toggle, pick-up-xp toggle, auto-milk toggle, prevent-bad-omen toggle, rename action, share-control (grant/revoke controller access to other players)
+2. Speech Bubble **Chat** — chat enabled/disabled, tier, AI personality
+3. Sword **PvE** — smart-attack mode (cycles OFF, ON_NO_MOVE, ON_MOVE), mob type selector (visual GUI), detect range (numeric prompt), target priority (nearest / lowest-health)
+4. Compass **Pathfinding** — follow-player toggle, parkour, break-blocks, place-blocks, avoid-water, avoid-lava
+5. Warning **Danger** — reset-all-settings (requires double-click to confirm), delete bot (requires double-click to confirm)
 
 It is designed for quick per-bot tuning without command spam.
 
@@ -289,19 +294,162 @@ Each bot has an `autoEatEnabled` toggle (initialized from `automation.auto-eat`)
 
 Each bot has an `autoPlaceBedEnabled` toggle (initialized from `automation.auto-place-bed`). When enabled, bots may place a bed from inventory for auto-sleep and break it after waking.
 
+### Auto-Milk and Bad Omen Prevention
+
+Each bot has two per-bot toggles that control harmful effect handling:
+
+- **`autoMilkEnabled`** (initialized from `automation.auto-milk`, default `true`) — when enabled, the bot automatically removes all `HARMFUL` potion effects each tick.
+- **`preventBadOmen`** (initialized from `automation.prevent-bad-omen`, default `true`) — when enabled, the bot prevents `BAD_OMEN`, `RAID_OMEN`, and `TRIAL_OMEN` effects from being applied.
+
+Config:
+
+```yaml
+automation:
+  auto-milk: true
+  prevent-bad-omen: true
+```
+
+Both toggles are available in `BotSettingGui` General tab and persisted to the database (schema v22). They can also be set programmatically via `fp.setAutoMilkEnabled(boolean)` and `fp.setPreventBadOmen(boolean)`.
+
+> **Note:** These settings exist and are persisted, but the underlying `BotEffectHandler.tickEffects()` method is not yet wired into the main bot tick loop. The toggles will have no runtime effect until the tick integration is completed in a future update.
+
+### Default Water Path Avoidance
+
+Each bot has a `defaultWaterPathAvoidanceEnabled` flag (initialized `true`) that controls the default value for `navAvoidWater` and `navAvoidLava` when the bot is first spawned. This is separate from the global pathfinding config — it provides a per-bot baseline that the per-bot Pathfinding tab toggles then override.
+
+When `defaultWaterPathAvoidanceEnabled` is `true` (the default), a freshly spawned bot starts with water and lava avoidance enabled. When `false`, the bot starts with avoidance disabled.
+
+Set programmatically via `fp.setDefaultWaterPathAvoidanceEnabled(boolean)`.
+
 ### Nav avoid water / lava
 
 Per-bot pathfinding overrides:
-- `navAvoidWater` — when `true`, the bot's pathfinding avoids water paths (default `false`)
-- `navAvoidLava` — when `true`, the bot's pathfinding avoids lava paths (default `false`)
+- `navAvoidWater` — when `true`, the bot's pathfinding avoids water paths (default follows `defaultWaterPathAvoidanceEnabled`)
+- `navAvoidLava` — when `true`, the bot's pathfinding avoids lava paths (default follows `defaultWaterPathAvoidanceEnabled`)
 
-These are separate from the global `defaultWaterPathAvoidanceEnabled` and can be toggled per-bot in `BotSettingGui` Pathfinding tab.
+These can be toggled per-bot in `BotSettingGui` Pathfinding tab.
 
 ---
 
 ## Share Control
 
-Owners and admins can grant or revoke controller access to other players for a specific bot. This is accessible via the **share-control** entry in `BotSettingGui` General tab. Controllers can perform limited operations on the bot (move, inventory, etc.) without being the full owner.
+Owners and admins can grant or revoke controller access to other players for a specific bot. This is accessible via the **share-control** entry in `BotSettingGui` General tab. Controllers can perform limited operations on the bot (move, inventory, etc.) without being the the full owner.
+
+---
+
+## Ping Simulation
+
+Bots can display a realistic simulated ping value in the tab list.
+
+### Global config
+
+```yaml
+ping:
+  enabled: false
+  min: 25
+  max: 180
+  latency-effect: true
+  spike-chance: 0.05
+  spike-min: 250
+  spike-max: 500
+  join-ramp-ticks: 60
+```
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Master toggle for ping simulation (changed from `true` in config v70) |
+| `min` | `25` | Minimum simulated ping (ms) |
+| `max` | `180` | Maximum simulated ping (ms) |
+| `latency-effect` | `true` | Whether simulated ping affects the in-game latency bars |
+| `spike-chance` | `0.05` | Chance per tick of a temporary ping spike |
+| `spike-min` | `250` | Minimum spike ping (ms) |
+| `spike-max` | `500` | Maximum spike ping (ms) |
+| `join-ramp-ticks` | `60` | Ticks over which ping ramps from 0 to its target after a bot joins (simulates a realistic connection) |
+
+### Per-bot overrides
+
+Each bot has its own `ping` field (default `-1`, meaning use the server-generated value). Set a specific visible ping with:
+
+```text
+/fpp ping <bot> --ping <ms>
+/fpp ping <bot> --random
+/fpp ping <bot>
+```
+
+- `--ping <ms>` sets an explicit value (0–9999)
+- `--random` assigns a random realistic value within the configured min/max range
+- No flag shows the current ping
+
+Bulk operations:
+
+```text
+/fpp ping --ping <ms> --count <n>
+```
+
+Permissions:
+- `fpp.ping` — view bot ping
+- `fpp.ping.set` — set a specific value
+- `fpp.ping.random` — assign random ping
+- `fpp.ping.bulk` — bulk `--count` operations
+
+Per-bot ping values are persisted to the database (`ping` and `ping_user_set` columns in `fpp_active_bots`, schema v22).
+
+---
+
+## Despawn Snapshots
+
+When a bot is despawned (via `/fpp despawn`, the Danger tab in `BotSettingGui`, or any other removal path), FPP can capture a snapshot of the bot's inventory and XP before the entity is destroyed.
+
+This data is stored in the **`fpp_despawn_snapshots`** database table (schema v17+). Each snapshot row records:
+
+- bot UUID
+- full inventory contents (main inventory, armor, offhand)
+- total XP, level, and level progress
+- timestamp
+
+Snapshots are loaded on startup via `FakePlayerManager.initDespawnSnapshots()` and are available for inspection or restoration by addons. When persistence is enabled, bots that are restored on restart reload their state from `fpp_active_bots` rather than from snapshots — however, snapshots serve as a safety net for non-graceful shutdowns and for addon-driven restoral flows.
+
+---
+
+## Bot Metadata
+
+Each bot carries a transient key-value metadata map intended for addon use. This map is **not persisted** across restarts — it exists only for the lifetime of the bot's session.
+
+### API surface
+
+```java
+// Set or overwrite a value
+fp.setMetadata(String key, Object value);
+
+// Retrieve a value (null if absent)
+Object value = fp.getMetadata(String key);
+
+// Check existence
+boolean has = fp.hasMetadata(String key);
+
+// Remove a single entry
+fp.removeMetadata(String key);
+
+// Get the entire map (read-only view)
+Map<String, Object> map = fp.getMetadataMap();
+
+// Clear all metadata
+fp.clearMetadata();
+```
+
+### Addon API equivalent
+
+```java
+// Via FppBot interface
+bot.setMetadata(String key, Object value);
+Object value = bot.getMetadata(String key);
+boolean has = bot.hasMetadata(String key);
+bot.removeMetadata(String key);
+Map<String, Object> map = bot.getMetadataMap();
+bot.clearMetadata();
+```
+
+Common uses: tracking addon-specific state (e.g., cooldowns, task progress, custom flags) without needing a separate external data store.
 
 ---
 
@@ -314,6 +462,8 @@ Used by:
 - `/fpp mine`
 - `/fpp place`
 - `/fpp use`
+- `/fpp follow`
+- `/fpp attack`
 - waypoint patrols
 
 ### Supported move types
@@ -336,12 +486,12 @@ These flags are read from each bot's per-bot settings at path time:
 - `breakBlocks` — allow breaking blocks in the path (default from `pathfinding.break-blocks`)
 - `placeBlocks` — allow placing blocks in the path (default from `pathfinding.place-blocks`)
 - `avoidWater` — avoid water (per-bot `navAvoidWater`)
-- `avoidLava` — avoid lava (per-bot `navAvoidLava`)
+- `avoidLava` — avoid lava (per-bot `navLavaAvoidLava`)
 
 ### Shared helpers
 
 - `BotNavUtil` — stand positions, facing, action-location checks, block use helpers
-- `StorageInteractionHelper` — lock → open → transfer → unlock flow for storage containers
+- `StorageInteractionHelper` — lock, open, transfer, unlock flow for storage containers
 
 ### Action lock handoff
 
@@ -384,7 +534,7 @@ The bot navigates to the target player. `--to` is the canonical flag form; the p
 /fpp move <bot|all> --stop
 ```
 
-The bot wanders continuously within a fixed radius (3–500 blocks) around a center point.
+The bot wanders continuously within a fixed radius (3-500 blocks) around a center point.
 
 - If no coordinates are given, the bot's current position becomes the center
 - Roam state persists across restarts via `data/bot-tasks.yml` (YAML-only; not stored in the DB task table)
@@ -585,7 +735,7 @@ Check:
 Check:
 - `persistence.enabled: true`
 - DB is available, or YAML fallback files are writable
-- task is one of the persisted task types (mine/use/place/patrol)
+- task is one of the persisted task types (mine/use/place/patrol/follow)
 
 ### Bot is not reacting in DMs
 
@@ -593,6 +743,10 @@ Check:
 - `ai-conversations.enabled: true`
 - a valid provider key is in `secrets.yml`
 - the personality file exists and was reloaded
+
+### Auto-milk or Bad Omen prevention not working
+
+The per-bot `autoMilkEnabled` and `preventBadOmen` toggles exist and are persisted, but `BotEffectHandler.tickEffects()` is not yet wired into the tick loop. These settings will take effect in a future update.
 
 ---
 

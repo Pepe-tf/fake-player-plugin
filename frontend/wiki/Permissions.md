@@ -9,13 +9,16 @@
 ## ??? Permission Structure
 
 ```text
-fpp.admin               # Admin wildcard � preferred (default: op)
-fpp.op                  # Admin wildcard � legacy alias (default: op)
+fpp.admin               # Admin wildcard – preferred (default: op)
+fpp.op                  # Admin wildcard – legacy alias (default: op)
 fpp.use                 # User wildcard (default: true)
+fpp.command             # Controls /fpp visibility (default: true)
+fpp.plugininfo          # Shows full info panel on bare /fpp (default: op)
+fpp.notify              # Update notifications on join (default: op)
+fpp.help                # Access /fpp help (default: true)
 fpp.spawn.limit.<N>     # Personal bot limits (1-100)
 fpp.bypass.maxbots      # Ignore global bot cap
 fpp.bypass.cooldown     # Ignore spawn cooldown
-fpp.command             # Controls /fpp visibility (default: true)
 ```
 
 ### Important note about user nodes
@@ -40,7 +43,9 @@ Current nodes are:
 | Permission | Command | Description |
 |------------|---------|-------------|
 | `fpp.spawn` | `/fpp spawn` | Spawn unlimited bots |
-| `fpp.delete` | `/fpp despawn` | Delete any bot |
+| `fpp.despawn` | `/fpp despawn` | Despawn bots (preferred alias for `fpp.delete`) |
+| `fpp.despawn.bulk` | `/fpp despawn --all/--random/--num` | Bulk despawn operations |
+| `fpp.despawn.own` | `/fpp despawn` | Despawn only bots the sender spawned |
 | `fpp.list` | `/fpp list` | View all active bots |
 | `fpp.info` | `/fpp info` | View all bot sessions / DB history |
 | `fpp.freeze` | `/fpp freeze` | Freeze / unfreeze any bot |
@@ -135,11 +140,20 @@ Grant `fpp.spawn.limit.<N>` to set a player's personal cap. FPP always uses the 
 | `fpp.spawn.limit.1` | 1 |
 | `fpp.spawn.limit.2` | 2 |
 | `fpp.spawn.limit.3` | 3 |
+| `fpp.spawn.limit.4` | 4 |
 | `fpp.spawn.limit.5` | 5 |
+| `fpp.spawn.limit.6` | 6 |
+| `fpp.spawn.limit.7` | 7 |
+| `fpp.spawn.limit.8` | 8 |
+| `fpp.spawn.limit.9` | 9 |
 | `fpp.spawn.limit.10` | 10 |
 | `fpp.spawn.limit.15` | 15 |
 | `fpp.spawn.limit.20` | 20 |
+| `fpp.spawn.limit.25` | 25 |
+| `fpp.spawn.limit.30` | 30 |
+| `fpp.spawn.limit.40` | 40 |
 | `fpp.spawn.limit.50` | 50 |
+| `fpp.spawn.limit.75` | 75 |
 | `fpp.spawn.limit.100` | 100 |
 
 ---
@@ -223,6 +237,11 @@ Most commands now have granular sub-nodes for fine-grained control:
 - **Spawn:** `fpp.spawn.multiple`, `fpp.spawn.mass`, `fpp.spawn.name`, `fpp.spawn.coords`
 
 - **Attack:** `fpp.attack.hunt` — roaming mob hunt mode
+- **Despawn:** `fpp.despawn.bulk`, `fpp.despawn.own`
+- **Command visibility:** `fpp.command` — controls `/fpp` visibility (default `true`; negate to fully hide)
+- **Plugin info:** `fpp.plugininfo` — full info panel on bare `/fpp` (default `op`)
+- **Update notify:** `fpp.notify` — update notifications on join (default `op`)
+- **Help:** `fpp.help` — access `/fpp help` (default `true`)
 
 The parent node (e.g. `fpp.mine`) grants all its sub-nodes automatically.
 

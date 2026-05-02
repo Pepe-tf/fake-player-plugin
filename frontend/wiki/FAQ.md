@@ -295,13 +295,13 @@ body:
 
 **Verify Compatibility:**
 ```bash
-/fpp stats --detailed       # Check compatibility status
+/fpp stats --detailed       # Check bot and server stats
 ```
 
-**If compatibility is restricted:**
-- Server is not compatible with Mannequin entities
-- Bodies are automatically disabled
-- Bots will only appear in tab list
+**If bots still don't appear in-world:**
+- Check `body.enabled: true` in config.yml
+- Check startup logs for version-unsupported warnings
+- Ensure you are running a supported Minecraft version (Paper 1.21+ or Folia equivalent)
 
 ---
 

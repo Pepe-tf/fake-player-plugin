@@ -1,8 +1,8 @@
 # 🔧 Migration & Backups
 
 > **Current plugin line:** 1.6.6.8  
-> **Bundled config stamp:** 67  
-> **Current migration target:** 67
+> **Bundled config stamp:** 70  
+> **Current migration target:** 70
 
 This page covers:
 - automatic config migration
@@ -207,6 +207,9 @@ The current config history important to modern installs is:
 | 64 | Injected `body.drop-items-on-despawn: false` into existing installs (resource default `true`; migration v53→v54 originally added the key as `false` for existing configs — this step ensures consistent value) |
 | 65 | Added `chunk-loading.mass-disable-threshold: 100` |
 | 66 | Changed default `bot-name.mode` to `random`; added `pathfinding.follow-recalc-interval: 100` |
+| 67→v68 | Added `ping` section (`ping.enabled`, `ping.min`, `ping.max`, `latency-effect`) |
+| 68→v69 | Added ping spike-chance, spike-min, spike-max, join-ramp-ticks |
+| 69→v70 | Changed `ping.enabled` default to `false`; added `automation.auto-milk` and `automation.prevent-bad-omen` |
 
 ### Additional 1.6.x-era structural additions
 
@@ -219,12 +222,35 @@ Depending on when a user upgraded from, those sections may be added by migration
 
 ---
 
+## Database Schema History
+
+| Schema Version | Changes |
+|----------------|---------|
+| v9 | `fpp_active_bots` gains `frozen`, `chat_enabled`, `chat_tier`, `right_click_cmd` |
+| v10 | `fpp_active_bots` gains `ai_personality` |
+| v11 | `fpp_active_bots` gains `pickup_items`, `pickup_xp` |
+| v12 | `fpp_active_bots` gains `head_ai_enabled`, `nav_parkour`, `nav_break_blocks`, `nav_place_blocks` |
+| v13 | `fpp_bot_tasks` table created (mine/use/place/patrol task persistence) |
+| v14 | `fpp_active_bots` gains `swim_ai_enabled`, `chunk_load_radius` |
+| v15 | `fpp_skin_cache` table created (Mojang skin resolution cache) |
+| v16 | `fpp_active_bots` gains `pve_enabled`, `pve_range`, `pve_priority`, `pve_mob_type` |
+| v17 | `fpp_active_bots` gains `skin_texture`, `skin_signature` |
+| v18 | `fpp_despawn_snapshots` table created (despawn inventory/XP snapshots for rename preservation) |
+| v18→v19 | `fpp_active_bots` gains `nav_avoid_water`, `nav_avoid_lava` |
+| v19→v20 | `fpp_active_bots` gains `ping INT DEFAULT -1` |
+| v20→v21 | `fpp_active_bots` gains `pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'`, `respawn_on_death BOOLEAN DEFAULT 0` |
+| v21→v22 | `fpp_active_bots` gains `auto_milk_enabled BOOLEAN DEFAULT 1`, `prevent_bad_omen BOOLEAN DEFAULT 1`, `ping_user_set BOOLEAN DEFAULT 0` |
+
+> Current DB schema version: **22** · Check with `/fpp migrate status`
+
+---
+
 ## Bundled Config vs Migration Target
 
 One confusing but normal detail:
 
-- the shipped `config.yml` in resources is stamped at `67`
-- the runtime migrator targets `67`
+- the shipped `config.yml` in resources is stamped at `70`
+- the runtime migrator targets `70`
 
 These are currently in sync, but in general:
 - the bundled file reflects a stable packaged default

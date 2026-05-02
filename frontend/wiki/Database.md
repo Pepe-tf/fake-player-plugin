@@ -138,6 +138,9 @@ Stores the bot's last known:
 - tab-list ping override: `ping INT DEFAULT -1` (schema v20)
 - PvE smart attack mode: `pve_smart_attack_mode VARCHAR(16) DEFAULT 'OFF'` (schema v21)
 - respawn-on-death: `respawn_on_death BOOLEAN DEFAULT 0` (schema v21)
+- auto-milk: `auto_milk_enabled BOOLEAN DEFAULT 1` (schema v22)
+- Bad Omen prevention: `prevent_bad_omen BOOLEAN DEFAULT 1` (schema v22)
+- ping user-set flag: `ping_user_set BOOLEAN DEFAULT 0` (schema v22)
 
 ### `fpp_skin_cache`
 
@@ -184,6 +187,18 @@ High-level fields:
 - `once_flag`
 - `extra_str` (route name, etc.)
 - `extra_bool` (extra mode flag)
+
+### `fpp_despawn_snapshots`
+
+Despawn inventory/XP snapshots for rename preservation (schema v18).
+
+When a bot is renamed or despawned, the full inventory contents and XP state are captured in this table so they can be restored precisely to the new entity. This ensures zero item/XP loss during the despawn+respawn rename lifecycle.
+
+Fields:
+- bot UUID
+- full inventory snapshot (main + armor + offhand)
+- XP snapshot (level, progress, total experience)
+- timestamp
 
 ### `fpp_meta`
 
@@ -320,12 +335,13 @@ mysqldump -u fpp_user -p fpp > fpp_backup.sql
 | v15 | `fpp_skin_cache` table created (Mojang skin resolution cache) |
 | v16 | `fpp_active_bots` gains `pve_enabled`, `pve_range`, `pve_priority`, `pve_mob_type` (per-bot PvE settings) |
 | v17 | `fpp_active_bots` gains `skin_texture`, `skin_signature` (skin persistence across restarts) |
-| v18 | `fpp_despawn_snapshots` table created (despawn inventory/XP snapshots) |
+| v18 | `fpp_despawn_snapshots` table created (despawn inventory/XP snapshots for rename preservation) |
 | v19 | `fpp_active_bots` gains `nav_avoid_water`, `nav_avoid_lava` |
 | v20 | `fpp_active_bots` gains `ping INT DEFAULT -1` |
 | v21 | `fpp_active_bots` gains `pve_smart_attack_mode`, `respawn_on_death` |
+| v22 | `fpp_active_bots` gains `auto_milk_enabled`, `prevent_bad_omen`, `ping_user_set` |
 
-> Current schema version: **21** · Check with `/fpp migrate status`
+> Current schema version: **22** · Check with `/fpp migrate status`
 
 ---
 
