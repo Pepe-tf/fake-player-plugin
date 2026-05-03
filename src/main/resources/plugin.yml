@@ -1,0 +1,37 @@
+name: FakePlayerPlugin
+version: '${project.version}'
+main: me.bill.fakePlayerPlugin.FakePlayerPlugin
+api-version: '1.21'
+folia-supported: true
+authors: [ el_pepes ]
+description: Minimal fake player core with extension API support.
+
+commands:
+  fpp:
+    description: Fake Player Plugin main command
+    usage: /fpp <spawn|despawn|list|reload|inventory|help|settings>
+    aliases: [ fakeplayer, fp ]
+    permission-message: ''
+
+permissions:
+  fpp.spawn:
+    description: Spawn fake players.
+    default: op
+  fpp.despawn:
+    description: Despawn fake players.
+    default: op
+  fpp.list:
+    description: List fake players.
+    default: op
+  fpp.reload:
+    description: Reload config and extensions.
+    default: op
+  fpp.help:
+    description: Open the interactive help GUI.
+    default: true
+  fpp.settings:
+    description: Open the global or per-bot settings GUI.
+    default: op
+  fpp.inventory:
+    description: Open a fake player's inventory GUI.
+    default: op

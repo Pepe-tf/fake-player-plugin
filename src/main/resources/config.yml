@@ -1,0 +1,70 @@
+debug: false
+
+# list = pick from bot-names below, random = generate Minecraft-style usernames
+bot-name-mode: random
+
+body:
+  pushable: true
+  collision:
+    hit-strength: 0.65
+    hit-max-horizontal: 1.15
+    walk-radius: 0.85
+    walk-strength: 0.22
+    bot-radius: 0.72
+    bot-strength: 0.16
+    max-horizontal: 0.7
+
+bot-interaction:
+  right-click-inventory: true
+  shift-right-click-settings: true
+
+messages:
+  death-message: true
+
+death:
+  respawn-on-death: false
+  respawn-delay: 60
+  despawn-delay: 20
+  suppress-drops: false
+
+bot-names:
+  - FakePlayer
+  - BuilderBot
+  - MinerBot
+  - SteveBot
+  - AlexBot
+  - HelperBot
+  - CraftyBot
+  - BlockBuddy
+  - RedstoneRex
+  - NetherNora
+  - EnderEli
+  - QuartzQuinn
+  - BeaconBen
+  - AnvilAva
+  - PickaxeParker
+  - LanternLeo
+  - HopperHarper
+  - CompassCole
+  - ObsidianOwen
+  - DiamondDrew
+  - IronIvy
+  - GoldGabe
+  - EmeraldEmery
+  - CopperCasey
+  - StoneSage
+  - OakOliver
+  - BirchBlair
+  - SpruceSky
+  - CrimsonKai
+  - WarpedWren
+  - FrostFelix
+  - BlazeBryn
+  - StormScout
+  - ShadowSam
+  - NovaNico
+  - PixelPiper
+  - TurboTess
+  - MysticMilo
+  - LuckyLogan
+  - SilentSloan
